@@ -26,6 +26,49 @@ const pass = (name: string, extra: object = {}) => ({
 })
 
 describe(TITLE, () => {
+    it("enables default colors only for a TTY", async () => {
+        if ("undefined" === typeof process) return
+        const stdout = process.stdout as {isTTY?: boolean}
+        const descriptor = Object.getOwnPropertyDescriptor(stdout, "isTTY")
+        const previousNoColor = process.env.NO_COLOR
+        const previousDisabled = process.env.NODE_DISABLE_COLORS
+        try {
+            delete process.env.NO_COLOR
+            delete process.env.NODE_DISABLE_COLORS
+            Object.defineProperty(stdout, "isTTY", {configurable: true, value: true})
+
+            const local = createTAL()
+            const lines: string[] = []
+            local.reporter.output(text => {
+                lines.push(text)
+            })
+            await local.reporter.emit("test:pass", pass("colored"))
+            await local.run()
+
+            assert.match(lines.join(""), /\u001b\[32m/)
+        } finally {
+            if (descriptor) Object.defineProperty(stdout, "isTTY", descriptor)
+            else delete stdout.isTTY
+            if (previousNoColor == null) delete process.env.NO_COLOR
+            else process.env.NO_COLOR = previousNoColor
+            if (previousDisabled == null) delete process.env.NODE_DISABLE_COLORS
+            else process.env.NODE_DISABLE_COLORS = previousDisabled
+        }
+    })
+
+    it("disables default colors outside a Node TTY", async () => {
+        if ("undefined" !== typeof process && process.stdout.isTTY) return
+        const local = createTAL()
+        const lines: string[] = []
+        local.reporter.output(text => {
+            lines.push(text)
+        })
+        await local.reporter.emit("test:pass", pass("plain"))
+        await local.run()
+
+        assert.equal(lines.join("").includes("\u001b["), false)
+    })
+
     it("renders a passing test", async () => {
         const out = await render(r => r.emit("test:pass", pass("ok one")))
 

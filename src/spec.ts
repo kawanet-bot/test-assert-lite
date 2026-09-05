@@ -26,8 +26,10 @@ const COLOR = {
 // terminal colour, so it is always off there. Keeping the decision in one
 // place gives spec() its default.
 const defaultColors = (): boolean => {
-    const env = "undefined" !== typeof process && (process as {env?: Record<string, string | undefined>}).env
-    return !!env && (!env.NO_COLOR && !env.NODE_DISABLE_COLORS)
+    const node = "undefined" !== typeof process
+        && (process as {env?: Record<string, string | undefined>, stdout?: {isTTY?: boolean}})
+    const env = node && node.env
+    return !!node && !!node.stdout?.isTTY && !!env && (!env.NO_COLOR && !env.NODE_DISABLE_COLORS)
 }
 
 const indent = (nesting: number): string => "  ".repeat(nesting)
