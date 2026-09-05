@@ -4,18 +4,20 @@
     <meta charset="utf-8"/>
     <title>test-assert-lite browser test</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <link rel="stylesheet" href="../styles/test-assert-lite.css"/>
     <style>
         body { font-family: system-ui, sans-serif; padding: 1em; }
-        pre { font-family: ui-monospace, monospace; white-space: pre-wrap; }
+        ul { list-style: none; padding: 0; }
     </style>
 </head>
 <body>
 <h1>test-assert-lite browser test</h1>
-<pre id="output"></pre>
+<ul id="output"></ul>
 <script src="../dist/test-assert-lite.min.js"></script>
 <script src="./tests/bundled.js"></script>
 <script>
-    TAL.reporter.output(text => document.getElementById("output").append(text));
+    TAL.reporter.format(TAL.reporter.html());
+    TAL.reporter.output(text => document.getElementById("output").insertAdjacentHTML("beforeend", text));
     TAL.run().then(summary => (window.testSummary = summary));
 </script>
 </body>

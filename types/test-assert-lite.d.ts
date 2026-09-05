@@ -185,7 +185,7 @@ export declare namespace TAL {
     type OutputFn = (text: string) => void | Promise<void>
 
     interface SpecOptions {
-        // Defaults to NO_COLOR / NODE_DISABLE_COLORS on Node, off in browsers.
+        // Defaults on for a Node TTY unless NO_COLOR or NODE_DISABLE_COLORS is set; off otherwise.
         colors?: boolean
     }
 

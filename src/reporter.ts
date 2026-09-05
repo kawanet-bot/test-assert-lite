@@ -1,5 +1,6 @@
 import type * as declared from "test-assert-lite"
 
+import {html} from "./html.ts"
 import {spec} from "./spec.ts"
 
 type TestEvent = declared.TAL.TestEvent
@@ -163,7 +164,7 @@ export const createReporter = (): ReporterControl => {
                 output = fn
             },
             spec,
-            html: () => spec({colors: false}),
+            html,
         },
         // A standalone emit() may have opened a Pipe with older settings.
         // Finish it before snapshotting the current configuration for run().

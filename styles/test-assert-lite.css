@@ -1,0 +1,14 @@
+.tal {
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.tal-pass { color: #188038; }
+.tal-fail, .tal-error { color: #c5221f; }
+.tal-skip, .tal-info, .tal-suite { color: #5f6368; }
+.tal-warn { color: #b06000; }
+
+.tal-error pre {
+    margin: 0.25em 0 1em;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+}
