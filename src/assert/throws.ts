@@ -83,9 +83,7 @@ export const throws = (block: () => unknown, ...rest: [expected?: Predicate | st
         if (isError(message)) throw message
         throw new AssertionError({
             message: message ?? `${stringify(thrown)} did not match the expected error`,
-            operator: "throws",
-            actual: thrown,
-            expected,
+            operator: "throws", actual: thrown, expected,
         })
     }
 }
@@ -109,7 +107,6 @@ export const doesNotThrow = (block: () => unknown, expected?: declared.TAL.Error
     if (isError(note)) throw note
     throw new AssertionError({
         message: note ?? `expected not to throw, got: ${stringify(thrown)}`,
-        operator: "doesNotThrow",
-        actual: thrown,
+        operator: "doesNotThrow", actual: thrown,
     })
 }

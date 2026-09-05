@@ -9,7 +9,10 @@ import {stringify} from "./common/stringify.ts"
 const ok: declared.TAL.Assert["ok"] = (value, message) => {
     if (value) return
     if (isError(message)) throw message
-    throw new AssertionError({message: message ?? `expected truthy, got ${stringify(value)}`, actual: value, expected: true, operator: "ok"})
+    throw new AssertionError({
+        message: message ?? `expected truthy, got ${stringify(value)}`,
+        actual: value, expected: true, operator: "ok",
+    })
 }
 
 // This is the strict flavour, so equal compares with Object.is: NaN equals
@@ -21,25 +24,37 @@ const equal = (actual: unknown, expected: unknown, message?: string | Error): vo
     // Keep the values even when a message is given: without them there is
     // nothing to start from. node:assert does this for strictEqual alone.
     const detail = `expected ${stringify(expected)}, got ${stringify(actual)}`
-    throw new AssertionError({message: message == null ? detail : `${message}\n\n${detail}`, actual, expected, operator: "strictEqual"})
+    throw new AssertionError({
+        message: message == null ? detail : `${message}\n\n${detail}`,
+        actual, expected, operator: "strictEqual",
+    })
 }
 
 const notEqual = (actual: unknown, expected: unknown, message?: string | Error): void => {
     if (!Object.is(actual, expected)) return
     if (isError(message)) throw message
-    throw new AssertionError({message: message ?? `expected not ${stringify(expected)}`, actual, expected, operator: "notStrictEqual"})
+    throw new AssertionError({
+        message: message ?? `expected not ${stringify(expected)}`,
+        actual, expected, operator: "notStrictEqual",
+    })
 }
 
 const match = (value: string, regExp: RegExp, message?: string | Error): void => {
     if (regExp.test(value)) return
     if (isError(message)) throw message
-    throw new AssertionError({message: message ?? `${stringify(value)} did not match ${regExp}`, actual: value, expected: regExp, operator: "match"})
+    throw new AssertionError({
+        message: message ?? `${stringify(value)} did not match ${regExp}`,
+        actual: value, expected: regExp, operator: "match",
+    })
 }
 
 const doesNotMatch = (value: string, regExp: RegExp, message?: string | Error): void => {
     if (!regExp.test(value)) return
     if (isError(message)) throw message
-    throw new AssertionError({message: message ?? `${stringify(value)} matched ${regExp}`, actual: value, expected: regExp, operator: "doesNotMatch"})
+    throw new AssertionError({
+        message: message ?? `${stringify(value)} matched ${regExp}`,
+        actual: value, expected: regExp, operator: "doesNotMatch",
+    })
 }
 
 // The assertions hold no state, so they sit at module level and the factory
@@ -53,7 +68,10 @@ export const createAssert = (): AssertControl => {
     const base = {
         fail: (message?: string | Error): never => {
             if (isError(message)) throw message
-            throw new AssertionError({message: message ?? "Failed", operator: "fail"})
+            throw new AssertionError({
+                message: message ?? "Failed",
+                operator: "fail",
+            })
         },
         equal,
         notEqual,
@@ -67,7 +85,10 @@ export const createAssert = (): AssertControl => {
 
     const ifError = (value: unknown): void => {
         if (value == null) return
-        throw new AssertionError({message: `ifError got unwanted exception: ${stringify(value)}`, actual: value, operator: "ifError"})
+        throw new AssertionError({
+            message: `ifError got unwanted exception: ${stringify(value)}`,
+            actual: value, operator: "ifError",
+        })
     }
 
     // For t.assert. Here ok / ifError are plain checks, not assertion signatures.

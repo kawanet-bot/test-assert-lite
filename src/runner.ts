@@ -44,7 +44,10 @@ const reportSuite = async (
             details: {duration_ms, type: "suite", error: result.error},
         })
     } else {
-        await state.reporter.emit("test:pass", {...base, ...skip, details: {duration_ms, type: "suite"}})
+        await state.reporter.emit("test:pass", {
+            ...base, ...skip,
+            details: {duration_ms, type: "suite"},
+        })
     }
 }
 
@@ -261,12 +264,17 @@ const runOnce = async (
     }
 
     for (const [label, value] of [
-        ["tests", state.counters.tests], ["suites", state.counters.suites],
-        ["pass", state.counters.passed], ["fail", state.counters.failed],
-        ["cancelled", state.counters.cancelled], ["skipped", state.counters.skipped],
+        ["tests", state.counters.tests],
+        ["suites", state.counters.suites],
+        ["pass", state.counters.passed],
+        ["fail", state.counters.failed],
+        ["cancelled", state.counters.cancelled],
+        ["skipped", state.counters.skipped],
         ["duration_ms", duration_ms],
     ] as [string, number][]) {
-        await state.reporter.emit("test:diagnostic", {message: `${label} ${value}`, nesting: 0, level: "info"})
+        await state.reporter.emit("test:diagnostic", {
+            message: `${label} ${value}`, nesting: 0, level: "info",
+        })
     }
 
     await state.reporter.emit("test:summary", summary)
