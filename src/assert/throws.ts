@@ -69,7 +69,7 @@ export const throws = (block: () => unknown, ...rest: [expected?: Predicate | st
     if (expected != null && !isPredicate(expected)) throw invalid()
 
     const caught = attempt(block)
-    if (caught == null) fail(message ?? "expected to throw, did not", "throws")
+    if (caught == null) return fail(message ?? "expected to throw, did not", "throws")
     const {thrown} = caught
 
     // A message equal to what was thrown was meant as a matcher; node:assert
