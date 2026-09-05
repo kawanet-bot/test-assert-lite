@@ -28,25 +28,30 @@ const fail = (message: string | Error, operator: string, values?: {actual?: unkn
 
 const isErrorClass = (fn: Function): boolean => fn === Error || Error.prototype.isPrototypeOf(fn.prototype)
 
-const isPredicate = (value: unknown): value is Predicate => "function" === typeof value || ("object" === typeof value && value != null)
+// The properties an object matcher asks for. name and message come along
+// when the object is itself an Error, where they are not enumerable.
+const keysOf = (expected: object): string[] => isError(expected) ? [...Object.keys(expected), "name", "message"] : Object.keys(expected)
+
+// A matcher shape node:assert takes. An object with nothing to compare
+// would match anything, so it is refused as node:assert refuses it.
+const isPredicate = (value: unknown): value is Predicate =>
+    value instanceof RegExp || "function" === typeof value || ("object" === typeof value && value != null && keysOf(value).length > 0)
 
 // Whether `thrown` satisfies `expected`, for every matcher node:assert takes:
 // a RegExp against String(thrown), an Error class, a validation function,
-// or an object whose properties thrown must carry, name and message
-// included when that object is itself an Error.
+// or an object whose properties thrown must carry.
 const matches = (thrown: unknown, expected: Predicate): boolean => {
     if (expected instanceof RegExp) return expected.test(String(thrown))
     if ("function" === typeof expected) {
         if (isErrorClass(expected)) return thrown instanceof expected
         return (expected as (thrown: unknown) => boolean)(thrown) === true
     }
-    if (thrown == null) return false
+    if (thrown == null || "object" !== typeof thrown) return false
 
-    const keys = Object.keys(expected)
-    if (isError(expected)) keys.push("name", "message")
     const actual = thrown as Record<string, unknown>
     const wanted = expected as Record<string, unknown>
-    return keys.every(key => {
+    return keysOf(expected).every(key => {
+        if (!(key in actual)) return false
         const want = wanted[key]
         return want instanceof RegExp ? want.test(String(actual[key])) : Object.is(actual[key], want)
     })

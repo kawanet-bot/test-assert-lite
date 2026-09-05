@@ -59,6 +59,15 @@ describe(TITLE, () => {
         assert.throws(() => TAL.throws(boom, {code: "ERR_X"}), /did not match/)
     })
 
+    // An expected property has to be there, even when its value is undefined,
+    // and a primitive carries no properties at all.
+    it("throws requires each expected property to be present", () => {
+        assert.throws(() => TAL.throws(boom, {code: undefined}), /did not match/)
+        assert.throws(() => TAL.throws(() => {
+            throw "str"
+        }, {message: "str"}), /did not match/)
+    })
+
     it("throws reads an Error instance as an object including name and message", () => {
         assert.doesNotThrow(() => TAL.throws(boom, new RangeError("boom")))
         assert.throws(() => TAL.throws(boom, new Error("boom")), /did not match/)
@@ -88,6 +97,8 @@ describe(TITLE, () => {
         rejected(() => TAL.throws("not a function" as never))
         rejected(() => TAL.throws(boom, 123 as never))
         rejected(() => TAL.throws(boom, "one" as never, "two"))
+        // Nothing to compare would match anything.
+        rejected(() => TAL.throws(boom, {}))
     })
 
     it("doesNotThrow passes on no exception and fails on one", () => {
