@@ -55,6 +55,16 @@ describe(TITLE, () => {
         assert.equal(out.includes("<tag>"), false)
     })
 
+    it("escapes a diagnostic level used in an attribute", async () => {
+        const out = await render(reporter => reporter.emit("test:diagnostic", {
+            message: "unsafe level", nesting: 0,
+            level: `info" onclick="alert('x')` as never,
+        }))
+
+        assert.match(out, /tal-info&quot; onclick=&quot;alert\(&apos;x&apos;\)/)
+        assert.equal(out.includes(`onclick="alert('x')"`), false)
+    })
+
     it("renders diagnostics and omits parent-only failures from the failure list", async () => {
         const subtestsFailed = Object.assign(new Error("child failed"), {
             code: "ERR_TEST_FAILURE", failureType: "subtestsFailed",

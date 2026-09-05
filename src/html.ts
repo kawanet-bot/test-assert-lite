@@ -44,7 +44,7 @@ export const html = (): FormatFn => async function* (source: AsyncIterable<TestE
 
         if (event.type === "test:diagnostic") {
             const {level, nesting, message} = event.data
-            yield `<li>${space(nesting)}<span class="tal tal-${level}">ℹ ${escapeHTML(message)}</span></li>\n`
+            yield `<li>${space(nesting)}<span class="tal tal-${escapeHTML(level)}">ℹ ${escapeHTML(message)}</span></li>\n`
             continue
         }
 
