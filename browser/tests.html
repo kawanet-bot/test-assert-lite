@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>test-assert-lite browser test</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <style>
+        body { font-family: system-ui, sans-serif; padding: 1em; }
+        pre { font-family: ui-monospace, monospace; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+<h1>test-assert-lite browser test</h1>
+<pre id="output"></pre>
+<script src="../dist/test-assert-lite.min.js"></script>
+<script src="./tests/bundled.js"></script>
+<script>
+    TAL.reporter.output(text => document.getElementById("output").append(text));
+    TAL.run().then(summary => (window.testSummary = summary));
+</script>
+</body>
+</html>

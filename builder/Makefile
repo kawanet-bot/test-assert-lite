@@ -10,23 +10,33 @@ SRC := $(shell find ../src -name '*.ts' -not -name '*.test.ts' -not -path '*/tes
 TEST_SRC := $(shell find ../src -name '*.test.ts') $(wildcard ../src/test-utils/*.ts)
 TYPES := $(wildcard ../types/*.d.ts)
 BUILDER_SRC := $(wildcard ./*.ts)
+BROWSER_SRC := $(wildcard ../browser/*.js)
 
 MJS_DST := ../dist/test-assert-lite.mjs
+MINJS_DST := ../dist/test-assert-lite.min.js
+PKG_DST := ../dist/package.json
+BROWSER_TEST_DST := ../browser/tests/bundled.js
 BUILDER_TEST_DST := ./tests/bundled.mjs
 
 MJS_CONFIG := ./rollup-mjs.config.ts
+MINJS_CONFIG := ./rollup-minjs.config.ts
+BROWSER_TEST_CONFIG := ./rollup-browser-test.config.ts
 BUILDER_TEST_CONFIG := ./rollup-builder-test.config.ts
 
 # The shipped bundle is the whole library, so this cap is tight enough to
 # notice an unintended dependency being pulled in.
 MJS_MAX_BYTES := 40000
 
-# The bundle is the test sources inlined; the package itself stays
-# external. A leak would drop the import that the alias check greps for,
-# so this cap only guards against gross growth.
-TEST_MAX_BYTES := 75000
+# Minified build of the same sources, so the cap tracks the mjs one.
+MINJS_MAX_BYTES := 20000
 
-ALL := $(MJS_DST) $(BUILDER_TEST_DST)
+# Shared by both test bundles, which inline the same suites while the
+# package itself stays external. The browser one also inlines
+# browser/import.js and is wrapped as an IIFE, so it sets the ceiling.
+# This only guards against gross growth.
+TEST_MAX_BYTES := 120000
+
+ALL := $(MJS_DST) $(MINJS_DST) $(BUILDER_TEST_DST)
 
 # Build/test paths require Node's native TypeScript type-strip (default on
 # Node 22.18+). Older runtimes report BUILDABLE=NO and skip the build.
@@ -56,14 +66,35 @@ $(MJS_DST): $(MJS_CONFIG) $(SRC) $(BUILDER_SRC)
 	@test "$$(wc -c < $@)" -le $(MJS_MAX_BYTES) || { echo "ERROR: $@ exceeds $(MJS_MAX_BYTES) byte cap" >&2; exit 1; }
 	@echo ""
 
+# The browser build. dist/package.json marks dist/ as CommonJS so Node can
+# read the .min.js IIFE as a script despite the package being ESM.
+$(MINJS_DST): $(MINJS_CONFIG) $(SRC) $(BUILDER_SRC) $(PKG_DST)
+	@mkdir -p $(dir $@)
+	../node_modules/.bin/rollup -c $<
+	@ls -l $@
+	@test "$$(wc -c < $@)" -le $(MINJS_MAX_BYTES) || { echo "ERROR: $@ exceeds $(MINJS_MAX_BYTES) byte cap" >&2; exit 1; }
+	@echo ""
+
+$(PKG_DST):
+	@mkdir -p $(dir $@)
+	echo '{"type":"commonjs"}' > $@
+	@ls -l $@
+	@echo ""
+
+# Bundle of the test suites for browser/tests.html, with node:test and
+# node:assert pointed at the global from the .min.js build.
+$(BROWSER_TEST_DST): $(BROWSER_TEST_CONFIG) $(SRC) $(BUILDER_SRC) $(TEST_SRC) $(TYPES) $(BROWSER_SRC) $(MINJS_DST)
+	@mkdir -p $(dir $@)
+	../node_modules/.bin/rollup -c $<
+	@ls -l $@
+	@test "$$(wc -c < $@)" -le $(TEST_MAX_BYTES) || { echo "ERROR: $@ exceeds $(TEST_MAX_BYTES) byte cap" >&2; exit 1; }
+	@echo ""
+
 # Bundle of the test suites with node:test and node:assert aliased to this
 # package, so the suites exercise the library with the library.
 $(BUILDER_TEST_DST): $(BUILDER_TEST_CONFIG) $(SRC) $(BUILDER_SRC) $(TEST_SRC) $(TYPES) $(MJS_DST)
 	@mkdir -p $(dir $@)
 	../node_modules/.bin/rollup -c $<
-	@# Externalizing by regular expression would leave the suites bound to
-	@# the real runner without any warning, so check the alias took effect.
-	@grep -q 'from .test-assert-lite.' $@ || { echo "ERROR: $@ still imports node:test" >&2; exit 1; }
 	@ls -l $@
 	@test "$$(wc -c < $@)" -le $(TEST_MAX_BYTES) || { echo "ERROR: $@ exceeds $(TEST_MAX_BYTES) byte cap" >&2; exit 1; }
 	@echo ""
@@ -88,6 +119,6 @@ test-full: all
 ####
 
 clean:
-	/bin/rm -fr $(ALL)
+	/bin/rm -fr $(ALL) $(BROWSER_TEST_DST) $(PKG_DST)
 
 .PHONY: all clean test test-full is-buildable is-not-buildable

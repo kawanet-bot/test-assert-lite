@@ -8,9 +8,11 @@
   },
   "devDependencies": {
     "@rollup/plugin-alias": "^6.0.0",
+    "@rollup/plugin-commonjs": "^29.0.3",
     "@rollup/plugin-multi-entry": "^7.1.0",
     "@rollup/plugin-node-resolve": "^16.0.3",
     "@rollup/plugin-sucrase": "^5.1.0",
+    "@rollup/plugin-terser": "^1.0.0",
     "@types/node": "^24.13.3",
     "rollup": "^4.63.1",
     "ts-refine": "^0.6.3",
@@ -35,6 +37,10 @@
   "files": [
     "LICENSE",
     "README.md",
+    "browser/import.js",
+    "browser/package.json",
+    "dist/package.json",
+    "dist/test-assert-lite.min.js",
     "dist/test-assert-lite.mjs",
     "types/*.d.ts"
   ],

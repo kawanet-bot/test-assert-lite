@@ -3,7 +3,7 @@ SHELL := bash
 .SHELLFLAGS := -eo pipefail -c
 
 # Documented runtime named export every consumer shape must expose.
-NAMED_EXPORTS := createHash
+NAMED_EXPORTS := after before createTAL describe it run strict suite test
 
 # Root of the copy under test: the installed package after `unpack`, or
 # the checkout itself (PKG_ROOT=.) for the publish gate, which runs the
@@ -49,7 +49,7 @@ test-bundled:
 # IIFE consumer shape; in the default root it also proves the tarball
 # ships the file.
 test-iife:
-	@# TBD
+	cd ../.. && (cat $(PKG_ROOT)/dist/test-assert-lite.min.js && echo '; for (const k of process.argv.slice(2)) { if (typeof TAL[k] !== "function") { console.error("missing browser export:", k); process.exit(1); } console.log("browser export OK:", k); }') | node - $(NAMED_EXPORTS)
 
 # Publish gate: the same behavior checks, run against the checkout's own
 # staged artifacts in place -- no tarball install involved.

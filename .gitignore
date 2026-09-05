@@ -1,6 +1,8 @@
 *.cjs
 *.js
 *.mjs
+!browser/import.js
+!browser/tests.cli.mjs
 *.tgz
 *~
 .DS_Store
