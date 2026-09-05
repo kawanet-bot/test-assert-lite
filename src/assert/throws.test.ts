@@ -31,6 +31,16 @@ describe(TITLE, () => {
         assert.throws(() => TAL.throws(() => undefined), /expected to throw/)
     })
 
+    // A thrown undefined or null is still a throw, as node:assert counts it.
+    it("both tell a thrown undefined apart from nothing thrown", () => {
+        assert.doesNotThrow(() => TAL.throws(() => {
+            throw undefined
+        }))
+        assert.throws(() => TAL.doesNotThrow(() => {
+            throw null
+        }), /expected not to throw/)
+    })
+
     // node:assert tests the RegExp against String(error), so the name is
     // part of what it sees.
     it("throws matches a RegExp against the error's string form", () => {

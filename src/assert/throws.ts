@@ -9,15 +9,14 @@ type Predicate = declared.TAL.AssertPredicate
 // the arguments. What matters is that it is not an AssertionError.
 const invalid = (): TypeError => new TypeError("invalid arguments")
 
-// A block may throw undefined, so "threw nothing" needs its own marker.
-const NOTHING = Symbol("nothing thrown")
-
-const attempt = (block: () => unknown): unknown => {
+// Hands back what the block threw, wrapped so that a thrown undefined is
+// still told apart from nothing thrown, as node:assert tells them apart.
+const attempt = (block: () => unknown): {thrown: unknown} | null => {
     try {
         block()
-        return NOTHING
+        return null
     } catch (e) {
-        return e
+        return {thrown: e}
     }
 }
 
@@ -69,8 +68,9 @@ export const throws = (block: () => unknown, ...rest: [expected?: Predicate | st
     const message = messageOnly ? second as string : third
     if (expected != null && !isPredicate(expected)) throw invalid()
 
-    const thrown = attempt(block)
-    if (thrown === NOTHING) fail(message ?? "expected to throw, did not", "throws")
+    const caught = attempt(block)
+    if (caught == null) fail(message ?? "expected to throw, did not", "throws")
+    const {thrown} = caught
 
     // A message equal to what was thrown was meant as a matcher; node:assert
     // refuses the call as ambiguous rather than letting it pass.
@@ -92,8 +92,9 @@ export const doesNotThrow = (block: () => unknown, expected?: declared.TAL.Error
     const note = messageOnly ? expected as string : message
     if (filter != null && !(filter instanceof RegExp || "function" === typeof filter)) throw invalid()
 
-    const thrown = attempt(block)
-    if (thrown === NOTHING) return
+    const caught = attempt(block)
+    if (caught == null) return
+    const {thrown} = caught
     if (filter != null && !matches(thrown, filter)) throw thrown
 
     fail(note ?? `expected not to throw, got: ${stringify(thrown)}`, "doesNotThrow", {actual: thrown})
