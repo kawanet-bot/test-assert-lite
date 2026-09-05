@@ -1,9 +1,7 @@
 import type * as declared from "test-assert-lite"
-
-import {isError} from "./common/is-error.ts"
-
 import {AssertionError} from "./assert/assertion-error.ts"
 import {doesNotThrow, throws} from "./assert/throws.ts"
+import {isError} from "./common/is-error.ts"
 import {stringify} from "./common/stringify.ts"
 
 // An Error passed as the message is thrown as it is. node:assert applies

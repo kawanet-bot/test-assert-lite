@@ -1,7 +1,5 @@
 import type * as declared from "test-assert-lite"
-
 import {isError} from "./../common/is-error.ts"
-
 import {stringify} from "./../common/stringify.ts"
 import {AssertionError} from "./assertion-error.ts"
 

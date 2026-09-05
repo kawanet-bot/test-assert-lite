@@ -4,7 +4,6 @@
 import {strict as assert} from "node:assert"
 import {createRequire} from "node:module"
 import {test} from "node:test"
-
 import type * as declared from "test-assert-lite"
 import * as m from "./index.ts"
 

@@ -1,5 +1,4 @@
 import type * as declared from "test-assert-lite"
-
 import {cancelledByParent, TestRunnerError, toError} from "./common/test-runner-error.ts"
 import type {ReporterControl} from "./reporter.ts"
 import type {HarnessState, SuiteNode} from "./suite.ts"
