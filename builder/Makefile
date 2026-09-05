@@ -116,11 +116,14 @@ test:
 
 # The suites run twice: once under node:test, then again under the library
 # itself, so a regression in the runner cannot hide behind the real one.
-test-full: all
-	cd .. && node_modules/.bin/tsc --noEmit
-	cd .. && node_modules/.bin/ts-refine format --check && node_modules/.bin/ts-refine imports --check
+test-full: test-quick
 	cd .. && node --test 'src/**/*.test.ts'
 	cd .. && node $(BUILDER_TEST_DST:./%=builder/%)
+
+test-quick: all
+	cd .. && node_modules/.bin/tsc --noEmit
+	cd .. && node_modules/.bin/ts-refine format --check
+	cd .. && node_modules/.bin/ts-refine imports --check
 
 ####
 
