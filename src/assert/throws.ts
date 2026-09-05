@@ -3,9 +3,10 @@ import {isError} from "./../common/is-error.ts"
 import {stringify} from "./../common/stringify.ts"
 import {AssertionError} from "./assertion-error.ts"
 
-// The second argument is a RegExp and nothing else. Anything else throws
-// rather than being ignored, so the misuse is noticed.
-export const throws = (block: () => unknown, expected?: declared.TAL.AssertPredicate, message?: string | Error): void => {
+// The second argument is a RegExp matcher or, as in node:assert, the
+// message itself when it is a string. Anything else throws rather than
+// being ignored, so the misuse is noticed.
+export const throws = (block: () => unknown, expected?: declared.TAL.AssertPredicate | string, message?: string | Error): void => {
     // Calling a non-function raises a TypeError of its own, which reads as
     // the expected exception and passes. Reject it before running it, so a
     // test that asserts nothing cannot go green.
@@ -13,7 +14,16 @@ export const throws = (block: () => unknown, expected?: declared.TAL.AssertPredi
         throw new TypeError("assert.throws() requires a function as the first argument")
     }
 
-    if (expected != null && "function" !== typeof (expected as RegExp).test) {
+    // node:assert folds a string here into the message, and refuses a third
+    // argument alongside it since the two would compete for the same role.
+    const messageInSecond = "string" === typeof expected
+    if (messageInSecond && message !== undefined) {
+        throw new TypeError("assert.throws() takes the message as the second argument only when there is no matcher")
+    }
+    const matcher = messageInSecond ? undefined : expected as declared.TAL.AssertPredicate | undefined
+    const note = messageInSecond ? expected as string : message
+
+    if (matcher != null && "function" !== typeof matcher.test) {
         throw new TypeError("assert.throws() accepts a RegExp as the second argument")
     }
 
@@ -27,16 +37,22 @@ export const throws = (block: () => unknown, expected?: declared.TAL.AssertPredi
     }
 
     if (!didThrow) {
-        if (isError(message)) throw message
-        throw new AssertionError({message: message ?? "expected to throw, did not", operator: "throws"})
+        if (isError(note)) throw note
+        throw new AssertionError({message: note ?? "expected to throw, did not", operator: "throws"})
     }
 
-    if (expected == null) return
+    // A message equal to what was thrown was most likely meant as a matcher.
+    // node:assert rejects it as ambiguous rather than letting it pass.
+    if (messageInSecond && (isError(thrown) ? thrown.message : thrown) === note) {
+        throw new TypeError(`assert.throws() message ${stringify(note)} is identical to the error message; pass a RegExp to match it`)
+    }
+
+    if (matcher == null) return
 
     const text = isError(thrown) ? thrown.message : String(thrown)
-    if (expected.test(text)) return
-    if (isError(message)) throw message
-    throw new AssertionError({message: message ?? `thrown message ${stringify(text)} did not match ${expected}`, actual: text, expected, operator: "throws"})
+    if (matcher.test(text)) return
+    if (isError(note)) throw note
+    throw new AssertionError({message: note ?? `thrown message ${stringify(text)} did not match ${matcher}`, actual: text, expected: matcher, operator: "throws"})
 }
 
 // The second argument is either a RegExp filter or the message, folded the

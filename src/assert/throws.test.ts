@@ -39,11 +39,49 @@ describe(TITLE, () => {
     })
 
     it("throws rejects a non-RegExp matcher", () => {
-        const error = catchError(() => TAL.throws(() => {
-            throw new Error("x")
-        }, Error as never))
+        for (const matcher of [Error, new Error("x"), {message: "x"}]) {
+            const error = catchError(() => TAL.throws(() => {
+                throw new Error("x")
+            }, matcher as never))
+            assert.ok(error instanceof TypeError, `${String(matcher)} was not rejected`)
+            assert.match(String(error?.message), /RegExp/)
+        }
+    })
+
+    // node:assert reads a string in the second position as the message.
+    it("throws takes a string second argument as the message", () => {
+        const missing = catchError(() => TAL.throws(() => undefined, "should have thrown"))
+        assert.equal(missing?.name, "AssertionError")
+        assert.equal(missing?.message, "should have thrown")
+
+        assert.doesNotThrow(() => TAL.throws(() => {
+            throw new Error("boom")
+        }, "should have thrown"))
+    })
+
+    // A message equal to what was thrown was most likely meant as a matcher,
+    // so it is refused the way node:assert refuses it as ambiguous.
+    it("throws refuses a string message identical to the thrown message", () => {
+        for (const block of [() => {
+            throw new Error("boom")
+        }, () => {
+            throw "boom"
+        }]) {
+            const error = catchError(() => TAL.throws(block, "boom"))
+            assert.ok(error instanceof TypeError)
+            assert.match(String(error?.message), /identical/)
+        }
+
+        // The same text as the third argument is a plain message.
+        assert.doesNotThrow(() => TAL.throws(() => {
+            throw new Error("boom")
+        }, undefined, "boom"))
+    })
+
+    it("throws refuses a third argument alongside a string message", () => {
+        const error = catchError(() => TAL.throws(() => undefined, "one" as never, "two"))
         assert.ok(error instanceof TypeError)
-        assert.match(String(error?.message), /RegExp/)
+        assert.match(String(error?.message), /second argument/)
     })
 
     it("doesNotThrow surfaces the original message", () => {
