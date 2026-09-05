@@ -4,27 +4,38 @@ import {errorText, isSubtestsFailed} from "./common/test-failure.ts"
 type TestEvent = declared.TAL.TestEvent
 type FormatFn = declared.TAL.FormatFn
 
+// minimum subset of https://github.com/kawanet/html-ele
+const $$ = (t: TemplateStringsArray, ...args: string[]): string => {
+    let str = t[0]!
+    for (let i = 1; i < t.length; i++) {
+        str += escapeHTML(args[i - 1]!)
+        str += t[i]!
+    }
+    return str
+}
+
 const AMP = {"<": "&lt;", "&": "&amp;", ">": "&gt;", "\"": "&quot;", "'": "&apos;"} as const
 
-const escapeHTML = (v: string): string => v.replace(/([<&>"'])/g, $1 => AMP[$1 as keyof typeof AMP])
+const escapeHTML = (v: string): string => v?.replace(/([<&>"'])/g, $1 => AMP[$1 as keyof typeof AMP])
 
-const space = (nesting: number): string => "&nbsp;&nbsp;".repeat(nesting)
+const indentClass = (indent: number): string => (indent > 0 ? `tal-i${indent > 5 ? 5 : indent}` : "")
 
 const resultLine = (data: declared.TAL.TestPass | declared.TAL.TestFail, isPass: boolean, indented: boolean): string => {
     const skipped = data.skip != null
     const kind = skipped ? "skip" : isPass ? "pass" : "fail"
     const symbol = skipped ? "﹣" : isPass ? "✔" : "✖"
-    const note = "string" === typeof data.skip ? ` # ${escapeHTML(data.skip)}` : skipped ? " # SKIP" : ""
-    const prefix = indented ? space(data.nesting) : ""
-    return `<div>${prefix}<span class="tal tal-${kind}">${symbol} ${escapeHTML(data.name)}</span> <span class="tal tal-info">(${data.details.duration_ms.toFixed(3)}ms)</span>${note}</div>\n`
+    const note = "string" === typeof data.skip ? ` # ${data.skip}` : skipped ? " # SKIP" : ""
+    const indents = indented ? indentClass(indented && data.nesting) : ""
+    const ms = data.details.duration_ms.toFixed(3)
+    return $$`<div class="tal-r ${indents}"><span class="tal-${kind}">${symbol} ${data.name}</span> <span class="tal-info">(${ms}ms)</span>${note}</div>\n`
 }
 
 const formatFailures = (failed: declared.TAL.TestFail[]): string => {
     if (!failed.length) return ""
-    let out = `<div class="tal tal-fail">✖ failing tests:</div>\n`
+    let out = $$`<div class="tal-r tal-fail">✖ failing tests:</div>\n`
     for (const data of failed) {
         out += resultLine(data, false, false)
-        out += `<div class="tal tal-error"><pre>${escapeHTML(errorText(data.details.error))}</pre></div>\n`
+        out += $$`<div class="tal-r tal-error"><pre>${errorText(data.details.error)}</pre></div>\n`
     }
     return out
 }
@@ -43,7 +54,7 @@ export const html = (): FormatFn => async function* (source: AsyncIterable<TestE
 
         if (event.type === "test:diagnostic") {
             const {level, nesting, message} = event.data
-            yield `<div>${space(nesting)}<span class="tal tal-${escapeHTML(level)}">ℹ ${escapeHTML(message)}</span></div>\n`
+            yield $$`<div class="tal-r ${indentClass(nesting)}"><span class="tal-${level}">ℹ ${message}</span></div>`
             continue
         }
 
@@ -61,8 +72,10 @@ export const html = (): FormatFn => async function* (source: AsyncIterable<TestE
         let out = ""
         if (stack.length && stack[0]?.name === data.name) stack.shift()
         while (stack.length) {
-            const parent = stack.pop()!
-            out += `<div>${space(parent.nesting)}<span class="tal tal-suite">▶ ${escapeHTML(parent.name)}</span></div>\n`
+            const parent = stack.pop()
+            if (parent) {
+                out += $$`<div class="tal-r ${indentClass(parent.nesting)}"><span class="tal-suite">▶ ${parent.name}</span></div>\n`
+            }
         }
         out += resultLine(data, isPass, true)
         if (isFail) {
