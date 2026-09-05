@@ -229,7 +229,7 @@ export const createRun = (
             }
         } finally {
             // A partially executed registry is unsafe to retry. Configuration
-            // lives outside the per-run reporter Pipe and remains installed.
+            // lives outside the per-run ReportStream and remains installed.
             resetHarnessState(harness)
             running = false
         }

@@ -15,7 +15,7 @@ interface QueueItem {
 // Bridges emit() to an async generator formatter. A request for the next
 // event means the previous one has been written, and that is when emit()'s
 // promise settles, so run() stays in step by awaiting emit alone.
-class Pipe {
+class ReportStream {
     private format: FormatFn
     private output: OutputFn
     private pending: QueueItem[] = []
@@ -125,7 +125,7 @@ const defaultOutput: OutputFn = (text) => {
     console.log(text.replace(/\n$/, ""))
 }
 
-// Closing a per-run Pipe is an internal step driven by run(), so it comes
+// Closing a per-run ReportStream is an internal step driven by run(), so it comes
 // back on a separate handle rather than on the public Reporter.
 export interface ReporterControl {
     reporter: declared.TAL.Reporter
@@ -136,18 +136,18 @@ export interface ReporterControl {
 export const createReporter = (): ReporterControl => {
     let format: FormatFn = spec()
     let output: OutputFn = defaultOutput
-    let pipe: Pipe | null = null
+    let stream: ReportStream | null = null
 
     // Standalone events follow the latest output setting. A run replaces
-    // this Pipe with one that holds its startup snapshot directly.
-    const current = (): Pipe => pipe ??= new Pipe(format, text => output(text))
+    // this ReportStream with one that holds its startup snapshot directly.
+    const current = (): ReportStream => stream ??= new ReportStream(format, text => output(text))
     const close = async (): Promise<void> => {
-        const active = pipe
+        const active = stream
         if (active == null) return
         try {
             await active.close()
         } finally {
-            if (pipe === active) pipe = null
+            if (stream === active) stream = null
         }
     }
 
@@ -155,7 +155,7 @@ export const createReporter = (): ReporterControl => {
         reporter: {
             emit: (type, data) => current().emit({type, data} as TestEvent),
             // Configuration belongs to the TAL instance. Each run creates a
-            // fresh Pipe and formatter consumer from these retained values.
+            // fresh ReportStream and formatter consumer from these retained values.
             format: (fn) => {
                 format = fn
             },
@@ -165,7 +165,7 @@ export const createReporter = (): ReporterControl => {
             spec,
             html,
         },
-        // A standalone emit() may have opened a Pipe with older settings.
+        // A standalone emit() may have opened a ReportStream with older settings.
         // Finish it before snapshotting the current configuration for run().
         begin: async () => {
             // Its own emit() already owns any failure. A new run starts a
@@ -175,7 +175,7 @@ export const createReporter = (): ReporterControl => {
             } catch {
                 // discarded standalone session
             }
-            pipe = new Pipe(format, output)
+            stream = new ReportStream(format, output)
         },
         close,
     }
