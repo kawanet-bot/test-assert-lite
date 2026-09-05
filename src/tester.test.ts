@@ -231,6 +231,49 @@ describe(TITLE, () => {
         assert.equal(second?.cause, "just text")
     })
 
+    // node:test runs subtests one at a time. Without that, a slow first
+    // child is still running when the second starts, and the reporter would
+    // take the sibling for a suite heading.
+    it("unawaited subtests run one after another", async () => {
+        const local = createTAL()
+        const events = capture(local.reporter)
+        const order: string[] = []
+        local.it("parent", async (t) => {
+            void t.test("slow", async () => {
+                order.push("slow start")
+                await new Promise(r => setTimeout(r, 20))
+                order.push("slow end")
+            })
+            void t.test("fast", () => {
+                order.push("fast")
+            })
+        })
+        await local.run()
+
+        assert.equal(order.join(" | "), ["slow start", "slow end", "fast"].join(" | "))
+        assert.equal(names(events, "test:start").join(" | "), ["parent", "slow", "fast"].join(" | "))
+    })
+
+    // node:test keeps the skip on the failure event and counts the parent as
+    // skipped; only the child adds to fail.
+    it("a runtime skip outranks a failing subtest in the count", async () => {
+        const local = createTAL()
+        const events = capture(local.reporter)
+        local.it("parent", async (t) => {
+            t.skip("why")
+            await t.test("c", () => {
+                throw new Error("child failed")
+            })
+        })
+        const summary = await local.run()
+
+        const parent = ofType(events, "test:fail").find(e => e.data.name === "parent")?.data
+        assert.equal(parent?.skip, "why")
+        assert.equal((parent?.details.error as {failureType?: string}).failureType, "subtestsFailed")
+        assert.equal(JSON.stringify(summary.counts), JSON.stringify({tests: 2, suites: 0, passed: 0, failed: 1, cancelled: 0, skipped: 1}))
+        assert.equal(summary.success, false)
+    })
+
     it("subtests are numbered within their parent", async () => {
         const local = createTAL()
         const events = capture(local.reporter)

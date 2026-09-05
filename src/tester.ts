@@ -66,6 +66,9 @@ const announce = async (state: RunState, self: Ancestor): Promise<void> => {
 interface Context extends declared.TAL.TestContext {
     skipped: string | true | undefined
     pending: Promise<Outcome>[]
+    // The tail of the subtest chain: node:test runs subtests one at a time,
+    // so each new one waits for the previous one whether awaited or not.
+    last: Promise<unknown>
     subtests: number
 }
 
@@ -75,6 +78,7 @@ const makeContext = (state: RunState, name: string, nesting: number): Context =>
         assert: state.assert,
         skipped: undefined,
         pending: [],
+        last: Promise.resolve(),
         subtests: 0,
         skip: (message) => {
             // As in node:test the body is not interrupted; only the verdict changes.
@@ -85,12 +89,14 @@ const makeContext = (state: RunState, name: string, nesting: number): Context =>
         },
         test: async (...args: Args<TestFn>) => {
             const parsed = normalize<TestFn>(args)
-            // The subtest starts where it is called, so awaiting it lets the
-            // child finish before the parent resumes.
-            const promise = runTest(state, {
+            const node: TestNode = {
                 kind: "test", name: nameOf(parsed.name, parsed.fn),
                 options: parsed.options, fn: parsed.fn,
-            }, nesting + 1, ++context.subtests)
+            }
+            // Queued behind the previous subtest, so awaiting it lets the
+            // child finish before the parent resumes.
+            const promise = context.last.then(() => runTest(state, node, nesting + 1, ++context.subtests))
+            context.last = promise
             context.pending.push(promise)
             await promise
         },
@@ -196,20 +202,23 @@ export const runTest = async (state: RunState, node: TestNode, nesting: number, 
 
     const duration_ms = performance.now() - started
     await announce(state, self)
+    const runtimeSkip = context.skipped
 
     if (error != null) {
-        // node:test files a timeout under cancelled rather than failed.
-        if (timedOut) counters.cancelled++
+        // A skip called from the body outranks the failure in the count, as
+        // it does in node:test, and a timeout files under cancelled.
+        if (runtimeSkip !== undefined) counters.skipped++
+        else if (timedOut) counters.cancelled++
         else counters.failed++
         state.success = false
         await state.reporter.emit("test:fail", {
             name: node.name, nesting, testNumber,
+            ...(runtimeSkip !== undefined ? {skip: runtimeSkip} : {}),
             details: {duration_ms, type: "test", error},
         })
-        return timedOut ? "cancelled" : "failed"
+        return runtimeSkip !== undefined ? "skipped" : timedOut ? "cancelled" : "failed"
     }
 
-    const runtimeSkip = context.skipped
     if (runtimeSkip !== undefined) counters.skipped++
     else counters.passed++
 

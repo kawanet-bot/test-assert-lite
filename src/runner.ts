@@ -153,15 +153,21 @@ const walk = async (state: RunState, suite: SuiteNode, testNumber: number): Prom
         error ??= afterError
 
         if (root) {
-            // The root cannot carry a result, so a failing root after hook is
-            // reported on its own and left out of the counts, as node:test does.
-            if (afterError != null) {
-                state.success = false
+            // The root cannot carry a result, so a failing root hook that no
+            // child could be charged with is reported on its own and left out
+            // of the counts. node:test lets an empty run pass here; a failed
+            // setup should never be green, so success is cleared regardless.
+            const orphaned = [
+                ...(error != null && !suite.children.length ? [["root before hook", error]] : []),
+                ...(afterError != null ? [["root after hook", afterError]] : []),
+            ] as [string, Error][]
+            for (const [name, hookError] of orphaned) {
                 await state.reporter.emit("test:fail", {
-                    name: "root after hook", nesting: 0, testNumber: 0,
-                    details: {duration_ms: 0, type: "suite", error: afterError},
+                    name, nesting: 0, testNumber: 0,
+                    details: {duration_ms: 0, type: "suite", error: hookError},
                 })
             }
+            if (error != null) state.success = false
             return error != null || failedChildren ? "failed" : "passed"
         }
 

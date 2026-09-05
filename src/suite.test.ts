@@ -353,6 +353,21 @@ describe(TITLE, () => {
         assert.equal(JSON.stringify(summary.counts), JSON.stringify({tests: 3, suites: 1, passed: 0, failed: 2, cancelled: 1, skipped: 0}))
     })
 
+    // node:test lets this run pass, since the error has no child to land on.
+    // A failed setup is never green here.
+    it("a failing root before hook with no children still fails the run", async () => {
+        const local = createTAL()
+        const events = capture(local.reporter)
+        local.before(() => {
+            throw new Error("root setup")
+        })
+        const summary = await local.run()
+
+        assert.equal(names(events, "test:fail").join(" | "), "root before hook")
+        assert.equal(summary.counts.tests, 0)
+        assert.equal(summary.success, false)
+    })
+
     it("a failing root after hook is reported without being counted", async () => {
         const local = createTAL()
         const events = capture(local.reporter)
