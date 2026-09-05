@@ -34,10 +34,27 @@ const indent = (nesting: number): string => "  ".repeat(nesting)
 
 const paint = (on: boolean, color: string, text: string): string => on ? `${color}${text}${COLOR.reset}` : text
 
-const errorText = (error: unknown): string => {
-    if (isError(error)) return error.stack ?? `${error.name}: ${error.message}`
-    return String(error)
+type Failure = Error & {code?: string, failureType?: string, cause?: unknown}
+
+// node:test wraps every failure in an ERR_TEST_FAILURE carrying the thrown
+// value as cause; this runner only wraps its own. Reach the Error underneath
+// when there is one, otherwise the wrapper's message is the whole story.
+const unwrap = (error: unknown): unknown => {
+    if (!isError(error) || (error as Failure).code !== "ERR_TEST_FAILURE") return error
+    const {cause} = error as Failure
+    return isError(cause) ? cause : error.message
 }
+
+const errorText = (error: unknown): string => {
+    const inner = unwrap(error)
+    if (isError(inner)) return inner.stack ?? `${inner.name}: ${inner.message}`
+    return String(inner)
+}
+
+// A suite that failed only because a child did adds nothing to the list
+// the child is already on. node:test's spec leaves it out as well.
+const isSubtestsFailed = (error: unknown): boolean =>
+    isError(error) && (error as Failure).failureType === "subtestsFailed"
 
 const formatFailures = (failed: declared.TAL.TestFail[], colors: boolean): string => {
     if (!failed.length) return ""
@@ -101,7 +118,7 @@ export const spec = (options?: declared.TAL.SpecOptions): FormatFn => {
             const ms = paint(colors, COLOR.gray, ` (${data.details.duration_ms.toFixed(3)}ms)`)
             out += paint(colors, color, `${indent(data.nesting)}${symbol}${data.name}`) + ms + note + "\n"
 
-            if (isFail) failed.push(event.data)
+            if (isFail && !isSubtestsFailed(event.data.details.error)) failed.push(event.data)
             yield out
         }
 

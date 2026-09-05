@@ -78,4 +78,62 @@ describe(TITLE, () => {
         assert.match(out, /✔ still rendered/)
         assert.equal(/hello|world/.test(out), false)
     })
+
+    // node:test's spec leaves out a suite that failed only through its children.
+    it("keeps a suite failed by its children out of the failing list", async () => {
+        const subtestsFailed = Object.assign(new Error("1 subtest failed"), {code: "ERR_TEST_FAILURE", failureType: "subtestsFailed"})
+        const out = await render(async r => {
+            await r.emit("test:fail", {...pass("bad"), nesting: 1, details: {duration_ms: 1, type: "test", error: new Error("boom")}})
+            await r.emit("test:fail", {...pass("S"), details: {duration_ms: 2, type: "suite", error: subtestsFailed}})
+        })
+
+        assert.match(out, /✖ S \(2\.000ms\)/)
+        assert.equal(out.match(/✖ S/g)?.length, 1)
+        assert.equal(out.match(/✖ bad/g)?.length, 2)
+    })
+
+    // Reused under node --test the events carry node's wrapper, whose cause
+    // is the real error, or a plain string for a timeout or a cancellation.
+    it("unwraps node:test's ERR_TEST_FAILURE wrapper", async () => {
+        const wrap = (cause: unknown): Error => Object.assign(
+            new Error(cause instanceof Error ? cause.message : String(cause)),
+            {code: "ERR_TEST_FAILURE", failureType: "testCodeFailure", cause},
+        )
+        const out = await render(async r => {
+            await r.emit("test:fail", {...pass("wrapped"), details: {duration_ms: 1, type: "test", error: wrap(new TypeError("inner"))}})
+            await r.emit("test:fail", {...pass("timed"), details: {duration_ms: 1, type: "test", error: wrap("test timed out after 20ms")}})
+        })
+
+        assert.match(out, /TypeError: inner/)
+        assert.equal(/ERR_TEST_FAILURE/.test(out), false)
+        assert.match(out, /✖ timed\n {2}test timed out after 20ms/)
+    })
+
+    it("renders a skipped suite", async () => {
+        const out = await render(r => r.emit("test:pass", {...pass("S"), skip: true, details: {duration_ms: 1, type: "suite"}}))
+
+        assert.match(out, /﹣ S \(1\.000ms\) # SKIP/)
+    })
+
+    // The whole shape as node:test's spec prints it for a suite whose before
+    // hook failed: heading, cancelled child, the suite line, then the list.
+    it("renders a cancelled suite like node:test", async () => {
+        const local = createTAL()
+        const lines: string[] = []
+        local.reporter.format(local.reporter.spec({colors: false}))
+        local.reporter.output(text => {
+            lines.push(text)
+        })
+        local.describe("S", () => {
+            local.before(() => {
+                throw new Error("setup")
+            })
+            local.it("a", () => undefined)
+        })
+        await local.run()
+
+        const out = lines.join("").replace(/\(\d+\.\d{3}ms\)/g, "(ms)")
+        assert.match(out, /^▶ S\n {2}✖ a \(ms\)\n✖ S \(ms\)\n/)
+        assert.match(out, /✖ failing tests:\n\n✖ a\n {2}test did not finish before its parent and was cancelled\n\n✖ S\n {2}Error: setup/)
+    })
 })
