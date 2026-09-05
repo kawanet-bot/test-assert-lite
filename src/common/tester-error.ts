@@ -4,6 +4,7 @@ import {stringify} from "./stringify.ts"
 
 type FailureType = declared.TAL.FailureType
 
+// https://github.com/nodejs/node/blob/main/lib/internal/errors.js
 const ERR_TEST_FAILURE = "ERR_TEST_FAILURE"
 
 // Carries the failures the runner produces itself, and any thrown value
