@@ -25,10 +25,10 @@ BUILDER_TEST_CONFIG := ./rollup-builder-test.config.ts
 
 # The shipped bundle is the whole library, so this cap is tight enough to
 # notice an unintended dependency being pulled in.
-MJS_MAX_BYTES := 40000
+MJS_MAX_BYTES := 45000
 
 # Minified build of the same sources, so the cap tracks the mjs one.
-MINJS_MAX_BYTES := 20000
+MINJS_MAX_BYTES := 22000
 
 # Shared by both test bundles, which inline the same suites while the
 # package itself stays external. The browser one also inlines

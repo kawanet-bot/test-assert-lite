@@ -41,6 +41,7 @@
     "browser/package.json",
     "dist/package.json",
     "dist/test-assert-lite.min.js",
+    "styles/*.css",
     "dist/test-assert-lite.mjs",
     "types/*.d.ts"
   ],
