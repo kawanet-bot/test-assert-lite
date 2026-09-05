@@ -1,5 +1,5 @@
 import {isError} from "./is-error.ts"
-import {isTestRunnerError} from "./test-runner-error.ts"
+import {isTesterError} from "./tester-error.ts"
 
 // Render a value as one readable line. Arrays expand two levels deep and
 // fold to "..." below that, since recursing without a limit overflows on a
@@ -16,7 +16,7 @@ export const stringify = (value: unknown, nest: number = 0): string => {
 // that are not already Errors. Both reporters should expose the same cause.
 export const errorText = (error: unknown): string => {
     let inner = error
-    if (isTestRunnerError(error)) {
+    if (isTesterError(error)) {
         const {cause} = error
         inner = isError(cause) ? cause : error.message
     }

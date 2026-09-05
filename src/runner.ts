@@ -1,5 +1,5 @@
 import type * as declared from "test-assert-lite"
-import {TestRunnerError, testRunnerError} from "./common/test-runner-error.ts"
+import {TesterError, testRunnerError} from "./common/tester-error.ts"
 import type {ReporterControl} from "./reporter.ts"
 import type {HarnessState, SuiteNode} from "./suite.ts"
 import {resetHarnessState} from "./suite.ts"
@@ -8,7 +8,7 @@ import {abortTest, announceAncestors, runTest} from "./tester.ts"
 
 const CANCELLED_MESSAGE = "test did not finish before its parent and was cancelled"
 
-const cancelledByParent = (): TestRunnerError => new TestRunnerError(CANCELLED_MESSAGE, "cancelledByParent")
+const cancelledByParent = (): TesterError => new TesterError(CANCELLED_MESSAGE, "cancelledByParent")
 
 // Runs the hooks in order and stops at the first failure, which is
 // returned as the error to charge to the suite.
@@ -188,7 +188,7 @@ const walk = async (state: RunState, suite: SuiteNode, testNumber: number): Prom
         }
 
         if (error == null && failedChildren) {
-            error = new TestRunnerError(`${failedChildren} subtest${failedChildren === 1 ? "" : "s"} failed`, "subtestsFailed")
+            error = new TesterError(`${failedChildren} subtest${failedChildren === 1 ? "" : "s"} failed`, "subtestsFailed")
         }
         await reportSuite(state, suite, testNumber, started, {error})
         return error != null ? "failed" : "passed"

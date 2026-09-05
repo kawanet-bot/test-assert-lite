@@ -62,7 +62,7 @@ describe(TITLE, () => {
         assert.equal(summary.counts.failed, 0)
         assert.equal(summary.success, false)
         const error = ofType(events, "test:fail")[0]?.data.details.error as Error & {code?: string, failureType?: string}
-        assert.equal(error?.name, "TestRunnerError")
+        assert.equal(error?.name, "TesterError")
         assert.equal(error?.code, "ERR_TEST_FAILURE")
         assert.equal(error?.failureType, "testTimeoutFailure")
         assert.equal(error?.message, "test timed out after 10ms")
@@ -224,7 +224,7 @@ describe(TITLE, () => {
 
         const [first, second] = ofType(events, "test:fail").map(e => e.data.details.error as Error & {cause?: unknown, failureType?: string})
         assert.equal(first, thrown)
-        assert.equal(second?.name, "TestRunnerError")
+        assert.equal(second?.name, "TesterError")
         assert.equal(second?.failureType, "testCodeFailure")
         assert.equal(second?.message, "just text")
         assert.equal(second?.cause, "just text")

@@ -115,8 +115,8 @@ export declare namespace TAL {
     // A failure the runner produced itself, or a thrown value that was not
     // an Error. An Error thrown by test code is reported as is. `code`
     // matches node:test's wrapper so a check written for it holds here.
-    interface TestRunnerError extends Error {
-        readonly name: "TestRunnerError"
+    interface TesterError extends Error {
+        readonly name: "TesterError"
         readonly code: "ERR_TEST_FAILURE"
         readonly failureType: FailureType
         readonly cause: unknown
@@ -142,7 +142,7 @@ export declare namespace TAL {
         }
     }
 
-    // `error` is what the test threw, or a TestRunnerError. A suite fails
+    // `error` is what the test threw, or a TesterError. A suite fails
     // with its hook's or body's error, or with `subtestsFailed` when only
     // a child did. A test never run because its parent failed is reported
     // as `cancelledByParent` and counted under `cancelled`.
