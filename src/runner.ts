@@ -195,6 +195,7 @@ export const createRun = (
         let failed = false
         let failure: unknown
         try {
+            await control.begin()
             result = await runOnce(harness, control, assert)
         } catch (error) {
             failed = true

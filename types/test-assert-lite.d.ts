@@ -237,7 +237,7 @@ export declare function createTAL(): TAL.TestHarness
  * output settings remain installed for later runs.
  * Resolves once all tests and hooks have finished, the formatter has ended
  * and any asynchronous output has completed. Reporter failures and a
- * formatter that ends before the summary reject the returned promise.
+ * formatter that ends before its input reject the returned promise.
  * A concurrent call on the same harness also rejects.
  */
 export declare function run(): Promise<TAL.TestSummary>

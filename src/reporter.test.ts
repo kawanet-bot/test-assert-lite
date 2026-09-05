@@ -69,7 +69,7 @@ describe(TITLE, () => {
         }
     })
 
-    it("rejects when a formatter ends before consuming the summary", async () => {
+    it("rejects when a formatter ends before consuming its input", async () => {
         const local = createTAL()
         local.reporter.format(async function* () {
             yield "stopped\n"
@@ -78,14 +78,31 @@ describe(TITLE, () => {
         local.it("one", () => undefined)
 
         const error = await caught(local.run())
-        assert.match(String(error), /formatter ended before test:summary/i)
+        assert.match(String(error), /formatter ended before its input/i)
     })
 
-    it("allows a formatter to return immediately after the summary", async () => {
+    it("rejects a manual iterator that returns after the summary without reading done", async () => {
         const local = createTAL()
         local.reporter.format(async function* (source) {
-            for await (const event of source) {
-                if (event.type === "test:summary") return
+            const iterator = source[Symbol.asyncIterator]()
+            for (;;) {
+                const result = await iterator.next()
+                if (result.done || result.value.type === "test:summary") return
+            }
+        })
+        local.reporter.output(() => undefined)
+        local.it("one", () => undefined)
+
+        const error = await caught(local.run())
+        assert.match(String(error), /formatter ended before its input/i)
+    })
+
+    it("allows a manual iterator to finish by reading done", async () => {
+        const local = createTAL()
+        local.reporter.format(async function* (source) {
+            const iterator = source[Symbol.asyncIterator]()
+            while (!(await iterator.next()).done) {
+                // Reading until done is the formatter's completion contract.
             }
         })
         local.reporter.output(() => undefined)
@@ -131,6 +148,60 @@ describe(TITLE, () => {
         await local.run()
 
         assert.equal(output.join(""), "first\nsecond\n")
+    })
+
+    it("snapshots the latest settings when run() begins", async () => {
+        const local = createTAL()
+        const oldOutput: string[] = []
+        const newOutput: string[] = []
+        local.reporter.format(async function* (source) {
+            for await (const event of source) {
+                if (event.type === "test:pass") yield `old:${event.data.name}`
+            }
+        })
+        local.reporter.output(text => {
+            oldOutput.push(text)
+        })
+        await local.reporter.emit("test:pass", {
+            name: "standalone", nesting: 0, testNumber: 1,
+            details: {duration_ms: 0, type: "test"},
+        })
+
+        local.reporter.format(async function* (source) {
+            for await (const event of source) {
+                if (event.type === "test:pass") yield `new:${event.data.name}`
+            }
+        })
+        local.reporter.output(text => {
+            newOutput.push(text)
+        })
+        local.it("inside run", () => undefined)
+        await local.run()
+
+        assert.equal(oldOutput.join(""), "old:standalone")
+        assert.equal(newOutput.join(""), "new:inside run")
+    })
+
+    it("applies configuration changed during a run to the next run", async () => {
+        const local = createTAL()
+        const firstOutput: string[] = []
+        const secondOutput: string[] = []
+        local.reporter.output(text => {
+            firstOutput.push(text)
+        })
+        local.it("first", () => {
+            local.reporter.output(text => {
+                secondOutput.push(text)
+            })
+        })
+        await local.run()
+
+        local.it("second", () => undefined)
+        await local.run()
+
+        assert.match(firstOutput.join(""), /first/)
+        assert.equal(/second/.test(firstOutput.join("")), false)
+        assert.match(secondOutput.join(""), /second/)
     })
 
     it("starts a fresh reporter session after a failed run", async () => {

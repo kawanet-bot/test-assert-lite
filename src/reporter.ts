@@ -6,19 +6,25 @@ type TestEvent = declared.TAL.TestEvent
 type FormatFn = declared.TAL.FormatFn
 type OutputFn = declared.TAL.OutputFn
 
+interface QueueItem {
+    event: TestEvent
+    resolve: () => void
+    reject: (error: unknown) => void
+}
+
 // Bridges emit() to an async generator formatter. A request for the next
 // event means the previous one has been written, and that is when emit()'s
 // promise settles, so run() stays in step by awaiting emit alone.
 class Pipe {
     private format: FormatFn
     private output: OutputFn
-    private pending: {event: TestEvent, resolve: () => void, reject: (error: unknown) => void}[] = []
+    private pending: QueueItem[] = []
+    private active: QueueItem | null = null
     private wake: (() => void) | null = null
     private closed = false
     private failed = false
     private failure: unknown
     private loop: Promise<void> | null = null
-    private summarySeen = false
 
     constructor(format: FormatFn, output: OutputFn) {
         this.format = format
@@ -62,6 +68,8 @@ class Pipe {
         if (this.failed) return
         this.failed = true
         this.failure = error
+        this.active?.reject(error)
+        this.active = null
         for (const item of this.pending.splice(0)) item.reject(error)
         const wake = this.wake
         this.wake = null
@@ -83,8 +91,8 @@ class Pipe {
         for await (const chunk of this.format(this.source())) {
             if (chunk) await this.output(chunk)
         }
-        if (!this.closed && !this.summarySeen) {
-            throw new Error("Reporter formatter ended before test:summary")
+        if (!this.closed) {
+            throw new Error("Reporter formatter ended before its input")
         }
     }
 
@@ -95,10 +103,11 @@ class Pipe {
                 await new Promise<void>(resolve => (this.wake = resolve))
             }
             const item = this.pending.shift()!
+            this.active = item
             try {
-                if (item.event.type === "test:summary") this.summarySeen = true
                 yield item.event
             } finally {
+                if (this.active === item) this.active = null
                 item.resolve()
             }
         }
@@ -114,6 +123,7 @@ const defaultOutput: OutputFn = (text) => {
 // back on a separate handle rather than on the public Reporter.
 export interface ReporterControl {
     reporter: declared.TAL.Reporter
+    begin: () => Promise<void>
     close: () => Promise<void>
 }
 
@@ -123,6 +133,15 @@ export const createReporter = (): ReporterControl => {
     let pipe: Pipe | null = null
 
     const current = (): Pipe => pipe ??= new Pipe(format, output)
+    const close = async (): Promise<void> => {
+        const active = pipe
+        if (active == null) return
+        try {
+            await active.close()
+        } finally {
+            if (pipe === active) pipe = null
+        }
+    }
 
     return {
         reporter: {
@@ -138,14 +157,12 @@ export const createReporter = (): ReporterControl => {
             spec,
             html: () => spec({colors: false}),
         },
-        close: async () => {
-            const active = pipe
-            if (active == null) return
-            try {
-                await active.close()
-            } finally {
-                if (pipe === active) pipe = null
-            }
+        // A standalone emit() may have opened a Pipe with older settings.
+        // Finish it before snapshotting the current configuration for run().
+        begin: async () => {
+            await close()
+            pipe = new Pipe(format, output)
         },
+        close,
     }
 }
