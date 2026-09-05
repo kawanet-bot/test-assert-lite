@@ -29,7 +29,7 @@ describe(TITLE, () => {
         })
         await local.run()
 
-        assert.equal(order.join(" | "), ["top1", "suite body", "child", "top2"].join(" | "))
+        assert.deepEqual(order, ["top1", "suite body", "child", "top2"])
     })
 
     it("describe nesting increases the reported nesting", async () => {
@@ -44,7 +44,7 @@ describe(TITLE, () => {
 
         const pass = events.find(e => e.type === "test:pass")
         assert.equal((pass?.data as {nesting: number}).nesting, 2)
-        assert.equal(names(events, "test:start").join(" | "), ["outer", "inner", "deep"].join(" | "))
+        assert.deepEqual(names(events, "test:start"), ["outer", "inner", "deep"])
     })
 
     it("async describe bodies are awaited before their children run", async () => {
@@ -60,7 +60,7 @@ describe(TITLE, () => {
         })
         await local.run()
 
-        assert.equal(order.join(" | "), ["registered late", "late child body"].join(" | "))
+        assert.deepEqual(order, ["registered late", "late child body"])
     })
 
     it("a throwing describe body is reported and flips success", async () => {
@@ -106,7 +106,7 @@ describe(TITLE, () => {
         })
         await local.run()
 
-        assert.equal(order.join(" | "), ["before", "test", "after"].join(" | "))
+        assert.deepEqual(order, ["before", "test", "after"])
     })
 
     // A hook belongs to the suite that declares it, scoped as in node:test.
@@ -130,7 +130,7 @@ describe(TITLE, () => {
         })
         await local.run()
 
-        assert.equal(order.join(" | "), ["S:before", "inside", "S:after", "outside"].join(" | "))
+        assert.deepEqual(order, ["S:before", "inside", "S:after", "outside"])
     })
 
     // The registration API is closed inside a test body. it() has a stand-in
@@ -208,7 +208,7 @@ describe(TITLE, () => {
         await local.run()
 
         const results = ofType(events, "test:pass").map(e => `${e.data.name}:${e.data.details.type}:${e.data.nesting}`)
-        assert.equal(results.join(" | "), ["a:test:1", "S:suite:0"].join(" | "))
+        assert.deepEqual(results, ["a:test:1", "S:suite:0"])
     })
 
     it("describe.skip is reported as a skipped suite", async () => {
@@ -241,7 +241,7 @@ describe(TITLE, () => {
         const summary = await local.run()
 
         const fails = ofType(events, "test:fail")
-        assert.equal(fails.map(e => e.data.name).join(" | "), ["bad", "S"].join(" | "))
+        assert.deepEqual(fails.map(e => e.data.name), ["bad", "S"])
         const suite = fails[1]?.data.details.error as Error & {failureType?: string}
         assert.equal(suite?.failureType, "subtestsFailed")
         assert.equal(suite?.message, "1 subtest failed")
@@ -264,7 +264,7 @@ describe(TITLE, () => {
 
         const suite = ofType(events, "test:fail").find(e => e.data.name === "S")?.data
         assert.equal((suite?.details.error as {failureType?: string}).failureType, "subtestsFailed")
-        assert.equal(JSON.stringify(summary.counts), JSON.stringify({tests: 1, suites: 1, passed: 0, failed: 0, cancelled: 0, skipped: 1}))
+        assert.deepEqual(summary.counts, {tests: 1, suites: 1, passed: 0, failed: 0, cancelled: 0, skipped: 1})
         assert.equal(summary.success, false)
     })
 
@@ -291,12 +291,12 @@ describe(TITLE, () => {
         })
         const summary = await local.run()
 
-        assert.equal(order.join(" | "), "after")
+        assert.deepEqual(order, ["after"])
         const fails = ofType(events, "test:fail")
-        assert.equal(fails.map(e => e.data.name).join(" | "), ["a", "b", "S"].join(" | "))
+        assert.deepEqual(fails.map(e => e.data.name), ["a", "b", "S"])
         assert.equal((fails[0]?.data.details.error as {failureType?: string}).failureType, "cancelledByParent")
         assert.equal(fails[2]?.data.details.error, setup)
-        assert.equal(JSON.stringify(summary.counts), JSON.stringify({tests: 2, suites: 1, passed: 0, failed: 0, cancelled: 2, skipped: 0}))
+        assert.deepEqual(summary.counts, {tests: 2, suites: 1, passed: 0, failed: 0, cancelled: 2, skipped: 0})
         assert.equal(summary.success, false)
     })
 
@@ -311,7 +311,7 @@ describe(TITLE, () => {
         const summary = await local.run()
 
         const fails = ofType(events, "test:fail")
-        assert.equal(fails.map(e => e.data.name).join(" | "), ["a", "S"].join(" | "))
+        assert.deepEqual(fails.map(e => e.data.name), ["a", "S"])
         assert.equal(fails[1]?.data.details.error, body)
         assert.equal(summary.counts.tests, 1)
         assert.equal(summary.counts.cancelled, 1)
@@ -329,7 +329,7 @@ describe(TITLE, () => {
         })
         const summary = await local.run()
 
-        assert.equal(names(events, "test:pass").join(" | "), "a")
+        assert.deepEqual(names(events, "test:pass"), ["a"])
         const fail = ofType(events, "test:fail")[0]?.data
         assert.equal(fail?.name, "S")
         assert.equal(fail?.details.error, teardown)
@@ -363,11 +363,11 @@ describe(TITLE, () => {
 
         assert.equal(ran, 0)
         const fails = ofType(events, "test:fail")
-        assert.equal(fails.map(e => e.data.name).join(" | "), ["a", "b", "c", "S"].join(" | "))
+        assert.deepEqual(fails.map(e => e.data.name), ["a", "b", "c", "S"])
         assert.equal(fails[0]?.data.details.error, setup)
         assert.equal((fails[2]?.data.details.error as {failureType?: string}).failureType, "cancelledByParent")
         assert.equal(fails[3]?.data.details.error, setup)
-        assert.equal(JSON.stringify(summary.counts), JSON.stringify({tests: 3, suites: 1, passed: 0, failed: 2, cancelled: 1, skipped: 0}))
+        assert.deepEqual(summary.counts, {tests: 3, suites: 1, passed: 0, failed: 2, cancelled: 1, skipped: 0})
     })
 
     // node:test lets this run pass, since the error has no child to land on.
@@ -380,7 +380,7 @@ describe(TITLE, () => {
         })
         const summary = await local.run()
 
-        assert.equal(names(events, "test:fail").join(" | "), "root before hook")
+        assert.deepEqual(names(events, "test:fail"), ["root before hook"])
         assert.equal(summary.counts.tests, 0)
         assert.equal(summary.success, false)
     })
@@ -395,7 +395,7 @@ describe(TITLE, () => {
         })
         const summary = await local.run()
 
-        assert.equal(names(events, "test:fail").join(" | "), "root after hook")
+        assert.deepEqual(names(events, "test:fail"), ["root after hook"])
         assert.equal(summary.success, false)
     })
 
@@ -409,7 +409,7 @@ describe(TITLE, () => {
         const summary = await local.run()
 
         assert.equal(names(events, "test:fail").length, 1)
-        assert.equal(JSON.stringify(summary.counts), JSON.stringify({tests: 1, suites: 0, passed: 1, failed: 0, cancelled: 0, skipped: 0}))
+        assert.deepEqual(summary.counts, {tests: 1, suites: 0, passed: 1, failed: 0, cancelled: 0, skipped: 0})
         assert.equal(summary.success, false)
     })
 
@@ -430,7 +430,7 @@ describe(TITLE, () => {
         const skipped = ofType(events, "test:fail").find(e => e.data.name === "skipped")?.data
         assert.equal(skipped?.skip, true)
         assert.equal((skipped?.details.error as {failureType?: string}).failureType, "cancelledByParent")
-        assert.equal(JSON.stringify(summary.counts), JSON.stringify({tests: 2, suites: 1, passed: 0, failed: 0, cancelled: 1, skipped: 1}))
+        assert.deepEqual(summary.counts, {tests: 2, suites: 1, passed: 0, failed: 0, cancelled: 1, skipped: 1})
         assert.equal(summary.success, false)
     })
 
@@ -450,9 +450,9 @@ describe(TITLE, () => {
         const summary = await local.run()
 
         const fails = ofType(events, "test:fail")
-        assert.equal(fails.map(e => `${e.data.name}:${String(e.data.skip)}`).join(" | "), ["skipped:why", "SK:true"].join(" | "))
+        assert.deepEqual(fails.map(e => `${e.data.name}:${String(e.data.skip)}`), ["skipped:why", "SK:true"])
         assert.equal(fails[1]?.data.details.error, setup)
-        assert.equal(JSON.stringify(summary.counts), JSON.stringify({tests: 1, suites: 1, passed: 0, failed: 0, cancelled: 0, skipped: 1}))
+        assert.deepEqual(summary.counts, {tests: 1, suites: 1, passed: 0, failed: 0, cancelled: 0, skipped: 1})
         assert.equal(summary.success, false)
     })
 
@@ -470,8 +470,8 @@ describe(TITLE, () => {
         })
         const summary = await local.run()
 
-        assert.equal(names(events, "test:start").join(" | "), ["P", "C", "g", "p1"].join(" | "))
-        assert.equal(names(events, "test:fail").join(" | "), ["g", "C", "p1", "P"].join(" | "))
+        assert.deepEqual(names(events, "test:start"), ["P", "C", "g", "p1"])
+        assert.deepEqual(names(events, "test:fail"), ["g", "C", "p1", "P"])
         assert.equal(summary.counts.suites, 2)
         assert.equal(summary.counts.cancelled, 2)
     })
@@ -506,6 +506,6 @@ describe(TITLE, () => {
         await local.run()
 
         const numbered = ofType(events, "test:pass").map(e => `${e.data.name}#${e.data.testNumber}`)
-        assert.equal(numbered.join(" | "), ["a#1", "b#2", "S#1", "x#2"].join(" | "))
+        assert.deepEqual(numbered, ["a#1", "b#2", "S#1", "x#2"])
     })
 })

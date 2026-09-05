@@ -63,7 +63,7 @@ describe(TITLE, () => {
         await b.run()
         await a.run()
 
-        assert.equal(order.join(" | "), ["b-test", "a:before", "a-test"].join(" | "))
+        assert.deepEqual(order, ["b-test", "a:before", "a-test"])
     })
 
     it("run() resets only its own harness", async () => {
