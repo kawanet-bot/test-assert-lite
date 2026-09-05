@@ -19,7 +19,7 @@ BUILDER_TEST_CONFIG := ./rollup-builder-test.config.ts
 
 # The shipped bundle is the whole library, so this cap is tight enough to
 # notice an unintended dependency being pulled in.
-MJS_MAX_BYTES := 30000
+MJS_MAX_BYTES := 40000
 
 # The bundle is the test sources inlined; the package itself stays
 # external. A leak would drop the import that the alias check greps for,

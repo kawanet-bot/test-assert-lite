@@ -1,11 +1,16 @@
 import type * as declared from "test-assert-lite"
 
+import {TestRunnerError, toError} from "./common/test-runner-error.ts"
 import type {Args, HarnessState, SuiteNode, TestNode} from "./suite.ts"
 import {nameOf, normalize} from "./suite.ts"
 
 type TestFn = declared.TAL.TestFn
 
 type Counters = declared.TAL.TestSummary["counts"]
+
+// How one test or suite ended, as its parent sees it. A parent whose child
+// failed or was cancelled fails in turn, as it does in node:test.
+export type Outcome = "passed" | "failed" | "cancelled" | "skipped"
 
 // State shared across the walk: the counters, and the ancestors whose
 // heading has not been emitted yet.
@@ -22,28 +27,34 @@ export interface RunState {
     harness: HarnessState
 }
 
-const timeoutAfter = (ms: number): {promise: Promise<never>, cancel: () => void} => {
+const timeoutAfter = (ms: number): {promise: Promise<never>, error: TestRunnerError, cancel: () => void} => {
     let timer: ReturnType<typeof setTimeout>
+    const error = new TestRunnerError(`test timed out after ${ms}ms`, "testTimeoutFailure")
     const promise = new Promise<never>((_, reject) => {
-        timer = setTimeout(() => reject(new Error(`test timed out after ${ms}ms`)), ms)
+        timer = setTimeout(() => reject(error), ms)
     })
-    return {promise, cancel: () => clearTimeout(timer)}
+    return {promise, error, cancel: () => clearTimeout(timer)}
 }
 
-// Emits test:start for the ancestors still pending, then for this test.
-// The reporter turns those into headings.
-const announce = async (state: RunState, name: string, nesting: number): Promise<void> => {
+// Emits test:start for the ancestors still pending. The reporter turns
+// those into headings once a result arrives.
+export const announceAncestors = async (state: RunState): Promise<void> => {
     for (const suite of state.ancestors) {
         if (suite.announced || suite.nesting < 0) continue
         suite.announced = true
         await state.reporter.emit("test:start", {name: suite.name, nesting: suite.nesting})
     }
+}
+
+const announce = async (state: RunState, name: string, nesting: number): Promise<void> => {
+    await announceAncestors(state)
     await state.reporter.emit("test:start", {name, nesting})
 }
 
 interface Context extends declared.TAL.TestContext {
     skipped: string | true | undefined
-    pending: Promise<void>[]
+    pending: Promise<Outcome>[]
+    subtests: number
 }
 
 const makeContext = (state: RunState, name: string, nesting: number): Context => {
@@ -52,6 +63,7 @@ const makeContext = (state: RunState, name: string, nesting: number): Context =>
         assert: state.assert,
         skipped: undefined,
         pending: [],
+        subtests: 0,
         skip: (message) => {
             // As in node:test the body is not interrupted; only the verdict changes.
             context.skipped = message ?? true
@@ -59,22 +71,42 @@ const makeContext = (state: RunState, name: string, nesting: number): Context =>
         diagnostic: (message) => {
             void state.reporter.emit("test:diagnostic", {message, nesting, level: "info"})
         },
-        test: (...args: Args<TestFn>) => {
+        test: async (...args: Args<TestFn>) => {
             const parsed = normalize<TestFn>(args)
             // The subtest starts where it is called, so awaiting it lets the
             // child finish before the parent resumes.
             const promise = runTest(state, {
                 kind: "test", name: nameOf(parsed.name, parsed.fn),
                 options: parsed.options, fn: parsed.fn,
-            }, nesting + 1)
+            }, nesting + 1, ++context.subtests)
             context.pending.push(promise)
-            return promise
+            await promise
         },
     }
     return context
 }
 
-export const runTest = async (state: RunState, node: TestNode, nesting: number): Promise<void> => {
+// Reports a test that never ran: cancelled when its parent gave up, or
+// failed when node:test would charge the parent's hook error to it.
+export const abortTest = async (
+    state: RunState, node: TestNode, nesting: number, testNumber: number,
+    error: Error, outcome: "failed" | "cancelled",
+): Promise<Outcome> => {
+    const {counters} = state
+    counters.tests++
+    if (outcome === "failed") counters.failed++
+    else counters.cancelled++
+    state.success = false
+
+    await announce(state, node.name, nesting)
+    await state.reporter.emit("test:fail", {
+        name: node.name, nesting, testNumber,
+        details: {duration_ms: 0, type: "test", error},
+    })
+    return outcome
+}
+
+export const runTest = async (state: RunState, node: TestNode, nesting: number, testNumber: number): Promise<Outcome> => {
     const {counters} = state
     const skip = node.options.skip
     const skipped = skip === true || "string" === typeof skip
@@ -87,18 +119,19 @@ export const runTest = async (state: RunState, node: TestNode, nesting: number):
         else counters.passed++
         await announce(state, node.name, nesting)
         await state.reporter.emit("test:pass", {
-            name: node.name, nesting, testNumber: counters.tests,
+            name: node.name, nesting, testNumber,
             ...(skipped ? {skip: "string" === typeof skip ? skip : true} : {}),
             details: {duration_ms: performance.now() - started, type: "test"},
         })
-        return
+        return skipped ? "skipped" : "passed"
     }
 
     const context = makeContext(state, node.name, nesting)
     const wasInTestBody = state.harness.inTestBody
     state.harness.inTestBody = true
 
-    let error: unknown
+    let error: Error | undefined
+    let timedOut = false
     try {
         const {timeout} = node.options
         const body = Promise.resolve(node.fn(context))
@@ -106,6 +139,9 @@ export const runTest = async (state: RunState, node: TestNode, nesting: number):
             const timer = timeoutAfter(timeout)
             try {
                 await Promise.race([body, timer.promise])
+            } catch (e) {
+                timedOut = e === timer.error
+                throw e
             } finally {
                 timer.cancel()
             }
@@ -116,7 +152,7 @@ export const runTest = async (state: RunState, node: TestNode, nesting: number):
         // is where node:test gives up on it.
         while (context.pending.length) await context.pending.shift()
     } catch (e) {
-        error = e ?? new Error("test failed")
+        error = toError(e, "testCodeFailure")
     } finally {
         state.harness.inTestBody = wasInTestBody
     }
@@ -124,14 +160,16 @@ export const runTest = async (state: RunState, node: TestNode, nesting: number):
     const duration_ms = performance.now() - started
     await announce(state, node.name, nesting)
 
-    if (error !== undefined) {
-        counters.failed++
+    if (error != null) {
+        // node:test files a timeout under cancelled rather than failed.
+        if (timedOut) counters.cancelled++
+        else counters.failed++
         state.success = false
         await state.reporter.emit("test:fail", {
-            name: node.name, nesting, testNumber: counters.tests,
+            name: node.name, nesting, testNumber,
             details: {duration_ms, type: "test", error},
         })
-        return
+        return timedOut ? "cancelled" : "failed"
     }
 
     const runtimeSkip = context.skipped
@@ -139,8 +177,9 @@ export const runTest = async (state: RunState, node: TestNode, nesting: number):
     else counters.passed++
 
     await state.reporter.emit("test:pass", {
-        name: node.name, nesting, testNumber: counters.tests,
+        name: node.name, nesting, testNumber,
         ...(runtimeSkip !== undefined ? {skip: runtimeSkip} : {}),
         details: {duration_ms, type: "test"},
     })
+    return runtimeSkip !== undefined ? "skipped" : "passed"
 }

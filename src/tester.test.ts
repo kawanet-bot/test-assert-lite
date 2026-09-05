@@ -2,7 +2,7 @@ import {strict as assert} from "node:assert"
 import {describe, it} from "node:test"
 
 import {createTAL} from "./index.ts"
-import {capture, names} from "./test-utils/capture.ts"
+import {capture, names, ofType} from "./test-utils/capture.ts"
 
 const TITLE = "tester.test.ts"
 
@@ -50,16 +50,23 @@ describe(TITLE, () => {
         assert.equal(summary.counts.skipped, 1)
     })
 
-    it("timeout option fails the test", async () => {
+    // node:test files a timeout under cancelled, not failed.
+    it("timeout option cancels the test", async () => {
         const local = createTAL()
-        local.reporter.output(() => undefined)
+        const events = capture(local.reporter)
         local.it("slow", {timeout: 10}, async () => {
             await new Promise(r => setTimeout(r, 200))
         })
         const summary = await local.run()
 
-        assert.equal(summary.counts.failed, 1)
+        assert.equal(summary.counts.cancelled, 1)
+        assert.equal(summary.counts.failed, 0)
         assert.equal(summary.success, false)
+        const error = ofType(events, "test:fail")[0]?.data.details.error as Error & {code?: string, failureType?: string}
+        assert.equal(error?.name, "TestRunnerError")
+        assert.equal(error?.code, "ERR_TEST_FAILURE")
+        assert.equal(error?.failureType, "testTimeoutFailure")
+        assert.equal(error?.message, "test timed out after 10ms")
     })
 
     it("t.test() runs the subtest ahead of the rest of the parent", async () => {
@@ -167,5 +174,40 @@ describe(TITLE, () => {
         await local.run()
 
         assert.equal(names(events, "test:pass").join(" | "), ["namedFn", "<anonymous>"].join(" | "))
+    })
+
+    // An Error is reported as thrown so its own fields stay reachable;
+    // anything else is wrapped so that details.error is always an Error.
+    it("a thrown Error passes through and a thrown value is wrapped", async () => {
+        const local = createTAL()
+        const events = capture(local.reporter)
+        const thrown = new RangeError("as is")
+        local.it("error", () => {
+            throw thrown
+        })
+        local.it("string", () => {
+            throw "just text"
+        })
+        await local.run()
+
+        const [first, second] = ofType(events, "test:fail").map(e => e.data.details.error as Error & {cause?: unknown, failureType?: string})
+        assert.equal(first, thrown)
+        assert.equal(second?.name, "TestRunnerError")
+        assert.equal(second?.failureType, "testCodeFailure")
+        assert.equal(second?.message, "just text")
+        assert.equal(second?.cause, "just text")
+    })
+
+    it("subtests are numbered within their parent", async () => {
+        const local = createTAL()
+        const events = capture(local.reporter)
+        local.it("parent", async (t) => {
+            await t.test("c1", () => undefined)
+            await t.test("c2", () => undefined)
+        })
+        await local.run()
+
+        const numbered = ofType(events, "test:pass").map(e => `${e.data.name}#${e.data.testNumber}`)
+        assert.equal(numbered.join(" | "), ["c1#1", "c2#2", "parent#1"].join(" | "))
     })
 })
