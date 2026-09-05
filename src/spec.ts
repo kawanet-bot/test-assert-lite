@@ -56,11 +56,23 @@ const errorText = (error: unknown): string => {
 const isSubtestsFailed = (error: unknown): boolean =>
     isError(error) && (error as Failure).failureType === "subtestsFailed"
 
+// One result line: symbol, name, duration and skip note. A skip outranks
+// the verdict in the symbol, so a skipped failure still reads as skipped.
+// The failing list reuses the line flush left, as node:test's spec does.
+const resultLine = (data: declared.TAL.TestPass | declared.TAL.TestFail, isPass: boolean, colors: boolean, indented: boolean): string => {
+    const skipped = data.skip != null
+    const symbol = skipped ? SYMBOL.skip : isPass ? SYMBOL.pass : SYMBOL.fail
+    const color = skipped ? COLOR.gray : isPass ? COLOR.green : COLOR.red
+    const note = "string" === typeof data.skip ? ` # ${data.skip}` : skipped ? " # SKIP" : ""
+    const ms = paint(colors, COLOR.gray, ` (${data.details.duration_ms.toFixed(3)}ms)`)
+    return paint(colors, color, `${indented ? indent(data.nesting) : ""}${symbol}${data.name}`) + ms + note
+}
+
 const formatFailures = (failed: declared.TAL.TestFail[], colors: boolean): string => {
     if (!failed.length) return ""
     let out = "\n" + paint(colors, COLOR.red, `${SYMBOL.fail}failing tests:`) + "\n"
     for (const data of failed) {
-        out += "\n" + paint(colors, COLOR.red, `${SYMBOL.fail}${data.name}`) + "\n"
+        out += "\n" + resultLine(data, false, colors, false) + "\n"
         out += "  " + errorText(data.details.error).replace(/\n/g, "\n  ") + "\n"
     }
     return out
@@ -111,12 +123,7 @@ export const spec = (options?: declared.TAL.SpecOptions): FormatFn => {
                 out += paint(colors, COLOR.gray, `${indent(parent.nesting)}${SYMBOL.suite}${parent.name}`) + "\n"
             }
 
-            const skipped = data.skip != null
-            const symbol = skipped ? SYMBOL.skip : isPass ? SYMBOL.pass : SYMBOL.fail
-            const color = skipped ? COLOR.gray : isPass ? COLOR.green : COLOR.red
-            const note = "string" === typeof data.skip ? ` # ${data.skip}` : skipped ? " # SKIP" : ""
-            const ms = paint(colors, COLOR.gray, ` (${data.details.duration_ms.toFixed(3)}ms)`)
-            out += paint(colors, color, `${indent(data.nesting)}${symbol}${data.name}`) + ms + note + "\n"
+            out += resultLine(data, isPass, colors, true) + "\n"
 
             if (isFail && !isSubtestsFailed(event.data.details.error)) failed.push(event.data)
             yield out

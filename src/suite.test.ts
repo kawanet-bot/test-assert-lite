@@ -251,6 +251,24 @@ describe(TITLE, () => {
         assert.equal(summary.success, false)
     })
 
+    // The skip decides the test's own count, not whether its suite failed.
+    it("a skipped test that failed still fails its suite", async () => {
+        const local = createTAL()
+        const events = capture(local.reporter)
+        local.describe("S", () => {
+            local.it("skip then throw", (t) => {
+                t.skip("why")
+                throw new Error("boom")
+            })
+        })
+        const summary = await local.run()
+
+        const suite = ofType(events, "test:fail").find(e => e.data.name === "S")?.data
+        assert.equal((suite?.details.error as {failureType?: string}).failureType, "subtestsFailed")
+        assert.equal(JSON.stringify(summary.counts), JSON.stringify({tests: 1, suites: 1, passed: 0, failed: 0, cancelled: 0, skipped: 1}))
+        assert.equal(summary.success, false)
+    })
+
     // Nothing below a broken setup may run. node:test cancels the children,
     // charges the hook's error to the suite, and still runs after.
     it("a failing before hook cancels the children and still runs after", async () => {

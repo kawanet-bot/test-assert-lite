@@ -112,7 +112,7 @@ const skipOf = (node: TestNode): string | true | undefined => {
 // Reports a test that never ran: cancelled when its parent gave up, or
 // failed when node:test would charge the parent's hook error to it. One
 // marked skip keeps its skip and is counted as skipped, though the event
-// still carries the parent's failure, as it does in node:test.
+// and the outcome still carry the failure, as they do in node:test.
 export const abortTest = async (
     state: RunState, node: TestNode, nesting: number, testNumber: number,
     error: Error, outcome: "failed" | "cancelled",
@@ -131,7 +131,7 @@ export const abortTest = async (
         ...(skip != null ? {skip} : {}),
         details: {duration_ms: 0, type: "test", error},
     })
-    return skip != null ? "skipped" : outcome
+    return outcome
 }
 
 export const runTest = async (state: RunState, node: TestNode, nesting: number, testNumber: number): Promise<Outcome> => {
@@ -206,7 +206,8 @@ export const runTest = async (state: RunState, node: TestNode, nesting: number, 
 
     if (error != null) {
         // A skip called from the body outranks the failure in the count, as
-        // it does in node:test, and a timeout files under cancelled.
+        // it does in node:test, and a timeout files under cancelled. The
+        // outcome still tells the parent about the failure.
         if (runtimeSkip !== undefined) counters.skipped++
         else if (timedOut) counters.cancelled++
         else counters.failed++
@@ -216,7 +217,7 @@ export const runTest = async (state: RunState, node: TestNode, nesting: number, 
             ...(runtimeSkip !== undefined ? {skip: runtimeSkip} : {}),
             details: {duration_ms, type: "test", error},
         })
-        return runtimeSkip !== undefined ? "skipped" : timedOut ? "cancelled" : "failed"
+        return timedOut ? "cancelled" : "failed"
     }
 
     if (runtimeSkip !== undefined) counters.skipped++

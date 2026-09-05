@@ -106,7 +106,7 @@ describe(TITLE, () => {
 
         assert.match(out, /TypeError: inner/)
         assert.equal(/ERR_TEST_FAILURE/.test(out), false)
-        assert.match(out, /✖ timed\n {2}test timed out after 20ms/)
+        assert.match(out, /✖ timed \(1\.000ms\)\n {2}test timed out after 20ms/)
     })
 
     it("renders a skipped suite", async () => {
@@ -134,6 +134,18 @@ describe(TITLE, () => {
 
         const out = lines.join("").replace(/\(\d+\.\d{3}ms\)/g, "(ms)")
         assert.match(out, /^▶ S\n {2}✖ a \(ms\)\n✖ S \(ms\)\n/)
-        assert.match(out, /✖ failing tests:\n\n✖ a\n {2}test did not finish before its parent and was cancelled\n\n✖ S\n {2}Error: setup/)
+        assert.match(out, /✖ failing tests:\n\n✖ a \(ms\)\n {2}test did not finish before its parent and was cancelled\n\n✖ S \(ms\)\n {2}Error: setup/)
+    })
+
+    // node:test's spec repeats the result line in the list, so a failure
+    // that carries a skip keeps its skip symbol and note there too.
+    it("lists a skipped failure with the skip symbol", async () => {
+        const out = await render(r => r.emit("test:fail", {
+            ...pass("skipped then failed"), skip: "why",
+            details: {duration_ms: 1, type: "test", error: new Error("boom")},
+        }))
+
+        assert.match(out, /failing tests:\n\n﹣ skipped then failed \(1\.000ms\) # why\n {2}Error: boom/)
+        assert.equal(/✖ skipped then failed/.test(out), false)
     })
 })
