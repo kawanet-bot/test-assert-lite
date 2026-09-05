@@ -13,39 +13,56 @@ const catchError = (fn: () => unknown): Error | undefined => {
     }
 }
 
+const boom = (): never => {
+    throw new RangeError("boom")
+}
+
+// Every misuse ends in the same TypeError, which is all a caller needs to
+// tell it apart from a failed assertion.
+const rejected = (fn: () => unknown): void => {
+    const error = catchError(fn)
+    assert.ok(error instanceof TypeError, "did not reject")
+    assert.match(String(error?.message), /invalid arguments/)
+}
+
 describe(TITLE, () => {
-    it("throws accepts a RegExp", () => {
-        assert.doesNotThrow(() => TAL.throws(() => {
-            throw new Error("boom")
-        }, /boom/))
-        assert.throws(() => TAL.throws(() => {
-            throw new Error("boom")
-        }, /nope/), /did not match/)
+    it("throws passes on any exception and fails on none", () => {
+        assert.doesNotThrow(() => TAL.throws(boom))
         assert.throws(() => TAL.throws(() => undefined), /expected to throw/)
     })
 
-    // Calling a non-function raises a TypeError that throws() would read as
-    // the expected exception, letting a test that asserts nothing go green.
-    it("both reject a first argument that is not a function", () => {
-        for (const value of ["str", 1, true, [], {}, /foo/, null, undefined]) {
-            const thrown = catchError(() => TAL.throws(value as never))
-            assert.ok(thrown instanceof TypeError, `throws(${String(value)}) did not reject`)
-            assert.match(String(thrown.message), /requires a function/)
-
-            const notThrown = catchError(() => TAL.doesNotThrow(value as never))
-            assert.ok(notThrown instanceof TypeError, `doesNotThrow(${String(value)}) did not reject`)
-            assert.match(String(notThrown.message), /requires a function/)
-        }
+    // node:assert tests the RegExp against String(error), so the name is
+    // part of what it sees.
+    it("throws matches a RegExp against the error's string form", () => {
+        assert.doesNotThrow(() => TAL.throws(boom, /boom/))
+        assert.doesNotThrow(() => TAL.throws(boom, /^RangeError: boom$/))
+        assert.throws(() => TAL.throws(boom, /nope/), /did not match/)
     })
 
-    it("throws rejects a non-RegExp matcher", () => {
-        for (const matcher of [Error, new Error("x"), {message: "x"}]) {
-            const error = catchError(() => TAL.throws(() => {
-                throw new Error("x")
-            }, matcher as never))
-            assert.ok(error instanceof TypeError, `${String(matcher)} was not rejected`)
-            assert.match(String(error?.message), /RegExp/)
-        }
+    it("throws matches an Error class by instanceof", () => {
+        assert.doesNotThrow(() => TAL.throws(boom, RangeError))
+        assert.doesNotThrow(() => TAL.throws(boom, Error))
+        assert.throws(() => TAL.throws(boom, TypeError), /did not match/)
+    })
+
+    it("throws accepts a validation function that returns true", () => {
+        assert.doesNotThrow(() => TAL.throws(boom, (e: unknown) => e instanceof RangeError))
+        assert.throws(() => TAL.throws(boom, () => false), /did not match/)
+        // Anything but `true` is a mismatch, as in node:assert.
+        assert.throws(() => TAL.throws(boom, () => 1 as never), /did not match/)
+    })
+
+    it("throws compares the properties of an object, RegExp values by test", () => {
+        assert.doesNotThrow(() => TAL.throws(boom, {message: "boom"}))
+        assert.doesNotThrow(() => TAL.throws(boom, {message: /^bo/, name: "RangeError"}))
+        assert.throws(() => TAL.throws(boom, {message: "other"}), /did not match/)
+        assert.throws(() => TAL.throws(boom, {code: "ERR_X"}), /did not match/)
+    })
+
+    it("throws reads an Error instance as an object including name and message", () => {
+        assert.doesNotThrow(() => TAL.throws(boom, new RangeError("boom")))
+        assert.throws(() => TAL.throws(boom, new Error("boom")), /did not match/)
+        assert.throws(() => TAL.throws(boom, new RangeError("other")), /did not match/)
     })
 
     // node:assert reads a string in the second position as the message.
@@ -53,64 +70,47 @@ describe(TITLE, () => {
         const missing = catchError(() => TAL.throws(() => undefined, "should have thrown"))
         assert.equal(missing?.name, "AssertionError")
         assert.equal(missing?.message, "should have thrown")
-
-        assert.doesNotThrow(() => TAL.throws(() => {
-            throw new Error("boom")
-        }, "should have thrown"))
+        assert.doesNotThrow(() => TAL.throws(boom, "should have thrown"))
     })
 
-    // A message equal to what was thrown was most likely meant as a matcher,
-    // so it is refused the way node:assert refuses it as ambiguous.
+    // A message equal to what was thrown was meant as a matcher, so the call
+    // is refused the way node:assert refuses it as ambiguous.
     it("throws refuses a string message identical to the thrown message", () => {
-        for (const block of [() => {
-            throw new Error("boom")
-        }, () => {
+        rejected(() => TAL.throws(boom, "boom"))
+        rejected(() => TAL.throws(() => {
             throw "boom"
-        }]) {
-            const error = catchError(() => TAL.throws(block, "boom"))
-            assert.ok(error instanceof TypeError)
-            assert.match(String(error?.message), /identical/)
-        }
-
+        }, "boom"))
         // The same text as the third argument is a plain message.
-        assert.doesNotThrow(() => TAL.throws(() => {
-            throw new Error("boom")
-        }, undefined, "boom"))
+        assert.doesNotThrow(() => TAL.throws(boom, undefined, "boom"))
     })
 
-    it("throws refuses a third argument alongside a string message", () => {
-        const error = catchError(() => TAL.throws(() => undefined, "one" as never, "two"))
-        assert.ok(error instanceof TypeError)
-        assert.match(String(error?.message), /second argument/)
+    it("throws refuses what node:assert refuses", () => {
+        rejected(() => TAL.throws("not a function" as never))
+        rejected(() => TAL.throws(boom, 123 as never))
+        rejected(() => TAL.throws(boom, "one" as never, "two"))
     })
 
-    it("doesNotThrow surfaces the original message", () => {
-        assert.throws(() => TAL.doesNotThrow(() => {
-            throw new Error("inner")
-        }), /inner/)
-        assert.throws(() => TAL.doesNotThrow(() => {
-            throw new Error("inner")
-        }, "note"), /note/)
+    it("doesNotThrow passes on no exception and fails on one", () => {
+        assert.doesNotThrow(() => TAL.doesNotThrow(() => undefined))
+        // The original message is part of the failure, to be acted on directly.
+        assert.throws(() => TAL.doesNotThrow(boom), /RangeError: boom/)
+        assert.throws(() => TAL.doesNotThrow(boom, "note"), /note/)
     })
 
     // What the filter does not match is passed through, not swallowed.
-    it("doesNotThrow only reports what its RegExp matches", () => {
-        assert.throws(() => TAL.doesNotThrow(() => {
-            throw new Error("inner")
-        }, /inner/), /expected not to throw/)
+    it("doesNotThrow only reports what its filter matches", () => {
+        assert.throws(() => TAL.doesNotThrow(boom, /boom/), /expected not to throw/)
+        assert.throws(() => TAL.doesNotThrow(boom, RangeError), /expected not to throw/)
 
-        const passed = catchError(() => TAL.doesNotThrow(() => {
-            throw new RangeError("inner")
-        }, /nope/))
-        assert.ok(passed instanceof RangeError)
+        assert.ok(catchError(() => TAL.doesNotThrow(boom, /nope/)) instanceof RangeError)
+        assert.ok(catchError(() => TAL.doesNotThrow(boom, TypeError)) instanceof RangeError)
     })
 
-    // Swallowing an error class as the message would report it as
-    // "function TypeError() { [native code] }", which helps nobody.
-    it("doesNotThrow rejects a non-RegExp matcher", () => {
-        const error = catchError(() => TAL.doesNotThrow(() => undefined, Error as never))
-        assert.ok(error instanceof TypeError)
-        assert.match(String(error?.message), /RegExp/)
+    // node:assert takes only a RegExp or a function here; an Error instance
+    // or a plain object is a misuse, not a message.
+    it("doesNotThrow refuses what node:assert refuses", () => {
+        rejected(() => TAL.doesNotThrow("not a function" as never))
+        rejected(() => TAL.doesNotThrow(boom, new Error("note") as never))
+        rejected(() => TAL.doesNotThrow(boom, {message: "boom"} as never))
     })
-
 })

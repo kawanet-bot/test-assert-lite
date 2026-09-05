@@ -64,9 +64,15 @@ export declare namespace TAL {
 
     // --- assert ---
 
-    // Only RegExp is accepted, unlike node:assert which also takes an error
-    // class, a validation function or an object of expected properties.
-    type AssertPredicate = RegExp
+    // What `doesNotThrow` filters by: a RegExp tested against String(error),
+    // an Error class, or a validation function that returns true on a match.
+    type ErrorFilter = RegExp | (new (...args: never[]) => Error) | ((thrown: unknown) => boolean)
+
+    // What `throws` matches against: any filter above, or an object whose
+    // properties the error must carry, a RegExp value being tested against
+    // the property's string form. An Error instance counts as such an
+    // object, name and message included. The same shapes node:assert takes.
+    type AssertPredicate = ErrorFilter | object
 
     interface AssertBase {
         fail(message?: string | Error): never
@@ -77,8 +83,8 @@ export declare namespace TAL {
         // As in node:assert, a string in the second position is the message.
         throws(block: () => unknown, message?: string): void
         throws(block: () => unknown, expected: AssertPredicate | undefined, message?: string | Error): void
-        doesNotThrow(block: () => unknown, message?: string | Error): void
-        doesNotThrow(block: () => unknown, expected: AssertPredicate, message?: string | Error): void
+        doesNotThrow(block: () => unknown, message?: string): void
+        doesNotThrow(block: () => unknown, expected: ErrorFilter | undefined, message?: string | Error): void
         match(value: string, regExp: RegExp, message?: string | Error): void
         doesNotMatch(value: string, regExp: RegExp, message?: string | Error): void
     }
