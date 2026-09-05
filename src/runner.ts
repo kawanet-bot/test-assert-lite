@@ -1,10 +1,14 @@
 import type * as declared from "test-assert-lite"
-import {cancelledByParent, TestRunnerError, toError} from "./common/test-runner-error.ts"
+import {TestRunnerError, testRunnerError} from "./common/test-runner-error.ts"
 import type {ReporterControl} from "./reporter.ts"
 import type {HarnessState, SuiteNode} from "./suite.ts"
 import {resetHarnessState} from "./suite.ts"
 import type {Outcome, RunState} from "./tester.ts"
 import {abortTest, announceAncestors, runTest} from "./tester.ts"
+
+const CANCELLED_MESSAGE = "test did not finish before its parent and was cancelled"
+
+const cancelledByParent = (): TestRunnerError => new TestRunnerError(CANCELLED_MESSAGE, "cancelledByParent")
 
 // Runs the hooks in order and stops at the first failure, which is
 // returned as the error to charge to the suite.
@@ -13,7 +17,7 @@ const runHooks = async (list: declared.TAL.HookFn[]): Promise<Error | undefined>
         try {
             await fn()
         } catch (e) {
-            return toError(e, "hookFailed")
+            return testRunnerError(e, "hookFailed")
         }
     }
     return undefined
@@ -35,7 +39,10 @@ const reportSuite = async (
     // event, which is how node:test counts it as skipped yet fails the run.
     if (result.error != null) {
         state.success = false
-        await state.reporter.emit("test:fail", {...base, ...skip, details: {duration_ms, type: "suite", error: result.error}})
+        await state.reporter.emit("test:fail", {
+            ...base, ...skip,
+            details: {duration_ms, type: "suite", error: result.error},
+        })
     } else {
         await state.reporter.emit("test:pass", {...base, ...skip, details: {duration_ms, type: "suite"}})
     }
@@ -57,7 +64,7 @@ const runBody = async (state: RunState, suite: SuiteNode): Promise<Error | undef
         if (body != null) await body
         return undefined
     } catch (e) {
-        return toError(e, "testCodeFailure")
+        return testRunnerError(e, "testCodeFailure")
     } finally {
         state.harness.currentSuite = previous
     }
@@ -86,8 +93,11 @@ const cancelChildren = async (state: RunState, suite: SuiteNode): Promise<void> 
     let number = 0
     for (const child of suite.children) {
         number++
-        if (child.kind === "suite") await cancelSuite(state, child, number, cancelledByParent())
-        else await abortTest(state, child, suite.nesting + 1, number, cancelledByParent(), "cancelled")
+        if (child.kind === "suite") {
+            await cancelSuite(state, child, number, cancelledByParent())
+        } else {
+            await abortTest(state, child, suite.nesting + 1, number, cancelledByParent(), "cancelled")
+        }
     }
 }
 
@@ -98,8 +108,11 @@ const failChildren = async (state: RunState, suite: SuiteNode, error: Error): Pr
     let number = 0
     for (const child of suite.children) {
         number++
-        if (child.kind === "suite") await cancelSuite(state, child, number, error)
-        else await abortTest(state, child, suite.nesting + 1, number, error, "failed")
+        if (child.kind === "suite") {
+            await cancelSuite(state, child, number, error)
+        } else {
+            await abortTest(state, child, suite.nesting + 1, number, error, "failed")
+        }
     }
 }
 
@@ -134,8 +147,11 @@ const walk = async (state: RunState, suite: SuiteNode, testNumber: number): Prom
         let failedChildren = 0
         if (error != null) {
             // Nothing below a broken setup may run.
-            if (root) await failChildren(state, suite, error)
-            else await cancelChildren(state, suite)
+            if (root) {
+                await failChildren(state, suite, error)
+            } else {
+                await cancelChildren(state, suite)
+            }
         } else {
             let number = 0
             for (const child of suite.children) {

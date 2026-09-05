@@ -20,12 +20,8 @@ export class TestRunnerError extends Error {
 }
 
 // Keeps details.error an Error whatever the test threw.
-export const toError = (thrown: unknown, failureType: FailureType): Error => {
+export const testRunnerError = (thrown: unknown, failureType: FailureType): Error => {
     if (isError(thrown)) return thrown
     const message = "string" === typeof thrown ? thrown : stringify(thrown)
     return new TestRunnerError(message, failureType, thrown)
 }
-
-export const CANCELLED_MESSAGE = "test did not finish before its parent and was cancelled"
-
-export const cancelledByParent = (): TestRunnerError => new TestRunnerError(CANCELLED_MESSAGE, "cancelledByParent")
