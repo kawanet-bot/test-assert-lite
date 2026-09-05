@@ -74,8 +74,6 @@ describe(TITLE, () => {
 
         assert.equal((await local.run()).counts.tests, 1)
 
-        // run() resets the reporter as well, so silence it again.
-        local.reporter.output(() => undefined)
         assert.equal((await local.run()).counts.tests, 0)
     })
 

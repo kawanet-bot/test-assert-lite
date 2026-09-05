@@ -184,7 +184,47 @@ export const createRun = (
     harness: HarnessState,
     control: ReporterControl,
     assert: declared.TAL.AssertMethods,
-): typeof declared.run => async () => {
+): typeof declared.run => {
+    let running = false
+
+    return async () => {
+        if (running) throw new Error("TAL.run() is already running")
+        running = true
+
+        let result: declared.TAL.TestSummary | undefined
+        let failed = false
+        let failure: unknown
+        try {
+            result = await runOnce(harness, control, assert)
+        } catch (error) {
+            failed = true
+            failure = error
+        }
+
+        try {
+            await control.close()
+        } catch (error) {
+            if (!failed) {
+                failed = true
+                failure = error
+            }
+        } finally {
+            // A partially executed registry is unsafe to retry. Configuration
+            // lives outside the per-run reporter Pipe and remains installed.
+            resetHarnessState(harness)
+            running = false
+        }
+
+        if (failed) throw failure
+        return result!
+    }
+}
+
+const runOnce = async (
+    harness: HarnessState,
+    control: ReporterControl,
+    assert: declared.TAL.AssertMethods,
+): Promise<declared.TAL.TestSummary> => {
     const started = performance.now()
     const state: RunState = {
         counters: {tests: 0, suites: 0, passed: 0, failed: 0, cancelled: 0, skipped: 0},
@@ -214,9 +254,5 @@ export const createRun = (
     }
 
     await state.reporter.emit("test:summary", summary)
-    await control.close()
-    resetHarnessState(harness)
-    control.reset()
-
     return summary
 }

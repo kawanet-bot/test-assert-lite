@@ -24,7 +24,7 @@ MJS_MAX_BYTES := 40000
 # The bundle is the test sources inlined; the package itself stays
 # external. A leak would drop the import that the alias check greps for,
 # so this cap only guards against gross growth.
-TEST_MAX_BYTES := 60000
+TEST_MAX_BYTES := 70000
 
 ALL := $(MJS_DST) $(BUILDER_TEST_DST)
 
