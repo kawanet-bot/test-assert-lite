@@ -1,6 +1,5 @@
 import {strict as assert} from "node:assert"
 import {describe, it} from "node:test"
-
 import {createTAL} from "./index.ts"
 
 const TITLE = "spec.test.ts"

@@ -1,5 +1,4 @@
 import type * as declared from "test-assert-lite"
-
 import {createAssert} from "./assert.ts"
 import {createReporter} from "./reporter.ts"
 import {createRun} from "./runner.ts"

@@ -1,5 +1,4 @@
 import type * as declared from "test-assert-lite"
-
 import {html} from "./html.ts"
 import {spec} from "./spec.ts"
 

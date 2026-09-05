@@ -1,5 +1,4 @@
 import type * as declared from "test-assert-lite"
-
 import {TestRunnerError, toError} from "./common/test-runner-error.ts"
 import type {Args, HarnessState, TestNode} from "./suite.ts"
 import {nameOf, normalize} from "./suite.ts"
