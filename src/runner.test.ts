@@ -102,7 +102,7 @@ describe(TITLE, () => {
         assert.ok(String(messages.at(-1)).startsWith("duration_ms "))
     })
 
-    // After a run() neither the registrations nor the reporter settings remain.
+    // Registrations are consumed, while reporter settings belong to the harness.
     it("run() resets the registry", async () => {
         const local = createTAL()
         local.reporter.output(() => undefined)
@@ -113,5 +113,35 @@ describe(TITLE, () => {
         local.reporter.output(() => undefined)
         const second = await local.run()
         assert.equal(second.counts.tests, 0)
+    })
+
+    it("rejects a concurrent run without running the test twice", async () => {
+        const local = createTAL()
+        local.reporter.output(() => undefined)
+        let release!: () => void
+        const waiting = new Promise<void>(resolve => {
+            release = resolve
+        })
+        let executions = 0
+        local.it("slow", async () => {
+            executions++
+            await waiting
+        })
+
+        const first = local.run()
+        const secondError = await (async () => {
+            try {
+                await local.run()
+                return undefined
+            } catch (error) {
+                return error
+            }
+        })()
+        release()
+        const summary = await first
+
+        assert.match(String(secondError), /already running/)
+        assert.equal(executions, 1)
+        assert.equal(summary.counts.tests, 1)
     })
 })
