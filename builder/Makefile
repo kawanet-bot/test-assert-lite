@@ -86,6 +86,9 @@ $(PKG_DST):
 $(BROWSER_TEST_DST): $(BROWSER_TEST_CONFIG) $(SRC) $(BUILDER_SRC) $(TEST_SRC) $(TYPES) $(BROWSER_SRC) $(MINJS_DST)
 	@mkdir -p $(dir $@)
 	../node_modules/.bin/rollup -c $<
+	@# An inlined copy of the library would be a second harness beside the
+	@# global one, so the suites must reach it through the alias only.
+	@! grep -q 'const createTAL' $@ || { echo "ERROR: $@ inlines the library" >&2; exit 1; }
 	@ls -l $@
 	@test "$$(wc -c < $@)" -le $(TEST_MAX_BYTES) || { echo "ERROR: $@ exceeds $(TEST_MAX_BYTES) byte cap" >&2; exit 1; }
 	@echo ""
@@ -95,6 +98,9 @@ $(BROWSER_TEST_DST): $(BROWSER_TEST_CONFIG) $(SRC) $(BUILDER_SRC) $(TEST_SRC) $(
 $(BUILDER_TEST_DST): $(BUILDER_TEST_CONFIG) $(SRC) $(BUILDER_SRC) $(TEST_SRC) $(TYPES) $(MJS_DST)
 	@mkdir -p $(dir $@)
 	../node_modules/.bin/rollup -c $<
+	@# An alias that misses a relative import inlines the sources instead,
+	@# and the suites then test a second copy of the library.
+	@! grep -q 'const createTAL' $@ || { echo "ERROR: $@ inlines the library" >&2; exit 1; }
 	@ls -l $@
 	@test "$$(wc -c < $@)" -le $(TEST_MAX_BYTES) || { echo "ERROR: $@ exceeds $(TEST_MAX_BYTES) byte cap" >&2; exit 1; }
 	@echo ""
