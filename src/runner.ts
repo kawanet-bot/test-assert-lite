@@ -203,7 +203,7 @@ export const createRun = (
     let running = false
 
     return async () => {
-        if (running) throw new Error("TAL.run() is already running")
+        if (running) throw new Error("run() is already running")
         running = true
 
         let result: declared.TAL.TestSummary | undefined
