@@ -43,7 +43,7 @@ test: test-bundled test-iife
 # Resolves through node_modules after `unpack`; inside a checkout the
 # package name self-references dist/ instead.
 test-bundled:
-	cd ../.. && node --test builder/tests/bundled.mjs
+	cd ../.. && node builder/tests/bundled.mjs
 
 # Script-context run of the minified bundle under $(PKG_ROOT): the browser
 # IIFE consumer shape; in the default root it also proves the tarball
