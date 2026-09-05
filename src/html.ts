@@ -16,15 +16,15 @@ const resultLine = (data: declared.TAL.TestPass | declared.TAL.TestFail, isPass:
     const symbol = skipped ? "﹣" : isPass ? "✔" : "✖"
     const note = "string" === typeof data.skip ? ` # ${escapeHTML(data.skip)}` : skipped ? " # SKIP" : ""
     const prefix = indented ? space(data.nesting) : ""
-    return `<li>${prefix}<span class="tal tal-${kind}">${symbol} ${escapeHTML(data.name)}</span> <span class="tal tal-info">(${data.details.duration_ms.toFixed(3)}ms)</span>${note}</li>\n`
+    return `<div>${prefix}<span class="tal tal-${kind}">${symbol} ${escapeHTML(data.name)}</span> <span class="tal tal-info">(${data.details.duration_ms.toFixed(3)}ms)</span>${note}</div>\n`
 }
 
 const formatFailures = (failed: declared.TAL.TestFail[]): string => {
     if (!failed.length) return ""
-    let out = `<li class="tal tal-fail">✖ failing tests:</li>\n`
+    let out = `<div class="tal tal-fail">✖ failing tests:</div>\n`
     for (const data of failed) {
         out += resultLine(data, false, false)
-        out += `<li class="tal tal-error"><pre>${escapeHTML(errorText(data.details.error))}</pre></li>\n`
+        out += `<div class="tal tal-error"><pre>${escapeHTML(errorText(data.details.error))}</pre></div>\n`
     }
     return out
 }
@@ -43,7 +43,7 @@ export const html = (): FormatFn => async function* (source: AsyncIterable<TestE
 
         if (event.type === "test:diagnostic") {
             const {level, nesting, message} = event.data
-            yield `<li>${space(nesting)}<span class="tal tal-${escapeHTML(level)}">ℹ ${escapeHTML(message)}</span></li>\n`
+            yield `<div>${space(nesting)}<span class="tal tal-${escapeHTML(level)}">ℹ ${escapeHTML(message)}</span></div>\n`
             continue
         }
 
@@ -62,7 +62,7 @@ export const html = (): FormatFn => async function* (source: AsyncIterable<TestE
         if (stack.length && stack[0]?.name === data.name) stack.shift()
         while (stack.length) {
             const parent = stack.pop()!
-            out += `<li>${space(parent.nesting)}<span class="tal tal-suite">▶ ${escapeHTML(parent.name)}</span></li>\n`
+            out += `<div>${space(parent.nesting)}<span class="tal tal-suite">▶ ${escapeHTML(parent.name)}</span></div>\n`
         }
         out += resultLine(data, isPass, true)
         if (isFail) {
