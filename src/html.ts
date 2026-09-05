@@ -1,29 +1,13 @@
 import type * as declared from "test-assert-lite"
 
-import {isError} from "./common/is-error.ts"
+import {errorText, isSubtestsFailed} from "./common/test-failure.ts"
 
 type TestEvent = declared.TAL.TestEvent
 type FormatFn = declared.TAL.FormatFn
-type Failure = Error & {code?: string, failureType?: string, cause?: unknown}
 
 const AMP = {"<": "&lt;", "&": "&amp;", ">": "&gt;", "\"": "&quot;", "'": "&apos;"} as const
 
 const escapeHTML = (v: string): string => v.replace(/([<&>"'])/g, $1 => AMP[$1 as keyof typeof AMP])
-
-const unwrap = (error: unknown): unknown => {
-    if (!isError(error) || (error as Failure).code !== "ERR_TEST_FAILURE") return error
-    const {cause} = error as Failure
-    return isError(cause) ? cause : error.message
-}
-
-const errorText = (error: unknown): string => {
-    const inner = unwrap(error)
-    if (isError(inner)) return inner.stack ?? `${inner.name}: ${inner.message}`
-    return String(inner)
-}
-
-const isSubtestsFailed = (error: unknown): boolean =>
-    isError(error) && (error as Failure).failureType === "subtestsFailed"
 
 const space = (nesting: number): string => "&nbsp;&nbsp;".repeat(nesting)
 

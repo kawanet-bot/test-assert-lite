@@ -1,6 +1,6 @@
 import type * as declared from "test-assert-lite"
 
-import {isError} from "./common/is-error.ts"
+import {errorText, isSubtestsFailed} from "./common/test-failure.ts"
 
 type TestEvent = declared.TAL.TestEvent
 type FormatFn = declared.TAL.FormatFn
@@ -22,9 +22,8 @@ const COLOR = {
     reset: "\u001b[39m",
 } as const
 
-// Node honours NO_COLOR / NODE_DISABLE_COLORS. A browser has no notion of
-// terminal colour, so it is always off there. Keeping the decision in one
-// place gives spec() its default.
+// Node enables colour only for a TTY, while honouring NO_COLOR and
+// NODE_DISABLE_COLORS. A browser has no terminal, so colour stays off there.
 const defaultColors = (): boolean => {
     const node = "undefined" !== typeof process
         && (process as {env?: Record<string, string | undefined>, stdout?: {isTTY?: boolean}})
@@ -35,28 +34,6 @@ const defaultColors = (): boolean => {
 const indent = (nesting: number): string => "  ".repeat(nesting)
 
 const paint = (on: boolean, color: string, text: string): string => on ? `${color}${text}${COLOR.reset}` : text
-
-type Failure = Error & {code?: string, failureType?: string, cause?: unknown}
-
-// node:test wraps every failure in an ERR_TEST_FAILURE carrying the thrown
-// value as cause; this runner only wraps its own. Reach the Error underneath
-// when there is one, otherwise the wrapper's message is the whole story.
-const unwrap = (error: unknown): unknown => {
-    if (!isError(error) || (error as Failure).code !== "ERR_TEST_FAILURE") return error
-    const {cause} = error as Failure
-    return isError(cause) ? cause : error.message
-}
-
-const errorText = (error: unknown): string => {
-    const inner = unwrap(error)
-    if (isError(inner)) return inner.stack ?? `${inner.name}: ${inner.message}`
-    return String(inner)
-}
-
-// A suite that failed only because a child did adds nothing to the list
-// the child is already on. node:test's spec leaves it out as well.
-const isSubtestsFailed = (error: unknown): boolean =>
-    isError(error) && (error as Failure).failureType === "subtestsFailed"
 
 // One result line: symbol, name, duration and skip note. A skip outranks
 // the verdict in the symbol, so a skipped failure still reads as skipped.
