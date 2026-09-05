@@ -104,11 +104,17 @@ class Pipe {
             }
             const item = this.pending.shift()!
             this.active = item
+            let consumed = false
             try {
                 yield item.event
+                consumed = true
             } finally {
-                if (this.active === item) this.active = null
-                item.resolve()
+                // A normal next() resumes after yield. Iterator cleanup jumps
+                // straight to finally, leaving the item for fail() to reject.
+                if (consumed) {
+                    if (this.active === item) this.active = null
+                    item.resolve()
+                }
             }
         }
     }

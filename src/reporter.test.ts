@@ -15,6 +15,34 @@ const caught = async (promise: Promise<unknown>): Promise<unknown> => {
 }
 
 describe(TITLE, () => {
+    const pass = () => ({
+        name: "standalone", nesting: 0, testNumber: 1,
+        details: {duration_ms: 0, type: "test" as const},
+    })
+
+    it("rejects the active emit when its formatter throws", async () => {
+        const local = createTAL()
+        const failure = new Error("standalone formatter failed")
+        local.reporter.format(async function* (source) {
+            for await (const _event of source) throw failure
+        })
+
+        assert.equal(await caught(local.reporter.emit("test:pass", pass())), failure)
+    })
+
+    it("rejects the active emit when its output fails", async () => {
+        const local = createTAL()
+        const failure = new Error("standalone output failed")
+        local.reporter.format(async function* (source) {
+            for await (const _event of source) yield "output"
+        })
+        local.reporter.output(() => {
+            throw failure
+        })
+
+        assert.equal(await caught(local.reporter.emit("test:pass", pass())), failure)
+    })
+
     it("rejects run() when the formatter throws", async () => {
         const local = createTAL()
         const failure = new Error("formatter failed")
