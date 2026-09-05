@@ -99,6 +99,13 @@ describe(TITLE, () => {
         rejected(() => TAL.throws(() => {
             throw "boom"
         }, "boom"))
+        // Any thrown object is read by its message, as node:assert reads it.
+        rejected(() => TAL.throws(() => {
+            throw {message: "boom"}
+        }, "boom"))
+        assert.doesNotThrow(() => TAL.throws(() => {
+            throw {message: "other"}
+        }, "boom"))
         // The same text as the third argument is a plain message.
         assert.doesNotThrow(() => TAL.throws(boom, undefined, "boom"))
     })

@@ -73,8 +73,10 @@ export const throws = (block: () => unknown, ...rest: [expected?: Predicate | st
     const {thrown} = caught
 
     // A message equal to what was thrown was meant as a matcher; node:assert
-    // refuses the call as ambiguous rather than letting it pass.
-    if (messageOnly && (isError(thrown) ? thrown.message : thrown) === message) throw invalid()
+    // refuses the call as ambiguous rather than letting it pass. Any thrown
+    // object is read by its message, not only an Error.
+    const said = thrown != null && "object" === typeof thrown ? (thrown as {message?: unknown}).message : thrown
+    if (messageOnly && said === message) throw invalid()
 
     if (expected != null && !matches(thrown, expected)) {
         fail(message ?? `${stringify(thrown)} did not match the expected error`, "throws", {actual: thrown, expected})
