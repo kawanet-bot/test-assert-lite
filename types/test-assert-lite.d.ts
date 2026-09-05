@@ -95,6 +95,25 @@ export declare namespace TAL {
         ifError(value: unknown): asserts value is null | undefined
     }
 
+    // --- failures ---
+
+    type FailureType =
+        | "testCodeFailure"
+        | "hookFailed"
+        | "cancelledByParent"
+        | "testTimeoutFailure"
+        | "subtestsFailed"
+
+    // A failure the runner produced itself, or a thrown value that was not
+    // an Error. An Error thrown by test code is reported as is. `code`
+    // matches node:test's wrapper so a check written for it holds here.
+    interface TestRunnerError extends Error {
+        readonly name: "TestRunnerError"
+        readonly code: "ERR_TEST_FAILURE"
+        readonly failureType: FailureType
+        readonly cause: unknown
+    }
+
     // --- events ---
 
     interface TestStart {
@@ -102,6 +121,8 @@ export declare namespace TAL {
         nesting: number
     }
 
+    // A suite is reported after its children, with `type: "suite"`.
+    // `testNumber` counts within the parent, suites and tests together.
     interface TestPass {
         name: string
         nesting: number
@@ -113,6 +134,10 @@ export declare namespace TAL {
         }
     }
 
+    // `error` is what the test threw, or a TestRunnerError. A suite fails
+    // with its hook's or body's error, or with `subtestsFailed` when only
+    // a child did. A test never run because its parent failed is reported
+    // as `cancelledByParent` and counted under `cancelled`.
     interface TestFail {
         name: string
         nesting: number
@@ -121,7 +146,7 @@ export declare namespace TAL {
         details: {
             duration_ms: number
             type: "suite" | "test"
-            error: unknown
+            error: Error
         }
     }
 
