@@ -239,6 +239,25 @@ describe(TITLE, () => {
         assert.equal(secondOutput.join(""), "second")
     })
 
+    it("does not carry a failed standalone session into run()", async () => {
+        const local = createTAL()
+        const failure = new Error("standalone failed")
+        local.reporter.output(() => {
+            throw failure
+        })
+        assert.equal(await caught(local.reporter.emit("test:pass", {
+            name: "standalone", nesting: 0, testNumber: 1,
+            details: {duration_ms: 0, type: "test"},
+        })), failure)
+
+        local.reporter.output(() => undefined)
+        local.it("inside run", () => undefined)
+        const summary = await local.run()
+
+        assert.equal(summary.counts.tests, 1)
+        assert.equal(summary.counts.passed, 1)
+    })
+
     it("applies configuration changed during a run to the next run", async () => {
         const local = createTAL()
         const firstOutput: string[] = []
