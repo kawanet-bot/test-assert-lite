@@ -149,6 +149,7 @@ const walk = async (state: RunState, suite: SuiteNode, testNumber: number): Prom
         }
 
         // after runs whatever happened above, as it does in node:test.
+        const setupError = error
         const afterError = await runHooks(suite.after)
         error ??= afterError
 
@@ -158,7 +159,7 @@ const walk = async (state: RunState, suite: SuiteNode, testNumber: number): Prom
             // of the counts. node:test lets an empty run pass here; a failed
             // setup should never be green, so success is cleared regardless.
             const orphaned = [
-                ...(error != null && !suite.children.length ? [["root before hook", error]] : []),
+                ...(setupError != null && !suite.children.length ? [["root before hook", setupError]] : []),
                 ...(afterError != null ? [["root after hook", afterError]] : []),
             ] as [string, Error][]
             for (const [name, hookError] of orphaned) {

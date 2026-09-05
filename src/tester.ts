@@ -66,9 +66,11 @@ const announce = async (state: RunState, self: Ancestor): Promise<void> => {
 interface Context extends declared.TAL.TestContext {
     skipped: string | true | undefined
     pending: Promise<Outcome>[]
-    // The tail of the subtest chain: node:test runs subtests one at a time,
-    // so each new one waits for the previous one whether awaited or not.
+    // The tail of the subtest chain and how many are still running: node:test
+    // runs subtests one at a time, so a new one waits for the previous one
+    // whether awaited or not, but the first starts right away, synchronously.
     last: Promise<unknown>
+    active: number
     subtests: number
 }
 
@@ -79,6 +81,7 @@ const makeContext = (state: RunState, name: string, nesting: number): Context =>
         skipped: undefined,
         pending: [],
         last: Promise.resolve(),
+        active: 0,
         subtests: 0,
         skip: (message) => {
             // As in node:test the body is not interrupted; only the verdict changes.
@@ -93,9 +96,14 @@ const makeContext = (state: RunState, name: string, nesting: number): Context =>
                 kind: "test", name: nameOf(parsed.name, parsed.fn),
                 options: parsed.options, fn: parsed.fn,
             }
-            // Queued behind the previous subtest, so awaiting it lets the
-            // child finish before the parent resumes.
-            const promise = context.last.then(() => runTest(state, node, nesting + 1, ++context.subtests))
+            // Started here when nothing else is running, so the body reaches
+            // its first await before t.test() returns, as in node:test.
+            const testNumber = ++context.subtests
+            const start = (): Promise<Outcome> => runTest(state, node, nesting + 1, testNumber).finally(() => {
+                context.active--
+            })
+            context.active++
+            const promise = context.active === 1 ? start() : context.last.then(start)
             context.last = promise
             context.pending.push(promise)
             await promise

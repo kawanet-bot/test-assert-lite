@@ -386,6 +386,20 @@ describe(TITLE, () => {
         assert.equal(summary.success, false)
     })
 
+    // With no before failure to report, the after failure must not be
+    // repeated under the before hook's name.
+    it("a failing root after hook with no children is reported once", async () => {
+        const local = createTAL()
+        const events = capture(local.reporter)
+        local.after(() => {
+            throw new Error("root teardown")
+        })
+        const summary = await local.run()
+
+        assert.equal(names(events, "test:fail").join(" | "), "root after hook")
+        assert.equal(summary.success, false)
+    })
+
     it("a failing root after hook is reported without being counted", async () => {
         const local = createTAL()
         const events = capture(local.reporter)

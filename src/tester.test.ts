@@ -231,6 +231,24 @@ describe(TITLE, () => {
         assert.equal(second?.cause, "just text")
     })
 
+    // node:test starts the body inside t.test(), so it reaches its first
+    // await before the parent's next statement runs.
+    it("the first subtest starts before t.test() returns", async () => {
+        const local = createTAL()
+        local.reporter.output(() => undefined)
+        const order: string[] = []
+        local.it("parent", async (t) => {
+            const pending = t.test("child", () => {
+                order.push("child body")
+            })
+            order.push("after call")
+            await pending
+        })
+        await local.run()
+
+        assert.equal(order.join(" | "), ["child body", "after call"].join(" | "))
+    })
+
     // node:test runs subtests one at a time. Without that, a slow first
     // child is still running when the second starts, and the reporter would
     // take the sibling for a suite heading.
