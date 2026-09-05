@@ -31,6 +31,10 @@ class Pipe {
         this.output = output
     }
 
+    setOutput(fn: OutputFn): void {
+        this.output = fn
+    }
+
     emit(event: TestEvent): Promise<void> {
         if (this.closed) return this.rejected(new Error("Reporter is closed"))
         if (this.failed) return this.rejected(this.failure)
@@ -137,6 +141,7 @@ export const createReporter = (): ReporterControl => {
     let format: FormatFn = spec()
     let output: OutputFn = defaultOutput
     let pipe: Pipe | null = null
+    let running = false
 
     const current = (): Pipe => pipe ??= new Pipe(format, output)
     const close = async (): Promise<void> => {
@@ -146,6 +151,7 @@ export const createReporter = (): ReporterControl => {
             await active.close()
         } finally {
             if (pipe === active) pipe = null
+            running = false
         }
     }
 
@@ -159,6 +165,9 @@ export const createReporter = (): ReporterControl => {
             },
             output: (fn) => {
                 output = fn
+                // A standalone session remains publicly configurable. A run
+                // keeps the output snapshot it began with until it closes.
+                if (!running) pipe?.setOutput(fn)
             },
             spec,
             html: () => spec({colors: false}),
@@ -168,6 +177,7 @@ export const createReporter = (): ReporterControl => {
         begin: async () => {
             await close()
             pipe = new Pipe(format, output)
+            running = true
         },
         close,
     }

@@ -210,6 +210,35 @@ describe(TITLE, () => {
         assert.equal(newOutput.join(""), "new:inside run")
     })
 
+    it("applies output changes to later standalone events", async () => {
+        const local = createTAL()
+        const firstOutput: string[] = []
+        const secondOutput: string[] = []
+        local.reporter.format(async function* (source) {
+            for await (const event of source) {
+                if (event.type === "test:pass") yield event.data.name
+            }
+        })
+        local.reporter.output(text => {
+            firstOutput.push(text)
+        })
+        await local.reporter.emit("test:pass", {
+            name: "first", nesting: 0, testNumber: 1,
+            details: {duration_ms: 0, type: "test"},
+        })
+
+        local.reporter.output(text => {
+            secondOutput.push(text)
+        })
+        await local.reporter.emit("test:pass", {
+            name: "second", nesting: 0, testNumber: 2,
+            details: {duration_ms: 0, type: "test"},
+        })
+
+        assert.equal(firstOutput.join(""), "first")
+        assert.equal(secondOutput.join(""), "second")
+    })
+
     it("applies configuration changed during a run to the next run", async () => {
         const local = createTAL()
         const firstOutput: string[] = []
