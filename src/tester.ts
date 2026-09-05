@@ -215,25 +215,25 @@ export const runTest = async (state: RunState, node: TestNode, nesting: number, 
         // A skip called from the body outranks the failure in the count, as
         // it does in node:test, and a timeout files under cancelled. The
         // outcome still tells the parent about the failure.
-        if (runtimeSkip !== undefined) counters.skipped++
+        if (runtimeSkip != null) counters.skipped++
         else if (timedOut) counters.cancelled++
         else counters.failed++
         state.success = false
         await state.reporter.emit("test:fail", {
             name: node.name, nesting, testNumber,
-            ...(runtimeSkip !== undefined ? {skip: runtimeSkip} : {}),
+            ...(runtimeSkip != null ? {skip: runtimeSkip} : {}),
             details: {duration_ms, type: "test", error},
         })
         return timedOut ? "cancelled" : "failed"
     }
 
-    if (runtimeSkip !== undefined) counters.skipped++
+    if (runtimeSkip != null) counters.skipped++
     else counters.passed++
 
     await state.reporter.emit("test:pass", {
         name: node.name, nesting, testNumber,
-        ...(runtimeSkip !== undefined ? {skip: runtimeSkip} : {}),
+        ...(runtimeSkip != null ? {skip: runtimeSkip} : {}),
         details: {duration_ms, type: "test"},
     })
-    return runtimeSkip !== undefined ? "skipped" : "passed"
+    return runtimeSkip != null ? "skipped" : "passed"
 }
