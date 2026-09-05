@@ -106,9 +106,10 @@ describe(TITLE, () => {
         assert.equal(summary.counts.passed, 2)
     })
 
-    it("a failing subtest is counted and flips success", async () => {
+    // node:test fails the parent as subtestsFailed, so both are counted.
+    it("a failing subtest fails the parent as well", async () => {
         const local = createTAL()
-        local.reporter.output(() => undefined)
+        const events = capture(local.reporter)
         local.it("parent", async (t) => {
             await t.test("bad child", () => {
                 throw new Error("boom")
@@ -117,8 +118,40 @@ describe(TITLE, () => {
         const summary = await local.run()
 
         assert.equal(summary.counts.tests, 2)
-        assert.equal(summary.counts.failed, 1)
+        assert.equal(summary.counts.failed, 2)
         assert.equal(summary.success, false)
+        const parent = ofType(events, "test:fail").find(e => e.data.name === "parent")?.data.details.error as Error & {failureType?: string}
+        assert.equal(parent?.failureType, "subtestsFailed")
+        assert.equal(parent?.message, "1 subtest failed")
+    })
+
+    it("an unawaited failing subtest still fails the parent", async () => {
+        const local = createTAL()
+        local.reporter.output(() => undefined)
+        local.it("parent", async (t) => {
+            void t.test("bad child", () => {
+                throw new Error("boom")
+            })
+        })
+        const summary = await local.run()
+
+        assert.equal(summary.counts.failed, 2)
+        assert.equal(summary.success, false)
+    })
+
+    // The child is filed under cancelled, the parent under failed.
+    it("a timed out subtest fails the parent", async () => {
+        const local = createTAL()
+        local.reporter.output(() => undefined)
+        local.it("parent", async (t) => {
+            await t.test("slow child", {timeout: 10}, async () => {
+                await new Promise(r => setTimeout(r, 200))
+            })
+        })
+        const summary = await local.run()
+
+        assert.equal(summary.counts.cancelled, 1)
+        assert.equal(summary.counts.failed, 1)
     })
 
     it("t.diagnostic() emits an info event", async () => {

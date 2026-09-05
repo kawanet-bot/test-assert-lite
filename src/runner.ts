@@ -30,15 +30,15 @@ const reportSuite = async (
     const base = {name: suite.name, nesting: suite.nesting, testNumber}
     const duration_ms = performance.now() - started
 
+    const skip = result.skip != null ? {skip: result.skip} : {}
+
+    // A skipped suite under a failed setup keeps its skip on the failure
+    // event, which is how node:test counts it as skipped yet fails the run.
     if (result.error != null) {
         state.success = false
-        await state.reporter.emit("test:fail", {...base, details: {duration_ms, type: "suite", error: result.error}})
+        await state.reporter.emit("test:fail", {...base, ...skip, details: {duration_ms, type: "suite", error: result.error}})
     } else {
-        await state.reporter.emit("test:pass", {
-            ...base,
-            ...(result.skip != null ? {skip: result.skip} : {}),
-            details: {duration_ms, type: "suite"},
-        })
+        await state.reporter.emit("test:pass", {...base, ...skip, details: {duration_ms, type: "suite"}})
     }
 }
 
@@ -72,7 +72,7 @@ const cancelSuite = async (state: RunState, suite: SuiteNode, testNumber: number
     const started = performance.now()
     await withAncestor(state, suite, async () => {
         if (isSkipped(suite)) {
-            await reportSuite(state, suite, testNumber, started, {skip: suite.options.skip as string | true})
+            await reportSuite(state, suite, testNumber, started, {error, skip: suite.options.skip as string | true})
             return
         }
         const bodyError = await runBody(state, suite)

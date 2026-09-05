@@ -367,6 +367,49 @@ describe(TITLE, () => {
         assert.equal(summary.success, false)
     })
 
+    // node:test keeps the skip on a test it cancels: the event is a failure
+    // carrying the parent's error, but the count goes to skipped.
+    it("a skipped test under a failing before hook stays skipped", async () => {
+        const local = createTAL()
+        const events = capture(local.reporter)
+        local.describe("S", () => {
+            local.before(() => {
+                throw new Error("setup")
+            })
+            local.it("skipped", {skip: true}, () => undefined)
+            local.it("plain", () => undefined)
+        })
+        const summary = await local.run()
+
+        const skipped = ofType(events, "test:fail").find(e => e.data.name === "skipped")?.data
+        assert.equal(skipped?.skip, true)
+        assert.equal((skipped?.details.error as {failureType?: string}).failureType, "cancelledByParent")
+        assert.equal(JSON.stringify(summary.counts), JSON.stringify({tests: 2, suites: 1, passed: 0, failed: 0, cancelled: 1, skipped: 1}))
+        assert.equal(summary.success, false)
+    })
+
+    // With nothing but a skipped suite below a failing root before hook,
+    // the skipped suite is the only place the failure can be reported.
+    it("a failing root before hook still fails a run of skipped children", async () => {
+        const local = createTAL()
+        const events = capture(local.reporter)
+        const setup = new Error("root setup")
+        local.before(() => {
+            throw setup
+        })
+        local.it("skipped", {skip: "why"}, () => undefined)
+        local.describe.skip("SK", () => {
+            local.it("x", () => undefined)
+        })
+        const summary = await local.run()
+
+        const fails = ofType(events, "test:fail")
+        assert.equal(fails.map(e => `${e.data.name}:${String(e.data.skip)}`).join(" | "), ["skipped:why", "SK:true"].join(" | "))
+        assert.equal(fails[1]?.data.details.error, setup)
+        assert.equal(JSON.stringify(summary.counts), JSON.stringify({tests: 1, suites: 1, passed: 0, failed: 0, cancelled: 0, skipped: 1}))
+        assert.equal(summary.success, false)
+    })
+
     it("cancellation reaches the grandchildren", async () => {
         const local = createTAL()
         const events = capture(local.reporter)
