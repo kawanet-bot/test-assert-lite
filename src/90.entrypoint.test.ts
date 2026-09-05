@@ -2,6 +2,7 @@
 // fail when a name declared in the published .d.ts is missing from the
 // runtime entry; the test checks the same names on the built output.
 import {strict as assert} from "node:assert"
+import {createRequire} from "node:module"
 import {test} from "node:test"
 
 import type * as declared from "test-assert-lite"
@@ -9,6 +10,18 @@ import * as m from "./index.ts"
 
 const runtime: typeof declared = m
 void runtime
+
+// Resolved through the package name, so this reads dist/: a checkout
+// self-references it, the pack test installs the tarball. Node that can
+// require() an ES module gets the .mjs, older Node the minified build;
+// both carry the same named exports.
+test("require entry", () => {
+    const require = createRequire(import.meta.url)
+    const cjs = require("test-assert-lite")
+    assert.equal(typeof cjs.describe, "function")
+    assert.equal(typeof cjs.run, "function")
+    assert.equal(typeof cjs.strict, "function")
+})
 
 test("import entry (.mjs)", () => {
     assert.equal(typeof m.after, "function")

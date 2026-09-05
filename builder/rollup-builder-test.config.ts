@@ -10,10 +10,11 @@ import {showFiles} from "./show-files.ts"
 const rollupConfig: RollupOptions = {
     input: ["../src/**/*.test.ts"],
 
-    // Only the package name stays external. A regular expression such as
+    // Only the package name stays external, plus the one builtin a suite
+    // reaches for that is not aliased away. A regular expression such as
     // /^[^./]/ would externalise `node:test` before the alias plugin runs,
     // leaving the suites bound to the real runner without any warning.
-    external: ["test-assert-lite"],
+    external: ["test-assert-lite", "node:module"],
 
     output: {
         file: "./tests/bundled.mjs",

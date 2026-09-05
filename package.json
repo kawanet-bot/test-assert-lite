@@ -31,6 +31,8 @@
   "exports": {
     ".": {
       "types": "./types/test-assert-lite.d.ts",
+      "module-sync": "./dist/test-assert-lite.mjs",
+      "require": "./dist/test-assert-lite.min.js",
       "import": "./dist/test-assert-lite.mjs"
     }
   },
@@ -53,7 +55,7 @@
     "test"
   ],
   "license": "MIT",
-  "main": "./dist/test-assert-lite.mjs",
+  "main": "./dist/test-assert-lite.min.js",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/kawanet/test-assert-lite.git"
