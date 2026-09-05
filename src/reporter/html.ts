@@ -1,23 +1,9 @@
 import type * as declared from "test-assert-lite"
-import {errorText} from "../common/stringify.ts"
+import {$$, errorText} from "../common/stringify.ts"
 import {isSubtestsFailed} from "../common/test-runner-error.ts"
 
 type TestEvent = declared.TAL.TestEvent
 type FormatFn = declared.TAL.FormatFn
-
-// minimum subset of https://github.com/kawanet/html-ele
-const $$ = (t: TemplateStringsArray, ...args: string[]): string => {
-    let str = t[0]!
-    for (let i = 1; i < t.length; i++) {
-        str += escapeHTML(args[i - 1]!)
-        str += t[i]!
-    }
-    return str
-}
-
-const AMP = {"<": "&lt;", "&": "&amp;", ">": "&gt;", "\"": "&quot;", "'": "&apos;"} as const
-
-const escapeHTML = (v: string): string => v?.replace(/([<&>"'])/g, $1 => AMP[$1 as keyof typeof AMP])
 
 const indentClass = (indent: number): string => (indent > 0 ? `tal-i${indent > 5 ? 5 : indent}` : "")
 
