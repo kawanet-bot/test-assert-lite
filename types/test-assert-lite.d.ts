@@ -1,0 +1,215 @@
+/**
+ * https://github.com/kawanet/test-assert-lite
+ *
+ * A subset of `node:test` and `node:assert` that runs in browsers.
+ */
+
+export {} // external module indicator
+
+export declare namespace TAL {
+    // --- test ---
+
+    type TestFn = (t: TestContext) => void | Promise<void>
+
+    type SuiteFn = (s: SuiteContext) => void | Promise<void>
+
+    type HookFn = () => void | Promise<void>
+
+    interface TestOptions {
+        skip?: boolean | string
+        timeout?: number
+    }
+
+    interface SuiteContext {
+        readonly name: string
+    }
+
+    interface TestContext {
+        readonly name: string
+        readonly assert: AssertMethods
+        skip(message?: string): void
+        diagnostic(message: string): void
+
+        // Subtests run immediately, ahead of the parent's remaining body.
+        // Unlike the top-level `it`, the returned promise is meaningful.
+        test(name?: string, options?: TestOptions, fn?: TestFn): Promise<void>
+        test(name?: string, fn?: TestFn): Promise<void>
+        test(options?: TestOptions, fn?: TestFn): Promise<void>
+        test(fn?: TestFn): Promise<void>
+    }
+
+    // `describe` / `suite`. The static variants take the same arguments.
+    interface SuiteBase {
+        (name?: string, options?: TestOptions, fn?: SuiteFn): void
+        (name?: string, fn?: SuiteFn): void
+        (options?: TestOptions, fn?: SuiteFn): void
+        (fn?: SuiteFn): void
+    }
+
+    interface SuiteAPI extends SuiteBase {
+        skip: SuiteBase
+    }
+
+    // `it` / `test`. The static variants take the same arguments.
+    interface TestBase {
+        (name?: string, options?: TestOptions, fn?: TestFn): void
+        (name?: string, fn?: TestFn): void
+        (options?: TestOptions, fn?: TestFn): void
+        (fn?: TestFn): void
+    }
+
+    interface TestAPI extends TestBase {
+        skip: TestBase
+    }
+
+    // --- assert ---
+
+    // Only RegExp is accepted, unlike node:assert which also takes an error
+    // class, a validation function or an object of expected properties.
+    type AssertPredicate = RegExp
+
+    interface AssertBase {
+        fail(message?: string | Error): never
+        equal(actual: unknown, expected: unknown, message?: string | Error): void
+        notEqual(actual: unknown, expected: unknown, message?: string | Error): void
+        strictEqual(actual: unknown, expected: unknown, message?: string | Error): void
+        notStrictEqual(actual: unknown, expected: unknown, message?: string | Error): void
+        throws(block: () => unknown, expected?: AssertPredicate, message?: string | Error): void
+        doesNotThrow(block: () => unknown, message?: string | Error): void
+        doesNotThrow(block: () => unknown, expected: AssertPredicate, message?: string | Error): void
+        match(value: string, regExp: RegExp, message?: string | Error): void
+        doesNotMatch(value: string, regExp: RegExp, message?: string | Error): void
+    }
+
+    // Reachable as `t.assert`. `ok` and `ifError` are plain checks here rather
+    // than assertion signatures: narrowing through a callback parameter trips
+    // TS2775, which `node:test` itself hits on `t.assert.ok()`.
+    interface AssertMethods extends AssertBase {
+        ok(value: unknown, message?: string | Error): void
+        ifError(value: unknown): void
+    }
+
+    interface Assert extends AssertBase {
+        (value: unknown, message?: string | Error): asserts value
+        ok(value: unknown, message?: string | Error): asserts value
+        ifError(value: unknown): asserts value is null | undefined
+    }
+
+    // --- events ---
+
+    interface TestStart {
+        name: string
+        nesting: number
+    }
+
+    interface TestPass {
+        name: string
+        nesting: number
+        testNumber: number
+        skip?: string | boolean
+        details: {
+            duration_ms: number
+            type: "suite" | "test"
+        }
+    }
+
+    interface TestFail {
+        name: string
+        nesting: number
+        testNumber: number
+        skip?: string | boolean
+        details: {
+            duration_ms: number
+            type: "suite" | "test"
+            error: unknown
+        }
+    }
+
+    interface TestDiagnostic {
+        message: string
+        nesting: number
+        level: "info" | "warn" | "error"
+    }
+
+    interface TestSummary {
+        counts: {
+            cancelled: number
+            failed: number
+            passed: number
+            skipped: number
+            suites: number
+            tests: number
+        }
+        duration_ms: number
+        success: boolean
+    }
+
+    type TestEvent =
+        | {type: "test:start"; data: TestStart}
+        | {type: "test:pass"; data: TestPass}
+        | {type: "test:fail"; data: TestFail}
+        | {type: "test:diagnostic"; data: TestDiagnostic}
+        | {type: "test:summary"; data: TestSummary}
+
+    // --- reporter ---
+
+    // Compatible with a `node:test` reporter, so the same function can be
+    // passed to `--test-reporter`. Each chunk yielded is a complete line.
+    type FormatFn = (source: AsyncIterable<TestEvent>) => AsyncIterable<string>
+
+    type OutputFn = (text: string) => void | Promise<void>
+
+    interface SpecOptions {
+        // Defaults to NO_COLOR / NODE_DISABLE_COLORS on Node, off in browsers.
+        colors?: boolean
+    }
+
+    interface Reporter {
+        emit(type: string, data: TestEvent["data"]): Promise<void>
+        format(fn: FormatFn): void
+        output(fn: OutputFn): void
+        spec(options?: SpecOptions): FormatFn
+        html(): FormatFn
+    }
+
+    // --- harness ---
+
+    // One isolated set of everything the package exports. The named exports
+    // below are the default one; `createTAL()` hands out another.
+    interface TestHarness {
+        after: typeof after
+        before: typeof before
+        describe: SuiteAPI
+        it: TestAPI
+        reporter: Reporter
+        run: typeof run
+        strict: Assert
+        suite: SuiteAPI
+        test: TestAPI
+    }
+}
+
+export declare const suite: TAL.SuiteAPI
+
+export declare const describe: TAL.SuiteAPI
+
+export declare const test: TAL.TestAPI
+
+export declare const it: TAL.TestAPI
+
+export declare function before(fn: TAL.HookFn): void
+
+export declare function after(fn: TAL.HookFn): void
+
+export declare const strict: TAL.Assert
+
+export declare const reporter: TAL.Reporter
+
+export declare function createTAL(): TAL.TestHarness
+
+/**
+ * Runs every registered test, then resets the registry and the reporter.
+ * Resolves once all tests and hooks have finished, the formatter has ended
+ * and any asynchronous output has completed.
+ */
+export declare function run(): Promise<TAL.TestSummary>

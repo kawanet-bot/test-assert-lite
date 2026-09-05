@@ -1,0 +1,66 @@
+{
+  "name": "test-assert-lite",
+  "description": "A subset of node:test and node:assert that runs in browsers",
+  "version": "0.0.1",
+  "author": "Kawanet",
+  "bugs": {
+    "url": "https://github.com/kawanet/test-assert-lite/issues"
+  },
+  "devDependencies": {
+    "@rollup/plugin-alias": "^6.0.0",
+    "@rollup/plugin-multi-entry": "^7.1.0",
+    "@rollup/plugin-node-resolve": "^16.0.3",
+    "@rollup/plugin-sucrase": "^5.1.0",
+    "@types/node": "^24.13.3",
+    "rollup": "^4.63.1",
+    "ts-refine": "^0.6.3",
+    "typescript": "^6.0.3"
+  },
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": ">=22.18.0",
+      "onFail": "warn"
+    }
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./types/test-assert-lite.d.ts",
+      "import": "./dist/test-assert-lite.mjs"
+    }
+  },
+  "files": [
+    "LICENSE",
+    "README.md",
+    "dist/test-assert-lite.mjs",
+    "types/*.d.ts"
+  ],
+  "homepage": "https://github.com/kawanet/test-assert-lite#readme",
+  "keywords": [
+    "assert",
+    "browser",
+    "node:assert",
+    "node:test",
+    "test"
+  ],
+  "license": "MIT",
+  "main": "./dist/test-assert-lite.mjs",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kawanet/test-assert-lite.git"
+  },
+  "scripts": {
+    "build": "make -C builder",
+    "fixpack": "fixpack",
+    "prepack": "make -C builder is-buildable",
+    "prepare": "make -C builder is-not-buildable 2> /dev/null || make -C builder clean all test",
+    "test": "make -C builder test",
+    "ts-refine": "./node_modules/.bin/ts-refine format && ./node_modules/.bin/ts-refine imports"
+  },
+  "sideEffects": false,
+  "type": "module",
+  "types": "./types/test-assert-lite.d.ts"
+}
