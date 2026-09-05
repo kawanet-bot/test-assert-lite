@@ -1,6 +1,6 @@
 import type * as declared from "test-assert-lite"
-import {html} from "./html.ts"
-import {spec} from "./spec.ts"
+import {html} from "./reporter/html.ts"
+import {spec} from "./reporter/spec.ts"
 
 type TestEvent = declared.TAL.TestEvent
 type FormatFn = declared.TAL.FormatFn

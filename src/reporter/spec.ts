@@ -1,5 +1,6 @@
 import type * as declared from "test-assert-lite"
-import {errorText, isSubtestsFailed} from "./common/test-failure.ts"
+import {errorText} from "../common/stringify.ts"
+import {isSubtestsFailed} from "../common/tester-error.ts"
 
 type TestEvent = declared.TAL.TestEvent
 type FormatFn = declared.TAL.FormatFn

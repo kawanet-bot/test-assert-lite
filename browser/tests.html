@@ -5,19 +5,15 @@
     <title>test-assert-lite browser test</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <link rel="stylesheet" href="../styles/test-assert-lite.css"/>
-    <style>
-        body { font-family: system-ui, sans-serif; padding: 1em; }
-        ul { list-style: none; padding: 0; }
-    </style>
 </head>
 <body>
 <h1>test-assert-lite browser test</h1>
-<ul id="output"></ul>
+<div id="output"></div>
 <script src="../dist/test-assert-lite.min.js"></script>
 <script src="./tests/bundled.js"></script>
 <script>
     TAL.reporter.format(TAL.reporter.html());
-    TAL.reporter.output(text => document.getElementById("output").insertAdjacentHTML("beforeend", text));
+    TAL.reporter.output(text => document.querySelector("#output")?.insertAdjacentHTML("beforeend", text));
     TAL.run().then(summary => (window.testSummary = summary));
 </script>
 </body>

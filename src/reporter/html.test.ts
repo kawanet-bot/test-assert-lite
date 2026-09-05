@@ -1,6 +1,6 @@
 import {strict as assert} from "node:assert"
 import {describe, it} from "node:test"
-import {createTAL} from "./index.ts"
+import {createTAL} from "../index.ts"
 
 const TITLE = "html.test.ts"
 
@@ -32,10 +32,9 @@ describe(TITLE, () => {
             await reporter.emit("test:pass", pass("later", {skip: "not now"}))
         })
 
-        assert.match(out, /<span class="tal tal-suite">▶ suite<\/span>/)
-        assert.match(out, /&nbsp;&nbsp;<span class="tal tal-pass">✔ ok<\/span>/)
-        assert.match(out, /<span class="tal tal-skip">﹣ later<\/span> .* # not now/)
-        assert.equal(out.includes("<ul"), false)
+        assert.match(out, /<div class="tal-r "><span class="tal-suite">▶ suite/)
+        assert.match(out, /<div class="tal-r tal-i1"><span class="tal-pass">✔ ok/)
+        assert.match(out, /<div class="tal-r "><span class="tal-skip">﹣ later</)
     })
 
     it("escapes text and failure details", async () => {

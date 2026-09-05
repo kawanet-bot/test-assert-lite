@@ -1,5 +1,5 @@
 import type * as declared from "test-assert-lite"
-import {TestRunnerError, toError} from "./common/test-runner-error.ts"
+import {TesterError, testRunnerError} from "./common/tester-error.ts"
 import type {Args, HarnessState, TestNode} from "./suite.ts"
 import {nameOf, normalize} from "./suite.ts"
 
@@ -34,9 +34,9 @@ export interface RunState {
     harness: HarnessState
 }
 
-const timeoutAfter = (ms: number): {promise: Promise<never>, error: TestRunnerError, cancel: () => void} => {
+const timeoutAfter = (ms: number): {promise: Promise<never>, error: TesterError, cancel: () => void} => {
     let timer: ReturnType<typeof setTimeout>
-    const error = new TestRunnerError(`test timed out after ${ms}ms`, "testTimeoutFailure")
+    const error = new TesterError(`test timed out after ${ms}ms`, "testTimeoutFailure")
     const promise = new Promise<never>((_, reject) => {
         timer = setTimeout(() => reject(error), ms)
     })
@@ -196,7 +196,7 @@ export const runTest = async (state: RunState, node: TestNode, nesting: number, 
             if (outcome === "failed" || outcome === "cancelled") failedSubtests++
         }
     } catch (e) {
-        error = toError(e, "testCodeFailure")
+        error = testRunnerError(e, "testCodeFailure")
     } finally {
         state.harness.inTestBody = wasInTestBody
         state.ancestors = outer
@@ -204,7 +204,7 @@ export const runTest = async (state: RunState, node: TestNode, nesting: number, 
 
     // A parent whose subtest failed fails in turn, as in node:test.
     if (error == null && failedSubtests) {
-        error = new TestRunnerError(`${failedSubtests} subtest${failedSubtests === 1 ? "" : "s"} failed`, "subtestsFailed")
+        error = new TesterError(`${failedSubtests} subtest${failedSubtests === 1 ? "" : "s"} failed`, "subtestsFailed")
     }
 
     const duration_ms = performance.now() - started

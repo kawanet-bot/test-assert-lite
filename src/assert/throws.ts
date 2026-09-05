@@ -20,11 +20,6 @@ const attempt = (block: () => unknown): {thrown: unknown} | null => {
     }
 }
 
-const fail = (message: string | Error, operator: string, values?: {actual?: unknown, expected?: unknown}): never => {
-    if (isError(message)) throw message
-    throw new AssertionError({message, operator, ...values})
-}
-
 const isErrorClass = (fn: Function): boolean => fn === Error || Error.prototype.isPrototypeOf(fn.prototype)
 
 // The properties an object matcher asks for. name and message come along
@@ -69,7 +64,13 @@ export const throws = (block: () => unknown, ...rest: [expected?: Predicate | st
     if (expected != null && !isPredicate(expected)) throw invalid()
 
     const caught = attempt(block)
-    if (caught == null) return fail(message ?? "expected to throw, did not", "throws")
+    if (caught == null) {
+        if (isError(message)) throw message
+        throw new AssertionError({
+            message: message ?? "expected to throw, did not",
+            operator: "throws",
+        })
+    }
     const {thrown} = caught
 
     // A message equal to what was thrown was meant as a matcher; node:assert
@@ -79,7 +80,11 @@ export const throws = (block: () => unknown, ...rest: [expected?: Predicate | st
     if (messageOnly && said === message) throw invalid()
 
     if (expected != null && !matches(thrown, expected)) {
-        fail(message ?? `${stringify(thrown)} did not match the expected error`, "throws", {actual: thrown, expected})
+        if (isError(message)) throw message
+        throw new AssertionError({
+            message: message ?? `${stringify(thrown)} did not match the expected error`,
+            operator: "throws", actual: thrown, expected,
+        })
     }
 }
 
@@ -99,5 +104,9 @@ export const doesNotThrow = (block: () => unknown, expected?: declared.TAL.Error
     const {thrown} = caught
     if (filter != null && !matches(thrown, filter)) throw thrown
 
-    fail(note ?? `expected not to throw, got: ${stringify(thrown)}`, "doesNotThrow", {actual: thrown})
+    if (isError(note)) throw note
+    throw new AssertionError({
+        message: note ?? `expected not to throw, got: ${stringify(thrown)}`,
+        operator: "doesNotThrow", actual: thrown,
+    })
 }

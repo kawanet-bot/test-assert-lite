@@ -5,11 +5,14 @@ interface AssertionErrorOptions {
     operator: string
 }
 
+// https://github.com/nodejs/node/blob/main/lib/internal/errors.js
+const ERR_ASSERTION = "ERR_ASSERTION"
+
 // Carries a failure. Keeping actual / expected structured rather than only
 // in the message leaves room for an HTML reporter to diff them later. The
 // constructor stays out of the public declarations.
 export class AssertionError extends Error {
-    readonly code = "ERR_ASSERTION"
+    readonly code = ERR_ASSERTION
     readonly actual: unknown
     readonly expected: unknown
     readonly operator: string

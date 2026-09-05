@@ -1,14 +1,49 @@
-.tal {
+.tal-r {
     font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
 }
 
-.tal-pass { color: #188038; }
-.tal-fail, .tal-error { color: #c5221f; }
-.tal-skip, .tal-info, .tal-suite { color: #5f6368; }
-.tal-warn { color: #b06000; }
+.tal-pass {
+    color: #188038;
+}
+
+.tal-fail, .tal-error {
+    color: #c5221f;
+}
+
+.tal-skip, .tal-info, .tal-suite {
+    color: #5f6368;
+}
+
+.tal-warn {
+    color: #b06000;
+}
 
 .tal-error pre {
     margin: 0.25em 0 1em;
     overflow-wrap: anywhere;
     white-space: pre-wrap;
+}
+
+.tal-i0 {
+    padding-left: 0;
+}
+
+.tal-i1 {
+    padding-left: 2em;
+}
+
+.tal-i2 {
+    padding-left: 4em;
+}
+
+.tal-i3 {
+    padding-left: 6em;
+}
+
+.tal-i4 {
+    padding-left: 8em;
+}
+
+.tal-i5 {
+    padding-left: 10em;
 }
