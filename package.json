@@ -3,6 +3,9 @@
   "description": "A subset of node:test and node:assert that runs in browsers",
   "version": "0.0.1",
   "author": "Kawanet",
+  "bin": {
+    "test-assert": "./dist/test-assert-lite.cli.mjs"
+  },
   "bugs": {
     "url": "https://github.com/kawanet/test-assert-lite/issues"
   },
@@ -43,6 +46,7 @@
     "browser/import.js",
     "browser/package.json",
     "dist/package.json",
+    "dist/test-assert-lite.cli.mjs",
     "dist/test-assert-lite.min.js",
     "styles/*.css",
     "dist/test-assert-lite.mjs",

@@ -38,12 +38,32 @@ unpack:
 	[ -e ../../package.json ] || cp package.json ../../
 	cd ../.. && npm install ./builder/pack/packed.tgz --no-audit --no-fund --no-save --engine-strict
 
-test: test-bundled test-iife
+test: test-bundled test-bin test-cli test-iife
 
 # Resolves through node_modules after `unpack`; inside a checkout the
 # package name self-references dist/ instead.
 test-bundled:
 	cd ../.. && node builder/tests/bundled.mjs
+
+# npm accepts a broken bin mapping silently -- the .bin link is just
+# never created -- so assert the link exists, resolves and is executable.
+# Launching the file itself is test-cli's job.
+test-bin:
+	[ -x ../../node_modules/.bin/test-assert ]
+
+# The CLI end to end -- shebang, executable bit, exit code -- against
+# $(PKG_ROOT). The fixtures are staged at $(PKG_ROOT) itself rather than
+# run from sample/ in place: a bare "test-assert-lite" import
+# self-references from wherever the importing file sits, and sample/ sits
+# under the checkout root, which always self-references the checkout's
+# own dist/ -- moving the fixture under $(PKG_ROOT) makes it
+# self-reference the same dist/ the co-located CLI does, whichever copy
+# that is.
+test-cli:
+	cd ../.. && cp sample/pass.mjs sample/fail.mjs $(PKG_ROOT)/
+	cd ../.. && ./$(PKG_ROOT)/dist/test-assert-lite.cli.mjs $(PKG_ROOT)/pass.mjs
+	cd ../.. && ! ./$(PKG_ROOT)/dist/test-assert-lite.cli.mjs $(PKG_ROOT)/fail.mjs
+	cd ../.. && rm -f $(PKG_ROOT)/pass.mjs $(PKG_ROOT)/fail.mjs
 
 # Script-context run of the minified bundle under $(PKG_ROOT): the browser
 # IIFE consumer shape; in the default root it also proves the tarball
@@ -54,9 +74,9 @@ test-iife:
 # Publish gate: the same behavior checks, run against the checkout's own
 # staged artifacts in place -- no tarball install involved.
 test-dist:
-	$(MAKE) test-bundled test-iife PKG_ROOT=.
+	$(MAKE) test-bundled test-cli test-iife PKG_ROOT=.
 
 clean:
 	/bin/rm -f *.tgz
 
-.PHONY: all pack bundled unpack test test-bundled test-iife test-dist clean
+.PHONY: all pack bundled unpack test test-bundled test-bin test-cli test-iife test-dist clean

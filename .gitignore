@@ -3,6 +3,7 @@
 *.mjs
 !browser/import.js
 !browser/tests.cli.mjs
+!sample/*.mjs
 *.tgz
 *~
 .DS_Store
