@@ -81,7 +81,7 @@ describe(TITLE, () => {
         })
         const summary = await local.run()
 
-        assert.equal(order.join(" | "), ["parent start", "child", "parent end"].join(" | "))
+        assert.deepEqual(order, ["parent start", "child", "parent end"])
         assert.equal(summary.counts.tests, 2)
     })
 
@@ -100,7 +100,7 @@ describe(TITLE, () => {
         })
         const summary = await local.run()
 
-        assert.equal(order.join(" | "), ["parent body", "child"].join(" | "))
+        assert.deepEqual(order, ["parent body", "child"])
         assert.equal(summary.counts.tests, 2)
         assert.equal(summary.counts.passed, 2)
     })
@@ -205,7 +205,7 @@ describe(TITLE, () => {
         local.it(() => undefined)
         await local.run()
 
-        assert.equal(names(events, "test:pass").join(" | "), ["namedFn", "<anonymous>"].join(" | "))
+        assert.deepEqual(names(events, "test:pass"), ["namedFn", "<anonymous>"])
     })
 
     // An Error is reported as thrown so its own fields stay reachable;
@@ -245,7 +245,7 @@ describe(TITLE, () => {
         })
         await local.run()
 
-        assert.equal(order.join(" | "), ["child body", "after call"].join(" | "))
+        assert.deepEqual(order, ["child body", "after call"])
     })
 
     // node:test runs subtests one at a time. Without that, a slow first
@@ -267,8 +267,8 @@ describe(TITLE, () => {
         })
         await local.run()
 
-        assert.equal(order.join(" | "), ["slow start", "slow end", "fast"].join(" | "))
-        assert.equal(names(events, "test:start").join(" | "), ["parent", "slow", "fast"].join(" | "))
+        assert.deepEqual(order, ["slow start", "slow end", "fast"])
+        assert.deepEqual(names(events, "test:start"), ["parent", "slow", "fast"])
     })
 
     // node:test keeps the skip on the failure event and counts the parent as
@@ -287,7 +287,7 @@ describe(TITLE, () => {
         const parent = ofType(events, "test:fail").find(e => e.data.name === "parent")?.data
         assert.equal(parent?.skip, "why")
         assert.equal((parent?.details.error as {failureType?: string}).failureType, "subtestsFailed")
-        assert.equal(JSON.stringify(summary.counts), JSON.stringify({tests: 2, suites: 0, passed: 0, failed: 1, cancelled: 0, skipped: 1}))
+        assert.deepEqual(summary.counts, {tests: 2, suites: 0, passed: 0, failed: 1, cancelled: 0, skipped: 1})
         assert.equal(summary.success, false)
     })
 
@@ -301,6 +301,6 @@ describe(TITLE, () => {
         await local.run()
 
         const numbered = ofType(events, "test:pass").map(e => `${e.data.name}#${e.data.testNumber}`)
-        assert.equal(numbered.join(" | "), ["c1#1", "c2#2", "parent#1"].join(" | "))
+        assert.deepEqual(numbered, ["c1#1", "c2#2", "parent#1"])
     })
 })

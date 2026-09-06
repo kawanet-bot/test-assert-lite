@@ -78,8 +78,12 @@ export declare namespace TAL {
         fail(message?: string | Error): never
         equal(actual: unknown, expected: unknown, message?: string | Error): void
         notEqual(actual: unknown, expected: unknown, message?: string | Error): void
+        deepEqual(actual: unknown, expected: unknown, message?: string | Error): void
+        notDeepEqual(actual: unknown, expected: unknown, message?: string | Error): void
         strictEqual(actual: unknown, expected: unknown, message?: string | Error): void
         notStrictEqual(actual: unknown, expected: unknown, message?: string | Error): void
+        deepStrictEqual(actual: unknown, expected: unknown, message?: string | Error): void
+        notDeepStrictEqual(actual: unknown, expected: unknown, message?: string | Error): void
         // As in node:assert, a string in the second position is the message.
         throws(block: () => unknown, message?: string): void
         throws(block: () => unknown, expected: AssertPredicate | undefined, message?: string | Error): void

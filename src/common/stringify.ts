@@ -9,7 +9,14 @@ export const stringify = (value: unknown, nest: number = 0): string => {
     if ("string" === typeof value) return JSON.stringify(value)
     if (isError(value)) return `${value.name}: ${value.message}`
     if (Array.isArray(value)) return `[${value.length && nest > 1 ? "..." : value.map(v => stringify(v, nest + 1))}]`
-    return String(value)
+
+    // A null-prototype object, or one with a broken toString, throws out of
+    // String(). Object.prototype.toString.call() never does.
+    try {
+        return String(value)
+    } catch {
+        return Object.prototype.toString.call(value)
+    }
 }
 
 // node:test wraps failures in ERR_TEST_FAILURE, while TAL only wraps values

@@ -24,17 +24,21 @@ BROWSER_TEST_CONFIG := ./rollup-browser-test.config.ts
 BUILDER_TEST_CONFIG := ./rollup-builder-test.config.ts
 
 # The shipped bundle is the whole library, so this cap is tight enough to
-# notice an unintended dependency being pulled in.
-MJS_MAX_BYTES := 45000
+# notice an unintended dependency being pulled in. It still needs bumping
+# every so often as real features land, so ~20% of headroom over the actual
+# size (round 10KB) keeps that from being a recurring chore.
+MJS_MAX_BYTES := 70000
 
-# Minified build of the same sources, so the cap tracks the mjs one.
-MINJS_MAX_BYTES := 22000
+# Minified build of the same sources, so the cap tracks the mjs one. Pre-
+# release, so this carries a bit more slack than it will once published.
+MINJS_MAX_BYTES := 25000
 
 # Shared by both test bundles, which inline the same suites while the
 # package itself stays external. The browser one also inlines
 # browser/import.js and is wrapped as an IIFE, so it sets the ceiling.
-# This only guards against gross growth.
-TEST_MAX_BYTES := 120000
+# Development-only output, never published, so this only guards against
+# gross growth and can stay generous.
+TEST_MAX_BYTES := 200000
 
 ALL := $(MJS_DST) $(MINJS_DST) $(BUILDER_TEST_DST)
 

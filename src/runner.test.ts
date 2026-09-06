@@ -61,7 +61,7 @@ describe(TITLE, () => {
         })
         await local.run()
 
-        assert.equal(order.join(" | "), ["1", "2"].join(" | "))
+        assert.deepEqual(order, ["1", "2"])
     })
 
     it("summary is emitted last and matches the return value", async () => {
@@ -72,7 +72,7 @@ describe(TITLE, () => {
 
         const last = events.at(-1)
         assert.equal(last?.type, "test:summary")
-        assert.equal(JSON.stringify(last?.data), JSON.stringify(summary))
+        assert.deepEqual(last?.data, summary)
     })
 
     // The caller can read tests to tell an empty run from a successful one.
@@ -94,10 +94,10 @@ describe(TITLE, () => {
         const messages = events
             .filter(e => e.type === "test:diagnostic")
             .map(e => e.data.message)
-        assert.equal(messages.join(" | "), [
+        assert.deepEqual(messages, [
             "tests 1", "suites 0", "pass 1", "fail 0", "cancelled 0", "skipped 0",
             messages.at(-1),
-        ].join(" | "))
+        ])
         assert.ok(String(messages.at(-1)).startsWith("duration_ms "))
     })
 

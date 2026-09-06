@@ -1,5 +1,6 @@
 import type * as declared from "test-assert-lite"
 import {AssertionError} from "./assert/assertion-error.ts"
+import {deepEqual, notDeepEqual} from "./assert/deep-equal.ts"
 import {doesNotThrow, throws} from "./assert/throws.ts"
 import {isError} from "./common/is-error.ts"
 import {stringify} from "./common/stringify.ts"
@@ -75,8 +76,12 @@ export const createAssert = (): AssertControl => {
         },
         equal,
         notEqual,
+        deepEqual,
+        notDeepEqual,
         strictEqual: equal,
         notStrictEqual: notEqual,
+        deepStrictEqual: deepEqual,
+        notDeepStrictEqual: notDeepEqual,
         throws,
         doesNotThrow,
         match,
