@@ -57,10 +57,10 @@ test-bin:
 # scope, so the fixtures' bare import is not a self-reference to the
 # checkout and resolves through sample/node_modules instead, where a
 # symlink points at whichever copy is under test. Nothing is copied.
-# fail.mjs must fail; its output is noise in a green run, so it is dropped.
+# Only the exit codes matter here, so neither run's output is shown.
 test-cli:
 	cd ../.. && mkdir -p sample/node_modules && ln -sfn $$(realpath $(PKG_ROOT)) sample/node_modules/test-assert-lite
-	cd ../.. && ./$(PKG_ROOT)/dist/test-assert-lite.cli.mjs sample/pass.mjs
+	cd ../.. && ./$(PKG_ROOT)/dist/test-assert-lite.cli.mjs sample/pass.mjs > /dev/null 2>&1
 	cd ../.. && ! ./$(PKG_ROOT)/dist/test-assert-lite.cli.mjs sample/fail.mjs > /dev/null 2>&1
 
 # Script-context run of the minified bundle under $(PKG_ROOT): the browser
