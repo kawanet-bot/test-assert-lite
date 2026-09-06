@@ -66,6 +66,22 @@ describe(TITLE, () => {
         assert.throws(() => TAL.deepEqual(view([0, 1, 2, 3], 1, 2), view([0, 1, 9, 3], 1, 2)), /deep-equal/)
     })
 
+    // A DataView from another realm (an iframe, a vm context) fails
+    // `instanceof DataView` here while still reaching this library's
+    // `ArrayBuffer.isView()` branch; simulated by swapping the prototype
+    // rather than an actual vm context, which a browser run has no access to.
+    it("compares a DataView that fails instanceof DataView (e.g. cross-realm)", () => {
+        // One shared prototype, the way a real foreign realm has exactly one
+        // DataView.prototype of its own - two different plain objects here
+        // would fail the prototype-equality check for an unrelated reason.
+        const foreignProto = {[Symbol.toStringTag]: "DataView"}
+        const foreign = (bytes: number[]): DataView =>
+            Object.setPrototypeOf(new DataView(new Uint8Array(bytes).buffer), foreignProto)
+        assert.equal(foreign([1]) instanceof DataView, false)
+        assert.doesNotThrow(() => TAL.deepEqual(foreign([1, 2, 3]), foreign([1, 2, 3])))
+        assert.throws(() => TAL.deepEqual(foreign([1, 2, 3]), foreign([9, 9, 9])), /deep-equal/)
+    })
+
     // The byte comparison splits off any unaligned lead and tail (0-3 bytes
     // each) and reads the aligned middle 4 bytes at once; this exercises
     // every offset phase and enough lengths to cover a lead-only range, a

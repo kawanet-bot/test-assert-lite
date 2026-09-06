@@ -175,8 +175,11 @@ const isDeepEqual = (a: unknown, b: unknown, memo: Memo): boolean => {
             if (!sameBytes(typedArrayRange(new Uint8Array(a as ArrayBufferLike)), typedArrayRange(new Uint8Array(b as ArrayBufferLike)))) {
                 return false
             }
-        } else if (a instanceof DataView) {
-            if (!sameBytes(dataViewRange(a), dataViewRange(b as DataView))) return false
+        } else if (tag === "[object DataView]") {
+            // Tag rather than instanceof DataView: a cross-realm DataView
+            // (e.g. from an iframe or vm context) fails that check while
+            // still reaching this branch via ArrayBuffer.isView() below.
+            if (!sameBytes(dataViewRange(a as DataView), dataViewRange(b as DataView))) return false
         } else if (ArrayBuffer.isView(a)) {
             // Returned directly rather than falling through to the own-key
             // walk below: a typed array's own properties beyond its indices
