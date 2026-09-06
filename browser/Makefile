@@ -40,7 +40,7 @@ install-browser: install-playwright
 # `install` here keeps a plain `make -C browser test` self-sufficient. It is
 # cheap once Playwright and the browser are present (see LAUNCHABLE).
 test: all install
-	cd .. && node browser/tests.cli.mjs
+	cd .. && node browser/tests.cli.mjs browser/tests/bundled.js
 
 # Browser bundle cleanup remains owned by builder/Makefile.
 clean:

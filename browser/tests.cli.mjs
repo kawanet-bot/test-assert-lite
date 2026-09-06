@@ -1,7 +1,27 @@
-import {chromium} from "playwright"
-import {fileURLToPath, pathToFileURL} from "node:url"
+// Browser counterpart of src/cli/test-assert-lite.cli.ts: the library and
+// the given test bundles are injected into a blank page, so no HTML file
+// is needed. Chromium refuses file:// scripts from about:blank, which is
+// why the files go through addScriptTag rather than <script src>.
 
-const html = fileURLToPath(new URL("./tests.html", import.meta.url))
+import {chromium} from "playwright"
+import {resolve} from "node:path"
+import {fileURLToPath} from "node:url"
+
+const USAGE = "Usage: node tests.cli.mjs <file...>\n"
+
+const lib = fileURLToPath(new URL("../dist/test-assert-lite.min.js", import.meta.url))
+
+const files = process.argv.slice(2)
+
+if (files.includes("-h") || files.includes("--help")) {
+    process.stdout.write(USAGE)
+    process.exit(0)
+}
+
+if (!files.length) {
+    process.stderr.write(USAGE)
+    process.exit(1)
+}
 
 const run = async () => {
     const browser = await chromium.launch()
@@ -10,16 +30,22 @@ const run = async () => {
         const page = await browser.newPage()
         const pageErrors = []
         page.on("pageerror", error => pageErrors.push(error))
+        // The default reporter writes to the page console; relay it so the
+        // output matches what the Node CLI shows.
+        page.on("console", msg => (msg.type() === "error" ? console.error : console.log)(msg.text()))
 
-        await page.goto(pathToFileURL(html).href)
+        await page.setContent(`<meta charset="utf-8">`)
+        await page.addScriptTag({path: lib})
+        for (const file of files) {
+            await page.addScriptTag({path: resolve(file)})
+        }
 
-        // Completion is a state, not a promise: the page publishes what
-        // run() resolved to, and an unfinished or broken page just never
-        // does -- so this times out instead of passing.
-        await page.waitForFunction(() => window.testSummary !== undefined, null, {timeout: 60_000})
-        const {counts, duration_ms, success} = await page.evaluate(() => window.testSummary)
-        const {failed, passed, skipped, tests} = counts
-        console.log(`${passed} passing, ${failed} failing, ${skipped} skipped (${tests} tests, ${Math.round(duration_ms)}ms)`)
+        // evaluate() resolves to what run() resolved to, so no polling and
+        // no timeout here: a hanging test hangs, the same as in node --test.
+        // The reporter already printed the totals; the summary only decides
+        // the exit status.
+        const {counts, success} = await page.evaluate(() => TAL.run())
+        const {failed, tests} = counts
 
         if (pageErrors.length) {
             throw new AggregateError(pageErrors, "Browser page errors occurred")
