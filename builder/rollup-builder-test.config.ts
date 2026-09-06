@@ -19,15 +19,6 @@ const rollupConfig: RollupOptions = {
     output: {
         file: "./tests/bundled.mjs",
         format: "esm",
-        // Nothing in the bundle calls run(), so the entry point is appended
-        // here. A dynamic import reaches the same module instance as the
-        // external import above, and avoids depending on bundled identifiers.
-        // The bundle may already bind names such as `run`, so the entry point
-        // stays anonymous rather than destructuring the namespace.
-        outro: [
-            "",
-            'process.exitCode = (await (await import("test-assert-lite")).run()).success ? 0 : 1',
-        ].join("\n"),
     },
 
     // Registration happens through side effects only. With tree shaking on,

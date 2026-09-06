@@ -41,9 +41,12 @@ unpack:
 test: test-bundled test-bin test-cli test-iife
 
 # Resolves through node_modules after `unpack`; inside a checkout the
-# package name self-references dist/ instead.
+# package name self-references dist/ instead. The bundle only registers
+# tests as a side effect and never calls run() itself, so it needs a
+# runner -- this is TAL's own CLI, the way the sibling equivalent of this
+# file is run with `node --test` instead.
 test-bundled:
-	cd ../.. && node builder/tests/bundled.mjs
+	cd ../.. && ./dist/test-assert-lite.cli.mjs builder/tests/bundled.mjs
 
 # npm accepts a broken bin mapping silently -- the .bin link is just
 # never created -- so assert the link exists, resolves and is executable.

@@ -139,9 +139,11 @@ test:
 
 # The suites run twice: once under node:test, then again under the library
 # itself, so a regression in the runner cannot hide behind the real one.
+# The second run goes through the CLI: the bundle only registers tests as
+# a side effect and never calls run() itself.
 test-full: test-quick
 	cd .. && node --test 'src/**/*.test.ts'
-	cd .. && node $(BUILDER_TEST_DST:./%=builder/%)
+	cd .. && ./$(CLI_DST:../%=%) $(BUILDER_TEST_DST:./%=builder/%)
 
 test-quick: all
 	cd .. && node_modules/.bin/tsc --noEmit
