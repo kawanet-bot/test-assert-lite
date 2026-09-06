@@ -28,7 +28,6 @@ export const tap = (): FormatFn => async function* (source: AsyncIterable<TestEv
     // arrives, emit the parents still pending as headings.
     const stack: declared.TAL.TestStart[] = []
     let number = 0
-    let summary: declared.TAL.TestSummary | undefined
 
     yield "TAP version 13\n"
 
@@ -38,17 +37,16 @@ export const tap = (): FormatFn => async function* (source: AsyncIterable<TestEv
             continue
         }
 
-        // Recorded for the trailing summary line, not forwarded as a
-        // comment: node:test emits one of these per file plus one for the
-        // whole run, and only the last carries the true combined counts.
-        if (event.type === "test:summary") {
-            summary = event.data
+        // Forwarded as is, run() count and all: TAP has no standard summary
+        // syntax of its own, so there is no fixed shape here to duplicate.
+        if (event.type === "test:diagnostic") {
+            yield `# ${escapeText(event.data.message)}\n`
             continue
         }
 
         // emit() accepts any type, so check for a result event rather than
-        // assuming one. An unknown type is dropped, as node:test's own
-        // reporters do.
+        // assuming one. test:summary and an unknown type both fall through
+        // and are dropped, as node:test's own reporters drop unknown ones.
         const isPass = event.type === "test:pass"
         const isFail = event.type === "test:fail"
         if (!isPass && !isFail) continue
@@ -66,18 +64,4 @@ export const tap = (): FormatFn => async function* (source: AsyncIterable<TestEv
     }
 
     yield `1..${number}\n`
-
-    // Silently omitted without a summary: a caller that only emits
-    // standalone events never produces one, and node:test's own tap
-    // reporter has nothing to print in that case either.
-    if (summary) {
-        const {counts} = summary
-        yield `# tests ${counts.tests}\n`
-        yield `# suites ${counts.suites}\n`
-        yield `# pass ${counts.passed}\n`
-        yield `# fail ${counts.failed}\n`
-        yield `# cancelled ${counts.cancelled}\n`
-        yield `# skipped ${counts.skipped}\n`
-        yield `# duration_ms ${summary.duration_ms}\n`
-    }
 }

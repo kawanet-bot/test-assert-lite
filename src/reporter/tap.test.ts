@@ -150,44 +150,27 @@ describe(TITLE, () => {
         assert.match(out, /^ok 1 - S # SKIP$/m)
     })
 
-    // A timeout is filed under counts.cancelled, not counts.failed, in the
-    // harness's own summary; the footer must reflect that split rather
-    // than re-deriving it from failureType.
-    it("counts a timeout as cancelled, not failed, in the summary", async () => {
-        const local = createTAL()
-        const lines: string[] = []
-        local.reporter.format(local.reporter.tap())
-        local.reporter.output(text => {
-            lines.push(text)
-        })
-        local.it("times out", {timeout: 5}, () => new Promise(() => undefined))
-        await local.run()
+    // TAP has no standard summary syntax, so nothing here needs to
+    // recognize or drop the harness's own end-of-run tally: every
+    // diagnostic is forwarded exactly as spec()/html() forward it.
+    it("forwards a test:diagnostic message as a comment line", async () => {
+        const out = await render(r => r.emit("test:diagnostic", {
+            message: "tests 1", nesting: 0, level: "info",
+        }))
 
-        const out = lines.join("")
-        assert.match(out, /^# fail 0$/m)
-        assert.match(out, /^# cancelled 1$/m)
+        assert.match(out, /^# tests 1$/m)
     })
 
-    // node --test emits one test:summary per file plus one combined at the
-    // end; only the last carries the true totals, and only one footer
-    // should ever be written regardless of how many arrive.
-    it("uses only the last of several test:summary events for the footer", async () => {
-        const perFile = (tests: number, passed: number, failed: number) => ({
-            counts: {tests, suites: 0, passed, failed, cancelled: 0, skipped: 0},
-            duration_ms: 1, success: failed === 0,
-        })
+    it("drops a test:summary event without printing anything for it", async () => {
         const out = await render(async r => {
             await r.emit("test:pass", pass("a"))
-            await r.emit("test:summary", perFile(1, 1, 0))
-            await r.emit("test:fail", {...pass("b"), details: {duration_ms: 1, type: "test", error: new Error("x")}})
-            await r.emit("test:summary", perFile(1, 0, 1))
-            await r.emit("test:summary", perFile(2, 1, 1))
+            await r.emit("test:summary", {
+                counts: {tests: 42, suites: 42, passed: 42, failed: 42, cancelled: 42, skipped: 42},
+                duration_ms: 1, success: true,
+            })
         })
 
-        assert.match(out, /^1\.\.2$/m)
-        assert.match(out, /^# tests 2$/m)
-        assert.match(out, /^# pass 1$/m)
-        assert.match(out, /^# fail 1$/m)
+        assert.equal(out.includes("42"), false)
     })
 
     it("plans the exact count of points emitted", async () => {
