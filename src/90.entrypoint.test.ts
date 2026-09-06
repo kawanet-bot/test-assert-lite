@@ -53,6 +53,8 @@ test("assert surface", () => {
     assert.equal(typeof m.strict.notDeepEqual, "function")
     assert.equal(typeof m.strict.strictEqual, "function")
     assert.equal(typeof m.strict.notStrictEqual, "function")
+    assert.equal(typeof m.strict.deepStrictEqual, "function")
+    assert.equal(typeof m.strict.notDeepStrictEqual, "function")
     assert.equal(typeof m.strict.throws, "function")
     assert.equal(typeof m.strict.doesNotThrow, "function")
     assert.equal(typeof m.strict.match, "function")

@@ -80,6 +80,8 @@ export const createAssert = (): AssertControl => {
         notDeepEqual,
         strictEqual: equal,
         notStrictEqual: notEqual,
+        deepStrictEqual: deepEqual,
+        notDeepStrictEqual: notDeepEqual,
         throws,
         doesNotThrow,
         match,

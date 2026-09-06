@@ -14,6 +14,15 @@ const catchError = (fn: () => unknown): Error | undefined => {
 }
 
 describe(TITLE, () => {
+    // node:assert/strict exports deepStrictEqual/notDeepStrictEqual as the
+    // exact same function objects as deepEqual/notDeepEqual (confirmed via
+    // ===), the same way it does for equal/strictEqual; matched here for a
+    // caller that reaches for the more explicit name.
+    it("deepStrictEqual/notDeepStrictEqual are aliases of deepEqual/notDeepEqual", () => {
+        assert.equal(TAL.deepStrictEqual, TAL.deepEqual)
+        assert.equal(TAL.notDeepStrictEqual, TAL.notDeepEqual)
+    })
+
     it("compares primitives with Object.is semantics, like equal", () => {
         assert.doesNotThrow(() => TAL.deepEqual(NaN, NaN))
         assert.throws(() => TAL.deepEqual(0, -0), /deep-equal/)
