@@ -347,6 +347,33 @@ describe(TITLE, () => {
         assert.equal(summary.success, false)
     })
 
+    // node:test reports a child still in flight as cancelled the moment its
+    // parent times out, ahead of the parent, and ignores the child's own
+    // verdict when its body settles later.
+    it("a parent's timeout cancels the subtest still running", async () => {
+        const local = createTAL()
+        const events = capture(local.reporter)
+        let childSettled = false
+        local.it("parent", {timeout: 10}, async (t) => {
+            void t.test("child", async () => {
+                await new Promise(r => setTimeout(r, 40))
+                childSettled = true
+            })
+            await new Promise(r => setTimeout(r, 100))
+        })
+        local.it("next", () => undefined)
+        const summary = await local.run()
+
+        assert.equal(childSettled, true)
+        const results = events
+            .filter(e => e.type === "test:pass" || e.type === "test:fail")
+            .map(e => `${e.data.name}@${e.data.nesting}#${e.data.testNumber}`)
+        assert.deepEqual(results, ["child@1#1", "parent@0#1", "next@0#2"])
+        const child = ofType(events, "test:fail").find(e => e.data.name === "child")?.data
+        assert.equal((child?.details.error as {failureType?: string}).failureType, "cancelledByParent")
+        assert.deepEqual(summary.counts, {tests: 3, suites: 0, passed: 1, failed: 0, cancelled: 2, skipped: 0})
+    })
+
     // node:test does not run a skipped late subtest, keeps its skip on the
     // failure event, and counts it as skipped.
     it("a skipped subtest after the timeout stays skipped", async () => {

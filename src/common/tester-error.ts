@@ -32,3 +32,8 @@ export const testRunnerError = (thrown: unknown, failureType: FailureType): Erro
 export const isTesterError = (error: unknown): error is TesterError => (isError(error) && (error as declared.TAL.TesterError).code === ERR_TEST_FAILURE)
 
 export const isSubtestsFailed = (error: unknown): boolean => isTesterError(error) && error.failureType === "subtestsFailed"
+
+const CANCELLED_MESSAGE = "test did not finish before its parent and was cancelled"
+
+// The verdict of a test its parent gave up on before it could finish.
+export const cancelledByParent = (): TesterError => new TesterError(CANCELLED_MESSAGE, "cancelledByParent")

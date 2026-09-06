@@ -1,14 +1,10 @@
 import type * as declared from "test-assert-lite"
-import {TesterError, testRunnerError} from "./common/tester-error.ts"
+import {cancelledByParent, TesterError, testRunnerError} from "./common/tester-error.ts"
 import type {ReporterControl} from "./reporter.ts"
 import type {HarnessState, SuiteNode} from "./suite.ts"
 import {resetHarnessState} from "./suite.ts"
 import type {Outcome, RunState} from "./tester.ts"
 import {abortTest, announceAncestors, runTest} from "./tester.ts"
-
-const CANCELLED_MESSAGE = "test did not finish before its parent and was cancelled"
-
-const cancelledByParent = (): TesterError => new TesterError(CANCELLED_MESSAGE, "cancelledByParent")
 
 // Runs the hooks in order and stops at the first failure, which is
 // returned as the error to charge to the suite.

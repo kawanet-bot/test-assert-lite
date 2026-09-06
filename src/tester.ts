@@ -1,5 +1,5 @@
 import type * as declared from "test-assert-lite"
-import {TesterError, testRunnerError} from "./common/tester-error.ts"
+import {cancelledByParent, TesterError, testRunnerError} from "./common/tester-error.ts"
 import type {Args, HarnessState, TestNode} from "./suite.ts"
 import {nameOf, normalize} from "./suite.ts"
 
@@ -70,12 +70,27 @@ const announce = async (state: RunState, self: Ancestor): Promise<void> => {
     await state.reporter.emit("test:start", {name: self.name, nesting: self.nesting})
 }
 
+// A subtest as its parent tracks it. When the parent times out, node:test
+// reports every child still in flight as cancelled at once, and the child's
+// own verdict, whenever its body settles, is no longer reported.
+interface Child {
+    name: string
+    nesting: number
+    testNumber: number
+    started: boolean
+    reported: boolean
+    // The child's own entry among the ancestors once its body runs, so a
+    // cancellation announces it once rather than twice.
+    ancestor?: Ancestor
+}
+
 interface Context extends declared.TAL.TestContext {
     skipped: string | true | undefined
     // Set once the test has been reported. What the body does after that
     // is late: node:test drops a diagnostic and fails a subtest.
     finished: boolean
     pending: Promise<Outcome>[]
+    children: Child[]
     // The tail of the subtest chain and how many are still running: node:test
     // runs subtests one at a time, so a new one waits for the previous one
     // whether awaited or not, but the first starts right away, synchronously.
@@ -91,6 +106,7 @@ const makeContext = (state: RunState, name: string, nesting: number): Context =>
         skipped: undefined,
         finished: false,
         pending: [],
+        children: [],
         last: Promise.resolve(),
         active: 0,
         subtests: 0,
@@ -115,10 +131,13 @@ const makeContext = (state: RunState, name: string, nesting: number): Context =>
                 return
             }
             const testNumber = ++context.subtests
+            const child: Child = {name: node.name, nesting: nesting + 1, testNumber, started: false, reported: false}
+            context.children.push(child)
             // Started here when nothing else is running, so the body reaches
             // its first await before t.test() returns, as in node:test.
-            const start = (): Promise<Outcome> => runTest(state, node, nesting + 1, testNumber).finally(() => {
+            const start = (): Promise<Outcome> => runTest(state, node, nesting + 1, testNumber, child).finally(() => {
                 context.active--
+                context.children.splice(context.children.indexOf(child), 1)
             })
             context.active++
             const promise = context.active === 1 ? start() : context.last.then(start)
@@ -160,6 +179,24 @@ const lateTest = async (state: RunState, node: TestNode): Promise<void> => {
     })
 }
 
+// Reports the children a timed-out parent leaves in flight as cancelled,
+// before the parent itself. One not yet started is counted here; one that
+// is running was counted when it started, and skips its own report later.
+const cancelChildren = async (state: RunState, context: Context): Promise<void> => {
+    for (const child of context.children) {
+        if (child.reported) continue
+        child.reported = true
+        if (!child.started) state.counters.tests++
+        state.counters.cancelled++
+        state.success = false
+        await announce(state, child.ancestor ?? {name: child.name, nesting: child.nesting, announced: false})
+        await state.reporter.emit("test:fail", {
+            name: child.name, nesting: child.nesting, testNumber: child.testNumber,
+            details: {duration_ms: 0, type: "test", error: cancelledByParent()},
+        })
+    }
+}
+
 const skipOf = (node: TestNode): string | true | undefined => {
     const {skip} = node.options
     return skip === true || "string" === typeof skip ? skip : undefined
@@ -190,14 +227,20 @@ export const abortTest = async (
     return outcome
 }
 
-export const runTest = async (state: RunState, node: TestNode, nesting: number, testNumber: number): Promise<Outcome> => {
+export const runTest = async (state: RunState, node: TestNode, nesting: number, testNumber: number, asChild?: Child): Promise<Outcome> => {
     const {counters} = state
     const skip = node.options.skip
     const skipped = skip === true || "string" === typeof skip
 
+    // Already reported as cancelled by the parent's timeout while queued.
+    if (asChild?.reported) return "cancelled"
     counters.tests++
     const started = performance.now()
     const self: Ancestor = {name: node.name, nesting, announced: false}
+    if (asChild != null) {
+        asChild.started = true
+        asChild.ancestor = self
+    }
 
     if (skipped || node.fn == null) {
         if (skipped) counters.skipped++
@@ -232,7 +275,10 @@ export const runTest = async (state: RunState, node: TestNode, nesting: number, 
             } catch (e) {
                 timedOut = e === timer.error
                 // The body goes on; the run ends only once it has settled.
-                if (timedOut) state.lingering.push(body, ...context.pending)
+                if (timedOut) {
+                    state.lingering.push(body, ...context.pending)
+                    await cancelChildren(state, context)
+                }
                 throw e
             } finally {
                 timer.cancel()
@@ -262,6 +308,11 @@ export const runTest = async (state: RunState, node: TestNode, nesting: number, 
     // output is slow already sees itself as reported.
     context.finished = true
     const duration_ms = performance.now() - started
+
+    // The parent's timeout already reported this test as cancelled.
+    if (asChild?.reported) return "cancelled"
+    if (asChild != null) asChild.reported = true
+
     await announce(state, self)
     const runtimeSkip = context.skipped
 
