@@ -21,14 +21,6 @@ interface Verdict {
     outcome: Outcome
 }
 
-// A body the run stopped waiting for at a timeout. It is given as long
-// again as the timeout to settle, so what it does meanwhile stays in the
-// run, while one that never settles cannot hold the run open.
-interface Lingering {
-    promise: Promise<unknown>
-    until: number
-}
-
 // What one run() shares with every test in it.
 export interface Run {
     counters: Counters
@@ -38,12 +30,8 @@ export interface Run {
     // body sees stays consistent within one run().
     assert: declared.TAL.AssertMethods
     harness: HarnessState
-    lingering: Set<Lingering>
-    // Wakes the root while it waits on lingering bodies: one of them may be
-    // waiting on a late subtest it just declared.
-    wake: (() => void) | undefined
-    // Set once the root has nothing left to run. A subtest declared after
-    // that has no run to belong to and is dropped, as a diagnostic is.
+    // Set once the root has nothing left to run. A body that outlived its
+    // verdict is not waited for; what it does after this is dropped.
     closed: boolean
 }
 
@@ -231,7 +219,6 @@ export class Test {
         while (root.parent != null) root = root.parent
         const child = root.declare("test", name, options, fn)
         child.late = parentAlreadyFinished()
-        this.run.wake?.()
         return new Promise((resolve) => {
             child.onDone = resolve
         })
@@ -413,28 +400,14 @@ export class Test {
         return undefined
     }
 
-    // Waits on the timed out bodies up to the latest deadline among them,
-    // for a late subtest to join the line. A body may be waiting on a late
-    // subtest of its own, so the wait also ends as soon as one arrives.
-    // True means there is more to run; false closes the run.
+    // Once the registered tests and the after hooks are done, what is
+    // declared by then is all that is left: a body that outlived its
+    // timeout is not waited for. One turn is given, since a body that was
+    // awaiting the last late subtest resumes only then and may declare more.
     private async drain(): Promise<boolean> {
-        const {run} = this
-        for (;;) {
-            if (this.children.some(child => !child.started && child.closedWith == null)) return true
-            const entries = [...run.lingering]
-            const wait = Math.max(...entries.map(entry => entry.until)) - performance.now()
-            if (!entries.length || wait <= 0) break
-            await new Promise<void>((resolve) => {
-                const timer = setTimeout(resolve, wait)
-                run.wake = resolve
-                void Promise.allSettled(entries.map(entry => entry.promise)).then(() => {
-                    clearTimeout(timer)
-                    resolve()
-                })
-            })
-            run.wake = undefined
-        }
-        run.closed = true
+        await new Promise(resolve => setTimeout(resolve, 0))
+        if (this.children.some(child => !child.started && child.closedWith == null)) return true
+        this.run.closed = true
         return false
     }
 
@@ -464,11 +437,7 @@ export class Test {
                 } catch (e) {
                     // A timer firing after the parent already closed this
                     // test changes nothing: the parent reported it.
-                    if (e === timer.error && !this.settled) {
-                        closed = this.settle(timer.error, true)
-                        const until = performance.now() + timeout
-                        for (const promise of [body, ...this.pending]) this.linger(promise, until)
-                    }
+                    if (e === timer.error && !this.settled) closed = this.settle(timer.error, true)
                     throw e
                 } finally {
                     timer.cancel()
@@ -495,13 +464,6 @@ export class Test {
         }
         // A body that ended with subtests still running gives up on them.
         return this.settle(error)
-    }
-
-    // Keeps a promise until it settles, whichever way, or until the deadline.
-    private linger(promise: Promise<unknown>, until: number): void {
-        const entry: Lingering = {promise, until}
-        this.run.lingering.add(entry)
-        promise.finally(() => this.run.lingering.delete(entry)).catch(() => undefined)
     }
 
     // ---- reporting ----
