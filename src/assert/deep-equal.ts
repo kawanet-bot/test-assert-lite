@@ -30,15 +30,30 @@ interface ByteRange {
 // Read through the intrinsic accessor rather than a's own byteLength/
 // byteOffset/buffer: a DataView or typed array subclass could otherwise
 // override one of those to make sameBytes() below see the wrong range.
+// `is` calls the same accessor just to see whether it throws, which is
+// also how a real DataView is told apart from, say, a typed array that
+// spoofs Symbol.toStringTag to claim it is one: instanceof cannot tell
+// (a cross-realm DataView fails it), and the tag can be lied about, but
+// the accessor itself checks the actual internal slot underneath either way.
 const byteRangeOf = (proto: object) => {
     const byteLength = Object.getOwnPropertyDescriptor(proto, "byteLength")!.get as (this: object) => number
     const byteOffset = Object.getOwnPropertyDescriptor(proto, "byteOffset")!.get as (this: object) => number
     const buffer = Object.getOwnPropertyDescriptor(proto, "buffer")!.get as (this: object) => ArrayBufferLike
-    return (v: object): ByteRange => ({buffer: buffer.call(v), byteOffset: byteOffset.call(v), byteLength: byteLength.call(v)})
+    return {
+        is: (v: object): boolean => {
+            try {
+                byteLength.call(v)
+                return true
+            } catch {
+                return false
+            }
+        },
+        read: (v: object): ByteRange => ({buffer: buffer.call(v), byteOffset: byteOffset.call(v), byteLength: byteLength.call(v)}),
+    }
 }
 
-const dataViewRange = byteRangeOf(DataView.prototype)
-const typedArrayRange = byteRangeOf(Object.getPrototypeOf(Uint8Array.prototype) as object)
+const dataView = byteRangeOf(DataView.prototype)
+const typedArray = byteRangeOf(Object.getPrototypeOf(Uint8Array.prototype) as object)
 
 // Exact for any binary content, unlike Object.is, which treats every NaN
 // payload as the same value. Falls back to comparing every byte when the
@@ -172,19 +187,19 @@ const isDeepEqual = (a: unknown, b: unknown, memo: Memo): boolean => {
             // Tag rather than instanceof SharedArrayBuffer: that global may
             // not exist in every environment, while nothing could carry
             // this tag there either, so the check is safe either way.
-            if (!sameBytes(typedArrayRange(new Uint8Array(a as ArrayBufferLike)), typedArrayRange(new Uint8Array(b as ArrayBufferLike)))) {
+            if (!sameBytes(typedArray.read(new Uint8Array(a as ArrayBufferLike)), typedArray.read(new Uint8Array(b as ArrayBufferLike)))) {
                 return false
             }
-        } else if (tag === "[object DataView]") {
-            // Tag rather than instanceof DataView: a cross-realm DataView
-            // (e.g. from an iframe or vm context) fails that check while
-            // still reaching this branch via ArrayBuffer.isView() below.
-            if (!sameBytes(dataViewRange(a as DataView), dataViewRange(b as DataView))) return false
+        } else if (dataView.is(a) && dataView.is(b)) {
+            // Neither instanceof DataView (fails cross-realm) nor the tag
+            // (a typed array can spoof Symbol.toStringTag to claim it too)
+            // would be safe here - see the brand-check comment on byteRangeOf.
+            if (!sameBytes(dataView.read(a), dataView.read(b))) return false
         } else if (ArrayBuffer.isView(a)) {
             // Returned directly rather than falling through to the own-key
             // walk below: a typed array's own properties beyond its indices
             // are not checked, unlike ArrayBuffer/DataView above.
-            return sameBytes(typedArrayRange(a as ArrayBufferView), typedArrayRange(b as ArrayBufferView))
+            return sameBytes(typedArray.read(a as ArrayBufferView), typedArray.read(b as ArrayBufferView))
         } else if (!isWalkable(tag)) {
             return false
         }

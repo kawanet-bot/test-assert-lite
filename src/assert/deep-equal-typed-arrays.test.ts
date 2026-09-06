@@ -82,6 +82,17 @@ describe(TITLE, () => {
         assert.throws(() => TAL.deepEqual(foreign([1, 2, 3]), foreign([9, 9, 9])), /deep-equal/)
     })
 
+    // A typed array can also spoof Symbol.toStringTag to claim it is a
+    // DataView; the tag alone cannot tell real DataViews apart from this,
+    // so the two must not be routed to the DataView-only intrinsics.
+    it("is not fooled by a typed array spoofing the DataView tag", () => {
+        const fake = (bytes: number[]): Uint8Array =>
+            Object.defineProperty(new Uint8Array(bytes), Symbol.toStringTag, {get: () => "DataView", configurable: true})
+        assert.equal(Object.prototype.toString.call(fake([])), "[object DataView]")
+        assert.doesNotThrow(() => TAL.deepEqual(fake([1, 2, 3]), fake([1, 2, 3])))
+        assert.throws(() => TAL.deepEqual(fake([1, 2, 3]), fake([9, 9, 9])), /deep-equal/)
+    })
+
     // The byte comparison splits off any unaligned lead and tail (0-3 bytes
     // each) and reads the aligned middle 4 bytes at once; this exercises
     // every offset phase and enough lengths to cover a lead-only range, a
