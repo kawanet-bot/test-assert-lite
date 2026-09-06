@@ -22,11 +22,13 @@ const resultLine = (data: declared.TAL.TestPass | declared.TAL.TestFail, isPass:
 // own dump of every Error property is detail this reporter does not match.
 const errorBlock = (error: Error): string => `  ---\n  message: ${JSON.stringify(oneLine(errorText(error)))}\n  ...\n`
 
+// node:test's own event carries this beyond what TAL's own summary does;
+// reading it is how the final, whole-run summary is told apart below.
+const fileOf = (data: object): string | undefined => (data as {file?: string}).file
+
 export const tap = (): FormatFn => async function* (source: AsyncIterable<TestEvent>): AsyncIterable<string> {
     let testNumber = 0
-    let passed = 0
-    let failed = 0
-    let skipped = 0
+    let counts: declared.TAL.TestSummary["counts"] | undefined
 
     yield "TAP version 13\n"
 
@@ -41,6 +43,14 @@ export const tap = (): FormatFn => async function* (source: AsyncIterable<TestEv
             continue
         }
 
+        if (event.type === "test:summary") {
+            // node:test emits one of these per file plus a final one for
+            // the whole run; only the file-less final one is kept, so the
+            // totals below always match what node:test itself reports.
+            if (fileOf(event.data) == null) counts = event.data.counts
+            continue
+        }
+
         const isPass = event.type === "test:pass"
         const isFail = event.type === "test:fail"
         if (!isPass && !isFail) continue
@@ -51,10 +61,6 @@ export const tap = (): FormatFn => async function* (source: AsyncIterable<TestEv
         if (data.details.type !== "test") continue
 
         testNumber++
-        if (data.skip != null) skipped++
-        else if (isPass) passed++
-        else failed++
-
         yield resultLine(data, isPass, testNumber)
         if (isFail && data.skip == null) yield errorBlock(event.data.details.error)
     }
@@ -62,8 +68,10 @@ export const tap = (): FormatFn => async function* (source: AsyncIterable<TestEv
     // The plan is written last rather than as `1..N` up front: the total
     // isn't known until the stream ends, and TAP allows either position.
     yield `1..${testNumber}\n`
-    yield `# tests ${testNumber}\n`
-    yield `# pass ${passed}\n`
-    yield `# fail ${failed}\n`
-    yield `# skip ${skipped}\n`
+    if (counts) {
+        yield `# tests ${counts.tests}\n`
+        yield `# pass ${counts.passed}\n`
+        yield `# fail ${counts.failed}\n`
+        yield `# skip ${counts.skipped}\n`
+    }
 }

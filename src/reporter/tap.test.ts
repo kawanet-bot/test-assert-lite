@@ -1,5 +1,6 @@
 import {strict as assert} from "node:assert"
 import {describe, it} from "node:test"
+import type * as declared from "test-assert-lite"
 import {createTAL} from "../index.ts"
 
 const TITLE = "tap.test.ts"
@@ -22,6 +23,8 @@ const pass = (name: string, extra: object = {}) => ({
     name, nesting: 0, testNumber: 1,
     details: {duration_ms: 1, type: "test" as const}, ...extra,
 })
+
+const summary = (counts: declared.TAL.TestSummary["counts"]) => ({counts, duration_ms: 1, success: true})
 
 describe(TITLE, () => {
     it("opens with the TAP version line", async () => {
@@ -61,6 +64,7 @@ describe(TITLE, () => {
             await r.emit("test:fail", {
                 ...pass("S"), details: {duration_ms: 2, type: "suite", error: new Error("1 subtest failed")},
             })
+            await r.emit("test:summary", summary({tests: 1, passed: 0, failed: 1, skipped: 0, cancelled: 0, suites: 1}))
         })
 
         assert.match(out, /1\.\.1\n/)
@@ -89,13 +93,30 @@ describe(TITLE, () => {
         assert.match(out, /# hello\n/)
     })
 
-    it("closes with a plan and counts matching the tests seen", async () => {
+    it("closes with a plan and counts taken from the final summary", async () => {
         const out = await render(async r => {
             await r.emit("test:pass", pass("a"))
             await r.emit("test:fail", {...pass("b"), details: {duration_ms: 1, type: "test", error: new Error("x")}})
             await r.emit("test:pass", pass("c", {skip: true}))
+            await r.emit("test:summary", summary({tests: 3, passed: 1, failed: 1, skipped: 1, cancelled: 0, suites: 0}))
         })
 
         assert.match(out, /1\.\.3\n# tests 3\n# pass 1\n# fail 1\n# skip 1\n/)
+    })
+
+    // node:test emits a per-file test:summary (carrying a `file`) before the
+    // one true final summary for the whole run - only the latter should
+    // ever reach the trailing counts, or a multi-file run's plan would be
+    // wrong and the counts could appear more than once.
+    it("ignores a per-file test:summary and waits for the final one", async () => {
+        const out = await render(async r => {
+            await r.emit("test:pass", pass("a"))
+            await r.emit("test:summary", {...summary({tests: 1, passed: 1, failed: 0, skipped: 0, cancelled: 0, suites: 0}), file: "a.test.js"} as never)
+            await r.emit("test:pass", pass("b"))
+            await r.emit("test:summary", summary({tests: 2, passed: 2, failed: 0, skipped: 0, cancelled: 0, suites: 0}))
+        })
+
+        assert.match(out, /1\.\.2\n# tests 2\n# pass 2\n# fail 0\n# skip 0\n/)
+        assert.equal(out.includes("# tests 1\n"), false)
     })
 })
