@@ -101,7 +101,7 @@ interface Context extends declared.TAL.TestContext {
     subtests: number
 }
 
-const makeContext = (state: RunState, name: string, nesting: number): Context => {
+const makeContext = (state: RunState, name: string, nesting: number, asChild?: Child): Context => {
     const context: Context = {
         name,
         assert: state.assert,
@@ -113,8 +113,14 @@ const makeContext = (state: RunState, name: string, nesting: number): Context =>
         active: 0,
         subtests: 0,
         skip: (message) => {
+            // Already decided: a parent's timeout, for one, must not be
+            // reopened by a skip the body only gets to call afterwards.
+            if (context.finished) return
             // As in node:test the body is not interrupted; only the verdict changes.
             context.skipped = message ?? true
+            // A parent cancelling this test while it is still running reads
+            // this, not the options it was declared with.
+            if (asChild != null) asChild.skip = context.skipped
         },
         diagnostic: (message) => {
             if (context.finished) return
@@ -156,13 +162,12 @@ const makeContext = (state: RunState, name: string, nesting: number): Context =>
 // of its own kind once every registered test has been reported.
 const lateTest = async (state: RunState, node: TestNode): Promise<void> => {
     const {counters} = state
-    const skip = skipOf(node)
+    const registeredSkip = skipOf(node)
     counters.tests++
-    if (skip != null) counters.skipped++
-    else counters.failed++
     state.success = false
     const started = performance.now()
-    if (skip == null) {
+    let runtimeSkip: string | true | undefined
+    if (registeredSkip == null) {
         const context = makeContext(state, node.name, 0)
         try {
             await node.fn?.(context)
@@ -171,7 +176,12 @@ const lateTest = async (state: RunState, node: TestNode): Promise<void> => {
         }
         // Subtests it started and did not await settle before the summary too.
         state.lingering.push(...context.pending)
+        runtimeSkip = context.skipped
     }
+    // The body's own t.skip() decides this as much as how it was declared.
+    const skip = registeredSkip ?? runtimeSkip
+    if (skip != null) counters.skipped++
+    else counters.failed++
     const duration_ms = performance.now() - started
     state.lateReports.push(async () => {
         const error = new TesterError("test could not be started because its parent finished", "parentAlreadyFinished")
@@ -267,7 +277,7 @@ export const runTest = async (state: RunState, node: TestNode, nesting: number, 
         return skipped ? "skipped" : "passed"
     }
 
-    const context = makeContext(state, node.name, nesting)
+    const context = makeContext(state, node.name, nesting, asChild)
     const wasInTestBody = state.harness.inTestBody
     state.harness.inTestBody = true
     // While the body runs this test is an ancestor of its subtests, so a

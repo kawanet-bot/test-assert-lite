@@ -413,6 +413,63 @@ describe(TITLE, () => {
         assert.deepEqual(summary.counts, {tests: 2, suites: 0, passed: 0, failed: 0, cancelled: 1, skipped: 1})
     })
 
+    // A skip the timed-out body calls on itself, after the verdict is
+    // already decided, must not turn a cancelled test into a skipped one.
+    it("a skip call after the timeout does not reopen the verdict", async () => {
+        const local = createTAL()
+        // Slow, so the read below waits behind cancelChildren's reporter
+        // calls, giving the body time to call skip() before that read.
+        local.reporter.output(() => new Promise(r => setTimeout(r, 30)))
+        local.it("parent", {timeout: 10}, async (t) => {
+            void t.test("child", async () => {
+                await new Promise(r => setTimeout(r, 40))
+            })
+            await new Promise(r => setTimeout(r, 20))
+            t.skip("too late")
+            await new Promise(r => setTimeout(r, 100))
+        })
+        const summary = await local.run()
+
+        assert.deepEqual(summary.counts, {tests: 2, suites: 0, passed: 0, failed: 0, cancelled: 2, skipped: 0})
+    })
+
+    // A running child's own t.skip() decides how its parent's cancellation
+    // reports it, not the options it was declared with.
+    it("a running child's own skip is kept when its parent times out", async () => {
+        const local = createTAL()
+        const events = capture(local.reporter)
+        local.it("parent", {timeout: 10}, async (t) => {
+            void t.test("child", async (t2) => {
+                t2.skip("why")
+                await new Promise(r => setTimeout(r, 40))
+            })
+            await new Promise(r => setTimeout(r, 100))
+        })
+        const summary = await local.run()
+
+        const child = ofType(events, "test:fail").find(e => e.data.name === "child")?.data
+        assert.equal(child?.skip, "why")
+        assert.deepEqual(summary.counts, {tests: 2, suites: 0, passed: 0, failed: 0, cancelled: 1, skipped: 1})
+    })
+
+    // A late subtest's own t.skip() decides its verdict too, even though
+    // node.options carried no skip when it was declared.
+    it("a late subtest's own skip is honored", async () => {
+        const local = createTAL()
+        const events = capture(local.reporter)
+        local.it("slow", {timeout: 10}, async (t) => {
+            await new Promise(r => setTimeout(r, 40))
+            await t.test("late", (t2) => {
+                t2.skip("why")
+            })
+        })
+        const summary = await local.run()
+
+        const late = ofType(events, "test:fail").find(e => e.data.name === "late")?.data
+        assert.equal(late?.skip, "why")
+        assert.deepEqual(summary.counts, {tests: 2, suites: 0, passed: 0, failed: 0, cancelled: 1, skipped: 1})
+    })
+
     it("a parent's timeout cancels the queued subtests, skip kept", async () => {
         const local = createTAL()
         const events = capture(local.reporter)
