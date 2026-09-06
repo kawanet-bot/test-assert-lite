@@ -93,6 +93,17 @@ describe(TITLE, () => {
         assert.throws(() => TAL.deepEqual(fake([1, 2, 3]), fake([9, 9, 9])), /deep-equal/)
     })
 
+    // Same prototype (so the earlier prototype check passes) plus a spoofed
+    // own tag (so the tag check passes too) still lacks the internal slots
+    // typedArray.read() needs, so the brand check must reject it too.
+    it("is not fooled by a plain object spoofing the Uint8Array tag", () => {
+        const fake = Object.create(Uint8Array.prototype) as object
+        Object.defineProperty(fake, Symbol.toStringTag, {value: "Uint8Array", configurable: true})
+        assert.equal(Object.getPrototypeOf(fake), Uint8Array.prototype)
+        assert.equal(Object.prototype.toString.call(fake), "[object Uint8Array]")
+        assert.throws(() => TAL.deepEqual(new Uint8Array([1, 2, 3]), fake), /deep-equal/)
+    })
+
     // The byte comparison splits off any unaligned lead and tail (0-3 bytes
     // each) and reads the aligned middle 4 bytes at once; this exercises
     // every offset phase and enough lengths to cover a lead-only range, a

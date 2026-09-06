@@ -200,10 +200,11 @@ const isDeepEqual = (a: unknown, b: unknown, memo: Memo): boolean => {
             // (a typed array can spoof Symbol.toStringTag to claim it too)
             // would be safe here - see the brand-check comment on byteRangeOf.
             if (!sameBytes(dataView.read(a), dataView.read(b))) return false
-        } else if (ArrayBuffer.isView(a)) {
-            // Returned directly rather than falling through to the own-key
-            // walk below: a typed array's own properties beyond its indices
-            // are not checked, unlike ArrayBuffer/DataView above.
+        } else if (typedArray.is(a) && typedArray.is(b)) {
+            // Brand-checked on both sides: the tag alone can be shared by a
+            // plain object with no typed-array slots, which read() would
+            // throw on. Returned directly, skipping the own-key walk below,
+            // since a typed array's own properties beyond its indices aren't.
             return sameBytes(typedArray.read(a as ArrayBufferView), typedArray.read(b as ArrayBufferView))
         } else if (!isWalkable(tag)) {
             return false
