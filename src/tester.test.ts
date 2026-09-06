@@ -470,6 +470,28 @@ describe(TITLE, () => {
         assert.deepEqual(summary.counts, {tests: 2, suites: 0, passed: 0, failed: 0, cancelled: 1, skipped: 1})
     })
 
+    // Marking every child reported happens before any reporter call, not one
+    // at a time between them, so a queued sibling cannot start and run while
+    // an earlier one's cancellation is still being reported.
+    it("a queued sibling does not run while an earlier cancellation is reported", async () => {
+        const local = createTAL()
+        local.reporter.output(() => new Promise(r => setTimeout(r, 30)))
+        let ran = false
+        local.it("parent", {timeout: 10}, async (t) => {
+            void t.test("in flight", async () => {
+                await new Promise(r => setTimeout(r, 15))
+            })
+            void t.test("queued", () => {
+                ran = true
+            })
+            await new Promise(r => setTimeout(r, 100))
+        })
+        const summary = await local.run()
+
+        assert.equal(ran, false)
+        assert.deepEqual(summary.counts, {tests: 3, suites: 0, passed: 0, failed: 0, cancelled: 3, skipped: 0})
+    })
+
     it("a parent's timeout cancels the queued subtests, skip kept", async () => {
         const local = createTAL()
         const events = capture(local.reporter)

@@ -259,10 +259,16 @@ const runOnce = async (
     // A body that outlived its timeout may still add to the counts, so the
     // summary waits for every one of them, as node:test's run does. What
     // they started late is reported after everything registered.
-    while (state.lingering.length) {
-        await Promise.allSettled(state.lingering.splice(0))
+    // A late test can itself start another once it is already running, and
+    // emitting an earlier report can take long enough for that to happen,
+    // so each queue is drained again until a full pass adds nothing to either.
+    for (;;) {
+        while (state.lingering.length) {
+            await Promise.allSettled(state.lingering.splice(0))
+        }
+        if (!state.lateReports.length) break
+        for (const report of state.lateReports.splice(0)) await report()
     }
-    for (const report of state.lateReports.splice(0)) await report()
 
     const duration_ms = performance.now() - started
     const summary: declared.TAL.TestSummary = {

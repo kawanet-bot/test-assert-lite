@@ -198,16 +198,20 @@ const lateTest = async (state: RunState, node: TestNode): Promise<void> => {
 // before the parent itself. One not yet started is counted here; one that
 // is running was counted when it started, and skips its own report later.
 const cancelChildren = async (state: RunState, context: Context): Promise<void> => {
-    // A snapshot: a child settling while the reporter is awaited removes
-    // itself from the live list, which would shift its siblings past the loop.
-    for (const child of [...context.children]) {
-        if (child.reported) continue
+    // A snapshot, marked reported and counted before any reporter call: a
+    // queued child that starts while an earlier one's report is being
+    // awaited must already see itself as reported, not race to run.
+    const snapshot = [...context.children].filter(child => !child.reported)
+    for (const child of snapshot) {
         child.reported = true
         if (!child.started) state.counters.tests++
         // A queued child marked skip is counted as skipped, as node:test does.
         if (child.skip != null) state.counters.skipped++
         else state.counters.cancelled++
-        state.success = false
+    }
+    if (snapshot.length) state.success = false
+
+    for (const child of snapshot) {
         await announce(state, child.ancestor ?? {name: child.name, nesting: child.nesting, announced: false})
         await state.reporter.emit("test:fail", {
             name: child.name, nesting: child.nesting, testNumber: child.testNumber,
