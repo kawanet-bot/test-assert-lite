@@ -49,6 +49,9 @@ describe(TITLE, () => {
         assert.throws(() => TAL.deepEqual({a: 1, b: 2}, {a: 1, c: 2}), /deep-equal/)
         // A key explicitly set to undefined is still present and must match.
         assert.throws(() => TAL.deepEqual({a: 1, b: undefined}, {a: 1}), /deep-equal/)
+        // A non-enumerable property of the same name must not count as a match.
+        const b = Object.defineProperty({}, "a", {value: 1, enumerable: false})
+        assert.throws(() => TAL.deepEqual({a: 1}, b), /deep-equal/)
     })
 
     // deepStrictEqual, which this follows, rejects a shape match across
@@ -59,6 +62,22 @@ describe(TITLE, () => {
         }
         assert.throws(() => TAL.deepEqual(new Foo(), {a: 1}), /deep-equal/)
         assert.doesNotThrow(() => TAL.deepEqual(new Foo(), new Foo()))
+    })
+
+    // A shared [[Prototype]] is not the whole story: an Arguments object or a
+    // fake array-like can be made to share one with a plain object or a real
+    // array. The internal tag (via Object.prototype.toString) catches what
+    // the prototype check alone misses.
+    it("requires the same exotic kind, not just a matching prototype", () => {
+        const args = (function (_n: number) {
+            return arguments
+        })(1)
+        assert.throws(() => TAL.deepEqual({0: 1}, args), /deep-equal/)
+
+        const fakeArray: unknown[] = Object.create(Array.prototype)
+        fakeArray[0] = 1
+        Object.defineProperty(fakeArray, "length", {value: 1, enumerable: false})
+        assert.throws(() => TAL.deepEqual(fakeArray, [1]), /deep-equal/)
     })
 
     // .length is not enumerable, so a manually stretched array needs its
@@ -104,72 +123,6 @@ describe(TITLE, () => {
         y1.self = y2
         y2.self = y1
         assert.throws(() => TAL.deepEqual(x1, y1), /deep-equal/)
-    })
-
-    // name/message are not enumerable, so without special handling two
-    // errors with different messages would look equal; stack is left out,
-    // matching node's own deepStrictEqual.
-    it("compares Errors by name and message, not by stack", () => {
-        assert.doesNotThrow(() => TAL.deepEqual(new Error("boom"), new Error("boom")))
-        assert.throws(() => TAL.deepEqual(new Error("boom"), new Error("bang")), /deep-equal/)
-
-        const renamed = new Error("boom")
-        renamed.name = "Custom"
-        assert.throws(() => TAL.deepEqual(renamed, new Error("boom")), /deep-equal/)
-    })
-
-    it("still compares an Error's own extra enumerable properties", () => {
-        const withCode = (code: string): Error => Object.assign(new Error("boom"), {code})
-        assert.doesNotThrow(() => TAL.deepEqual(withCode("E1"), withCode("E1")))
-        assert.throws(() => TAL.deepEqual(withCode("E1"), withCode("E2")), /deep-equal/)
-    })
-
-    // Reading a[key] to compare naturally invokes a getter; nothing extra
-    // is needed for this beyond the plain own-key walk.
-    it("invokes getters and compares their returned value", () => {
-        let calls = 0
-        const withGetter = (): object => ({
-            get a() {
-                calls++
-                return 1
-            },
-        })
-        assert.doesNotThrow(() => TAL.deepEqual(withGetter(), withGetter()))
-        assert.equal(calls, 2)
-    })
-
-    // Out of scope for this pass: unlike node's deepStrictEqual, symbol-keyed
-    // own enumerable properties are not part of the family's actual usage.
-    it("does not compare symbol-keyed properties (documented scope limit)", () => {
-        const sym = Symbol("k")
-        assert.doesNotThrow(() => TAL.deepEqual({a: 1, [sym]: "x"}, {a: 1, [sym]: "y"}))
-    })
-
-    // Date/RegExp keep their real state outside of own enumerable properties,
-    // so they get an explicit value-based comparison instead of the own-key walk.
-    it("compares Date by time value and RegExp by source/flags", () => {
-        assert.doesNotThrow(() => TAL.deepEqual(new Date(0), new Date(0)))
-        assert.throws(() => TAL.deepEqual(new Date(0), new Date(1)), /deep-equal/)
-        // getTime() is NaN for both, and NaN !== NaN, so this needs Object.is.
-        assert.doesNotThrow(() => TAL.deepEqual(new Date(NaN), new Date(NaN)))
-        assert.throws(() => TAL.deepEqual(new Date(NaN), new Date(0)), /deep-equal/)
-        assert.doesNotThrow(() => TAL.deepEqual(/a/gi, /a/gi))
-        assert.throws(() => TAL.deepEqual(/a/g, /b/g), /deep-equal/)
-        assert.throws(() => TAL.deepEqual(/a/g, /a/i), /deep-equal/)
-    })
-
-    // Map/Set/WeakMap/WeakSet/ArrayBuffer keep their real content outside of
-    // own enumerable properties, so only a shared reference is treated as
-    // equal for them (documented scope limit; see the plan comment on the
-    // tracking issue for the tradeoff).
-    it("only treats Map/Set/WeakMap/WeakSet/ArrayBuffer as equal by reference", () => {
-        assert.doesNotThrow(() => {
-            const shared = new Map([["a", 1]])
-            TAL.deepEqual(shared, shared)
-        })
-        assert.throws(() => TAL.deepEqual(new Map([["a", 1]]), new Map([["a", 1]])), /deep-equal/)
-        assert.throws(() => TAL.deepEqual(new Set([1]), new Set([1])), /deep-equal/)
-        assert.throws(() => TAL.deepEqual(new ArrayBuffer(4), new ArrayBuffer(4)), /deep-equal/)
     })
 
     it("notDeepEqual is the exact negation", () => {

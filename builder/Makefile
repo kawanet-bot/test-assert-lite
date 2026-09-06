@@ -26,7 +26,7 @@ BUILDER_TEST_CONFIG := ./rollup-builder-test.config.ts
 # The shipped bundle is the whole library, so this cap is tight enough to
 # notice an unintended dependency being pulled in. Raised to make room for
 # deepEqual/notDeepEqual, a real addition rather than incidental growth.
-MJS_MAX_BYTES := 47500
+MJS_MAX_BYTES := 50000
 
 # Minified build of the same sources, so the cap tracks the mjs one.
 MINJS_MAX_BYTES := 22000

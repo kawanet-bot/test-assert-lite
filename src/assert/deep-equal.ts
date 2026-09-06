@@ -2,14 +2,16 @@ import {isError} from "./../common/is-error.ts"
 import {stringify} from "./../common/stringify.ts"
 import {AssertionError} from "./assertion-error.ts"
 
-const hasOwn = Object.prototype.hasOwnProperty
+const toTag = (v: object): string => Object.prototype.toString.call(v)
 
-// Map/Set/WeakMap/WeakSet/ArrayBuffer keep their real content outside of own
-// enumerable properties (WeakMap/WeakSet cannot be introspected at all), so
-// the key walk below would call any two instances equal regardless of it.
-// Only an exact reference counts as equal for them.
-const isOpaque = (v: object): boolean =>
-    v instanceof Map || v instanceof Set || v instanceof WeakMap || v instanceof WeakSet || v instanceof ArrayBuffer
+// Arrays, Arguments objects and typed arrays expose their elements as own
+// enumerable keys, so the key walk below still applies to them. Every other
+// exotic tag (Map, Set, Promise, URL, DataView, ...) keeps its real state in
+// internal slots the walk cannot see, so it is only equal by reference -
+// safer than a silent false "equal", and covers any future built-in too.
+const isWalkable = (v: object, tag: string): boolean =>
+    tag === "[object Object]" || tag === "[object Array]" || tag === "[object Arguments]" ||
+    (ArrayBuffer.isView(v) && !(v instanceof DataView))
 
 // Tracks the (left, right) pairs currently on the recursion stack, each
 // stamped with the order it was first entered. Revisiting a left value
@@ -29,14 +31,45 @@ const isDeepEqual = (a: unknown, b: unknown, memo: Memo): boolean => {
     if (Object.is(a, b)) return true
     if (a == null || b == null || "object" !== typeof a || "object" !== typeof b) return false
     if (Object.getPrototypeOf(a) !== Object.getPrototypeOf(b)) return false
-    if (a instanceof Date) return Object.is(a.getTime(), (b as Date).getTime())
+    // getTime() is called through the prototype: an own property of the same
+    // name must not be able to fool the comparison.
+    if (a instanceof Date) return Object.is(Date.prototype.getTime.call(a), Date.prototype.getTime.call(b))
     if (a instanceof RegExp) return a.source === (b as RegExp).source && a.flags === (b as RegExp).flags
-    if (isOpaque(a)) return false
-    if (Array.isArray(a) && a.length !== (b as unknown[]).length) return false
 
-    // name/message are non-enumerable, so the own-key scan below would miss a
-    // difference; stack is skipped on purpose, matching node's own behavior.
-    if (isError(a) && (a.name !== (b as Error).name || a.message !== (b as Error).message)) return false
+    // A shared prototype alone is not enough: an Arguments object, a fake
+    // array-like, or a plain object dressed up with a builtin's descriptors
+    // can all share one. The internal tag catches what that check misses.
+    const tag = toTag(a)
+    const other = b as Record<string, unknown>
+    if (tag !== toTag(b)) return false
+
+    if (isError(a)) {
+        const otherError = b as Error & {cause?: unknown}
+        if (a.name !== otherError.name || a.message !== otherError.message) return false
+        if (("cause" in a) !== ("cause" in otherError)) return false
+        if ("cause" in a && !isDeepEqual((a as {cause?: unknown}).cause, otherError.cause, memo)) return false
+        if (a instanceof AggregateError && !isDeepEqual(a.errors, (b as AggregateError).errors, memo)) return false
+    } else if ("undefined" !== typeof URL && a instanceof URL) {
+        // href is not enumerable either, but a URL can still carry its own
+        // extra enumerable properties, so this falls through to the walk too.
+        if (a.href !== (b as URL).href) return false
+    } else if (a instanceof Boolean) {
+        if (!Object.is(Boolean.prototype.valueOf.call(a), Boolean.prototype.valueOf.call(b))) return false
+    } else if (a instanceof Number) {
+        if (!Object.is(Number.prototype.valueOf.call(a), Number.prototype.valueOf.call(b))) return false
+        // String is the one wrapper whose characters are already own
+        // enumerable indices; called through the prototype like the above,
+        // so an own valueOf cannot fool it, and it still falls through
+        // below for any extra own property.
+    } else if (a instanceof String) {
+        if (String.prototype.valueOf.call(a) !== String.prototype.valueOf.call(b)) return false
+    } else if (!isWalkable(a, tag)) {
+        return false
+    }
+
+    // length is never enumerable on an Array/Arguments/typed array, so the
+    // own-key walk below would not otherwise notice a stretched or shrunk one.
+    if ("length" in a && !Object.prototype.propertyIsEnumerable.call(a, "length") && a.length !== other.length) return false
 
     const stamp = memo.left.get(a)
     if (stamp != null) return memo.right.get(b) === stamp
@@ -45,9 +78,9 @@ const isDeepEqual = (a: unknown, b: unknown, memo: Memo): boolean => {
     memo.right.set(b, position)
 
     const keysA = Object.keys(a)
-    const other = b as Record<string, unknown>
-    const result = keysA.length === Object.keys(b).length &&
-        keysA.every(key => hasOwn.call(b, key) && isDeepEqual((a as Record<string, unknown>)[key], other[key], memo))
+    const keysB = new Set(Object.keys(b))
+    const result = keysA.length === keysB.size &&
+        keysA.every(key => keysB.has(key) && isDeepEqual((a as Record<string, unknown>)[key], other[key], memo))
 
     memo.left.delete(a)
     memo.right.delete(b)
