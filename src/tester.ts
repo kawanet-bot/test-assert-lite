@@ -33,9 +33,10 @@ export interface RunState {
     // Carried along to flip the flag that bars registration.
     harness: HarnessState
     // Work a verdict did not wait for: the body of a timed out test and the
-    // subtests it still had in flight. The run lets it settle before the
-    // summary, so nothing a test does afterwards lands outside the run.
-    lingering: Set<Promise<unknown>>
+    // subtests it still had in flight. The run gives it one more timeout's
+    // worth of time to settle, so what it does meanwhile stays in the run,
+    // while a body that never settles cannot hold the run open.
+    lingering: Set<Lingering>
     // Subtests declared after their parent was reported. node:test hands
     // them to the root: they run after its registered children, numbered
     // after them, and fail as parentAlreadyFinished whatever their body does.
@@ -52,6 +53,11 @@ export interface RunState {
 interface LateTest {
     context: Context
     resolve: () => void
+}
+
+interface Lingering {
+    promise: Promise<unknown>
+    until: number
 }
 
 const timeoutAfter = (ms: number): {promise: Promise<never>, error: TesterError, cancel: () => void} => {
@@ -192,10 +198,11 @@ const lateTest = (state: RunState, node: TestNode): Promise<void> => {
     })
 }
 
-// Keeps a promise until it settles, whichever way.
-const linger = (state: RunState, promise: Promise<unknown>): void => {
-    state.lingering.add(promise)
-    promise.finally(() => state.lingering.delete(promise)).catch(() => undefined)
+// Keeps a promise until it settles, whichever way, or until the deadline.
+const linger = (state: RunState, promise: Promise<unknown>, until: number): void => {
+    const entry: Lingering = {promise, until}
+    state.lingering.add(entry)
+    promise.finally(() => state.lingering.delete(entry)).catch(() => undefined)
 }
 
 const skipOf = (node: TestNode): string | true | undefined => {
@@ -334,12 +341,12 @@ const runContext = async (state: RunState, context: Context): Promise<Outcome> =
                 // changes nothing: the parent reported it.
                 if (e === timer.error && !context.finished) {
                     // The verdict is out from this point: the body keeps
-                    // running, but what it does no longer counts for this test,
-                    // and the run waits for it and the subtests in flight.
+                    // running, but what it does no longer counts for this test.
                     timedOut = true
                     context.finished = true
                     closed = closeDescendants(state, context)
-                    for (const promise of [body, ...context.pending]) linger(state, promise)
+                    const until = performance.now() + timeout
+                    for (const promise of [body, ...context.pending]) linger(state, promise, until)
                 }
                 throw e
             } finally {
@@ -405,8 +412,9 @@ const runContext = async (state: RunState, context: Context): Promise<Outcome> =
 }
 
 // Runs what the walk left behind: the late subtests, in the order they were
-// declared, and the bodies still running. A body may be waiting on a late
-// subtest of its own, so waiting on the bodies stops as soon as one arrives.
+// declared, and the bodies still running, up to the latest deadline among
+// them. A body may be waiting on a late subtest of its own, so waiting on
+// the bodies stops as soon as one arrives.
 export const drainLate = async (state: RunState): Promise<void> => {
     for (;;) {
         while (state.late.length) {
@@ -414,10 +422,16 @@ export const drainLate = async (state: RunState): Promise<void> => {
             await runContext(state, context)
             resolve()
         }
-        if (!state.lingering.size) break
+        const entries = [...state.lingering]
+        const wait = Math.max(...entries.map(entry => entry.until)) - performance.now()
+        if (!entries.length || wait <= 0) break
         await new Promise<void>((resolve) => {
+            const timer = setTimeout(resolve, wait)
             state.wake = resolve
-            void Promise.allSettled([...state.lingering]).then(() => resolve())
+            void Promise.allSettled(entries.map(entry => entry.promise)).then(() => {
+                clearTimeout(timer)
+                resolve()
+            })
         })
         state.wake = undefined
     }
