@@ -231,6 +231,36 @@ describeSlow(TITLE, () => {
         assert.deepEqual(summary.counts, {tests: 4, suites: 0, passed: 0, failed: 0, cancelled: 4, skipped: 0})
     })
 
+    // The same, one level down: a grandchild that passed but is still
+    // reporting when the parent throws comes out before the child it
+    // belongs to, and before the parent.
+    it("a parent that throws waits for a settled grandchild still reporting", async () => {
+        const local = createTAL()
+        const events: ReturnType<typeof capture> = []
+        local.reporter.format(async function* (source) {
+            for await (const event of source) {
+                events.push(event)
+                yield "."
+            }
+        })
+        local.reporter.output(() => new Promise(r => setTimeout(r, slow(30))))
+        local.it("parent", async (t) => {
+            void t.test("child", async (inner) => {
+                void inner.test("grandchild", () => undefined)
+                await new Promise(r => setTimeout(r, slow(100)))
+            })
+            await new Promise(r => setTimeout(r, slow(20)))
+            throw new Error("boom")
+        })
+        const summary = await local.run()
+
+        assert.deepEqual(names(events, "test:start"), ["parent", "child", "grandchild"])
+        const results = events.filter(e => e.type === "test:pass" || e.type === "test:fail").map(e => e.data.name)
+        assert.deepEqual(results, ["grandchild", "child", "parent"])
+        assert.deepEqual(summary.counts, {tests: 3, suites: 0, passed: 1, failed: 1, cancelled: 1, skipped: 0})
+        assert.equal(events.at(-1)?.type, "test:summary")
+    })
+
     // A queued sibling keeps its skip when the parent gives up, and every
     // sibling is cancelled even while the reporter's output is slow.
     // With an in-flight child, cancelling it takes several slow reporter

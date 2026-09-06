@@ -255,11 +255,7 @@ export class Test {
         if (this.closedWith != null) return "cancelled"
         this.settle()
 
-        // A subtest that settled on its own may still be reporting; that is
-        // bounded, and its results belong ahead of this one and in the counts.
-        for (const child of this.children) {
-            if (child.started && child.settled && !closed.includes(child)) await child.finish
-        }
+        await this.awaitReporting()
         for (const child of closed) await child.report()
         await this.report()
         this.onDone?.()
@@ -281,6 +277,17 @@ export class Test {
         }
         await this.report()
         return verdict.outcome
+    }
+
+    // A descendant that settled on its own may still be reporting. That is
+    // bounded, and its results belong ahead of this test's and in the
+    // counts, so they are waited for, through the descendants closed here.
+    private async awaitReporting(): Promise<void> {
+        for (const child of this.children) {
+            if (!child.started) continue
+            if (child.closedWith != null) await child.awaitReporting()
+            else if (child.settled) await child.finish
+        }
     }
 
     private get outcome(): Outcome {
