@@ -42,9 +42,10 @@ test: test-bundled test-bin test-cli test-iife
 
 # The bundle only registers tests and never calls run() itself, so it
 # needs a runner -- $(PKG_ROOT)'s own CLI, matching whichever copy the
-# bundle's own self-reference resolves to.
+# bundle's own self-reference resolves to. The slow suites, skipped in a
+# plain run, are wanted here: this is the packed copy on every Node line.
 test-bundled:
-	cd ../.. && ./$(PKG_ROOT)/dist/test-assert-lite.cli.mjs builder/tests/bundled.mjs
+	cd ../.. && TAL_SLOW_TESTS=1 ./$(PKG_ROOT)/dist/test-assert-lite.cli.mjs builder/tests/bundled.mjs
 
 # npm accepts a broken bin mapping silently -- the .bin link is just
 # never created -- so assert the link exists, resolves and is executable.
