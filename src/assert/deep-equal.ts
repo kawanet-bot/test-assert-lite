@@ -11,15 +11,25 @@ const hasOwn = Object.prototype.hasOwnProperty
 const isOpaque = (v: object): boolean =>
     v instanceof Map || v instanceof Set || v instanceof WeakMap || v instanceof WeakSet || v instanceof ArrayBuffer
 
+// Tracks the (left, right) pairs currently on the recursion stack, each
+// stamped with the order it was first entered. Revisiting a left value
+// already on the stack is only equal if the right value carries the exact
+// same stamp, i.e. it is the same pairing rather than a same-shaped cycle
+// of a different period; a mismatch here is a real structural difference,
+// not a cycle to break.
+interface Memo {
+    left: WeakMap<object, number>
+    right: WeakMap<object, number>
+    position: number
+}
+
 // Matches node's *strict* deepEqual: Object.is for primitives, a shared
 // prototype and the same own enumerable keys (pairwise equal) for objects.
-// `seen` pairs each left-hand object with the right-hand value it is already
-// being compared against, so a revisited cycle is assumed equal.
-const isDeepEqual = (a: unknown, b: unknown, seen: WeakMap<object, unknown>): boolean => {
+const isDeepEqual = (a: unknown, b: unknown, memo: Memo): boolean => {
     if (Object.is(a, b)) return true
     if (a == null || b == null || "object" !== typeof a || "object" !== typeof b) return false
     if (Object.getPrototypeOf(a) !== Object.getPrototypeOf(b)) return false
-    if (a instanceof Date) return a.getTime() === (b as Date).getTime()
+    if (a instanceof Date) return Object.is(a.getTime(), (b as Date).getTime())
     if (a instanceof RegExp) return a.source === (b as RegExp).source && a.flags === (b as RegExp).flags
     if (isOpaque(a)) return false
     if (Array.isArray(a) && a.length !== (b as unknown[]).length) return false
@@ -28,17 +38,26 @@ const isDeepEqual = (a: unknown, b: unknown, seen: WeakMap<object, unknown>): bo
     // difference; stack is skipped on purpose, matching node's own behavior.
     if (isError(a) && (a.name !== (b as Error).name || a.message !== (b as Error).message)) return false
 
-    if (seen.get(a) === b) return true
-    seen.set(a, b)
+    const stamp = memo.left.get(a)
+    if (stamp != null) return memo.right.get(b) === stamp
+    const position = ++memo.position
+    memo.left.set(a, position)
+    memo.right.set(b, position)
 
     const keysA = Object.keys(a)
     const other = b as Record<string, unknown>
-    return keysA.length === Object.keys(b).length &&
-        keysA.every(key => hasOwn.call(b, key) && isDeepEqual((a as Record<string, unknown>)[key], other[key], seen))
+    const result = keysA.length === Object.keys(b).length &&
+        keysA.every(key => hasOwn.call(b, key) && isDeepEqual((a as Record<string, unknown>)[key], other[key], memo))
+
+    memo.left.delete(a)
+    memo.right.delete(b)
+    return result
 }
 
+const newMemo = (): Memo => ({left: new WeakMap(), right: new WeakMap(), position: 0})
+
 export const deepEqual = (actual: unknown, expected: unknown, message?: string | Error): void => {
-    if (isDeepEqual(actual, expected, new WeakMap())) return
+    if (isDeepEqual(actual, expected, newMemo())) return
     if (isError(message)) throw message
 
     // Keep the values even when a message is given, as equal() does: without
@@ -51,7 +70,7 @@ export const deepEqual = (actual: unknown, expected: unknown, message?: string |
 }
 
 export const notDeepEqual = (actual: unknown, expected: unknown, message?: string | Error): void => {
-    if (!isDeepEqual(actual, expected, new WeakMap())) return
+    if (!isDeepEqual(actual, expected, newMemo())) return
     if (isError(message)) throw message
     throw new AssertionError({
         message: message ?? `expected not to deep-equal ${stringify(expected)}`,

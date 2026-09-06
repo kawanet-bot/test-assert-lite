@@ -93,6 +93,19 @@ describe(TITLE, () => {
         assert.doesNotThrow(() => TAL.deepEqual(a1, b1))
     })
 
+    // A same-shaped cycle of a different period is a real structural
+    // difference, not something to paper over as "already seen, assume
+    // equal" - that would silently pass two genuinely different graphs.
+    it("tells apart a 1-cycle from a same-shaped 2-cycle instead of stack-overflowing", () => {
+        const x1: Record<string, unknown> = {}
+        x1.self = x1
+        const y1: Record<string, unknown> = {}
+        const y2: Record<string, unknown> = {}
+        y1.self = y2
+        y2.self = y1
+        assert.throws(() => TAL.deepEqual(x1, y1), /deep-equal/)
+    })
+
     // name/message are not enumerable, so without special handling two
     // errors with different messages would look equal; stack is left out,
     // matching node's own deepStrictEqual.
@@ -137,6 +150,9 @@ describe(TITLE, () => {
     it("compares Date by time value and RegExp by source/flags", () => {
         assert.doesNotThrow(() => TAL.deepEqual(new Date(0), new Date(0)))
         assert.throws(() => TAL.deepEqual(new Date(0), new Date(1)), /deep-equal/)
+        // getTime() is NaN for both, and NaN !== NaN, so this needs Object.is.
+        assert.doesNotThrow(() => TAL.deepEqual(new Date(NaN), new Date(NaN)))
+        assert.throws(() => TAL.deepEqual(new Date(NaN), new Date(0)), /deep-equal/)
         assert.doesNotThrow(() => TAL.deepEqual(/a/gi, /a/gi))
         assert.throws(() => TAL.deepEqual(/a/g, /b/g), /deep-equal/)
         assert.throws(() => TAL.deepEqual(/a/g, /a/i), /deep-equal/)
