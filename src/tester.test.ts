@@ -376,6 +376,43 @@ describe(TITLE, () => {
 
     // A queued sibling keeps its skip when the parent gives up, and every
     // sibling is cancelled even while the reporter's output is slow.
+    // With an in-flight child, cancelling it takes several slow reporter
+    // calls. A t.test() the body calls while that is still going on must be
+    // treated as late, not as an ordinary nested subtest.
+    it("a t.test() during a slow cancellation report is treated as late", async () => {
+        const local = createTAL()
+        local.reporter.output(() => new Promise(r => setTimeout(r, 30)))
+        let ran = false
+        local.it("parent", {timeout: 10}, async (t) => {
+            void t.test("in flight", async () => {
+                await new Promise(r => setTimeout(r, 40))
+            })
+            await new Promise(r => setTimeout(r, 20))
+            await t.test("during cancellation", () => {
+                ran = true
+            })
+        })
+        const summary = await local.run()
+
+        assert.equal(ran, true)
+        assert.deepEqual(summary.counts, {tests: 3, suites: 0, passed: 0, failed: 1, cancelled: 2, skipped: 0})
+    })
+
+    // A skip/bodyless child decides its own verdict synchronously, but the
+    // reporter calls that announce it are slow, giving the parent's timeout
+    // a window to see it as still unreported and cancel it a second time.
+    it("a skipped child settling during a slow report is not double counted", async () => {
+        const local = createTAL()
+        local.reporter.output(() => new Promise(r => setTimeout(r, 30)))
+        local.it("parent", {timeout: 10}, async (t) => {
+            void t.test("quick skip", {skip: "why"}, () => undefined)
+            await new Promise(r => setTimeout(r, 40))
+        })
+        const summary = await local.run()
+
+        assert.deepEqual(summary.counts, {tests: 2, suites: 0, passed: 0, failed: 0, cancelled: 1, skipped: 1})
+    })
+
     it("a parent's timeout cancels the queued subtests, skip kept", async () => {
         const local = createTAL()
         const events = capture(local.reporter)

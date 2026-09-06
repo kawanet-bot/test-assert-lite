@@ -253,6 +253,9 @@ export const runTest = async (state: RunState, node: TestNode, nesting: number, 
     }
 
     if (skipped || node.fn == null) {
+        // The verdict is already decided; nothing here can still be running
+        // for a concurrent parent timeout to race against.
+        if (asChild != null) asChild.reported = true
         if (skipped) counters.skipped++
         else counters.passed++
         await announce(state, self)
@@ -286,6 +289,10 @@ export const runTest = async (state: RunState, node: TestNode, nesting: number, 
                 timedOut = e === timer.error
                 // The body goes on; the run ends only once it has settled.
                 if (timedOut) {
+                    // Set before the cancellation is reported, so a t.test()
+                    // the body calls while that report is pending is already
+                    // late rather than an ordinary nested subtest.
+                    context.finished = true
                     state.lingering.push(body, ...context.pending)
                     await cancelChildren(state, context)
                 }
