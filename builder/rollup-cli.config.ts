@@ -20,13 +20,9 @@ const stripShebang = (): Plugin => ({
 const rollupConfig: RollupOptions = {
     input: "../src/cli/test-assert-lite.cli.ts",
 
-    // The library import stays unbundled, next to dist/package.json's
-    // commonjs marker (added for the .min.js build, see builder/Makefile).
-    // A bare specifier self-reference resolves against that marker file
-    // first, which lacks "exports", and fails; a plain relative import to
-    // the sibling .mjs bypasses package resolution entirely, so it is
-    // unaffected either way. Bare specifiers (Node builtins) stay
-    // external too, same as the library's own build.
+    // A bare self-reference from inside dist/ hits dist/package.json's
+    // commonjs marker first and fails (no "exports" there); a relative
+    // import skips package resolution entirely, so it is unaffected.
     external: [/^[^.\/]/, "../index.ts"],
 
     output: {

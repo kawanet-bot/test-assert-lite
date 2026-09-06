@@ -40,13 +40,11 @@ unpack:
 
 test: test-bundled test-bin test-cli test-iife
 
-# Resolves through node_modules after `unpack`; inside a checkout the
-# package name self-references dist/ instead. The bundle only registers
-# tests as a side effect and never calls run() itself, so it needs a
-# runner -- this is TAL's own CLI, the way the sibling equivalent of this
-# file is run with `node --test` instead.
+# The bundle only registers tests and never calls run() itself, so it
+# needs a runner -- $(PKG_ROOT)'s own CLI, matching whichever copy the
+# bundle's own self-reference resolves to.
 test-bundled:
-	cd ../.. && ./dist/test-assert-lite.cli.mjs builder/tests/bundled.mjs
+	cd ../.. && ./$(PKG_ROOT)/dist/test-assert-lite.cli.mjs builder/tests/bundled.mjs
 
 # npm accepts a broken bin mapping silently -- the .bin link is just
 # never created -- so assert the link exists, resolves and is executable.
@@ -54,14 +52,9 @@ test-bundled:
 test-bin:
 	[ -x ../../node_modules/.bin/test-assert ]
 
-# The CLI end to end -- shebang, executable bit, exit code -- against
-# $(PKG_ROOT). The fixtures are staged at $(PKG_ROOT) itself rather than
-# run from sample/ in place: a bare "test-assert-lite" import
-# self-references from wherever the importing file sits, and sample/ sits
-# under the checkout root, which always self-references the checkout's
-# own dist/ -- moving the fixture under $(PKG_ROOT) makes it
-# self-reference the same dist/ the co-located CLI does, whichever copy
-# that is.
+# The CLI end to end against $(PKG_ROOT). Fixtures are staged under
+# $(PKG_ROOT) first, not run in place: a bare self-reference resolves
+# from wherever the importing file sits, not from $(PKG_ROOT).
 test-cli:
 	cd ../.. && cp sample/pass.mjs sample/fail.mjs $(PKG_ROOT)/
 	cd ../.. && ./$(PKG_ROOT)/dist/test-assert-lite.cli.mjs $(PKG_ROOT)/pass.mjs
