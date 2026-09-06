@@ -16,9 +16,19 @@ bundled:
 
 # Keep Playwright out of package.json. CI installs it transiently alongside
 # the project's build dependencies, then downloads only the headless shell.
-install:
+install: install-browser
+
+install-playwright:
 	cd .. && PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install playwright@$(PLAYWRIGHT_VERSION) --no-save --ignore-scripts --no-audit --no-fund
-	cd .. && npx --no-install playwright install --with-deps --only-shell chromium
+
+# --with-deps re-runs apt-get (with sudo) even when nothing is missing.
+# install-deps --dry-run asks Playwright itself whether the OS packages for
+# this browser are present, with no download/network/sudo side effects.
+# Deferred (=): only evaluated when this recipe actually runs.
+DEPS_OK = $(shell npx --no-install playwright install-deps chromium-headless-shell --dry-run >/dev/null 2>&1 && echo YES)
+
+install-browser: install-playwright
+	cd .. && npx --no-install playwright install --only-shell chromium$(if $(DEPS_OK),, --with-deps)
 
 test: all
 	cd .. && node browser/tests.cli.mjs
@@ -27,4 +37,4 @@ test: all
 clean:
 	@: # NOP
 
-.PHONY: all bundled install test clean
+.PHONY: all bundled install install-playwright install-browser test clean
