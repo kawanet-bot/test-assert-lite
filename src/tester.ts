@@ -109,6 +109,7 @@ interface Context extends declared.TAL.TestContext {
     finished: boolean
     started: boolean
     startedAt: number
+    endedAt: number
     // The failure a late subtest carries from the start.
     late: TesterError | undefined
 }
@@ -130,6 +131,7 @@ const makeContext = (state: RunState, node: TestNode, nesting: number, testNumbe
         finished: false,
         started: false,
         startedAt: 0,
+        endedAt: 0,
         late: undefined,
         skip: (message) => {
             // As in node:test the body is not interrupted; only the verdict
@@ -236,6 +238,7 @@ const closeDescendants = (state: RunState, context: Context): Context[] => {
         for (const child of parent.children) {
             if (child.finished) continue
             child.finished = true
+            child.endedAt = performance.now()
             close(child)
             if (!child.started) counters.tests++
             if (skipOfContext(child) != null) counters.skipped++
@@ -259,7 +262,7 @@ const reportCancelled = async (state: RunState, closed: Context[]): Promise<void
             name: child.node.name, nesting: child.nesting, testNumber: child.testNumber,
             ...(skip != null ? {skip} : {}),
             details: {
-                duration_ms: child.started ? performance.now() - child.startedAt : 0,
+                duration_ms: child.started ? child.endedAt - child.startedAt : 0,
                 type: "test", error: cancelledByParent(),
             },
         })
@@ -327,7 +330,9 @@ const runContext = async (state: RunState, context: Context): Promise<Outcome> =
             try {
                 await Promise.race([body, timer.promise])
             } catch (e) {
-                if (e === timer.error) {
+                // A timer firing after the parent already closed this test
+                // changes nothing: the parent reported it.
+                if (e === timer.error && !context.finished) {
                     // The verdict is out from this point: the body keeps
                     // running, but what it does no longer counts for this test,
                     // and the run waits for it and the subtests in flight.

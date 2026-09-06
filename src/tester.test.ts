@@ -374,6 +374,23 @@ describe(TITLE, () => {
         assert.deepEqual(summary.counts, {tests: 3, suites: 0, passed: 1, failed: 0, cancelled: 2, skipped: 0})
     })
 
+    // A child's own timer may fire after its parent already gave up on it.
+    // The parent's verdict stands; the child does not report a second time.
+    it("a child's own timeout after its parent's does not report it again", async () => {
+        const local = createTAL()
+        const events = capture(local.reporter)
+        local.it("parent", {timeout: 10}, async (t) => {
+            void t.test("child", {timeout: 30}, async () => {
+                await new Promise(r => setTimeout(r, 100))
+            })
+            await new Promise(r => setTimeout(r, 100))
+        })
+        const summary = await local.run()
+
+        assert.deepEqual(names(events, "test:fail"), ["child", "parent"])
+        assert.deepEqual(summary.counts, {tests: 2, suites: 0, passed: 0, failed: 0, cancelled: 2, skipped: 0})
+    })
+
     // A queued sibling keeps its skip when the parent gives up, and every
     // sibling is cancelled even while the reporter's output is slow.
     // With an in-flight child, cancelling it takes several slow reporter
