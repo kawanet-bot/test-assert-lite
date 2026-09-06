@@ -1,18 +1,18 @@
 import {strict as assert} from "node:assert"
-import {describe, it} from "node:test"
+import {it} from "node:test"
 import {createTAL} from "./../index.ts"
 import {capture, names, ofType} from "./../test-utils/capture.ts"
+import {describeSlow} from "./../test-utils/slow.ts"
 
 const TITLE = "runner/runner-timeout.test.ts"
 
 // Timeouts and everything that happens after one: cancelling the subtests
-// in flight, what a body may still do, and when the run ends. Kept apart
-// since each case waits on real time, and can be left out where the timing
-// cannot be trusted.
+// in flight, what a body may still do, and when the run ends. Every case
+// waits on real time, so the suite runs only with TAL_SLOW_TESTS set.
 
 // Every test builds its own harness, so the default one stays clean and
 // nothing re-enters when TAL is itself the runner.
-describe(TITLE, () => {
+describeSlow(TITLE, () => {
     // node:test files a timeout under cancelled, not failed.
     it("timeout option cancels the test", async () => {
         const local = createTAL()
