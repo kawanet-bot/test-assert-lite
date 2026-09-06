@@ -3,20 +3,29 @@
 // runtime entry; the test checks the same names on the built output.
 import {strict as assert} from "node:assert"
 import {createRequire} from "node:module"
+import path from "node:path"
 import {test} from "node:test"
 import type * as declared from "test-assert-lite"
 import * as m from "./index.ts"
 
+const require = createRequire(import.meta.url)
+
 const runtime: typeof declared = m
 void runtime
 
-// Resolved through the package name, so this reads dist/: a checkout
-// self-references it, the pack test installs the tarball. Node that can
-// require() an ES module gets the .mjs, older Node the minified build;
-// both carry the same named exports.
+// module-sync sends this to the .mjs, since require(esm) exists on every
+// version this package declares support for.
 test("require entry", () => {
-    const require = createRequire(import.meta.url)
     const cjs = require("test-assert-lite")
+    assert.equal(typeof cjs.describe, "function")
+    assert.equal(typeof cjs.run, "function")
+    assert.equal(typeof cjs.strict, "function")
+})
+
+// The exports map has no "require" condition below module-sync, so reach
+// the minified bundle by its path instead.
+test("minified entry (.min.js)", () => {
+    const cjs = require(path.join(path.dirname(require.resolve("test-assert-lite")), "test-assert-lite.min.js"))
     assert.equal(typeof cjs.describe, "function")
     assert.equal(typeof cjs.run, "function")
     assert.equal(typeof cjs.strict, "function")

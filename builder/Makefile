@@ -4,22 +4,25 @@ SHELL := bash
 
 # Tests live beside the sources, so the library inputs are the src/ tree
 # with the test files filtered back out. Sources are nested, so this walks
-# the tree. src/test-utils/ holds helpers only the suites use, so it counts
-# as test input rather than library input.
-SRC := $(shell find ../src -name '*.ts' -not -name '*.test.ts' -not -path '*/test-utils/*')
+# the tree. src/test-utils/ holds helpers only the suites use, and src/cli/
+# is a separate build target below, so neither counts as library input.
+SRC := $(shell find ../src -name '*.ts' -not -name '*.test.ts' -not -path '*/test-utils/*' -not -path '*/cli/*')
 TEST_SRC := $(shell find ../src -name '*.test.ts') $(wildcard ../src/test-utils/*.ts)
+CLI_SRC := $(wildcard ../src/cli/*.ts)
 TYPES := $(wildcard ../types/*.d.ts)
 BUILDER_SRC := $(wildcard ./*.ts)
 BROWSER_SRC := $(wildcard ../browser/*.js)
 
 MJS_DST := ../dist/test-assert-lite.mjs
 MINJS_DST := ../dist/test-assert-lite.min.js
+CLI_DST := ../dist/test-assert-lite.cli.mjs
 PKG_DST := ../dist/package.json
 BROWSER_TEST_DST := ../browser/tests/bundled.js
 BUILDER_TEST_DST := ./tests/bundled.mjs
 
 MJS_CONFIG := ./rollup-mjs.config.ts
 MINJS_CONFIG := ./rollup-minjs.config.ts
+CLI_CONFIG := ./rollup-cli.config.ts
 BROWSER_TEST_CONFIG := ./rollup-browser-test.config.ts
 BUILDER_TEST_CONFIG := ./rollup-builder-test.config.ts
 
@@ -33,6 +36,11 @@ MJS_MAX_BYTES := 70000
 # release, so this carries a bit more slack than it will once published.
 MINJS_MAX_BYTES := 25000
 
+# The CLI externalizes both the library and Node builtins (see
+# rollup-cli.config.ts), so it carries little more than argv handling and
+# the load-then-run loop.
+CLI_MAX_BYTES := 2000
+
 # Shared by both test bundles, which inline the same suites while the
 # package itself stays external. The browser one also inlines
 # browser/import.js and is wrapped as an IIFE, so it sets the ceiling.
@@ -40,7 +48,7 @@ MINJS_MAX_BYTES := 25000
 # gross growth and can stay generous.
 TEST_MAX_BYTES := 200000
 
-ALL := $(MJS_DST) $(MINJS_DST) $(BUILDER_TEST_DST)
+ALL := $(MJS_DST) $(MINJS_DST) $(CLI_DST) $(BUILDER_TEST_DST)
 
 # Build/test paths require Node's native TypeScript type-strip (default on
 # Node 22.18+). Older runtimes report BUILDABLE=NO and skip the build.
@@ -68,6 +76,17 @@ $(MJS_DST): $(MJS_CONFIG) $(SRC) $(BUILDER_SRC)
 	../node_modules/.bin/rollup -c $<
 	@ls -l $@
 	@test "$$(wc -c < $@)" -le $(MJS_MAX_BYTES) || { echo "ERROR: $@ exceeds $(MJS_MAX_BYTES) byte cap" >&2; exit 1; }
+	@echo ""
+
+# The CLI, built alongside the library bundle it resolves at runtime
+# through a plain relative import rather than package self-reference (see
+# rollup-cli.config.ts for why). It needs that bundle in place first.
+$(CLI_DST): $(CLI_CONFIG) $(CLI_SRC) $(BUILDER_SRC) $(MJS_DST)
+	@mkdir -p $(dir $@)
+	../node_modules/.bin/rollup -c $<
+	@chmod +x $@
+	@ls -l $@
+	@test "$$(wc -c < $@)" -le $(CLI_MAX_BYTES) || { echo "ERROR: $@ exceeds $(CLI_MAX_BYTES) byte cap" >&2; exit 1; }
 	@echo ""
 
 # The browser build. dist/package.json marks dist/ as CommonJS so Node can
@@ -120,9 +139,11 @@ test:
 
 # The suites run twice: once under node:test, then again under the library
 # itself, so a regression in the runner cannot hide behind the real one.
+# The second run goes through the CLI: the bundle only registers tests as
+# a side effect and never calls run() itself.
 test-full: test-quick
 	cd .. && node --test 'src/**/*.test.ts'
-	cd .. && node $(BUILDER_TEST_DST:./%=builder/%)
+	cd .. && ./$(CLI_DST:../%=%) $(BUILDER_TEST_DST:./%=builder/%)
 
 test-quick: all
 	cd .. && node_modules/.bin/tsc --noEmit

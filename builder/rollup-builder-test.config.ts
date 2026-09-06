@@ -10,24 +10,16 @@ import {showFiles} from "./show-files.ts"
 const rollupConfig: RollupOptions = {
     input: ["../src/**/*.test.ts"],
 
-    // Only the package name stays external, plus the one builtin a suite
-    // reaches for that is not aliased away. A regular expression such as
-    // /^[^./]/ would externalise `node:test` before the alias plugin runs,
-    // leaving the suites bound to the real runner without any warning.
-    external: ["test-assert-lite", "node:module"],
+    // Only the package name stays external, plus the builtins a suite
+    // reaches for directly that are not aliased away. A regular expression
+    // such as /^[^./]/ would externalise `node:test` before the alias
+    // plugin runs, leaving the suites bound to the real runner without any
+    // warning.
+    external: ["test-assert-lite", "node:module", "node:path"],
 
     output: {
         file: "./tests/bundled.mjs",
         format: "esm",
-        // Nothing in the bundle calls run(), so the entry point is appended
-        // here. A dynamic import reaches the same module instance as the
-        // external import above, and avoids depending on bundled identifiers.
-        // The bundle may already bind names such as `run`, so the entry point
-        // stays anonymous rather than destructuring the namespace.
-        outro: [
-            "",
-            'process.exitCode = (await (await import("test-assert-lite")).run()).success ? 0 : 1',
-        ].join("\n"),
     },
 
     // Registration happens through side effects only. With tree shaking on,
