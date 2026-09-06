@@ -58,6 +58,17 @@ describe(TITLE, () => {
         assert.equal(out.includes("not ok"), false)
     })
 
+    // skip changes the line's own symbol, not whether the error underneath
+    // it is shown - spec()/html() keep it in their failing-tests list too.
+    it("still shows the error under a skipped-but-failed line", async () => {
+        const out = await render(r => r.emit("test:fail", {
+            ...pass("skipped then failed"), skip: "why",
+            details: {duration_ms: 1, type: "test", error: new Error("boom")},
+        }))
+
+        assert.match(out, /ok 1 - skipped then failed # SKIP why\n {2}---\n {2}message: "Error: boom.*"\n {2}\.\.\.\n/)
+    })
+
     it("leaves a passing suite, and one only failed by its children, out of the plan", async () => {
         const subtestsFailed = Object.assign(new Error("1 subtest failed"), {code: "ERR_TEST_FAILURE", failureType: "subtestsFailed"})
         const out = await render(async r => {
@@ -83,6 +94,17 @@ describe(TITLE, () => {
         }))
 
         assert.match(out, /not ok 1 - outer\n {2}---\n {2}message: "Error: after hook exploded.*"\n {2}\.\.\.\n1\.\.1\n/)
+    })
+
+    // A whole describe() block skipped as a group may register no child
+    // events at all - the suite's own pass carrying the skip note is then
+    // the only report of it, unlike an ordinary passing suite's own line.
+    it("still shows a skipped suite, even though a passing one is dropped", async () => {
+        const out = await render(r => r.emit("test:pass", {
+            ...pass("SkippedGroup"), skip: "not now", details: {duration_ms: 1, type: "suite"},
+        }))
+
+        assert.match(out, /ok 1 - SkippedGroup # SKIP not now\n/)
     })
 
     it("writes an error diagnostic block under a failing line", async () => {

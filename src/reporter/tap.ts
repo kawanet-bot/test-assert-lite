@@ -49,16 +49,16 @@ export const tap = (): FormatFn => async function* (source: AsyncIterable<TestEv
         const isFail = event.type === "test:fail"
         if (!isPass && !isFail) continue
 
-        // A passing suite adds nothing beyond its children, and a failing
-        // one is usually just a rollup of a child already reported here -
-        // but an independent hook failure has no other event to carry it,
-        // and dropping it too would report a failed run as all ok.
+        // A non-skipped suite adds nothing beyond its children unless it
+        // failed on its own rather than merely rolling up a child's error -
+        // that's the one case with no other event to carry it. A skipped
+        // suite is shown either way: skip may be its children's only report.
         const data = event.data
-        if (data.details.type === "suite" && (isPass || isSubtestsFailed(event.data.details.error))) continue
+        if (data.details.type === "suite" && data.skip == null && (isPass || isSubtestsFailed(event.data.details.error))) continue
 
         testNumber++
         yield resultLine(data, isPass, testNumber)
-        if (isFail && data.skip == null) yield errorBlock(event.data.details.error)
+        if (isFail) yield errorBlock(event.data.details.error)
     }
 
     // The plan is written last rather than as `1..N` up front: the total
