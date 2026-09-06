@@ -173,39 +173,42 @@ const lateTest = async (state: RunState, node: TestNode): Promise<void> => {
     if (registeredSkip == null) {
         const context = makeContext(state, node.name, 0)
         const outer = state.ancestors
-        state.ancestors = [...outer, self]
-        const {timeout} = node.options
-        const body = Promise.resolve(node.fn?.(context))
-        if (timeout != null && timeout > 0) {
-            const timer = timeoutAfter(timeout)
-            try {
-                await Promise.race([body, timer.promise])
-            } catch (e) {
-                // Its own timeout is honored the same way a registered test's
-                // is: node:test does not wait for the body either, and
-                // cancels whatever it had already started.
-                if (e === timer.error) {
-                    context.finished = true
-                    state.lingering.push(body, ...context.pending)
-                    await cancelChildren(state, context)
+        // Its own scope, not appended to whatever else is running: a late
+        // test is reparented to the root and owes nothing else as ancestor.
+        state.ancestors = [self]
+        try {
+            const {timeout} = node.options
+            const body = Promise.resolve(node.fn?.(context))
+            if (timeout != null && timeout > 0) {
+                const timer = timeoutAfter(timeout)
+                try {
+                    await Promise.race([body, timer.promise])
+                } catch (e) {
+                    // Its own timeout is honored the same way a registered
+                    // test's is: node:test does not wait for the body, and
+                    // cancels whatever it had already started.
+                    if (e === timer.error) {
+                        context.finished = true
+                        state.lingering.push(body, ...context.pending)
+                        await cancelChildren(state, context)
+                    }
+                } finally {
+                    timer.cancel()
                 }
-                // A body that threw on its own has already decided the verdict.
-            } finally {
-                timer.cancel()
-            }
-        } else {
-            try {
+            } else {
                 await body
-            } catch {
-                // the verdict is already decided
             }
+        } catch {
+            // the verdict is already decided, whatever the cause: a thrown
+            // body, sync or async, or a timeout already handled above.
+        } finally {
+            state.ancestors = outer
         }
-        state.ancestors = outer
-        // Subtests it started and did not await settle before the summary too.
-        if (!context.finished) {
-            state.lingering.push(...context.pending)
-            runtimeSkip = context.skipped
-        }
+        // Subtests it started and did not await settle before the summary
+        // too, unless the timeout above already queued them.
+        if (!context.finished) state.lingering.push(...context.pending)
+        // A skip called before a timeout cut the body off still counts.
+        runtimeSkip = context.skipped
     }
     // The body's own t.skip() decides this as much as how it was declared.
     const skip = registeredSkip ?? runtimeSkip

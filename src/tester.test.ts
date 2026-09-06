@@ -580,6 +580,72 @@ describe(TITLE, () => {
         assert.equal((grandchild?.details.error as {failureType?: string}).failureType, "cancelledByParent")
     })
 
+    // A late subtest is filed as parentAlreadyFinished no matter how its own
+    // body ended, throwing synchronously included.
+    it("a late subtest that throws synchronously is still counted and reported", async () => {
+        const local = createTAL()
+        const events = capture(local.reporter)
+        local.it("slow", {timeout: 10}, async (t) => {
+            await new Promise(r => setTimeout(r, 40))
+            await t.test("late", () => {
+                throw new Error("boom")
+            })
+        })
+        const summary = await local.run()
+
+        const late = ofType(events, "test:fail").find(e => e.data.name === "late")?.data
+        assert.equal((late?.details.error as {failureType?: string}).failureType, "parentAlreadyFinished")
+        assert.deepEqual(summary.counts, {tests: 2, suites: 0, passed: 0, failed: 1, cancelled: 1, skipped: 0})
+    })
+
+    // A skip the body calls before its own timeout cuts it off still decides
+    // the verdict, the same as a registered test's does.
+    it("a late subtest's own skip survives its own timeout", async () => {
+        const local = createTAL()
+        const events = capture(local.reporter)
+        local.it("slow", {timeout: 10}, async (t) => {
+            await new Promise(r => setTimeout(r, 40))
+            await t.test("late", {timeout: 10}, async (inner) => {
+                inner.skip("why")
+                await new Promise(r => setTimeout(r, 100))
+            })
+        })
+        const summary = await local.run()
+
+        const late = ofType(events, "test:fail").find(e => e.data.name === "late")?.data
+        assert.equal(late?.skip, "why")
+        assert.deepEqual(summary.counts, {tests: 2, suites: 0, passed: 0, failed: 0, cancelled: 1, skipped: 1})
+    })
+
+    // Two late subtests from different parents can be in flight together.
+    // Each is reparented to the root on its own; one must not show up as an
+    // ancestor of the other's descendant just because both are still open.
+    it("a late subtest's ancestor scope does not leak into another late subtest still running", async () => {
+        const local = createTAL()
+        const events = capture(local.reporter)
+        let releaseA: () => void
+        const gateA = new Promise<void>(r => {
+            releaseA = r
+        })
+        local.it("parentA", {timeout: 10}, async (t) => {
+            await new Promise(r => setTimeout(r, 30))
+            await t.test("lateA", async () => {
+                await gateA
+            })
+        })
+        local.it("parentB", {timeout: 10}, async (t) => {
+            await new Promise(r => setTimeout(r, 35))
+            await t.test("lateB", async (inner) => {
+                await inner.test("childB", () => undefined)
+                releaseA()
+            })
+        })
+        await local.run()
+
+        const starts = names(events, "test:start")
+        assert.ok(starts.indexOf("lateA") > starts.indexOf("childB"))
+    })
+
     // node:test does not run a skipped late subtest, keeps its skip on the
     // failure event, and counts it as skipped.
     it("a skipped subtest after the timeout stays skipped", async () => {
