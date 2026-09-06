@@ -30,19 +30,18 @@ interface ByteRange {
 // Read through the intrinsic accessor rather than a's own byteLength/
 // byteOffset/buffer: a DataView or typed array subclass could otherwise
 // override one of those to make sameBytes() below see the wrong range.
-// `is` calls the same accessor just to see whether it throws, which is
-// also how a real DataView is told apart from, say, a typed array that
-// spoofs Symbol.toStringTag to claim it is one: instanceof cannot tell
-// (a cross-realm DataView fails it), and the tag can be lied about, but
-// the accessor itself checks the actual internal slot underneath either way.
 const byteRangeOf = (proto: object) => {
     const byteLength = Object.getOwnPropertyDescriptor(proto, "byteLength")!.get as (this: object) => number
     const byteOffset = Object.getOwnPropertyDescriptor(proto, "byteOffset")!.get as (this: object) => number
     const buffer = Object.getOwnPropertyDescriptor(proto, "buffer")!.get as (this: object) => ArrayBufferLike
     return {
+        // Probes `buffer`, not byteLength/byteOffset: unlike those, it never
+        // checks attachment, so a detached DataView still counts as one
+        // rather than a spoofed non-DataView - instanceof and the tag can
+        // both be lied about, but this accessor's own slot check can't.
         is: (v: object): boolean => {
             try {
-                byteLength.call(v)
+                buffer.call(v)
                 return true
             } catch {
                 return false
@@ -62,6 +61,12 @@ const typedArray = byteRangeOf(Object.getPrototypeOf(Uint8Array.prototype) as ob
 const sameBytes = (a: ByteRange, b: ByteRange): boolean => {
     if (a.byteLength !== b.byteLength) return false
     const length = a.byteLength
+
+    // Nothing to read for an empty range, so return before touching the
+    // buffer at all: even a zero-length view throws when constructed over
+    // one that's detached, though there would be no bytes to compare anyway.
+    if (length === 0) return true
+
     const phase = a.byteOffset % 4
     const lead = phase === b.byteOffset % 4 ? Math.min(length, (4 - phase) % 4) : length
 

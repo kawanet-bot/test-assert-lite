@@ -135,6 +135,35 @@ describe(TITLE, () => {
         assert.throws(() => TAL.deepEqual(view(bytes, 0, 6), view(rebased, 1, 6)), /deep-equal/)
     })
 
+    // A detached typed array's byteLength getter reports 0 without throwing,
+    // but constructing even a zero-length Uint8Array over its buffer does -
+    // sameBytes() must resolve a zero-byte range before touching the buffer.
+    it("treats a detached typed array as equal to a fresh empty one", () => {
+        const detached = (bytes: number[]): Uint8Array => {
+            const view = new Uint8Array(bytes)
+            structuredClone(view.buffer, {transfer: [view.buffer]})
+            return view
+        }
+        assert.doesNotThrow(() => TAL.deepEqual(detached([1, 2, 3]), new Uint8Array(0)))
+        assert.doesNotThrow(() => TAL.deepEqual(detached([1, 2, 3]), detached([4, 5])))
+        // A different element kind is still a different kind, detached or not.
+        assert.throws(() => TAL.deepEqual(detached([1, 2, 3]), new Int8Array(0)), /deep-equal/)
+    })
+
+    // Unlike a typed array's, DataView's byteLength/byteOffset getters throw
+    // on a detached buffer rather than reporting 0 - so this still throws,
+    // matching node's own deepEqual for the same comparison on every version.
+    it("still throws when a DataView's buffer is detached", () => {
+        const detached = (): DataView => {
+            const buf = new ArrayBuffer(8)
+            const view = new DataView(buf)
+            structuredClone(buf, {transfer: [buf]})
+            return view
+        }
+        assert.throws(() => TAL.deepEqual(detached(), detached()), TypeError)
+        assert.throws(() => TAL.deepEqual(detached(), new DataView(new ArrayBuffer(0))), TypeError)
+    })
+
     // SharedArrayBuffer isn't an instanceof ArrayBuffer, so it needs its own
     // tag check to reach the same byte-comparison path. The global itself
     // does not exist in a non-cross-origin-isolated browser (this suite's
