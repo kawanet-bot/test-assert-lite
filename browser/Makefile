@@ -30,7 +30,9 @@ LAUNCHABLE = $(shell cd .. && node -e 'require("playwright").chromium.launch().t
 install-browser: install-playwright
 	cd .. && npx --no-install playwright install --only-shell chromium$(if $(LAUNCHABLE),, --with-deps)
 
-test: all
+# `install` here keeps a plain `make -C browser test` self-sufficient. It is
+# cheap once Playwright and the browser are present (see LAUNCHABLE).
+test: all install
 	cd .. && node browser/tests.cli.mjs
 
 # Browser bundle cleanup remains owned by builder/Makefile.
