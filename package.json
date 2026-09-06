@@ -30,13 +30,12 @@
     }
   },
   "engines": {
-    "node": ">=18.8.0"
+    "node": ">=20.19.0"
   },
   "exports": {
     ".": {
       "types": "./types/test-assert-lite.d.ts",
       "module-sync": "./dist/test-assert-lite.mjs",
-      "require": "./dist/test-assert-lite.min.js",
       "import": "./dist/test-assert-lite.mjs"
     }
   },
