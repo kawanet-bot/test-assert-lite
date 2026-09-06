@@ -36,8 +36,10 @@ export interface RunState {
     // once but ends the run only when they settle, and so does run() here.
     lingering: Promise<unknown>[]
     // How many children the root has numbered so far. A subtest started
-    // after its parent finished is numbered as the root's next child.
+    // after its parent finished is numbered as the root's next child, and
+    // reported once the registered ones all are, as node:test orders it.
     topLevel: number
+    lateReports: (() => Promise<void>)[]
 }
 
 const timeoutAfter = (ms: number): {promise: Promise<never>, error: TesterError, cancel: () => void} => {
@@ -129,24 +131,32 @@ const makeContext = (state: RunState, name: string, nesting: number): Context =>
 }
 
 // A subtest started after its parent was reported. node:test still runs
-// the body, then files it as a top-level failure of its own kind.
+// the body unless it is skipped, and files the test as a top-level failure
+// of its own kind once every registered test has been reported.
 const lateTest = async (state: RunState, node: TestNode): Promise<void> => {
     const {counters} = state
+    const skip = skipOf(node)
     counters.tests++
-    counters.failed++
+    if (skip != null) counters.skipped++
+    else counters.failed++
     state.success = false
-    const testNumber = ++state.topLevel
     const started = performance.now()
-    try {
-        await node.fn?.(makeContext(state, node.name, 0))
-    } catch {
-        // the verdict is already decided
+    if (skip == null) {
+        try {
+            await node.fn?.(makeContext(state, node.name, 0))
+        } catch {
+            // the verdict is already decided
+        }
     }
-    const error = new TesterError("test could not be started because its parent finished", "parentAlreadyFinished")
-    await state.reporter.emit("test:start", {name: node.name, nesting: 0})
-    await state.reporter.emit("test:fail", {
-        name: node.name, nesting: 0, testNumber,
-        details: {duration_ms: performance.now() - started, type: "test", error},
+    const duration_ms = performance.now() - started
+    state.lateReports.push(async () => {
+        const error = new TesterError("test could not be started because its parent finished", "parentAlreadyFinished")
+        await state.reporter.emit("test:start", {name: node.name, nesting: 0})
+        await state.reporter.emit("test:fail", {
+            name: node.name, nesting: 0, testNumber: ++state.topLevel,
+            ...(skip != null ? {skip} : {}),
+            details: {duration_ms, type: "test", error},
+        })
     })
 }
 
@@ -248,9 +258,11 @@ export const runTest = async (state: RunState, node: TestNode, nesting: number, 
         error = new TesterError(`${failedSubtests} subtest${failedSubtests === 1 ? "" : "s"} failed`, "subtestsFailed")
     }
 
+    // Finished before the reporter is awaited, so a body resuming while the
+    // output is slow already sees itself as reported.
+    context.finished = true
     const duration_ms = performance.now() - started
     await announce(state, self)
-    context.finished = true
     const runtimeSkip = context.skipped
 
     if (error != null) {

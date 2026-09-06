@@ -255,15 +255,18 @@ const runOnce = async (
         assert,
         lingering: [],
         topLevel: 0,
+        lateReports: [],
     }
 
     await walk(state, harness.rootSuite, 0)
 
     // A body that outlived its timeout may still add to the counts, so the
-    // summary waits for every one of them, as node:test's run does.
+    // summary waits for every one of them, as node:test's run does. What
+    // they started late is reported after everything registered.
     while (state.lingering.length) {
         await Promise.allSettled(state.lingering.splice(0))
     }
+    for (const report of state.lateReports.splice(0)) await report()
 
     const duration_ms = performance.now() - started
     const summary: declared.TAL.TestSummary = {

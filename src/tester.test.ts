@@ -341,10 +341,51 @@ describe(TITLE, () => {
 
         assert.equal(ran, 2)
         const late = ofType(events, "test:fail").filter(e => e.data.name.startsWith("late"))
-        assert.deepEqual(late.map(e => `${e.data.name}@${e.data.nesting}`), ["late awaited@0", "late unawaited@0"])
+        assert.deepEqual(late.map(e => `${e.data.name}@${e.data.nesting}#${e.data.testNumber}`), ["late awaited@0#2", "late unawaited@0#3"])
         assert.equal((late[0]?.data.details.error as {failureType?: string}).failureType, "parentAlreadyFinished")
         assert.deepEqual(summary.counts, {tests: 3, suites: 0, passed: 0, failed: 2, cancelled: 1, skipped: 0})
         assert.equal(summary.success, false)
+    })
+
+    // node:test does not run a skipped late subtest, keeps its skip on the
+    // failure event, and counts it as skipped.
+    it("a skipped subtest after the timeout stays skipped", async () => {
+        const local = createTAL()
+        const events = capture(local.reporter)
+        let ran = false
+        local.it("slow", {timeout: 10}, async (t) => {
+            await new Promise(r => setTimeout(r, 40))
+            await t.test("late skip", {skip: "why"}, () => {
+                ran = true
+            })
+        })
+        const summary = await local.run()
+
+        assert.equal(ran, false)
+        const late = ofType(events, "test:fail").find(e => e.data.name === "late skip")?.data
+        assert.equal(late?.skip, "why")
+        assert.deepEqual(summary.counts, {tests: 2, suites: 0, passed: 0, failed: 0, cancelled: 1, skipped: 1})
+    })
+
+    // node:test reports a late subtest after every registered test, numbered
+    // as the root's next child, so a test still to run keeps its own number.
+    it("a late subtest is reported after the registered tests", async () => {
+        const local = createTAL()
+        const events = capture(local.reporter)
+        local.it("slow", {timeout: 10}, async (t) => {
+            await new Promise(r => setTimeout(r, 40))
+            await t.test("late", () => undefined)
+        })
+        local.it("second", async () => {
+            await new Promise(r => setTimeout(r, 80))
+        })
+        local.it("third", () => undefined)
+        await local.run()
+
+        const results = events
+            .filter(e => e.type === "test:pass" || e.type === "test:fail")
+            .map(e => `${e.data.name}#${e.data.testNumber}`)
+        assert.deepEqual(results, ["slow#1", "second#2", "third#3", "late#4"])
     })
 
     it("subtests are numbered within their parent", async () => {
