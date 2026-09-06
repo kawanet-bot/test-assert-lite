@@ -261,9 +261,13 @@ export class Test {
     // already know about; each of them is closed the moment it is declared.
     private async startClosed(verdict: Verdict): Promise<Outcome> {
         if (this.kind === "suite" && this.skip == null) {
+            // The body still takes time, so the clock runs for it.
+            this.started = true
+            this.startedAt = performance.now()
             const bodyError = await this.runSuiteBody()
             if (bodyError != null) this.error = bodyError
             for (const child of this.children) await child.start(this.run)
+            this.endedAt = performance.now()
         }
         await this.report()
         return verdict.outcome
