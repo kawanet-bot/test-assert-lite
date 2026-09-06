@@ -224,6 +224,24 @@ describe(TITLE, () => {
         assert.equal(summary.success, false)
     })
 
+    // A suite below a failed setup still runs its body to declare its
+    // children, and its report covers the time that took.
+    it("a cancelled suite reports the time its body took", async () => {
+        const local = createTAL()
+        const events = capture(local.reporter)
+        local.before(() => {
+            throw new Error("root setup")
+        })
+        local.describe("S", async () => {
+            await new Promise(r => setTimeout(r, 20))
+            local.it("x", () => undefined)
+        })
+        await local.run()
+
+        const suite = ofType(events, "test:fail").find(e => e.data.name === "S")?.data
+        assert.ok((suite?.details.duration_ms ?? -1) >= 10)
+    })
+
     it("cancellation reaches the grandchildren", async () => {
         const local = createTAL()
         const events = capture(local.reporter)

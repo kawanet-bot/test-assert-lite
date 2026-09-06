@@ -171,6 +171,118 @@ describeSlow(TITLE, () => {
         assert.deepEqual(summary.counts, {tests: 2, suites: 0, passed: 0, failed: 0, cancelled: 2, skipped: 0})
     })
 
+    // A child that settled on its own but is still reporting when the
+    // parent throws is waited for: its results come before the parent's
+    // and are in the counts, however slow the reporter is.
+    it("a parent that throws waits for a settled child still reporting", async () => {
+        const local = createTAL()
+        const events: ReturnType<typeof capture> = []
+        local.reporter.format(async function* (source) {
+            for await (const event of source) {
+                events.push(event)
+                yield "."
+            }
+        })
+        local.reporter.output(() => new Promise(r => setTimeout(r, slow(30))))
+        local.it("parent", async (t) => {
+            void t.test("child", {timeout: slow(10)}, async (inner) => {
+                void inner.test("grandchild", async () => {
+                    await new Promise(r => setTimeout(r, slow(100)))
+                })
+                await new Promise(r => setTimeout(r, slow(100)))
+            })
+            await new Promise(r => setTimeout(r, slow(40)))
+            throw new Error("boom")
+        })
+        const summary = await local.run()
+
+        assert.deepEqual(names(events, "test:fail"), ["grandchild", "child", "parent"])
+        assert.equal(summary.counts.tests, 3)
+        assert.equal(events.at(-1)?.type, "test:summary")
+    })
+
+    // A child the parent closed may see its own body settle while the
+    // parent is still reporting its descendants. The parent reports it in
+    // its turn; the child must not report itself in the meantime.
+    it("a cancelled child settling during its parent's report stays silent", async () => {
+        const local = createTAL()
+        const events: ReturnType<typeof capture> = []
+        local.reporter.format(async function* (source) {
+            for await (const event of source) {
+                events.push(event)
+                yield "."
+            }
+        })
+        local.reporter.output(() => new Promise(r => setTimeout(r, slow(30))))
+        local.it("parent", {timeout: slow(10)}, async (t) => {
+            void t.test("child", async (inner) => {
+                void inner.test("g1", async () => {
+                    await new Promise(r => setTimeout(r, slow(100)))
+                })
+                void inner.test("g2", () => undefined)
+                await new Promise(r => setTimeout(r, slow(30)))
+            })
+            await new Promise(r => setTimeout(r, slow(200)))
+        })
+        const summary = await local.run()
+
+        assert.deepEqual(names(events, "test:start"), ["parent", "child", "g1", "g2"])
+        assert.deepEqual(names(events, "test:fail"), ["g1", "g2", "child", "parent"])
+        assert.deepEqual(summary.counts, {tests: 4, suites: 0, passed: 0, failed: 0, cancelled: 4, skipped: 0})
+    })
+
+    // The same, one level down: a grandchild that passed but is still
+    // reporting when the parent throws comes out before the child it
+    // belongs to, and before the parent.
+    it("a parent that throws waits for a settled grandchild still reporting", async () => {
+        const local = createTAL()
+        const events: ReturnType<typeof capture> = []
+        local.reporter.format(async function* (source) {
+            for await (const event of source) {
+                events.push(event)
+                yield "."
+            }
+        })
+        local.reporter.output(() => new Promise(r => setTimeout(r, slow(30))))
+        local.it("parent", async (t) => {
+            void t.test("child", async (inner) => {
+                void inner.test("grandchild", () => undefined)
+                await new Promise(r => setTimeout(r, slow(100)))
+            })
+            await new Promise(r => setTimeout(r, slow(20)))
+            throw new Error("boom")
+        })
+        const summary = await local.run()
+
+        assert.deepEqual(names(events, "test:start"), ["parent", "child", "grandchild"])
+        const results = events.filter(e => e.type === "test:pass" || e.type === "test:fail").map(e => e.data.name)
+        assert.deepEqual(results, ["grandchild", "child", "parent"])
+        assert.deepEqual(summary.counts, {tests: 3, suites: 0, passed: 1, failed: 1, cancelled: 1, skipped: 0})
+        assert.equal(events.at(-1)?.type, "test:summary")
+    })
+
+    // The root's after hooks run once the registered tests are done, not
+    // once a timed out body has settled: teardown must not wait on it. What
+    // that body declares afterwards runs after the teardown.
+    it("root after hooks run before a timed out body is waited for", async () => {
+        const local = createTAL()
+        local.reporter.output(() => undefined)
+        const order: string[] = []
+        local.after(() => {
+            order.push("after")
+        })
+        local.it("slow", {timeout: slow(30)}, async (t) => {
+            await new Promise(r => setTimeout(r, slow(40)))
+            order.push("settled")
+            await t.test("late", () => {
+                order.push("late")
+            })
+        })
+        await local.run()
+
+        assert.deepEqual(order, ["after", "settled", "late"])
+    })
+
     // A queued sibling keeps its skip when the parent gives up, and every
     // sibling is cancelled even while the reporter's output is slow.
     // With an in-flight child, cancelling it takes several slow reporter
