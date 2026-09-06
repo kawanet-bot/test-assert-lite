@@ -22,10 +22,6 @@ const resultLine = (data: declared.TAL.TestPass | declared.TAL.TestFail, isPass:
 // own dump of every Error property is detail this reporter does not match.
 const errorBlock = (error: Error): string => `  ---\n  message: ${JSON.stringify(oneLine(errorText(error)))}\n  ...\n`
 
-// node:test's own event carries this beyond what TAL's own summary does;
-// reading it is how the final, whole-run summary is told apart below.
-const fileOf = (data: object): string | undefined => (data as {file?: string}).file
-
 export const tap = (): FormatFn => async function* (source: AsyncIterable<TestEvent>): AsyncIterable<string> {
     let testNumber = 0
     let counts: declared.TAL.TestSummary["counts"] | undefined
@@ -44,10 +40,7 @@ export const tap = (): FormatFn => async function* (source: AsyncIterable<TestEv
         }
 
         if (event.type === "test:summary") {
-            // node:test emits one of these per file plus a final one for
-            // the whole run; only the file-less final one is kept, so the
-            // totals below always match what node:test itself reports.
-            if (fileOf(event.data) == null) counts = event.data.counts
+            counts = event.data.counts
             continue
         }
 

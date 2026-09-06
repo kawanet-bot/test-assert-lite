@@ -103,20 +103,4 @@ describe(TITLE, () => {
 
         assert.match(out, /1\.\.3\n# tests 3\n# pass 1\n# fail 1\n# skip 1\n/)
     })
-
-    // node:test emits a per-file test:summary (carrying a `file`) before the
-    // one true final summary for the whole run - only the latter should
-    // ever reach the trailing counts, or a multi-file run's plan would be
-    // wrong and the counts could appear more than once.
-    it("ignores a per-file test:summary and waits for the final one", async () => {
-        const out = await render(async r => {
-            await r.emit("test:pass", pass("a"))
-            await r.emit("test:summary", {...summary({tests: 1, passed: 1, failed: 0, skipped: 0, cancelled: 0, suites: 0}), file: "a.test.js"} as never)
-            await r.emit("test:pass", pass("b"))
-            await r.emit("test:summary", summary({tests: 2, passed: 2, failed: 0, skipped: 0, cancelled: 0, suites: 0}))
-        })
-
-        assert.match(out, /1\.\.2\n# tests 2\n# pass 2\n# fail 0\n# skip 0\n/)
-        assert.equal(out.includes("# tests 1\n"), false)
-    })
 })
