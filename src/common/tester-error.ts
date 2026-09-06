@@ -32,3 +32,10 @@ export const testRunnerError = (thrown: unknown, failureType: FailureType): Erro
 export const isTesterError = (error: unknown): error is TesterError => (isError(error) && (error as declared.TAL.TesterError).code === ERR_TEST_FAILURE)
 
 export const isSubtestsFailed = (error: unknown): boolean => isTesterError(error) && error.failureType === "subtestsFailed"
+
+// The two verdicts a parent hands down, worded as node:test words them.
+export const cancelledByParent = (): TesterError =>
+    new TesterError("test did not finish before its parent and was cancelled", "cancelledByParent")
+
+export const parentAlreadyFinished = (): TesterError =>
+    new TesterError("test could not be started because its parent finished", "parentAlreadyFinished")

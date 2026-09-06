@@ -1,14 +1,10 @@
 import type * as declared from "test-assert-lite"
-import {TesterError, testRunnerError} from "./common/tester-error.ts"
+import {TesterError, cancelledByParent, testRunnerError} from "./common/tester-error.ts"
 import type {ReporterControl} from "./reporter.ts"
 import type {HarnessState, SuiteNode} from "./suite.ts"
 import {resetHarnessState} from "./suite.ts"
 import type {Outcome, RunState} from "./tester.ts"
-import {abortTest, announceAncestors, runTest} from "./tester.ts"
-
-const CANCELLED_MESSAGE = "test did not finish before its parent and was cancelled"
-
-const cancelledByParent = (): TesterError => new TesterError(CANCELLED_MESSAGE, "cancelledByParent")
+import {abortTest, announceAncestors, drainLate, runTest} from "./tester.ts"
 
 // Runs the hooks in order and stops at the first failure, which is
 // returned as the error to charge to the suite.
@@ -252,9 +248,17 @@ const runOnce = async (
         harness,
         reporter: control.reporter,
         assert,
+        lingering: new Set(),
+        late: [],
+        lateCount: 0,
+        wake: undefined,
+        closed: false,
     }
 
     await walk(state, harness.rootSuite, 0)
+    // A timed out body is still running here; node:test ends the run only
+    // once such work has settled, so the summary comes after all of it.
+    await drainLate(state)
 
     const duration_ms = performance.now() - started
     const summary: declared.TAL.TestSummary = {
