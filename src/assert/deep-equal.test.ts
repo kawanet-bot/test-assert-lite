@@ -88,6 +88,22 @@ describe(TITLE, () => {
         assert.throws(() => TAL.deepEqual(stretched, [1, 2]), /deep-equal/)
     })
 
+    // The length check above must stay scoped to arrays/typed arrays: a
+    // plain class with its own inherited `length` accessor is not one, and
+    // reading it as if it were would invoke the getter as a side effect.
+    it("does not mistake a plain object's own length property for an array's", () => {
+        let calls = 0
+        class Sized {
+            id = 1
+            get length(): number {
+                calls++
+                return 9
+            }
+        }
+        assert.doesNotThrow(() => TAL.deepEqual(new Sized(), new Sized()))
+        assert.equal(calls, 0)
+    })
+
     it("breaks self-referencing cycles instead of overflowing the stack", () => {
         const a: Record<string, unknown> = {name: "x"}
         a.self = a

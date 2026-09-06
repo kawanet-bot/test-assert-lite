@@ -46,6 +46,17 @@ describe(TITLE, () => {
         assert.throws(() => TAL.deepEqual(new Error("boom", {cause: "x"}), new Error("boom")), /deep-equal/)
     })
 
+    // cause is recursed into before the memo stamp used to be set, so a
+    // self- or mutually-referencing cause chain overflowed the stack instead
+    // of resolving like any other cycle.
+    it("breaks a cycle reached through cause the same way as through a plain key", () => {
+        const a = new Error("x") as Error & {cause?: unknown}
+        a.cause = a
+        const b = new Error("x") as Error & {cause?: unknown}
+        b.cause = b
+        assert.doesNotThrow(() => TAL.deepEqual(a, b))
+    })
+
     it("compares an AggregateError's own errors array", () => {
         const one = (): AggregateError => new AggregateError([new Error("a")], "many")
         assert.doesNotThrow(() => TAL.deepEqual(one(), one()))
@@ -108,11 +119,20 @@ describe(TITLE, () => {
         assert.throws(() => TAL.deepEqual(extra, new String("x")), /deep-equal/)
     })
 
-    // Map/Set/WeakMap/WeakSet/ArrayBuffer/Promise keep their real content
-    // outside of own enumerable properties, so only a shared reference is
-    // treated as equal for them (documented scope limit; see the plan
-    // comment on the tracking issue for the tradeoff).
-    it("only treats Map/Set/WeakMap/WeakSet/ArrayBuffer/Promise as equal by reference", () => {
+    // Not specially handled, but the tag check plus the length check above
+    // make this work anyway: a typed array's elements are own enumerable
+    // indices, same as a plain array's.
+    it("compares typed arrays element by element", () => {
+        assert.doesNotThrow(() => TAL.deepEqual(new Uint8Array([1, 2]), new Uint8Array([1, 2])))
+        assert.throws(() => TAL.deepEqual(new Uint8Array([1, 2]), new Uint8Array([1, 3])), /deep-equal/)
+        assert.throws(() => TAL.deepEqual(new Uint8Array([1, 2]), new Int8Array([1, 2])), /deep-equal/)
+    })
+
+    // Map/Set/WeakMap/WeakSet/ArrayBuffer/DataView/Promise keep their real
+    // content outside of own enumerable properties, so only a shared
+    // reference is treated as equal for them (documented scope limit; see
+    // the plan comment on the tracking issue for the tradeoff).
+    it("only treats Map/Set/WeakMap/WeakSet/ArrayBuffer/DataView/Promise as equal by reference", () => {
         assert.doesNotThrow(() => {
             const shared = new Map([["a", 1]])
             TAL.deepEqual(shared, shared)
@@ -120,6 +140,7 @@ describe(TITLE, () => {
         assert.throws(() => TAL.deepEqual(new Map([["a", 1]]), new Map([["a", 1]])), /deep-equal/)
         assert.throws(() => TAL.deepEqual(new Set([1]), new Set([1])), /deep-equal/)
         assert.throws(() => TAL.deepEqual(new ArrayBuffer(4), new ArrayBuffer(4)), /deep-equal/)
+        assert.throws(() => TAL.deepEqual(new DataView(new ArrayBuffer(4)), new DataView(new ArrayBuffer(4))), /deep-equal/)
         assert.throws(() => TAL.deepEqual(Promise.resolve(1), Promise.resolve(1)), /deep-equal/)
     })
 

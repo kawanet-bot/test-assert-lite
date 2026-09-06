@@ -43,48 +43,57 @@ const isDeepEqual = (a: unknown, b: unknown, memo: Memo): boolean => {
     const other = b as Record<string, unknown>
     if (tag !== toTag(b)) return false
 
-    if (isError(a)) {
-        const otherError = b as Error & {cause?: unknown}
-        if (a.name !== otherError.name || a.message !== otherError.message) return false
-        if (("cause" in a) !== ("cause" in otherError)) return false
-        if ("cause" in a && !isDeepEqual((a as {cause?: unknown}).cause, otherError.cause, memo)) return false
-        if (a instanceof AggregateError && !isDeepEqual(a.errors, (b as AggregateError).errors, memo)) return false
-    } else if ("undefined" !== typeof URL && a instanceof URL) {
-        // href is not enumerable either, but a URL can still carry its own
-        // extra enumerable properties, so this falls through to the walk too.
-        if (a.href !== (b as URL).href) return false
-    } else if (a instanceof Boolean) {
-        if (!Object.is(Boolean.prototype.valueOf.call(a), Boolean.prototype.valueOf.call(b))) return false
-    } else if (a instanceof Number) {
-        if (!Object.is(Number.prototype.valueOf.call(a), Number.prototype.valueOf.call(b))) return false
-        // String is the one wrapper whose characters are already own
-        // enumerable indices; called through the prototype like the above,
-        // so an own valueOf cannot fool it, and it still falls through
-        // below for any extra own property.
-    } else if (a instanceof String) {
-        if (String.prototype.valueOf.call(a) !== String.prototype.valueOf.call(b)) return false
-    } else if (!isWalkable(a, tag)) {
-        return false
-    }
-
-    // length is never enumerable on an Array/Arguments/typed array, so the
-    // own-key walk below would not otherwise notice a stretched or shrunk one.
-    if ("length" in a && !Object.prototype.propertyIsEnumerable.call(a, "length") && a.length !== other.length) return false
-
+    // Stamped before recursing into anything below - an Error's cause chain
+    // included - so a cycle reached through any of those paths is still
+    // caught, not only one reached through the own-key walk at the tail.
     const stamp = memo.left.get(a)
     if (stamp != null) return memo.right.get(b) === stamp
     const position = ++memo.position
     memo.left.set(a, position)
     memo.right.set(b, position)
 
-    const keysA = Object.keys(a)
-    const keysB = new Set(Object.keys(b))
-    const result = keysA.length === keysB.size &&
-        keysA.every(key => keysB.has(key) && isDeepEqual((a as Record<string, unknown>)[key], other[key], memo))
+    try {
+        if (isError(a)) {
+            const otherError = b as Error & {cause?: unknown}
+            if (a.name !== otherError.name || a.message !== otherError.message) return false
+            if (("cause" in a) !== ("cause" in otherError)) return false
+            if ("cause" in a && !isDeepEqual((a as {cause?: unknown}).cause, otherError.cause, memo)) return false
+            if (a instanceof AggregateError && !isDeepEqual(a.errors, (b as AggregateError).errors, memo)) return false
+        } else if ("undefined" !== typeof URL && a instanceof URL) {
+            // href is not enumerable either, but a URL can still carry its own
+            // extra enumerable properties, so this falls through to the walk too.
+            if (a.href !== (b as URL).href) return false
+        } else if (a instanceof Boolean) {
+            if (!Object.is(Boolean.prototype.valueOf.call(a), Boolean.prototype.valueOf.call(b))) return false
+        } else if (a instanceof Number) {
+            if (!Object.is(Number.prototype.valueOf.call(a), Number.prototype.valueOf.call(b))) return false
+            // String is the one wrapper whose characters are already own
+            // enumerable indices; called through the prototype like the above,
+            // so an own valueOf cannot fool it, and it still falls through
+            // below for any extra own property.
+        } else if (a instanceof String) {
+            if (String.prototype.valueOf.call(a) !== String.prototype.valueOf.call(b)) return false
+        } else if (!isWalkable(a, tag)) {
+            return false
+        }
 
-    memo.left.delete(a)
-    memo.right.delete(b)
-    return result
+        // length is never enumerable on these, so the own-key walk below would
+        // not otherwise notice a stretched or shrunk one. Scoped to the exact
+        // tags rather than `"length" in a`, which would also read an inherited
+        // length accessor on a plain class instance and invoke its getter.
+        if ((tag === "[object Array]" || tag === "[object Arguments]" || ArrayBuffer.isView(a)) &&
+            (a as {length: unknown}).length !== other.length) {
+            return false
+        }
+
+        const keysA = Object.keys(a)
+        const keysB = new Set(Object.keys(b))
+        return keysA.length === keysB.size &&
+            keysA.every(key => keysB.has(key) && isDeepEqual((a as Record<string, unknown>)[key], other[key], memo))
+    } finally {
+        memo.left.delete(a)
+        memo.right.delete(b)
+    }
 }
 
 const newMemo = (): Memo => ({left: new WeakMap(), right: new WeakMap(), position: 0})
