@@ -58,19 +58,31 @@ describe(TITLE, () => {
         assert.equal(out.includes("not ok"), false)
     })
 
-    it("leaves a suite result out of the count and the plan", async () => {
+    it("leaves a passing suite, and one only failed by its children, out of the plan", async () => {
+        const subtestsFailed = Object.assign(new Error("1 subtest failed"), {code: "ERR_TEST_FAILURE", failureType: "subtestsFailed"})
         const out = await render(async r => {
+            await r.emit("test:pass", {...pass("passingSuite"), details: {duration_ms: 1, type: "suite"}})
             await r.emit("test:fail", {...pass("child"), details: {duration_ms: 1, type: "test", error: new Error("boom")}})
-            await r.emit("test:fail", {
-                ...pass("S"), details: {duration_ms: 2, type: "suite", error: new Error("1 subtest failed")},
-            })
-            await r.emit("test:summary", summary({tests: 1, passed: 0, failed: 1, skipped: 0, cancelled: 0, suites: 1}))
+            await r.emit("test:fail", {...pass("S"), details: {duration_ms: 2, type: "suite", error: subtestsFailed}})
+            await r.emit("test:summary", summary({tests: 1, passed: 0, failed: 1, skipped: 0, cancelled: 0, suites: 2}))
         })
 
         assert.match(out, /1\.\.1\n/)
         assert.match(out, /# tests 1\n/)
         assert.match(out, /# fail 1\n/)
-        assert.equal(/(?:ok|not ok) \d+ - S\b/.test(out), false)
+        assert.equal(/(?:ok|not ok) \d+ - (passingSuite|S)\b/.test(out), false)
+    })
+
+    // A hook failing on its own (e.g. `after`) has no child test:fail to
+    // carry the error, so this is the run's only report of it - dropping
+    // it the way a subtestsFailed rollup is dropped would silently turn a
+    // failed run into an all-ok TAP stream.
+    it("still reports a suite failed by its own hook, not by a child", async () => {
+        const out = await render(r => r.emit("test:fail", {
+            ...pass("outer"), details: {duration_ms: 1, type: "suite", error: new Error("after hook exploded")},
+        }))
+
+        assert.match(out, /not ok 1 - outer\n {2}---\n {2}message: "Error: after hook exploded.*"\n {2}\.\.\.\n1\.\.1\n/)
     })
 
     it("writes an error diagnostic block under a failing line", async () => {

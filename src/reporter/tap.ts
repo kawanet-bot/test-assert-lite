@@ -1,5 +1,6 @@
 import type * as declared from "test-assert-lite"
 import {errorText} from "../common/stringify.ts"
+import {isSubtestsFailed} from "../common/tester-error.ts"
 
 type TestEvent = declared.TAL.TestEvent
 type FormatFn = declared.TAL.FormatFn
@@ -48,10 +49,12 @@ export const tap = (): FormatFn => async function* (source: AsyncIterable<TestEv
         const isFail = event.type === "test:fail"
         if (!isPass && !isFail) continue
 
-        // A suite is reported the same way as a test, but counting it too
-        // would double what node:test's own tests/pass/fail tally shows.
+        // A passing suite adds nothing beyond its children, and a failing
+        // one is usually just a rollup of a child already reported here -
+        // but an independent hook failure has no other event to carry it,
+        // and dropping it too would report a failed run as all ok.
         const data = event.data
-        if (data.details.type !== "test") continue
+        if (data.details.type === "suite" && (isPass || isSubtestsFailed(event.data.details.error))) continue
 
         testNumber++
         yield resultLine(data, isPass, testNumber)
