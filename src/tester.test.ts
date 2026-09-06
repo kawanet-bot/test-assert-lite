@@ -538,6 +538,48 @@ describe(TITLE, () => {
         assert.equal(summary.counts.tests, 3)
     })
 
+    // node:test announces a late subtest as an ancestor before running its
+    // own body, so a subtest it starts announces the late test first.
+    it("a late subtest announces itself before its own subtest", async () => {
+        const local = createTAL()
+        const events = capture(local.reporter)
+        local.it("slow", {timeout: 10}, async (t) => {
+            await new Promise(r => setTimeout(r, 40))
+            await t.test("late", async (inner) => {
+                await inner.test("grandchild", () => undefined)
+            })
+        })
+        await local.run()
+
+        assert.deepEqual(names(events, "test:start"), ["slow", "late", "grandchild"])
+    })
+
+    // A late subtest's own timeout is honored the same way a registered
+    // test's is: node:test does not wait for the body, and cancels whatever
+    // subtest it had already started.
+    it("a late subtest's own timeout does not wait for its body or its subtest", async () => {
+        const local = createTAL()
+        const events = capture(local.reporter)
+        const order: string[] = []
+        local.it("slow", {timeout: 10}, async (t) => {
+            await new Promise(r => setTimeout(r, 40))
+            await t.test("late", {timeout: 10}, async (inner) => {
+                void inner.test("grandchild", async () => {
+                    await new Promise(r => setTimeout(r, 100))
+                })
+                await new Promise(r => setTimeout(r, 100))
+                order.push("late body settled")
+            })
+            order.push("released")
+            await t.test("late2", () => undefined)
+        })
+        await local.run()
+
+        assert.deepEqual(order, ["released", "late body settled"])
+        const grandchild = ofType(events, "test:fail").find(e => e.data.name === "grandchild")?.data
+        assert.equal((grandchild?.details.error as {failureType?: string}).failureType, "cancelledByParent")
+    })
+
     // node:test does not run a skipped late subtest, keeps its skip on the
     // failure event, and counts it as skipped.
     it("a skipped subtest after the timeout stays skipped", async () => {

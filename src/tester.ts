@@ -166,17 +166,46 @@ const lateTest = async (state: RunState, node: TestNode): Promise<void> => {
     counters.tests++
     state.success = false
     const started = performance.now()
+    // Its own place among the ancestors, so a subtest it starts announces
+    // this one first, as node:test orders a late test's own start too.
+    const self: Ancestor = {name: node.name, nesting: 0, announced: false}
     let runtimeSkip: string | true | undefined
     if (registeredSkip == null) {
         const context = makeContext(state, node.name, 0)
-        try {
-            await node.fn?.(context)
-        } catch {
-            // the verdict is already decided
+        const outer = state.ancestors
+        state.ancestors = [...outer, self]
+        const {timeout} = node.options
+        const body = Promise.resolve(node.fn?.(context))
+        if (timeout != null && timeout > 0) {
+            const timer = timeoutAfter(timeout)
+            try {
+                await Promise.race([body, timer.promise])
+            } catch (e) {
+                // Its own timeout is honored the same way a registered test's
+                // is: node:test does not wait for the body either, and
+                // cancels whatever it had already started.
+                if (e === timer.error) {
+                    context.finished = true
+                    state.lingering.push(body, ...context.pending)
+                    await cancelChildren(state, context)
+                }
+                // A body that threw on its own has already decided the verdict.
+            } finally {
+                timer.cancel()
+            }
+        } else {
+            try {
+                await body
+            } catch {
+                // the verdict is already decided
+            }
         }
+        state.ancestors = outer
         // Subtests it started and did not await settle before the summary too.
-        state.lingering.push(...context.pending)
-        runtimeSkip = context.skipped
+        if (!context.finished) {
+            state.lingering.push(...context.pending)
+            runtimeSkip = context.skipped
+        }
     }
     // The body's own t.skip() decides this as much as how it was declared.
     const skip = registeredSkip ?? runtimeSkip
@@ -185,7 +214,7 @@ const lateTest = async (state: RunState, node: TestNode): Promise<void> => {
     const duration_ms = performance.now() - started
     state.lateReports.push(async () => {
         const error = new TesterError("test could not be started because its parent finished", "parentAlreadyFinished")
-        await state.reporter.emit("test:start", {name: node.name, nesting: 0})
+        await announce(state, self)
         await state.reporter.emit("test:fail", {
             name: node.name, nesting: 0, testNumber: ++state.topLevel,
             ...(skip != null ? {skip} : {}),
