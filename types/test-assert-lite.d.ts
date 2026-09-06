@@ -32,6 +32,8 @@ export declare namespace TAL {
 
         // Subtests run immediately, ahead of the parent's remaining body.
         // Unlike the top-level `it`, the returned promise is meaningful.
+        // One declared after the parent was reported (after its timeout,
+        // say) runs at the top level and fails as parentAlreadyFinished.
         test(name?: string, options?: TestOptions, fn?: TestFn): Promise<void>
         test(name?: string, fn?: TestFn): Promise<void>
         test(options?: TestOptions, fn?: TestFn): Promise<void>
@@ -115,6 +117,7 @@ export declare namespace TAL {
         | "cancelledByParent"
         | "testTimeoutFailure"
         | "subtestsFailed"
+        | "parentAlreadyFinished"
 
     // A failure the runner produced itself, or a thrown value that was not
     // an Error. An Error thrown by test code is reported as is. `code`
