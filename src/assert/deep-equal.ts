@@ -19,9 +19,42 @@ const ownKeys = (v: object): PropertyKey[] =>
 const isWalkable = (tag: string): boolean =>
     tag === "[object Object]" || tag === "[object Array]" || tag === "[object Arguments]"
 
-// Byte-for-byte, for ArrayBuffer/DataView content.
-const sameBytes = (a: Uint8Array, b: Uint8Array): boolean =>
-    a.length === b.length && a.every((v, i) => v === b[i])
+const sameElements = (a: ArrayLike<number>, b: ArrayLike<number>): boolean => {
+    for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false
+    return true
+}
+
+// Byte-for-byte - exact for any binary content, unlike Object.is, which
+// treats every NaN payload as the same value - for ArrayBuffer/DataView/
+// typed array content. Any unaligned lead and tail (0-3 bytes each) are
+// read one at a time; the aligned middle is read 4 at once as a Uint32,
+// since a byte-by-byte pass alone cost ~45ms on a million-element buffer
+// before comparing anything at all, just materializing the Uint8Array view.
+// Both sides need the same 4-byte phase for a 32-bit read to ever land on
+// both at once; when they don't, `lead` covers the whole range and `bulk`
+// and `tail` both end up empty, falling back to byte-by-byte throughout.
+const sameBytes = (a: ArrayBufferView, b: ArrayBufferView): boolean => {
+    if (a.byteLength !== b.byteLength) return false
+    const length = a.byteLength
+    const phase = a.byteOffset % 4
+    const lead = phase === b.byteOffset % 4 ? Math.min(length, (4 - phase) % 4) : length
+
+    if (!sameElements(new Uint8Array(a.buffer, a.byteOffset, lead), new Uint8Array(b.buffer, b.byteOffset, lead))) {
+        return false
+    }
+
+    const bulk = Math.floor((length - lead) / 4)
+    if (bulk && !sameElements(
+        new Uint32Array(a.buffer, a.byteOffset + lead, bulk),
+        new Uint32Array(b.buffer, b.byteOffset + lead, bulk),
+    )) return false
+
+    const tailAt = lead + bulk * 4
+    return sameElements(
+        new Uint8Array(a.buffer, a.byteOffset + tailAt, length - tailAt),
+        new Uint8Array(b.buffer, b.byteOffset + tailAt, length - tailAt),
+    )
+}
 
 // Set/Map elements are unordered. has() (SameValueZero) first clears out
 // primitives and same-reference objects in O(1) each, the way node does;
@@ -140,28 +173,16 @@ const isDeepEqual = (a: unknown, b: unknown, memo: Memo): boolean => {
             // carry this tag there either, so the check stays safe as is.
             if (!sameBytes(new Uint8Array(a as ArrayBufferLike), new Uint8Array(b as ArrayBufferLike))) return false
         } else if (a instanceof DataView) {
-            const otherView = b as DataView
-            if (!sameBytes(
-                new Uint8Array(a.buffer, a.byteOffset, a.byteLength),
-                new Uint8Array(otherView.buffer, otherView.byteOffset, otherView.byteLength),
-            )) return false
+            if (!sameBytes(a, b as DataView)) return false
         } else if (ArrayBuffer.isView(a)) {
-            // A direct indexed loop, numeric elements only: Object.keys()
-            // would materialize one string per index before any of them
-            // could be compared, which scales badly on a large buffer (the
-            // kind msgpack-lite deals in) - measured at over 400ms for a
-            // million elements against node's well under 1ms, and Object.keys()
-            // alone (even without comparing anything) already costs ~45ms of
-            // that. A custom own enumerable property beyond the indices - not
-            // a realistic pattern for a typed array - is the one thing this
-            // skips checking for that the general walk below would have caught.
-            const typedA = a as unknown as ArrayLike<number>
-            const typedB = other as unknown as ArrayLike<number>
-            if (typedA.length !== typedB.length) return false
-            for (let i = 0; i < typedA.length; i++) {
-                if (!Object.is(typedA[i], typedB[i])) return false
-            }
-            return true
+            // Every typed array - integer or floating alike - compared by
+            // raw bytes via the same sameBytes() as ArrayBuffer/DataView
+            // above, matching node. Returned directly rather than falling
+            // through to the own-key walk below: a custom own enumerable
+            // property beyond the indices, not a realistic pattern for a
+            // typed array, is the one thing this skips checking for that
+            // the walk would have caught.
+            return sameBytes(a as ArrayBufferView, b as ArrayBufferView)
         } else if (!isWalkable(tag)) {
             return false
         }
