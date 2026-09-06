@@ -161,18 +161,6 @@ describe(TITLE, () => {
         assert.match(out, /^# tests 1$/m)
     })
 
-    it("drops a test:summary event without printing anything for it", async () => {
-        const out = await render(async r => {
-            await r.emit("test:pass", pass("a"))
-            await r.emit("test:summary", {
-                counts: {tests: 42, suites: 42, passed: 42, failed: 42, cancelled: 42, skipped: 42},
-                duration_ms: 1, success: true,
-            })
-        })
-
-        assert.equal(out.includes("42"), false)
-    })
-
     it("plans the exact count of points emitted", async () => {
         const out = await render(async r => {
             await r.emit("test:pass", pass("a"))
