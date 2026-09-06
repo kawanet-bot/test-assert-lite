@@ -147,11 +147,13 @@ describe(TITLE, () => {
     // Boolean/Number wrap a primitive that no own key exposes; String's
     // characters already are own enumerable indices, so it only gains the
     // "extra own property" check the other two get for free from the walk.
-    it("compares boxed Boolean/Number/String by their wrapped value", () => {
+    it("compares boxed Boolean/Number/String/BigInt by their wrapped value", () => {
         assert.doesNotThrow(() => TAL.deepEqual(new Boolean(true), new Boolean(true)))
         assert.throws(() => TAL.deepEqual(new Boolean(true), new Boolean(false)), /deep-equal/)
         assert.throws(() => TAL.deepEqual(new Number(1), new Number(2)), /deep-equal/)
         assert.doesNotThrow(() => TAL.deepEqual(new String("x"), new String("x")))
+        assert.doesNotThrow(() => TAL.deepEqual(Object(1n), Object(1n)))
+        assert.throws(() => TAL.deepEqual(Object(1n), Object(2n)), /deep-equal/)
 
         const extra = new String("x") as String & {slow?: boolean}
         extra.slow = true
@@ -167,19 +169,58 @@ describe(TITLE, () => {
         assert.throws(() => TAL.deepEqual(new Uint8Array([1, 2]), new Int8Array([1, 2])), /deep-equal/)
     })
 
-    // Map/Set/WeakMap/WeakSet/ArrayBuffer/DataView/Promise keep their real
-    // content outside of own enumerable properties, so only a shared
-    // reference is treated as equal for them (documented scope limit; see
-    // the plan comment on the tracking issue for the tradeoff).
-    it("only treats Map/Set/WeakMap/WeakSet/ArrayBuffer/DataView/Promise as equal by reference", () => {
+    // Deliberate trade-off for large-buffer performance: a direct indexed
+    // loop skips Object.keys() entirely, so a custom own enumerable property
+    // added on top of a typed array's indices - not a realistic pattern for
+    // one - goes unnoticed, unlike a plain array's would.
+    it("does not notice an extra own property on a typed array (documented trade-off)", () => {
+        const withExtra = Object.assign(new Uint8Array([1, 2]), {tag: 1})
+        assert.doesNotThrow(() => TAL.deepEqual(withExtra, new Uint8Array([1, 2])))
+    })
+
+    // Set/Map compare their elements/entries regardless of insertion order,
+    // then fall through to compare any extra own enumerable property too.
+    it("compares Set/Map contents order-independently, by deep equality", () => {
+        assert.doesNotThrow(() => TAL.deepEqual(new Set([1, 2]), new Set([2, 1])))
+        assert.throws(() => TAL.deepEqual(new Set([1, 2]), new Set([1, 3])), /deep-equal/)
+        assert.throws(() => TAL.deepEqual(new Set([1, 2]), new Set([1])), /deep-equal/)
+        // Deep, not just ===: object elements/keys/values are matched by content.
+        assert.doesNotThrow(() => TAL.deepEqual(new Set([{a: 1}]), new Set([{a: 1}])))
+
+        assert.doesNotThrow(() => TAL.deepEqual(
+            new Map([["a", 1], ["b", 2]]),
+            new Map([["b", 2], ["a", 1]]),
+        ))
+        assert.throws(() => TAL.deepEqual(new Map([["a", 1]]), new Map([["a", 2]])), /deep-equal/)
+        assert.doesNotThrow(() => TAL.deepEqual(new Map([[{k: 1}, "v"]]), new Map([[{k: 1}, "v"]])))
+
+        const withExtra = Object.assign(new Map(), {tag: 1})
+        assert.throws(() => TAL.deepEqual(withExtra, new Map()), /deep-equal/)
+    })
+
+    // ArrayBuffer/DataView compare their bytes, a DataView windowed by its
+    // own byteOffset/byteLength rather than its whole backing buffer's.
+    it("compares ArrayBuffer/DataView by byte content", () => {
+        assert.doesNotThrow(() => TAL.deepEqual(new Uint8Array([1, 2]).buffer, new Uint8Array([1, 2]).buffer))
+        assert.throws(() => TAL.deepEqual(new Uint8Array([1, 2]).buffer, new Uint8Array([1, 3]).buffer), /deep-equal/)
+
+        const view = (bytes: number[], offset: number, length: number): DataView =>
+            new DataView(new Uint8Array(bytes).buffer, offset, length)
+        assert.doesNotThrow(() => TAL.deepEqual(view([0, 1, 2, 3], 1, 2), view([9, 1, 2, 9], 1, 2)))
+        assert.throws(() => TAL.deepEqual(view([0, 1, 2, 3], 1, 2), view([0, 1, 9, 3], 1, 2)), /deep-equal/)
+    })
+
+    // WeakMap/WeakSet/Promise cannot be introspected at all (or, for a
+    // Promise, only asynchronously), so only a shared reference is treated
+    // as equal for them - a hard platform limit, not a scope choice.
+    it("only treats WeakMap/WeakSet/Promise as equal by reference", () => {
         assert.doesNotThrow(() => {
-            const shared = new Map([["a", 1]])
+            const shared = new WeakMap()
             TAL.deepEqual(shared, shared)
         })
-        assert.throws(() => TAL.deepEqual(new Map([["a", 1]]), new Map([["a", 1]])), /deep-equal/)
-        assert.throws(() => TAL.deepEqual(new Set([1]), new Set([1])), /deep-equal/)
-        assert.throws(() => TAL.deepEqual(new ArrayBuffer(4), new ArrayBuffer(4)), /deep-equal/)
-        assert.throws(() => TAL.deepEqual(new DataView(new ArrayBuffer(4)), new DataView(new ArrayBuffer(4))), /deep-equal/)
+        const key = {}
+        assert.throws(() => TAL.deepEqual(new WeakMap([[key, 1]]), new WeakMap([[key, 1]])), /deep-equal/)
+        assert.throws(() => TAL.deepEqual(new WeakSet([key]), new WeakSet([key])), /deep-equal/)
         assert.throws(() => TAL.deepEqual(Promise.resolve(1), Promise.resolve(1)), /deep-equal/)
     })
 
