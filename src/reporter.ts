@@ -2,6 +2,7 @@ import type * as declared from "test-assert-lite"
 import {html} from "./reporter/html.ts"
 import {ReportStream} from "./reporter/report-stream.ts"
 import {spec} from "./reporter/spec.ts"
+import {tap} from "./reporter/tap.ts"
 
 type TestEvent = declared.TAL.TestEvent
 type FormatFn = declared.TAL.FormatFn
@@ -51,6 +52,7 @@ export const createReporter = (): ReporterControl => {
             },
             spec,
             html,
+            tap,
         },
         // A standalone emit() may have opened a ReportStream with older settings.
         // Finish it before snapshotting the current configuration for run().

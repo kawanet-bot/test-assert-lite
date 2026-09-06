@@ -205,6 +205,7 @@ export declare namespace TAL {
         emit(type: string, data: TestEvent["data"]): Promise<void>
         format(fn: FormatFn): void
         output(fn: OutputFn): void
+        tap(): FormatFn
         spec(options?: SpecOptions): FormatFn
         html(): FormatFn
     }
