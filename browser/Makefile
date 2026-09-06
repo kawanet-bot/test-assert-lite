@@ -18,8 +18,13 @@ bundled:
 # the project's build dependencies, then downloads only the headless shell.
 install: install-browser
 
+# npm's own up-to-date check is the slow part of a repeat run. Comparing the
+# installed version is near-free and also catches a PLAYWRIGHT_VERSION bump.
+PLAYWRIGHT_INSTALLED = $(shell cd .. && node -p 'require("playwright/package.json").version' 2>/dev/null)
+
 install-playwright:
-	cd .. && PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install playwright@$(PLAYWRIGHT_VERSION) --no-save --ignore-scripts --no-audit --no-fund
+	@[ "$(PLAYWRIGHT_INSTALLED)" = "$(PLAYWRIGHT_VERSION)" ] || \
+	( cd .. && PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install playwright@$(PLAYWRIGHT_VERSION) --no-save --ignore-scripts --no-audit --no-fund )
 
 # --with-deps re-runs apt-get (with sudo) even when nothing is missing. A
 # launch that succeeds is exactly what `test` needs, so probe that and skip
