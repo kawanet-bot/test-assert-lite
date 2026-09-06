@@ -40,6 +40,20 @@ describe(TITLE, () => {
         assert.throws(() => TAL.deepEqual(a, c), /deep-equal/)
     })
 
+    // byteLength/byteOffset/buffer are read through the intrinsic
+    // accessor, not as an own property lookup: a subclass overriding one
+    // must not be able to make this see the wrong bytes, or none at all.
+    it("resists a subclass overriding byteLength/byteOffset/buffer", () => {
+        class Hidden extends Uint8Array {
+            get byteLength(): number {
+                return 0
+            }
+        }
+        const a = new Hidden([1, 2, 3])
+        const b = new Hidden([9, 9, 9])
+        assert.throws(() => TAL.deepEqual(a, b), /deep-equal/)
+    })
+
     // ArrayBuffer/DataView compare their bytes, a DataView windowed by its
     // own byteOffset/byteLength rather than its whole backing buffer's.
     it("compares ArrayBuffer/DataView by byte content", () => {
