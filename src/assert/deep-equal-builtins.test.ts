@@ -160,73 +160,10 @@ describe(TITLE, () => {
         assert.throws(() => TAL.deepEqual(extra, new String("x")), /deep-equal/)
     })
 
-    // Not specially handled, but the tag check plus the length check above
-    // make this work anyway: a typed array's elements are own enumerable
-    // indices, same as a plain array's.
-    it("compares typed arrays element by element", () => {
-        assert.doesNotThrow(() => TAL.deepEqual(new Uint8Array([1, 2]), new Uint8Array([1, 2])))
-        assert.throws(() => TAL.deepEqual(new Uint8Array([1, 2]), new Uint8Array([1, 3])), /deep-equal/)
-        assert.throws(() => TAL.deepEqual(new Uint8Array([1, 2]), new Int8Array([1, 2])), /deep-equal/)
-    })
-
-    // Deliberate trade-off for large-buffer performance: a direct indexed
-    // loop skips Object.keys() entirely, so a custom own enumerable property
-    // added on top of a typed array's indices - not a realistic pattern for
-    // one - goes unnoticed, unlike a plain array's would.
-    it("does not notice an extra own property on a typed array (documented trade-off)", () => {
-        const withExtra = Object.assign(new Uint8Array([1, 2]), {tag: 1})
-        assert.doesNotThrow(() => TAL.deepEqual(withExtra, new Uint8Array([1, 2])))
-    })
-
-    // Set/Map compare their elements/entries regardless of insertion order,
-    // then fall through to compare any extra own enumerable property too.
-    it("compares Set/Map contents order-independently, by deep equality", () => {
-        assert.doesNotThrow(() => TAL.deepEqual(new Set([1, 2]), new Set([2, 1])))
-        assert.throws(() => TAL.deepEqual(new Set([1, 2]), new Set([1, 3])), /deep-equal/)
-        assert.throws(() => TAL.deepEqual(new Set([1, 2]), new Set([1])), /deep-equal/)
-        // Deep, not just ===: object elements/keys/values are matched by content.
-        assert.doesNotThrow(() => TAL.deepEqual(new Set([{a: 1}]), new Set([{a: 1}])))
-
-        assert.doesNotThrow(() => TAL.deepEqual(
-            new Map([["a", 1], ["b", 2]]),
-            new Map([["b", 2], ["a", 1]]),
-        ))
-        assert.throws(() => TAL.deepEqual(new Map([["a", 1]]), new Map([["a", 2]])), /deep-equal/)
-        assert.doesNotThrow(() => TAL.deepEqual(new Map([[{k: 1}, "v"]]), new Map([[{k: 1}, "v"]])))
-
-        const withExtra = Object.assign(new Map(), {tag: 1})
-        assert.throws(() => TAL.deepEqual(withExtra, new Map()), /deep-equal/)
-    })
-
-    // ArrayBuffer/DataView compare their bytes, a DataView windowed by its
-    // own byteOffset/byteLength rather than its whole backing buffer's.
-    it("compares ArrayBuffer/DataView by byte content", () => {
-        assert.doesNotThrow(() => TAL.deepEqual(new Uint8Array([1, 2]).buffer, new Uint8Array([1, 2]).buffer))
-        assert.throws(() => TAL.deepEqual(new Uint8Array([1, 2]).buffer, new Uint8Array([1, 3]).buffer), /deep-equal/)
-
-        const view = (bytes: number[], offset: number, length: number): DataView =>
-            new DataView(new Uint8Array(bytes).buffer, offset, length)
-        assert.doesNotThrow(() => TAL.deepEqual(view([0, 1, 2, 3], 1, 2), view([9, 1, 2, 9], 1, 2)))
-        assert.throws(() => TAL.deepEqual(view([0, 1, 2, 3], 1, 2), view([0, 1, 9, 3], 1, 2)), /deep-equal/)
-    })
-
-    // WeakMap/WeakSet/Promise cannot be introspected at all (or, for a
-    // Promise, only asynchronously), so only a shared reference is treated
-    // as equal for them - a hard platform limit, not a scope choice.
-    it("only treats WeakMap/WeakSet/Promise as equal by reference", () => {
-        assert.doesNotThrow(() => {
-            const shared = new WeakMap()
-            TAL.deepEqual(shared, shared)
-        })
-        const key = {}
-        assert.throws(() => TAL.deepEqual(new WeakMap([[key, 1]]), new WeakMap([[key, 1]])), /deep-equal/)
-        assert.throws(() => TAL.deepEqual(new WeakSet([key]), new WeakSet([key])), /deep-equal/)
-        assert.throws(() => TAL.deepEqual(Promise.resolve(1), Promise.resolve(1)), /deep-equal/)
-    })
-
-    // Unlike the opaque types above, node's real deepStrictEqual special
-    // cases URL by comparing href - matched here since it costs little and a
-    // URL can plausibly appear in ordinary form-handling code.
+    // Unlike the opaque types in deep-equal-collections.test.ts, node's real
+    // deepStrictEqual special cases URL by comparing href - matched here
+    // since it costs little and a URL can plausibly appear in ordinary
+    // form-handling code.
     it("compares URL by href, plus any extra own property", () => {
         assert.doesNotThrow(() => TAL.deepEqual(new URL("http://foo"), new URL("http://foo")))
         assert.throws(() => TAL.deepEqual(new URL("http://foo"), new URL("http://bar")), /deep-equal/)

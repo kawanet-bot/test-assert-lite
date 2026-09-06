@@ -23,13 +23,16 @@ const isWalkable = (tag: string): boolean =>
 const sameBytes = (a: Uint8Array, b: Uint8Array): boolean =>
     a.length === b.length && a.every((v, i) => v === b[i])
 
-// Set/Map elements are unordered, so each left-hand entry is matched against
-// whichever right-hand entry (not yet claimed by an earlier one) it deep-
-// equals; O(n^2), which is fine for the modest sizes this library sees.
+// Set/Map elements are unordered. has() (SameValueZero) first clears out
+// primitives and same-reference objects in O(1) each, the way node does;
+// only what's left - normally just object elements needing a real deep
+// comparison - falls to the O(n^2) match-against-the-remainder below.
 const sameSet = (a: Set<unknown>, b: Set<unknown>, memo: Memo): boolean => {
     if (a.size !== b.size) return false
-    const remaining = [...b]
-    return [...a].every(av => {
+    const leftoverB = new Set(b)
+    const leftoverA = [...a].filter(av => !leftoverB.delete(av))
+    const remaining = [...leftoverB]
+    return leftoverA.every(av => {
         const i = remaining.findIndex(bv => isDeepEqual(av, bv, memo))
         if (i < 0) return false
         remaining.splice(i, 1)
@@ -39,8 +42,14 @@ const sameSet = (a: Set<unknown>, b: Set<unknown>, memo: Memo): boolean => {
 
 const sameMap = (a: Map<unknown, unknown>, b: Map<unknown, unknown>, memo: Memo): boolean => {
     if (a.size !== b.size) return false
-    const remaining = [...b]
-    return [...a].every(([ak, av]) => {
+    const leftoverB = new Map(b)
+    const leftoverA = [...a].filter(([ak, av]) => {
+        if (!leftoverB.has(ak) || !Object.is(leftoverB.get(ak), av)) return true
+        leftoverB.delete(ak)
+        return false
+    })
+    const remaining = [...leftoverB]
+    return leftoverA.every(([ak, av]) => {
         const i = remaining.findIndex(([bk, bv]) => isDeepEqual(ak, bk, memo) && isDeepEqual(av, bv, memo))
         if (i < 0) return false
         remaining.splice(i, 1)
@@ -125,8 +134,11 @@ const isDeepEqual = (a: unknown, b: unknown, memo: Memo): boolean => {
             if (!sameMap(a, b as Map<unknown, unknown>, memo)) return false
         } else if (a instanceof Set) {
             if (!sameSet(a, b as Set<unknown>, memo)) return false
-        } else if (a instanceof ArrayBuffer) {
-            if (!sameBytes(new Uint8Array(a), new Uint8Array(b as ArrayBuffer))) return false
+        } else if (a instanceof ArrayBuffer || tag === "[object SharedArrayBuffer]") {
+            // By tag rather than instanceof SharedArrayBuffer: that global
+            // may not exist in every environment, while nothing could ever
+            // carry this tag there either, so the check stays safe as is.
+            if (!sameBytes(new Uint8Array(a as ArrayBufferLike), new Uint8Array(b as ArrayBufferLike))) return false
         } else if (a instanceof DataView) {
             const otherView = b as DataView
             if (!sameBytes(

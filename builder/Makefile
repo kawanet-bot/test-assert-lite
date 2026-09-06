@@ -27,7 +27,7 @@ BUILDER_TEST_CONFIG := ./rollup-builder-test.config.ts
 # notice an unintended dependency being pulled in. It still needs bumping
 # every so often as real features land, so ~20% of headroom over the actual
 # size (round 10KB) keeps that from being a recurring chore.
-MJS_MAX_BYTES := 60000
+MJS_MAX_BYTES := 70000
 
 # Minified build of the same sources, so the cap tracks the mjs one. Pre-
 # release, so this carries a bit more slack than it will once published.
