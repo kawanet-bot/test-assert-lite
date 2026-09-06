@@ -374,6 +374,54 @@ describe(TITLE, () => {
         assert.deepEqual(summary.counts, {tests: 3, suites: 0, passed: 1, failed: 0, cancelled: 2, skipped: 0})
     })
 
+    // A queued sibling keeps its skip when the parent gives up, and every
+    // sibling is cancelled even while the reporter's output is slow.
+    it("a parent's timeout cancels the queued subtests, skip kept", async () => {
+        const local = createTAL()
+        const events = capture(local.reporter)
+        // Slow output, so children settle while the cancellation is being reported.
+        local.reporter.output(() => new Promise(r => setTimeout(r, 30)))
+        let ran = 0
+        local.it("parent", {timeout: 10}, async (t) => {
+            void t.test("running", async () => {
+                await new Promise(r => setTimeout(r, 40))
+            })
+            void t.test("queued skip", {skip: "why"}, () => {
+                ran++
+            })
+            void t.test("queued plain", () => {
+                ran++
+            })
+            await new Promise(r => setTimeout(r, 100))
+        })
+        const summary = await local.run()
+
+        assert.equal(ran, 0)
+        const fails = ofType(events, "test:fail").map(e => `${e.data.name}${e.data.skip != null ? " skip=" + String(e.data.skip) : ""}`)
+        assert.deepEqual(fails, ["running", "queued skip skip=why", "queued plain", "parent"])
+        assert.deepEqual(summary.counts, {tests: 4, suites: 0, passed: 0, failed: 0, cancelled: 3, skipped: 1})
+    })
+
+    // What a late subtest starts and does not await settles before the summary too.
+    it("a late subtest's unawaited subtest settles before the summary", async () => {
+        const local = createTAL()
+        local.reporter.output(() => undefined)
+        let settled = false
+        local.it("slow", {timeout: 10}, async (t) => {
+            await new Promise(r => setTimeout(r, 40))
+            await t.test("late", (inner) => {
+                void inner.test("grandchild", async () => {
+                    await new Promise(r => setTimeout(r, 40))
+                    settled = true
+                })
+            })
+        })
+        const summary = await local.run()
+
+        assert.equal(settled, true)
+        assert.equal(summary.counts.tests, 3)
+    })
+
     // node:test does not run a skipped late subtest, keeps its skip on the
     // failure event, and counts it as skipped.
     it("a skipped subtest after the timeout stays skipped", async () => {

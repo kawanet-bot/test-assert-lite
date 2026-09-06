@@ -79,6 +79,8 @@ interface Child {
     testNumber: number
     started: boolean
     reported: boolean
+    // A queued child marked skip keeps its skip when the parent gives up.
+    skip: string | true | undefined
     // The child's own entry among the ancestors once its body runs, so a
     // cancellation announces it once rather than twice.
     ancestor?: Ancestor
@@ -131,7 +133,7 @@ const makeContext = (state: RunState, name: string, nesting: number): Context =>
                 return
             }
             const testNumber = ++context.subtests
-            const child: Child = {name: node.name, nesting: nesting + 1, testNumber, started: false, reported: false}
+            const child: Child = {name: node.name, nesting: nesting + 1, testNumber, started: false, reported: false, skip: skipOf(node)}
             context.children.push(child)
             // Started here when nothing else is running, so the body reaches
             // its first await before t.test() returns, as in node:test.
@@ -161,11 +163,14 @@ const lateTest = async (state: RunState, node: TestNode): Promise<void> => {
     state.success = false
     const started = performance.now()
     if (skip == null) {
+        const context = makeContext(state, node.name, 0)
         try {
-            await node.fn?.(makeContext(state, node.name, 0))
+            await node.fn?.(context)
         } catch {
             // the verdict is already decided
         }
+        // Subtests it started and did not await settle before the summary too.
+        state.lingering.push(...context.pending)
     }
     const duration_ms = performance.now() - started
     state.lateReports.push(async () => {
@@ -183,15 +188,20 @@ const lateTest = async (state: RunState, node: TestNode): Promise<void> => {
 // before the parent itself. One not yet started is counted here; one that
 // is running was counted when it started, and skips its own report later.
 const cancelChildren = async (state: RunState, context: Context): Promise<void> => {
-    for (const child of context.children) {
+    // A snapshot: a child settling while the reporter is awaited removes
+    // itself from the live list, which would shift its siblings past the loop.
+    for (const child of [...context.children]) {
         if (child.reported) continue
         child.reported = true
         if (!child.started) state.counters.tests++
-        state.counters.cancelled++
+        // A queued child marked skip is counted as skipped, as node:test does.
+        if (child.skip != null) state.counters.skipped++
+        else state.counters.cancelled++
         state.success = false
         await announce(state, child.ancestor ?? {name: child.name, nesting: child.nesting, announced: false})
         await state.reporter.emit("test:fail", {
             name: child.name, nesting: child.nesting, testNumber: child.testNumber,
+            ...(child.skip != null ? {skip: child.skip} : {}),
             details: {duration_ms: 0, type: "test", error: cancelledByParent()},
         })
     }
