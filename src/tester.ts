@@ -250,8 +250,9 @@ export class Test {
         let closed: Test[] = []
         if (this.kind === "suite") await this.runSuite()
         else closed = await this.runTest()
-        // The parent gave up on this test while it ran and has reported it.
-        if (this.reported) return "cancelled"
+        // The parent gave up on this test while it ran and reports it, now
+        // or once it reaches it: nothing more to say here either way.
+        if (this.closedWith != null) return "cancelled"
         this.settle()
 
         // A subtest that settled on its own may still be reporting; that is

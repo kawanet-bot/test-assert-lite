@@ -201,6 +201,36 @@ describeSlow(TITLE, () => {
         assert.equal(events.at(-1)?.type, "test:summary")
     })
 
+    // A child the parent closed may see its own body settle while the
+    // parent is still reporting its descendants. The parent reports it in
+    // its turn; the child must not report itself in the meantime.
+    it("a cancelled child settling during its parent's report stays silent", async () => {
+        const local = createTAL()
+        const events: ReturnType<typeof capture> = []
+        local.reporter.format(async function* (source) {
+            for await (const event of source) {
+                events.push(event)
+                yield "."
+            }
+        })
+        local.reporter.output(() => new Promise(r => setTimeout(r, slow(30))))
+        local.it("parent", {timeout: slow(10)}, async (t) => {
+            void t.test("child", async (inner) => {
+                void inner.test("g1", async () => {
+                    await new Promise(r => setTimeout(r, slow(100)))
+                })
+                void inner.test("g2", () => undefined)
+                await new Promise(r => setTimeout(r, slow(30)))
+            })
+            await new Promise(r => setTimeout(r, slow(200)))
+        })
+        const summary = await local.run()
+
+        assert.deepEqual(names(events, "test:start"), ["parent", "child", "g1", "g2"])
+        assert.deepEqual(names(events, "test:fail"), ["g1", "g2", "child", "parent"])
+        assert.deepEqual(summary.counts, {tests: 4, suites: 0, passed: 0, failed: 0, cancelled: 4, skipped: 0})
+    })
+
     // A queued sibling keeps its skip when the parent gives up, and every
     // sibling is cancelled even while the reporter's output is slow.
     // With an in-flight child, cancelling it takes several slow reporter
