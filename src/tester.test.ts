@@ -291,6 +291,62 @@ describe(TITLE, () => {
         assert.equal(summary.success, false)
     })
 
+    // node:test reports the timeout at once but ends the run only when the
+    // body has settled, so nothing the body does afterwards lands outside.
+    it("run() waits for a timed out body to settle", async () => {
+        const local = createTAL()
+        local.reporter.output(() => undefined)
+        let settled = false
+        local.it("slow", {timeout: 10}, async () => {
+            await new Promise(r => setTimeout(r, 40))
+            settled = true
+        })
+        const summary = await local.run()
+
+        assert.equal(settled, true)
+        assert.deepEqual(summary.counts, {tests: 1, suites: 0, passed: 0, failed: 0, cancelled: 1, skipped: 0})
+    })
+
+    it("a diagnostic after the timeout is dropped", async () => {
+        const local = createTAL()
+        const events = capture(local.reporter)
+        local.it("slow", {timeout: 10}, async (t) => {
+            t.diagnostic("in time")
+            await new Promise(r => setTimeout(r, 40))
+            t.diagnostic("late")
+        })
+        await local.run()
+
+        const messages = ofType(events, "test:diagnostic").map(e => e.data.message)
+        assert.ok(messages.includes("in time"))
+        assert.equal(messages.includes("late"), false)
+    })
+
+    // node:test still runs the body, then files the subtest as a failure of
+    // its own kind at the top level, awaited or not.
+    it("a subtest after the timeout is counted as parentAlreadyFinished", async () => {
+        const local = createTAL()
+        const events = capture(local.reporter)
+        let ran = 0
+        local.it("slow", {timeout: 10}, async (t) => {
+            await new Promise(r => setTimeout(r, 40))
+            await t.test("late awaited", () => {
+                ran++
+            })
+            void t.test("late unawaited", () => {
+                ran++
+            })
+        })
+        const summary = await local.run()
+
+        assert.equal(ran, 2)
+        const late = ofType(events, "test:fail").filter(e => e.data.name.startsWith("late"))
+        assert.deepEqual(late.map(e => `${e.data.name}@${e.data.nesting}`), ["late awaited@0", "late unawaited@0"])
+        assert.equal((late[0]?.data.details.error as {failureType?: string}).failureType, "parentAlreadyFinished")
+        assert.deepEqual(summary.counts, {tests: 3, suites: 0, passed: 0, failed: 2, cancelled: 1, skipped: 0})
+        assert.equal(summary.success, false)
+    })
+
     it("subtests are numbered within their parent", async () => {
         const local = createTAL()
         const events = capture(local.reporter)

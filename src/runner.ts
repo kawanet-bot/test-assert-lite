@@ -159,6 +159,7 @@ const walk = async (state: RunState, suite: SuiteNode, testNumber: number): Prom
             let number = 0
             for (const child of suite.children) {
                 number++
+                if (root) state.topLevel = number
                 const outcome = child.kind === "suite"
                     ? await walk(state, child, number)
                     : await runTest(state, child, suite.nesting + 1, number)
@@ -252,9 +253,17 @@ const runOnce = async (
         harness,
         reporter: control.reporter,
         assert,
+        lingering: [],
+        topLevel: 0,
     }
 
     await walk(state, harness.rootSuite, 0)
+
+    // A body that outlived its timeout may still add to the counts, so the
+    // summary waits for every one of them, as node:test's run does.
+    while (state.lingering.length) {
+        await Promise.allSettled(state.lingering.splice(0))
+    }
 
     const duration_ms = performance.now() - started
     const summary: declared.TAL.TestSummary = {

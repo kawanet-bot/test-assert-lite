@@ -32,6 +32,12 @@ export interface RunState {
     assert: declared.TAL.AssertMethods
     // Carried along to flip the flag that bars registration.
     harness: HarnessState
+    // Bodies that outlived their timeout. node:test reports the timeout at
+    // once but ends the run only when they settle, and so does run() here.
+    lingering: Promise<unknown>[]
+    // How many children the root has numbered so far. A subtest started
+    // after its parent finished is numbered as the root's next child.
+    topLevel: number
 }
 
 const timeoutAfter = (ms: number): {promise: Promise<never>, error: TesterError, cancel: () => void} => {
@@ -64,6 +70,9 @@ const announce = async (state: RunState, self: Ancestor): Promise<void> => {
 
 interface Context extends declared.TAL.TestContext {
     skipped: string | true | undefined
+    // Set once the test has been reported. What the body does after that
+    // is late: node:test drops a diagnostic and fails a subtest.
+    finished: boolean
     pending: Promise<Outcome>[]
     // The tail of the subtest chain and how many are still running: node:test
     // runs subtests one at a time, so a new one waits for the previous one
@@ -78,6 +87,7 @@ const makeContext = (state: RunState, name: string, nesting: number): Context =>
         name,
         assert: state.assert,
         skipped: undefined,
+        finished: false,
         pending: [],
         last: Promise.resolve(),
         active: 0,
@@ -87,6 +97,7 @@ const makeContext = (state: RunState, name: string, nesting: number): Context =>
             context.skipped = message ?? true
         },
         diagnostic: (message) => {
+            if (context.finished) return
             void state.reporter.emit("test:diagnostic", {message, nesting, level: "info"})
         },
         test: async (...args: Args<TestFn>) => {
@@ -95,9 +106,15 @@ const makeContext = (state: RunState, name: string, nesting: number): Context =>
                 kind: "test", name: nameOf(parsed.name, parsed.fn),
                 options: parsed.options, fn: parsed.fn,
             }
+            if (context.finished) {
+                const promise = lateTest(state, node)
+                state.lingering.push(promise)
+                await promise
+                return
+            }
+            const testNumber = ++context.subtests
             // Started here when nothing else is running, so the body reaches
             // its first await before t.test() returns, as in node:test.
-            const testNumber = ++context.subtests
             const start = (): Promise<Outcome> => runTest(state, node, nesting + 1, testNumber).finally(() => {
                 context.active--
             })
@@ -109,6 +126,28 @@ const makeContext = (state: RunState, name: string, nesting: number): Context =>
         },
     }
     return context
+}
+
+// A subtest started after its parent was reported. node:test still runs
+// the body, then files it as a top-level failure of its own kind.
+const lateTest = async (state: RunState, node: TestNode): Promise<void> => {
+    const {counters} = state
+    counters.tests++
+    counters.failed++
+    state.success = false
+    const testNumber = ++state.topLevel
+    const started = performance.now()
+    try {
+        await node.fn?.(makeContext(state, node.name, 0))
+    } catch {
+        // the verdict is already decided
+    }
+    const error = new TesterError("test could not be started because its parent finished", "parentAlreadyFinished")
+    await state.reporter.emit("test:start", {name: node.name, nesting: 0})
+    await state.reporter.emit("test:fail", {
+        name: node.name, nesting: 0, testNumber,
+        details: {duration_ms: performance.now() - started, type: "test", error},
+    })
 }
 
 const skipOf = (node: TestNode): string | true | undefined => {
@@ -182,6 +221,8 @@ export const runTest = async (state: RunState, node: TestNode, nesting: number, 
                 await Promise.race([body, timer.promise])
             } catch (e) {
                 timedOut = e === timer.error
+                // The body goes on; the run ends only once it has settled.
+                if (timedOut) state.lingering.push(body, ...context.pending)
                 throw e
             } finally {
                 timer.cancel()
@@ -209,6 +250,7 @@ export const runTest = async (state: RunState, node: TestNode, nesting: number, 
 
     const duration_ms = performance.now() - started
     await announce(state, self)
+    context.finished = true
     const runtimeSkip = context.skipped
 
     if (error != null) {

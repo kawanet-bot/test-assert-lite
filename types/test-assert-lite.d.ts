@@ -115,6 +115,7 @@ export declare namespace TAL {
         | "cancelledByParent"
         | "testTimeoutFailure"
         | "subtestsFailed"
+        | "parentAlreadyFinished"
 
     // A failure the runner produced itself, or a thrown value that was not
     // an Error. An Error thrown by test code is reported as is. `code`
