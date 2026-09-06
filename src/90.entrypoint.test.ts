@@ -77,6 +77,7 @@ test("reporter surface", () => {
     assert.equal(typeof m.reporter.format, "function")
     assert.equal(typeof m.reporter.output, "function")
     assert.equal(typeof m.reporter.spec, "function")
+    assert.equal(typeof m.reporter.tap, "function")
     assert.equal(typeof m.reporter.html, "function")
 })
 

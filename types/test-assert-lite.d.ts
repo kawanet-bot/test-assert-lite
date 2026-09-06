@@ -209,6 +209,7 @@ export declare namespace TAL {
         format(fn: FormatFn): void
         output(fn: OutputFn): void
         spec(options?: SpecOptions): FormatFn
+        tap(): FormatFn
         html(): FormatFn
     }
 
