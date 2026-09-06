@@ -6,3 +6,10 @@ import {describe} from "node:test"
 const wanted = "undefined" !== typeof process && !!process.env.TAL_SLOW_TESTS
 
 export const describeSlow = wanted ? describe : describe.skip
+
+// Every wait in those suites goes through here, so the margins between a
+// timeout, a body and a slow reporter can be widened together when a
+// runner turns out to need more room. The tests keep their own numbers.
+const SCALE = 2
+
+export const slow = (ms: number): number => ms * SCALE
