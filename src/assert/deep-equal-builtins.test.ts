@@ -63,6 +63,15 @@ describe(TITLE, () => {
         assert.throws(() => TAL.deepEqual(one(), new AggregateError([new Error("b")], "many")), /deep-equal/)
     })
 
+    // errors is checked by name wherever it appears, not only when the
+    // instance is actually an AggregateError.
+    it("compares a plain Error's own errors property the same way", () => {
+        const withErrors = (errors: unknown[]): Error => Object.assign(new Error("x"), {errors})
+        assert.doesNotThrow(() => TAL.deepEqual(withErrors([1]), withErrors([1])))
+        assert.throws(() => TAL.deepEqual(withErrors([1]), withErrors([2])), /deep-equal/)
+        assert.throws(() => TAL.deepEqual(withErrors([1]), new Error("x")), /deep-equal/)
+    })
+
     // Reading a[key] to compare naturally invokes a getter; nothing extra
     // is needed for this beyond the plain own-key walk.
     it("invokes getters and compares their returned value", () => {
@@ -77,15 +86,24 @@ describe(TITLE, () => {
         assert.equal(calls, 2)
     })
 
-    // Out of scope for this pass: unlike node's deepStrictEqual, symbol-keyed
-    // own enumerable properties are not part of the family's actual usage.
-    it("does not compare symbol-keyed properties (documented scope limit)", () => {
+    // Own enumerable Symbol-keyed properties are cheap to fold into the same
+    // walk as Object.keys(), so they are compared the same way, matching
+    // node's deepStrictEqual (a change from an earlier, deliberately
+    // narrower pass - see the tracking issue for the history).
+    it("compares own enumerable symbol-keyed properties", () => {
         const sym = Symbol("k")
-        assert.doesNotThrow(() => TAL.deepEqual({a: 1, [sym]: "x"}, {a: 1, [sym]: "y"}))
+        assert.doesNotThrow(() => TAL.deepEqual({a: 1, [sym]: "x"}, {a: 1, [sym]: "x"}))
+        assert.throws(() => TAL.deepEqual({a: 1, [sym]: "x"}, {a: 1, [sym]: "y"}), /deep-equal/)
+        assert.throws(() => TAL.deepEqual({a: 1, [sym]: "x"}, {a: 1}), /deep-equal/)
+        // A non-enumerable symbol-keyed property is not part of the contract
+        // either, same as a non-enumerable string-keyed one.
+        const withHidden = Object.defineProperty({}, sym, {value: "x", enumerable: false})
+        assert.doesNotThrow(() => TAL.deepEqual(withHidden, {}))
     })
 
     // Date/RegExp keep their real state outside of own enumerable properties,
-    // so they get an explicit value-based comparison instead of the own-key walk.
+    // so they get an explicit value-based comparison, then fall through to
+    // the own-key walk the same way Error/URL do above.
     it("compares Date by time value and RegExp by source/flags", () => {
         assert.doesNotThrow(() => TAL.deepEqual(new Date(0), new Date(0)))
         assert.throws(() => TAL.deepEqual(new Date(0), new Date(1)), /deep-equal/)
@@ -97,12 +115,33 @@ describe(TITLE, () => {
         assert.throws(() => TAL.deepEqual(/a/g, /a/i), /deep-equal/)
     })
 
-    // getTime() is called through the prototype, so an own property of the
-    // same name on the instance cannot fool the comparison.
+    // getTime()/valueOf() are called through the prototype, so an own
+    // property of the same name on the instance cannot fool the comparison.
     it("resists an own getTime overriding the real one", () => {
         const a = new Date(0)
         Object.defineProperty(a, "getTime", {value: () => 999})
         assert.doesNotThrow(() => TAL.deepEqual(a, new Date(0)))
+    })
+
+    it("still compares a Date's own extra enumerable properties", () => {
+        const withExtra = (t: number, x: number): Date => Object.assign(new Date(t), {x})
+        assert.doesNotThrow(() => TAL.deepEqual(withExtra(0, 1), withExtra(0, 1)))
+        assert.throws(() => TAL.deepEqual(withExtra(0, 1), withExtra(0, 2)), /deep-equal/)
+    })
+
+    // lastIndex is own but non-enumerable, so it needs the same explicit
+    // treatment as Date's getTime, matching node since RegExp gained this
+    // comparison in v18.0.0 (within this library's supported range).
+    it("compares a RegExp's lastIndex, plus any extra own enumerable property", () => {
+        const a = /a/g
+        a.exec("aaa")
+        const b = /a/g
+        assert.throws(() => TAL.deepEqual(a, b), /deep-equal/)
+        b.exec("aaa")
+        assert.doesNotThrow(() => TAL.deepEqual(a, b))
+
+        const withExtra = Object.assign(/a/g, {x: 1})
+        assert.throws(() => TAL.deepEqual(withExtra, /a/g), /deep-equal/)
     })
 
     // Boolean/Number wrap a primitive that no own key exposes; String's
@@ -154,6 +193,16 @@ describe(TITLE, () => {
         const withExtra = new URL("http://foo") as URL & {tag?: number}
         withExtra.tag = 1
         assert.throws(() => TAL.deepEqual(withExtra, new URL("http://foo")), /deep-equal/)
+    })
+
+    // Node's own URL exposes engine-internal state through enumerable own
+    // symbols on some versions (observed on 18.x, gone by 24.x) - a builtin
+    // like this must not have those leak into the comparison the way a
+    // plain object's own symbol keys legitimately do above.
+    it("ignores symbol-keyed properties on a builtin like URL", () => {
+        const a = new URL("http://foo")
+        Object.defineProperty(a, Symbol("internal"), {value: 1, enumerable: true})
+        assert.doesNotThrow(() => TAL.deepEqual(a, new URL("http://foo")))
     })
 
     // A null-prototype object cannot be rendered with String(); building the

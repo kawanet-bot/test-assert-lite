@@ -4,6 +4,11 @@ import {AssertionError} from "./assertion-error.ts"
 
 const toTag = (v: object): string => Object.prototype.toString.call(v)
 
+// Symbol-keyed own enumerable properties are rare in practice but cheap to
+// include alongside Object.keys(), so both are walked the same way below.
+const ownKeys = (v: object): PropertyKey[] =>
+    [...Object.keys(v), ...Object.getOwnPropertySymbols(v).filter(s => Object.prototype.propertyIsEnumerable.call(v, s))]
+
 // Arrays, Arguments objects and typed arrays expose their elements as own
 // enumerable keys, so the key walk below still applies to them. Every other
 // exotic tag (Map, Set, Promise, URL, DataView, ...) keeps its real state in
@@ -31,10 +36,6 @@ const isDeepEqual = (a: unknown, b: unknown, memo: Memo): boolean => {
     if (Object.is(a, b)) return true
     if (a == null || b == null || "object" !== typeof a || "object" !== typeof b) return false
     if (Object.getPrototypeOf(a) !== Object.getPrototypeOf(b)) return false
-    // getTime() is called through the prototype: an own property of the same
-    // name must not be able to fool the comparison.
-    if (a instanceof Date) return Object.is(Date.prototype.getTime.call(a), Date.prototype.getTime.call(b))
-    if (a instanceof RegExp) return a.source === (b as RegExp).source && a.flags === (b as RegExp).flags
 
     // A shared prototype alone is not enough: an Arguments object, a fake
     // array-like, or a plain object dressed up with a builtin's descriptors
@@ -54,15 +55,30 @@ const isDeepEqual = (a: unknown, b: unknown, memo: Memo): boolean => {
 
     try {
         if (isError(a)) {
-            const otherError = b as Error & {cause?: unknown}
+            const otherError = b as Error & {cause?: unknown, errors?: unknown}
             if (a.name !== otherError.name || a.message !== otherError.message) return false
             if (("cause" in a) !== ("cause" in otherError)) return false
             if ("cause" in a && !isDeepEqual((a as {cause?: unknown}).cause, otherError.cause, memo)) return false
-            if (a instanceof AggregateError && !isDeepEqual(a.errors, (b as AggregateError).errors, memo)) return false
+            // Not gated on AggregateError specifically: node checks this own
+            // property by name on any Error that happens to carry one.
+            if (("errors" in a) !== ("errors" in otherError)) return false
+            if ("errors" in a && !isDeepEqual((a as {errors?: unknown}).errors, otherError.errors, memo)) return false
         } else if ("undefined" !== typeof URL && a instanceof URL) {
             // href is not enumerable either, but a URL can still carry its own
             // extra enumerable properties, so this falls through to the walk too.
             if (a.href !== (b as URL).href) return false
+        } else if (a instanceof Date) {
+            // Called through the prototype, as with valueOf below: an own
+            // property of the same name must not be able to fool it. Falls
+            // through for any extra own enumerable property, as node does.
+            if (!Object.is(Date.prototype.getTime.call(a), Date.prototype.getTime.call(b))) return false
+        } else if (a instanceof RegExp) {
+            // lastIndex is own but non-enumerable, so - like getTime above -
+            // it needs its own check; falls through for any extra own property.
+            const otherRegExp = b as RegExp
+            if (a.source !== otherRegExp.source || a.flags !== otherRegExp.flags || a.lastIndex !== otherRegExp.lastIndex) {
+                return false
+            }
         } else if (a instanceof Boolean) {
             if (!Object.is(Boolean.prototype.valueOf.call(a), Boolean.prototype.valueOf.call(b))) return false
         } else if (a instanceof Number) {
@@ -86,10 +102,16 @@ const isDeepEqual = (a: unknown, b: unknown, memo: Memo): boolean => {
             return false
         }
 
-        const keysA = Object.keys(a)
-        const keysB = new Set(Object.keys(b))
+        // Symbol keys are only walked for plain data (Object/Array/Arguments/
+        // typed array): a builtin like URL can carry engine-internal symbol
+        // state that differs across runtimes/versions (observed: Node's own
+        // URL exposes enumerable internal symbols on 18.x, not on 24.x),
+        // which the extra-property fallthrough above must not trip over.
+        const symbolAware = isWalkable(a, tag)
+        const keysA = symbolAware ? ownKeys(a) : Object.keys(a)
+        const keysB = new Set(symbolAware ? ownKeys(b) : Object.keys(b))
         return keysA.length === keysB.size &&
-            keysA.every(key => keysB.has(key) && isDeepEqual((a as Record<string, unknown>)[key], other[key], memo))
+            keysA.every(key => keysB.has(key) && isDeepEqual((a as Record<PropertyKey, unknown>)[key], (other as Record<PropertyKey, unknown>)[key], memo))
     } finally {
         memo.left.delete(a)
         memo.right.delete(b)
