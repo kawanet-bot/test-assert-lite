@@ -11,7 +11,9 @@ BROWSER_TEST_DST := ../browser/tests/bundled.js
 # repository-wide builder Makefile. This entry point is for browser CI.
 all: bundled
 
-bundled:
+# The npm step also brings the build tools, so a clean checkout can start
+# straight from `test`, in any order under parallel make.
+bundled: install-playwright
 	$(MAKE) -C ../builder $(MINJS_DST) $(BROWSER_TEST_DST)
 
 # Keep Playwright out of package.json. CI installs it transiently alongside
