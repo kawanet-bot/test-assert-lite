@@ -53,14 +53,15 @@ test-bundled:
 test-bin:
 	[ -x ../../node_modules/.bin/test-assert ]
 
-# The CLI end to end against $(PKG_ROOT). Fixtures are staged under
-# $(PKG_ROOT) first, not run in place: a bare self-reference resolves
-# from wherever the importing file sits, not from $(PKG_ROOT).
+# The CLI end to end against $(PKG_ROOT). sample/ is its own package
+# scope, so the fixtures' bare import is not a self-reference to the
+# checkout and resolves through sample/node_modules instead, where a
+# symlink points at whichever copy is under test. Nothing is copied.
+# fail.mjs must fail; its output is noise in a green run, so it is dropped.
 test-cli:
-	cd ../.. && cp sample/pass.mjs sample/fail.mjs $(PKG_ROOT)/
-	cd ../.. && ./$(PKG_ROOT)/dist/test-assert-lite.cli.mjs $(PKG_ROOT)/pass.mjs
-	cd ../.. && ! ./$(PKG_ROOT)/dist/test-assert-lite.cli.mjs $(PKG_ROOT)/fail.mjs
-	cd ../.. && rm -f $(PKG_ROOT)/pass.mjs $(PKG_ROOT)/fail.mjs
+	cd ../.. && mkdir -p sample/node_modules && ln -sfn $$(realpath $(PKG_ROOT)) sample/node_modules/test-assert-lite
+	cd ../.. && ./$(PKG_ROOT)/dist/test-assert-lite.cli.mjs sample/pass.mjs
+	cd ../.. && ! ./$(PKG_ROOT)/dist/test-assert-lite.cli.mjs sample/fail.mjs > /dev/null 2>&1
 
 # Script-context run of the minified bundle under $(PKG_ROOT): the browser
 # IIFE consumer shape; in the default root it also proves the tarball
