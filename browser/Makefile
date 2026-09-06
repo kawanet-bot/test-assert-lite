@@ -21,14 +21,14 @@ install: install-browser
 install-playwright:
 	cd .. && PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install playwright@$(PLAYWRIGHT_VERSION) --no-save --ignore-scripts --no-audit --no-fund
 
-# --with-deps re-runs apt-get (with sudo) even when nothing is missing.
-# install-deps --dry-run asks Playwright itself whether the OS packages for
-# this browser are present, with no download/network/sudo side effects.
+# --with-deps re-runs apt-get (with sudo) even when nothing is missing. A
+# launch that succeeds is exactly what `test` needs, so probe that and skip
+# the flag; any failure (no binary, missing libs, fresh runner) keeps it.
 # Deferred (=): only evaluated when this recipe actually runs.
-DEPS_OK = $(shell npx --no-install playwright install-deps chromium-headless-shell --dry-run >/dev/null 2>&1 && echo YES)
+LAUNCHABLE = $(shell cd .. && node -e 'require("playwright").chromium.launch().then(b=>b.close()).catch(()=>process.exit(1))' 2>/dev/null && echo YES)
 
 install-browser: install-playwright
-	cd .. && npx --no-install playwright install --only-shell chromium$(if $(DEPS_OK),, --with-deps)
+	cd .. && npx --no-install playwright install --only-shell chromium$(if $(LAUNCHABLE),, --with-deps)
 
 test: all
 	cd .. && node browser/tests.cli.mjs
