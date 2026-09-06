@@ -334,19 +334,19 @@ export class Test {
         if (error == null) error = await this.runHooks(this.before)
 
         let failedChildren = 0
+        let next = 0
+        const runChildren = async (): Promise<void> => {
+            for (; next < this.children.length; next++) {
+                const outcome = await this.children[next]!.start(this.run)
+                if (outcome === "failed" || outcome === "cancelled") failedChildren++
+            }
+        }
         if (error != null) {
             // Nothing below a broken setup may run.
             this.settle(error)
             for (const child of this.children) await child.start(this.run)
         } else {
-            // The root keeps going while late subtests join the end of the line.
-            let i = 0
-            do {
-                for (; i < this.children.length; i++) {
-                    const outcome = await this.children[i]!.start(this.run)
-                    if (outcome === "failed" || outcome === "cancelled") failedChildren++
-                }
-            } while (this.isRoot && await this.drain())
+            await runChildren()
         }
 
         // after runs whatever happened above, as it does in node:test.
@@ -355,6 +355,9 @@ export class Test {
         error ??= afterError
 
         if (this.isRoot) {
+            // Late subtests join the end of the root's line and run after its
+            // teardown, so a timed out body cannot hold that up.
+            while (await this.drain()) await runChildren()
             // The root cannot carry a result, so a failing root hook that no
             // child could be charged with is reported on its own and left out
             // of the counts. node:test lets an empty run pass here; a failed
@@ -417,6 +420,7 @@ export class Test {
     private async drain(): Promise<boolean> {
         const {run} = this
         for (;;) {
+            if (this.children.some(child => !child.started && child.closedWith == null)) return true
             const entries = [...run.lingering]
             const wait = Math.max(...entries.map(entry => entry.until)) - performance.now()
             if (!entries.length || wait <= 0) break
@@ -429,7 +433,6 @@ export class Test {
                 })
             })
             run.wake = undefined
-            if (this.children.some(child => !child.started && child.closedWith == null)) return true
         }
         run.closed = true
         return false

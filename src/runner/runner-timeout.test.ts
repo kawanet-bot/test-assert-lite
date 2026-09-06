@@ -261,6 +261,28 @@ describeSlow(TITLE, () => {
         assert.equal(events.at(-1)?.type, "test:summary")
     })
 
+    // The root's after hooks run once the registered tests are done, not
+    // once a timed out body has settled: teardown must not wait on it. What
+    // that body declares afterwards runs after the teardown.
+    it("root after hooks run before a timed out body is waited for", async () => {
+        const local = createTAL()
+        local.reporter.output(() => undefined)
+        const order: string[] = []
+        local.after(() => {
+            order.push("after")
+        })
+        local.it("slow", {timeout: slow(30)}, async (t) => {
+            await new Promise(r => setTimeout(r, slow(40)))
+            order.push("settled")
+            await t.test("late", () => {
+                order.push("late")
+            })
+        })
+        await local.run()
+
+        assert.deepEqual(order, ["after", "settled", "late"])
+    })
+
     // A queued sibling keeps its skip when the parent gives up, and every
     // sibling is cancelled even while the reporter's output is slow.
     // With an in-flight child, cancelling it takes several slow reporter
