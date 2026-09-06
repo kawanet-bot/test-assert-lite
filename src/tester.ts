@@ -121,6 +121,9 @@ export class Test {
     private last: Promise<unknown> = Promise.resolve()
     private active = 0
     private pending: Promise<Outcome>[] = []
+    // Resolves once this subtest has reported, for a parent that settles
+    // while the subtest, already settled itself, is still reporting.
+    private finish: Promise<unknown> | undefined
 
     constructor(kind: Kind, name: string, options: TestOptions, fn: TestFn | SuiteFn | undefined, parent: Test | null) {
         this.kind = kind
@@ -206,6 +209,7 @@ export class Test {
         const promise = this.active === 1 ? start() : this.last.then(start)
         this.last = promise
         this.pending.push(promise)
+        child.finish = promise
 
         // A subtest its parent gave up on before it could start never resumes
         // the caller in node:test. Rejecting comes closest without leaving a
@@ -250,6 +254,11 @@ export class Test {
         if (this.reported) return "cancelled"
         this.settle()
 
+        // A subtest that settled on its own may still be reporting; that is
+        // bounded, and its results belong ahead of this one and in the counts.
+        for (const child of this.children) {
+            if (child.started && child.settled && !closed.includes(child)) await child.finish
+        }
         for (const child of closed) await child.report()
         await this.report()
         this.onDone?.()

@@ -171,6 +171,36 @@ describeSlow(TITLE, () => {
         assert.deepEqual(summary.counts, {tests: 2, suites: 0, passed: 0, failed: 0, cancelled: 2, skipped: 0})
     })
 
+    // A child that settled on its own but is still reporting when the
+    // parent throws is waited for: its results come before the parent's
+    // and are in the counts, however slow the reporter is.
+    it("a parent that throws waits for a settled child still reporting", async () => {
+        const local = createTAL()
+        const events: ReturnType<typeof capture> = []
+        local.reporter.format(async function* (source) {
+            for await (const event of source) {
+                events.push(event)
+                yield "."
+            }
+        })
+        local.reporter.output(() => new Promise(r => setTimeout(r, slow(30))))
+        local.it("parent", async (t) => {
+            void t.test("child", {timeout: slow(10)}, async (inner) => {
+                void inner.test("grandchild", async () => {
+                    await new Promise(r => setTimeout(r, slow(100)))
+                })
+                await new Promise(r => setTimeout(r, slow(100)))
+            })
+            await new Promise(r => setTimeout(r, slow(40)))
+            throw new Error("boom")
+        })
+        const summary = await local.run()
+
+        assert.deepEqual(names(events, "test:fail"), ["grandchild", "child", "parent"])
+        assert.equal(summary.counts.tests, 3)
+        assert.equal(events.at(-1)?.type, "test:summary")
+    })
+
     // A queued sibling keeps its skip when the parent gives up, and every
     // sibling is cancelled even while the reporter's output is slow.
     // With an in-flight child, cancelling it takes several slow reporter
