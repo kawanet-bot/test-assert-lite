@@ -56,7 +56,7 @@ const deepEqualTypedArrays = (a: ByteRange, b: ByteRange): boolean => {
     const phase = a.byteOffset % 4
     const lead = phase === b.byteOffset % 4 ? Math.min(length, (4 - phase) % 4) : length
 
-    if (!sameElements(new Uint8Array(a.buffer, a.byteOffset, lead), new Uint8Array(b.buffer, b.byteOffset, lead))) {
+    if (lead && !sameElements(new Uint8Array(a.buffer, a.byteOffset, lead), new Uint8Array(b.buffer, b.byteOffset, lead))) {
         return false
     }
 
@@ -67,6 +67,8 @@ const deepEqualTypedArrays = (a: ByteRange, b: ByteRange): boolean => {
     )) return false
 
     const tailAt = lead + bulk * 4
+    if (length === tailAt) return true
+
     return sameElements(
         new Uint8Array(a.buffer, a.byteOffset + tailAt, length - tailAt),
         new Uint8Array(b.buffer, b.byteOffset + tailAt, length - tailAt),

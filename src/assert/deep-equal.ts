@@ -1,7 +1,7 @@
 import {isError} from "./../common/is-error.ts"
 import {stringify} from "./../common/stringify.ts"
 import {AssertionError} from "./assertion-error.ts"
-import {isDataView, sameArrayBuffer, sameDataView, sameTypedArray, isTypedArray} from "./deep-equal-typed-arrays.ts"
+import {isDataView, isTypedArray, sameArrayBuffer, sameDataView, sameTypedArray} from "./deep-equal-typed-arrays.ts"
 
 const toTag = (v: object): string => Object.prototype.toString.call(v)
 
