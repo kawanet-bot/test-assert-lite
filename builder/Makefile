@@ -13,7 +13,7 @@ SHELL := bash
 # is a separate build target below, so neither counts as library input.
 SRC := $(shell find ../src -name '*.ts' -not -name '*.test.ts' -not -path '*/test-utils/*' -not -path '*/cli/*')
 TEST_SRC := $(shell find ../src -name '*.test.ts') $(wildcard ../src/test-utils/*.ts)
-CLI_SRC := $(wildcard ../src/cli/*.ts)
+CLI_SRC := $(wildcard ../src/cli/*.ts) ../browser/playwright.mjs
 TYPES := $(wildcard ../types/*.d.ts)
 BUILDER_SRC := $(wildcard ./*.ts)
 
@@ -40,10 +40,10 @@ MJS_MAX_BYTES := 100000
 # ratio the two currently show (about a third).
 MINJS_MAX_BYTES := 35000
 
-# The CLI externalizes both the library and Node builtins (see
-# rollup-cli.config.ts), so it carries little more than argv handling, the
-# inline resolve hook and the load-then-run loop.
-CLI_MAX_BYTES := 3000
+# The CLI externalizes the library, Node builtins and Playwright (see
+# rollup-cli.config.ts) but carries the loopback server and the browser
+# application, so the cap is set well above what those come to.
+CLI_MAX_BYTES := 40000
 
 # Shared by both test bundles, which inline the same suites while the
 # package itself stays external. Development-only output, never published,
@@ -107,8 +107,8 @@ $(PKG_DST):
 	@echo ""
 
 # Bundle of the test suites for the browser, with node:test, node:assert
-# and the package name left external for the import map served by
-# browser/tests.cli.mjs, which points all three at the .mjs build.
+# and the package name left external for the import map the CLI serves,
+# which points all three at the IIFE build through its ES module shim.
 $(BROWSER_TEST_DST): $(BROWSER_TEST_CONFIG) $(SRC) $(BUILDER_SRC) $(TEST_SRC) $(TYPES) $(MJS_DST)
 	@mkdir -p $(dir $@)
 	../node_modules/.bin/rollup -c $<

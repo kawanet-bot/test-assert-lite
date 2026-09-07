@@ -5,7 +5,7 @@ import type {RollupOptions} from "rollup"
 import {showFiles} from "./show-files.ts"
 
 // Bundles the test suites for the browser as one ES module. node:test and
-// node:assert stay as written: the page served by browser/tests.cli.mjs
+// node:assert stay as written: the page the CLI serves
 // carries an import map that points them, and the package name, at the
 // ESM build, so no glue module is inlined here.
 const rollupConfig: RollupOptions = {
