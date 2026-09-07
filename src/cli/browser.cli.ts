@@ -6,6 +6,7 @@
 
 import {basename, dirname, resolve} from "node:path"
 import {fileURLToPath} from "node:url"
+import {parseArgs} from "node:util"
 import {runInBrowser} from "../../browser/playwright.mjs"
 import {startServer} from "./server.ts"
 
@@ -16,11 +17,29 @@ const USAGE = "Usage: node src/cli/browser.cli.ts [--serve] <file>\n"
 
 const root = resolve(fileURLToPath(new URL("../..", import.meta.url)))
 
-const args = process.argv.slice(2)
-const serve = args.includes("--serve")
-const files = args.filter(arg => arg !== "--serve")
+// parseArgs settles the flag forms (--x=v, -h, --) and rejects a flag this
+// CLI does not know rather than taking it for a file name; its wording on
+// such an error gives way to the usage line.
+const parse = () => {
+    try {
+        return parseArgs({
+            args: process.argv.slice(2),
+            options: {
+                serve: {type: "boolean", default: false},
+                help: {type: "boolean", short: "h", default: false},
+            },
+            allowPositionals: true,
+        })
+    } catch {
+        process.stderr.write(USAGE)
+        process.exit(1)
+    }
+}
 
-if (args.includes("-h") || args.includes("--help")) {
+const {values, positionals: files} = parse()
+const serve = values.serve
+
+if (values.help) {
     process.stdout.write(USAGE)
     process.exit(0)
 }
