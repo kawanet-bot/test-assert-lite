@@ -36,13 +36,13 @@ const root = resolve(fileURLToPath(new URL("../..", import.meta.url)))
 // builtin maps onto the subpath of the same name, and the subpaths resolve
 // too. An alias adds its specifier on top.
 const IMPORTS = {
-    "test-assert-lite": "/dist/test-assert-lite.mjs",
-    "test-assert-lite/test": "/exports/test.mjs",
-    "test-assert-lite/assert": "/exports/assert.mjs",
-    "test-assert-lite/assert/strict": "/exports/assert/strict.mjs",
-    "node:test": "/exports/test.mjs",
-    "node:assert": "/exports/assert.mjs",
-    "node:assert/strict": "/exports/assert/strict.mjs",
+    "test-assert-lite": "/@tal/dist/test-assert-lite.mjs",
+    "test-assert-lite/test": "/@tal/exports/test.mjs",
+    "test-assert-lite/assert": "/@tal/exports/assert.mjs",
+    "test-assert-lite/assert/strict": "/@tal/exports/assert/strict.mjs",
+    "node:test": "/@tal/exports/test.mjs",
+    "node:assert": "/@tal/exports/assert.mjs",
+    "node:assert/strict": "/@tal/exports/assert/strict.mjs",
 }
 
 /**
@@ -73,15 +73,15 @@ export const startApp = async (options: AppOptions): Promise<App> => {
     }
     const pages = ["console.html", "index.html"]
 
-    // Document root is htdocs/, with /dist and /exports aliased onto the
-    // build output and the subpath bridges, which have to stay where the
-    // package puts them. Nothing else is exposed. index.html asks for both
-    // lists and loads them itself, scripts first.
+    // Document root is htdocs/; everything else the CLI provides sits under
+    // /@tal/, the build output and the subpath bridges included, as those
+    // have to stay where the package puts them. Nothing else is exposed.
+    // index.html asks for both lists and loads them itself, scripts first.
     const server = await startServer({
         root: resolve(root, "htdocs"),
         aliases: {
-            "/dist/": resolve(root, "dist"),
-            "/exports/": resolve(root, "exports"),
+            "/@tal/dist/": resolve(root, "dist"),
+            "/@tal/exports/": resolve(root, "exports"),
             "/@tal/tests/0/": dirname(file),
             ...Object.fromEntries(aliasDirs.map((dir, i) => [dir, dirname(aliases[i]?.file as string)])),
         },
