@@ -68,10 +68,18 @@ const respond = async (options: ServerOptions, req: IncomingMessage, res: Server
         return
     }
     const path = locate(options, pathname)
+    // Only the kinds a test page is made of are served; anything else on
+    // disk, a .cjs or a .ts say, is refused rather than handed out as bytes.
+    const type = path == null ? undefined : TYPES[extname(path)]
+    if (path != null && type == null) {
+        res.writeHead(403)
+        res.end()
+        return
+    }
     try {
         if (path == null) throw new Error("outside")
         const body = await readFile(path)
-        res.writeHead(200, {"content-type": `${TYPES[extname(path)] ?? "application/octet-stream"}; charset=utf-8`})
+        res.writeHead(200, {"content-type": `${type}; charset=utf-8`})
         res.end(body)
     } catch {
         res.writeHead(404)

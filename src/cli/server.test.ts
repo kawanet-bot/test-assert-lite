@@ -34,6 +34,8 @@ describe("cli/server", () => {
         await writeFile(join(dir, "dist", "my lib.mjs"), "export const lib = 2")
         await mkdir(join(dir, "dist", "nested"))
         await writeFile(join(dir, "dist", "nested", "deep.mjs"), "export const deep = 1")
+        await writeFile(join(dir, "dist", "legacy.cjs"), "module.exports = {}")
+        await writeFile(join(dir, "dist", "source.ts"), "export const source: number = 1")
         await writeFile(join(dir, "elsewhere", "suite.mjs"), "export const suite = 1")
         await writeFile(join(dir, "secret.json"), "{}")
         server = await startServer({
@@ -49,6 +51,11 @@ describe("cli/server", () => {
         assert.equal(res.status, 200)
         assert.equal(res.body, "export const lib = 2")
         assert.equal((await get(server.origin, "/dist/nested/deep.mjs")).status, 200)
+    })
+
+    it("refuses a kind it does not serve with 403", async () => {
+        assert.equal((await get(server.origin, "/dist/legacy.cjs")).status, 403)
+        assert.equal((await get(server.origin, "/dist/source.ts")).status, 403)
     })
 
     it("refuses a malformed escape and an encoded traversal", async () => {
