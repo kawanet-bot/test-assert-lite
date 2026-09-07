@@ -50,6 +50,22 @@ describe(TITLE, () => {
         assert.match(out, /<span class="tal-warn">⚠ todo two<\/span>/)
     })
 
+    it("lists the failures once, after the run's summary, not per file", async () => {
+        const summary = {counts: {tests: 1, suites: 0, passed: 0, failed: 1, cancelled: 0, skipped: 0, todo: 0}, duration_ms: 1, success: false}
+        const perFile = {...summary, file: "a.test.mjs"}
+        const out = await render(async reporter => {
+            await reporter.emit("test:fail", {...pass("first"), details: {duration_ms: 1, type: "test", error: new Error("one")}})
+            await reporter.emit("test:summary", perFile)
+            await reporter.emit("test:fail", {...pass("second"), details: {duration_ms: 1, type: "test", error: new Error("two")}})
+            await reporter.emit("test:summary", summary)
+            await reporter.emit("test:pass", pass("after"))
+        })
+
+        assert.equal(out.split("failing tests:").length - 1, 1)
+        assert.match(out, /failing tests:.*✖ first.*✖ second/s)
+        assert.ok(out.indexOf("failing tests:") < out.indexOf("✔ after"))
+    })
+
     it("escapes text and failure details", async () => {
         const out = await render(async reporter => {
             await reporter.emit("test:diagnostic", {message: `<&>"'`, nesting: 0, level: "warn"})

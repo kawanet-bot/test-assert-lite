@@ -88,9 +88,13 @@ export const spec = (options?: declared.TAL.SpecOptions): FormatFn => {
                 continue
             }
 
+            // node emits a summary per file, with `file`, and one for the run
+            // without it; the list goes with the latter, as in node's spec.
             if (event.type === "test:summary") {
-                yield formatFailures(failed, colors)
-                failed.length = 0
+                if (!("file" in event.data)) {
+                    yield formatFailures(failed, colors)
+                    failed.length = 0
+                }
                 continue
             }
 
@@ -117,8 +121,7 @@ export const spec = (options?: declared.TAL.SpecOptions): FormatFn => {
             yield out
         }
 
-        // End of stream, so the failure list still appears for a caller that
-        // never emits test:summary.
+        // A caller that never sends the run's summary still gets the list.
         yield formatFailures(failed, colors)
     }
 }

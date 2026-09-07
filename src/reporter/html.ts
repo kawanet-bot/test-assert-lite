@@ -47,9 +47,12 @@ export const html = (): FormatFn => async function* (source: AsyncIterable<TestE
             continue
         }
 
+        // The run's summary carries no `file`; a per-file one from node does.
         if (event.type === "test:summary") {
-            yield formatFailures(failed)
-            failed.length = 0
+            if (!("file" in event.data)) {
+                yield formatFailures(failed)
+                failed.length = 0
+            }
             continue
         }
 

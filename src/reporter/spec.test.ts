@@ -161,6 +161,36 @@ describe(TITLE, () => {
         assert.match(out, /⚠ todo two .* # TODO/)
     })
 
+    // node:test emits a summary per file, with `file`, and one for the run
+    // without it. The list waits for the latter, as in node's own spec.
+    it("lists the failures once, after the run's summary, not per file", async () => {
+        const summary = {counts: {tests: 1, suites: 0, passed: 0, failed: 1, cancelled: 0, skipped: 0, todo: 0}, duration_ms: 1, success: false}
+        const perFile = {...summary, file: "a.test.mjs"}
+        const out = await render(async (r) => {
+            await r.emit("test:fail", {...pass("first"), details: {duration_ms: 1, type: "test", error: new Error("one")}})
+            await r.emit("test:summary", perFile)
+            await r.emit("test:fail", {...pass("second"), details: {duration_ms: 1, type: "test", error: new Error("two")}})
+            await r.emit("test:summary", perFile)
+        })
+
+        assert.equal(out.split("failing tests:").length - 1, 1)
+        assert.match(out, /failing tests:\n\n✖ first \(1\.000ms\)\n {2}Error: one[\s\S]*\n\n✖ second \(1\.000ms\)\n {2}Error: two/)
+    })
+
+    // A caller driving the reporter itself ends with the run's summary and
+    // has no way to close the stream, so the list must come out there.
+    it("lists the failures at the run's summary for a standalone emitter", async () => {
+        const summary = {counts: {tests: 1, suites: 0, passed: 0, failed: 1, cancelled: 0, skipped: 0, todo: 0}, duration_ms: 1, success: false}
+        const out = await render(async (r) => {
+            await r.emit("test:fail", {...pass("bad"), details: {duration_ms: 1, type: "test", error: new Error("boom")}})
+            await r.emit("test:summary", summary)
+            await r.emit("test:pass", pass("after"))
+        })
+
+        assert.ok(out.indexOf("failing tests:") < out.indexOf("✔ after"))
+        assert.equal(out.split("failing tests:").length - 1, 1)
+    })
+
     it("renders a skipped suite", async () => {
         const out = await render(r => r.emit("test:pass", {...pass("S"), skip: true, details: {duration_ms: 1, type: "suite"}}))
 
