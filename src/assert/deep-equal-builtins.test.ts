@@ -202,4 +202,37 @@ describe(TITLE, () => {
         b.x = 2
         assert.equal(catchError(() => TAL.deepEqual(a, b))?.name, "AssertionError")
     })
+
+    // An object given a builtin's prototype, own properties and tag still
+    // lacks the internal slot the intrinsic reads. The kind check must
+    // see that first, so the failure is a difference rather than the
+    // intrinsic's own TypeError escaping the assertion.
+    it("fails a lookalike without the internal slot as a difference, not a TypeError", () => {
+        const lookalike = <T extends object>(real: T, tag: string): T => {
+            const copy = Object.create(Object.getPrototypeOf(real), Object.getOwnPropertyDescriptors(real)) as T
+            Object.defineProperty(copy, Symbol.toStringTag, {value: tag})
+            return copy
+        }
+        const date = new Date(2000)
+        assert.equal(catchError(() => TAL.deepEqual(date, lookalike(date, "Date")))?.name, "AssertionError")
+        assert.equal(catchError(() => TAL.deepEqual(lookalike(date, "Date"), date))?.name, "AssertionError")
+        const regExp = /abc/g
+        assert.equal(catchError(() => TAL.deepEqual(regExp, lookalike(regExp, "RegExp")))?.name, "AssertionError")
+        const map = new Map([[1, 2]])
+        assert.equal(catchError(() => TAL.deepEqual(map, lookalike(map, "Map")))?.name, "AssertionError")
+    })
+
+    // The other way round: a real builtin whose own tag reads "Object" is
+    // still its kind, found through instanceof and confirmed by the slot,
+    // so it is compared by its value rather than walked as a plain object.
+    it("still compares a builtin by its value when its tag is masked as Object", () => {
+        const masked = <T extends object>(v: T): T => Object.defineProperty(v, Symbol.toStringTag, {value: "Object"})
+        assert.equal(Object.prototype.toString.call(masked(new Date(0))), "[object Object]")
+        assert.doesNotThrow(() => TAL.deepEqual(masked(new Date(0)), masked(new Date(0))))
+        assert.throws(() => TAL.deepEqual(masked(new Date(0)), masked(new Date(1))), /deep-equal/)
+        assert.throws(() => TAL.deepEqual(masked(new Map([[1, 2]])), masked(new Map([[1, 3]]))), /deep-equal/)
+        // A masked Date and a plain object share the tag but not the kind.
+        assert.throws(() => TAL.deepEqual(masked(new Date(0)), {}), /deep-equal/)
+        assert.throws(() => TAL.deepEqual({}, masked(new Date(0))), /deep-equal/)
+    })
 })

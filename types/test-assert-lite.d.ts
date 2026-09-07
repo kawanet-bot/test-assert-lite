@@ -109,10 +109,14 @@ export declare namespace TAL {
         ifError(value: unknown): void
     }
 
+    // `assert` compares loosely in equal / notEqual / deepEqual /
+    // notDeepEqual, `strict` (reachable as `assert.strict` too) strictly;
+    // the *StrictEqual names are strict on both, as in node:assert.
     interface Assert extends AssertBase {
         (value: unknown, message?: string | Error): asserts value
         ok(value: unknown, message?: string | Error): asserts value
         ifError(value: unknown): asserts value is null | undefined
+        strict: Assert
     }
 
     // --- failures ---
@@ -229,6 +233,7 @@ export declare namespace TAL {
     // below are the default one; `createTAL()` hands out another.
     interface TestHarness {
         after: typeof after
+        assert: Assert
         before: typeof before
         describe: SuiteAPI
         it: TestAPI
@@ -251,6 +256,8 @@ export declare const it: TAL.TestAPI
 export declare function before(fn: TAL.HookFn): void
 
 export declare function after(fn: TAL.HookFn): void
+
+export declare const assert: TAL.Assert
 
 export declare const strict: TAL.Assert
 

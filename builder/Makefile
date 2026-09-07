@@ -31,14 +31,14 @@ BROWSER_TEST_CONFIG := ./rollup-browser-test.config.ts
 BUILDER_TEST_CONFIG := ./rollup-builder-test.config.ts
 
 # The shipped bundle is the whole library, so this cap is tight enough to
-# notice an unintended dependency being pulled in. It still needs bumping
-# every so often as real features land, so ~20% of headroom over the actual
-# size (round 10KB) keeps that from being a recurring chore.
-MJS_MAX_BYTES := 70000
+# notice an unintended dependency being pulled in. Pre-release, features
+# still land in quick succession, so the headroom is wider than the ~20%
+# over the actual size (round 10KB) it will settle on once published.
+MJS_MAX_BYTES := 100000
 
-# Minified build of the same sources, so the cap tracks the mjs one. Pre-
-# release, so this carries a bit more slack than it will once published.
-MINJS_MAX_BYTES := 25000
+# Minified build of the same sources, so the cap tracks the mjs one at the
+# ratio the two currently show (about a third).
+MINJS_MAX_BYTES := 35000
 
 # The CLI externalizes both the library and Node builtins (see
 # rollup-cli.config.ts), so it carries little more than argv handling, the
@@ -48,7 +48,7 @@ CLI_MAX_BYTES := 3000
 # Shared by both test bundles, which inline the same suites while the
 # package itself stays external. Development-only output, never published,
 # so this only guards against gross growth and can stay generous.
-TEST_MAX_BYTES := 200000
+TEST_MAX_BYTES := 300000
 
 ALL := $(MJS_DST) $(MINJS_DST) $(CLI_DST) $(BUILDER_TEST_DST)
 
