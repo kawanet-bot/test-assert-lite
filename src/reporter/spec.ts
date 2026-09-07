@@ -88,12 +88,6 @@ export const spec = (options?: declared.TAL.SpecOptions): FormatFn => {
                 continue
             }
 
-            if (event.type === "test:summary") {
-                yield formatFailures(failed, colors)
-                failed.length = 0
-                continue
-            }
-
             // emit() accepts any type, so check for a result event rather
             // than assuming one. An unknown type is dropped, as it is in
             // node:test's spec.
@@ -117,8 +111,8 @@ export const spec = (options?: declared.TAL.SpecOptions): FormatFn => {
             yield out
         }
 
-        // End of stream, so the failure list still appears for a caller that
-        // never emits test:summary.
+        // The list comes at the end of the stream, not at test:summary: node
+        // emits one summary per file, and the list must not split on those.
         yield formatFailures(failed, colors)
     }
 }

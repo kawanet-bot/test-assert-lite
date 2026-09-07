@@ -161,6 +161,21 @@ describe(TITLE, () => {
         assert.match(out, /⚠ todo two .* # TODO/)
     })
 
+    // node:test emits a summary per file and one for the run. The list is
+    // for the end of the stream, whatever summaries passed through before.
+    it("lists the failures once, at the end, across several summaries", async () => {
+        const summary = {counts: {tests: 1, suites: 0, passed: 0, failed: 1, cancelled: 0, skipped: 0, todo: 0}, duration_ms: 1, success: false}
+        const out = await render(async (r) => {
+            await r.emit("test:fail", {...pass("first"), details: {duration_ms: 1, type: "test", error: new Error("one")}})
+            await r.emit("test:summary", summary)
+            await r.emit("test:fail", {...pass("second"), details: {duration_ms: 1, type: "test", error: new Error("two")}})
+            await r.emit("test:summary", summary)
+        })
+
+        assert.equal(out.split("failing tests:").length - 1, 1)
+        assert.match(out, /failing tests:\n\n✖ first \(1\.000ms\)\n {2}Error: one[\s\S]*\n\n✖ second \(1\.000ms\)\n {2}Error: two/)
+    })
+
     it("renders a skipped suite", async () => {
         const out = await render(r => r.emit("test:pass", {...pass("S"), skip: true, details: {duration_ms: 1, type: "suite"}}))
 

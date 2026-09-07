@@ -47,12 +47,6 @@ export const html = (): FormatFn => async function* (source: AsyncIterable<TestE
             continue
         }
 
-        if (event.type === "test:summary") {
-            yield formatFailures(failed)
-            failed.length = 0
-            continue
-        }
-
         const isPass = event.type === "test:pass"
         const isFail = event.type === "test:fail"
         if (!isPass && !isFail) continue

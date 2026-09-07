@@ -50,6 +50,19 @@ describe(TITLE, () => {
         assert.match(out, /<span class="tal-warn">⚠ todo two<\/span>/)
     })
 
+    it("lists the failures once, at the end, across several summaries", async () => {
+        const summary = {counts: {tests: 1, suites: 0, passed: 0, failed: 1, cancelled: 0, skipped: 0, todo: 0}, duration_ms: 1, success: false}
+        const out = await render(async reporter => {
+            await reporter.emit("test:fail", {...pass("first"), details: {duration_ms: 1, type: "test", error: new Error("one")}})
+            await reporter.emit("test:summary", summary)
+            await reporter.emit("test:fail", {...pass("second"), details: {duration_ms: 1, type: "test", error: new Error("two")}})
+        })
+
+        assert.equal(out.split("failing tests:").length - 1, 1)
+        assert.ok(out.indexOf("✖ first") < out.indexOf("failing tests:"))
+        assert.match(out, /failing tests:.*✖ first.*✖ second/s)
+    })
+
     it("escapes text and failure details", async () => {
         const out = await render(async reporter => {
             await reporter.emit("test:diagnostic", {message: `<&>"'`, nesting: 0, level: "warn"})
