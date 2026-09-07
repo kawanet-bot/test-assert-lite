@@ -89,6 +89,47 @@ describe(TITLE, () => {
         assert.throws(() => TAL.deepEqual(fakeArray, [1]), /deep-equal/)
     })
 
+    // The tag check above reads Object.prototype.toString, which an own
+    // Symbol.toStringTag can dictate; for "Array" the real answer comes
+    // from Array.isArray, which no property can fake. A Proxy of an array
+    // still answers true there, so it keeps comparing like the array.
+    it("is not fooled by an own Symbol.toStringTag claiming to be an Array", () => {
+        const fakeArray: unknown[] = Object.create(Array.prototype)
+        fakeArray[0] = 1
+        Object.defineProperty(fakeArray, "length", {value: 1, enumerable: false})
+        Object.defineProperty(fakeArray, Symbol.toStringTag, {value: "Array"})
+        assert.equal(Object.prototype.toString.call(fakeArray), "[object Array]")
+        assert.throws(() => TAL.deepEqual(fakeArray, [1]), /deep-equal/)
+        assert.throws(() => TAL.deepEqual([1], fakeArray), /deep-equal/)
+
+        const disguised = Object.setPrototypeOf(/a/, Array.prototype) as unknown as unknown[]
+        Object.defineProperty(disguised, Symbol.toStringTag, {value: "Array"})
+        assert.throws(() => TAL.deepEqual([], disguised), /deep-equal/)
+
+        assert.doesNotThrow(() => TAL.deepEqual(new Proxy([1, 2], {}), [1, 2]))
+    })
+
+    // The reverse disguise: a real array whose own tag says "Object" no
+    // longer looks like an array to the tag check, so both the array-ness
+    // test and the length check have to rest on Array.isArray instead.
+    it("is not fooled by a real array hiding behind an Object tag", () => {
+        const hidden = (...items: number[]): number[] =>
+            Object.defineProperty(items, Symbol.toStringTag, {value: "Object"})
+        assert.equal(Object.prototype.toString.call(hidden(1)), "[object Object]")
+
+        const lookalike: unknown[] = Object.create(Array.prototype)
+        lookalike[0] = 1
+        Object.defineProperty(lookalike, "length", {value: 1, enumerable: false})
+        Object.defineProperty(lookalike, Symbol.toStringTag, {value: "Object"})
+        assert.throws(() => TAL.deepEqual(hidden(1), lookalike), /deep-equal/)
+        assert.throws(() => TAL.deepEqual(lookalike, hidden(1)), /deep-equal/)
+
+        const stretched = hidden(1, 2)
+        stretched.length = 5
+        assert.throws(() => TAL.deepEqual(hidden(1, 2), stretched), /deep-equal/)
+        assert.doesNotThrow(() => TAL.deepEqual(hidden(1, 2), hidden(1, 2)))
+    })
+
     // .length is not enumerable, so a manually stretched array needs its
     // own check alongside the own-key comparison.
     it("checks array length even when no extra index became enumerable", () => {
@@ -148,6 +189,51 @@ describe(TITLE, () => {
         y1.self = y2
         y2.self = y1
         assert.throws(() => TAL.deepEqual(x1, y1), /deep-equal/)
+    })
+
+    // A revisit that only one side recognises - the other side reaching a
+    // fresh object at that point - is a cycle the other side lacks. This
+    // has to hold in both orders: stamping the fresh object afresh used to
+    // let one order slip through.
+    it("tells apart a self-cycle from a path that merely leads into one, in either order", () => {
+        const loop: Record<string, unknown> = {}
+        loop.next = loop
+        const intoLoop: Record<string, unknown> = {}
+        intoLoop.next = {next: loop}
+        assert.throws(() => TAL.deepEqual(loop, intoLoop), /deep-equal/)
+        assert.throws(() => TAL.deepEqual(intoLoop, loop), /deep-equal/)
+
+        // Wrapping a *different* self-cycle: the same one would be found
+        // by reference before any structure is looked at.
+        const otherLoop: Record<string, unknown> = {}
+        otherLoop.next = otherLoop
+        const wrapsOther: Record<string, unknown> = {next: otherLoop}
+        assert.throws(() => TAL.deepEqual(loop, wrapsOther), /deep-equal/)
+        assert.throws(() => TAL.deepEqual(wrapsOther, loop), /deep-equal/)
+
+        const selfSet = new Set<unknown>()
+        selfSet.add(selfSet)
+        const otherSelfSet = new Set<unknown>()
+        otherSelfSet.add(otherSelfSet)
+        const wrapsOtherSet = new Set<unknown>([otherSelfSet])
+        assert.throws(() => TAL.deepEqual(selfSet, wrapsOtherSet), /deep-equal/)
+        assert.throws(() => TAL.deepEqual(wrapsOtherSet, selfSet), /deep-equal/)
+    })
+
+    // The stricter revisit rule must not reject a legitimate shape: the
+    // same object reached twice on one side while the other side has two
+    // equal copies, or a cycle sitting behind an alias on both sides.
+    it("still accepts a shared reference against equal copies, and aliased cycles", () => {
+        const shared = {inner: 0}
+        assert.doesNotThrow(() => TAL.deepEqual([{inner: 0}, {inner: 0}], [shared, shared]))
+        assert.doesNotThrow(() => TAL.deepEqual([shared, shared], [{inner: 0}, {inner: 0}]))
+
+        const inner: Record<string, unknown> = {}
+        inner.loop = inner
+        const outer: Record<string, unknown> = {loop: inner}
+        const actual: Record<string, unknown> = {loop: outer}
+        assert.doesNotThrow(() => TAL.deepEqual(actual, outer))
+        assert.doesNotThrow(() => TAL.deepEqual(outer, actual))
     })
 
     it("notDeepEqual is the exact negation", () => {

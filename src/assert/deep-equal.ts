@@ -1,14 +1,14 @@
 import {isError} from "./../common/is-error.ts"
 import {stringify} from "./../common/stringify.ts"
 import {AssertionError} from "./assertion-error.ts"
-import {isDataView, isTypedArray, sameArrayBuffer, sameDataView, sameTypedArray} from "./deep-equal-typed-arrays.ts"
+import {isDataView, isTypedArray, sameArrayBuffer, sameDataView, sameTypedArray, typedArrayLength} from "./deep-equal-typed-arrays.ts"
 
 const toTag = (v: object): string => Object.prototype.toString.call(v)
 
 // Symbol keys are rare in practice, but cheap enough to walk alongside
 // Object.keys() rather than carve out as a separate scope decision.
-const ownKeys = (v: object): PropertyKey[] =>
-    [...Object.keys(v), ...Object.getOwnPropertySymbols(v).filter(s => Object.prototype.propertyIsEnumerable.call(v, s))]
+const ownKeys = (v: object, skip: number): PropertyKey[] =>
+    [...Object.keys(v).slice(skip), ...Object.getOwnPropertySymbols(v).filter(s => Object.prototype.propertyIsEnumerable.call(v, s))]
 
 // Array/Arguments elements are own enumerable keys, so the walk below
 // applies to them too (typed arrays take their own path first). Anything
@@ -73,13 +73,32 @@ const isDeepEqual = (a: unknown, b: unknown, memo: Memo): boolean => {
     const other = b as Record<string, unknown>
     if (tag !== toTag(b)) return false
 
+    // The tag itself can be claimed through an own Symbol.toStringTag, in
+    // either direction: a lookalike can claim "Array", a real array can
+    // hide behind "Object". Array-ness is settled by Array.isArray() on
+    // its own, which no property can fake.
+    const isArray = Array.isArray(a)
+    if (isArray !== Array.isArray(b)) return false
+
     // Stamped before recursing into anything below - including an Error's
     // cause chain - so a cycle reached through any path is still caught.
+    // A revisit on either side alone is a cycle the other side lacks, so
+    // it counts as a difference rather than being stamped afresh.
     const stamp = memo.left.get(a)
-    if (stamp != null) return memo.right.get(b) === stamp
+    if (stamp != null || memo.right.has(b)) return memo.right.get(b) === stamp
     const position = ++memo.position
     memo.left.set(a, position)
     memo.right.set(b, position)
+
+    // Own enumerable symbol keys count like string keys, on a typed array
+    // or a boxed primitive as much as on plain data. The one exception is
+    // a builtin that exposes engine-internal state through such a symbol
+    // (observed on URL, Node 18.x vs 24.x); that is not a real difference.
+    let symbolAware = true
+
+    // How many leading own keys the walk below may skip, once a branch has
+    // already compared what those keys stand for.
+    let skip = 0
 
     try {
         if (isError(a)) {
@@ -93,6 +112,7 @@ const isDeepEqual = (a: unknown, b: unknown, memo: Memo): boolean => {
             if ("errors" in a && !isDeepEqual((a as {errors?: unknown}).errors, otherError.errors, memo)) return false
         } else if ("undefined" !== typeof URL && a instanceof URL) {
             if (a.href !== (b as URL).href) return false
+            symbolAware = false
         } else if (a instanceof Date) {
             // Called through the prototype: an own property of the same
             // name must not be able to fool the comparison.
@@ -123,22 +143,21 @@ const isDeepEqual = (a: unknown, b: unknown, memo: Memo): boolean => {
         } else if (isDataView(a) && isDataView(b)) {
             if (!sameDataView(a, b)) return false
         } else if (isTypedArray(a) && isTypedArray(b)) {
-            return sameTypedArray(a, b)
+            if (!sameTypedArray(a, b)) return false
+            // The indices are settled by the bytes, and Object.keys() lists
+            // them first: only a property attached on top is left to walk.
+            skip = typedArrayLength.call(a)
         } else if (!isWalkable(tag)) {
             return false
         }
 
         // length is not enumerable, so the walk below would miss it.
-        if ((tag === "[object Array]" || tag === "[object Arguments]") && (a as {length: unknown}).length !== other.length) {
+        if ((isArray || tag === "[object Arguments]") && (a as {length: unknown}).length !== other.length) {
             return false
         }
 
-        // Symbol keys are walked only for plain data: a builtin can carry
-        // engine-internal symbol state (observed on URL, Node 18.x vs
-        // 24.x) that must not be mistaken for a real difference.
-        const symbolAware = isWalkable(tag)
-        const keysA = symbolAware ? ownKeys(a) : Object.keys(a)
-        const keysB = new Set(symbolAware ? ownKeys(b) : Object.keys(b))
+        const keysA = symbolAware ? ownKeys(a, skip) : Object.keys(a).slice(skip)
+        const keysB = new Set(symbolAware ? ownKeys(b, skip) : Object.keys(b).slice(skip))
         return keysA.length === keysB.size &&
             keysA.every(key => keysB.has(key) && isDeepEqual((a as Record<PropertyKey, unknown>)[key], (other as Record<PropertyKey, unknown>)[key], memo))
     } finally {
