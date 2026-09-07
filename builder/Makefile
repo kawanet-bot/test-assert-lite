@@ -120,8 +120,9 @@ $(BROWSER_TEST_DST): $(BROWSER_TEST_CONFIG) $(SRC) $(BUILDER_SRC) $(TEST_SRC) $(
 	@test "$$(wc -c < $@)" -le $(TEST_MAX_BYTES) || { echo "ERROR: $@ exceeds $(TEST_MAX_BYTES) byte cap" >&2; exit 1; }
 	@echo ""
 
-# Bundle of the test suites with node:test and node:assert aliased to this
-# package, so the suites exercise the library with the library.
+# Bundle of the test suites with node:test and node:assert left as
+# written: the CLI's resolve hook points both at this package, so the
+# suites exercise the library with the library.
 $(BUILDER_TEST_DST): $(BUILDER_TEST_CONFIG) $(SRC) $(BUILDER_SRC) $(TEST_SRC) $(TYPES) $(MJS_DST)
 	@mkdir -p $(dir $@)
 	../node_modules/.bin/rollup -c $<
