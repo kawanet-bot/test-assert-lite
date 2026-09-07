@@ -29,6 +29,7 @@ describe("cli/server", () => {
         await mkdir(join(dir, "dist"))
         await mkdir(join(dir, "elsewhere"))
         await writeFile(join(dir, "htdocs", "page.html"), "<p>page</p>")
+        await writeFile(join(dir, "htdocs", "index.html"), "<p>index</p>")
         await writeFile(join(dir, "dist", "lib.mjs"), "export const lib = 1")
         await writeFile(join(dir, "elsewhere", "suite.mjs"), "export const suite = 1")
         await writeFile(join(dir, "secret.json"), "{}")
@@ -36,7 +37,15 @@ describe("cli/server", () => {
             root: join(dir, "htdocs"),
             aliases: {"/dist/": join(dir, "dist")},
             files: {"/@tests/0/my%20suite.mjs": join(dir, "elsewhere", "suite.mjs")},
+            data: {"/@tests.json": {type: "application/json", body: '["/@tests/0/my%20suite.mjs"]'}},
         })
+    })
+
+    it("serves an in-memory response", async () => {
+        const res = await get(server.origin, "/@tests.json")
+        assert.equal(res.status, 200)
+        assert.equal(res.type, "application/json; charset=utf-8")
+        assert.deepEqual(JSON.parse(res.body), ["/@tests/0/my%20suite.mjs"])
     })
 
     after(async () => {
@@ -66,8 +75,10 @@ describe("cli/server", () => {
         assert.equal((await get(server.origin, "/@tests/1/other.mjs")).status, 404)
     })
 
-    it("has no index and no listing", async () => {
-        assert.equal((await get(server.origin, "/")).status, 404)
+    it("serves index.html for a directory path, and no listing", async () => {
+        const res = await get(server.origin, "/")
+        assert.equal(res.status, 200)
+        assert.equal(res.body, "<p>index</p>")
         assert.equal((await get(server.origin, "/dist/")).status, 404)
     })
 

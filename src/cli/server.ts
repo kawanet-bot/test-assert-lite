@@ -15,6 +15,8 @@ export interface ServerOptions {
     aliases?: Record<string, string>
     /** Exact URL path to a file, for files outside every directory above. */
     files?: Record<string, string>
+    /** Exact URL path to a response built in memory, checked first. */
+    data?: Record<string, {type: string, body: string}>
 }
 
 export interface Server {
@@ -38,17 +40,27 @@ const within = (dir: string, rel: string): string | null => {
     return path.startsWith(base + sep) ? path : null
 }
 
+// A directory path gets its index.html, as any document root would; there
+// is no listing otherwise.
 const locate = (options: ServerOptions, pathname: string): string | null => {
     const file = options.files?.[pathname]
     if (file != null) return file
+    const rel = pathname.endsWith("/") ? pathname + "index.html" : pathname
     for (const [prefix, dir] of Object.entries(options.aliases ?? {})) {
-        if (pathname.startsWith(prefix)) return within(dir, pathname.slice(prefix.length))
+        if (rel.startsWith(prefix)) return within(dir, rel.slice(prefix.length))
     }
-    return within(options.root, pathname.slice(1))
+    return within(options.root, rel.slice(1))
 }
 
 const respond = async (options: ServerOptions, req: IncomingMessage, res: ServerResponse): Promise<void> => {
-    const path = locate(options, new URL(req.url ?? "/", "http://127.0.0.1").pathname)
+    const {pathname} = new URL(req.url ?? "/", "http://127.0.0.1")
+    const data = options.data?.[pathname]
+    if (data != null) {
+        res.writeHead(200, {"content-type": `${data.type}; charset=utf-8`})
+        res.end(data.body)
+        return
+    }
+    const path = locate(options, pathname)
     try {
         if (path == null) throw new Error("outside")
         const body = await readFile(path)

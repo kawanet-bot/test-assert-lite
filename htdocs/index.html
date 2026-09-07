@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>test-assert-lite browser test</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <link rel="stylesheet" href="/styles/test-assert-lite.css"/>
+    <!-- The page people open, from `browser/tests.cli.mjs --serve`. It
+         imports whatever the CLI mounted, listed at /@tests.json, and shows
+         the HTML reporter; console.html is the one the CLI drives itself.
+         Same import map as there. -->
+    <script type="importmap">
+        {
+            "imports": {
+                "test-assert-lite": "/dist/test-assert-lite.mjs",
+                "node:test": "/dist/test-assert-lite.mjs",
+                "node:assert": "/dist/test-assert-lite.mjs"
+            }
+        }
+    </script>
+</head>
+<body>
+<h1>test-assert-lite browser test</h1>
+<div id="output"></div>
+<script type="module">
+    import {reporter, run} from "test-assert-lite";
+
+    // One at a time, so the suites register in command-line order.
+    for (const url of await (await fetch("/@tests.json")).json()) {
+        await import(url);
+    }
+
+    reporter.format(reporter.html());
+    reporter.output(text => document.querySelector("#output")?.insertAdjacentHTML("beforeend", text));
+    window.testSummary = await run();
+</script>
+</body>
+</html>

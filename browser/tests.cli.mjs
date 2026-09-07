@@ -8,13 +8,15 @@ import {basename, resolve} from "node:path"
 import {fileURLToPath} from "node:url"
 import {startServer} from "../src/cli/server.ts"
 
-const USAGE = "Usage: node tests.cli.mjs <file...>\n"
+const USAGE = "Usage: node tests.cli.mjs [--serve] <file...>\n"
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)))
 
-const files = process.argv.slice(2)
+const args = process.argv.slice(2)
+const serve = args.includes("--serve")
+const files = args.filter(arg => arg !== "--serve")
 
-if (files.includes("-h") || files.includes("--help")) {
+if (args.includes("-h") || args.includes("--help")) {
     process.stdout.write(USAGE)
     process.exit(0)
 }
@@ -31,10 +33,12 @@ const mounts = Object.fromEntries(files.map((file, i) => [`/@tests/${i}/${encode
 
 // Document root is htdocs/, with /dist aliased onto the build output since
 // dist/ has to stay where the package puts it. Nothing else is exposed.
+// index.html asks for the mount list and imports each entry itself.
 const server = await startServer({
     root: resolve(root, "htdocs"),
     aliases: {"/dist/": resolve(root, "dist")},
     files: mounts,
+    data: {"/@tests.json": {type: "application/json", body: JSON.stringify(Object.keys(mounts))}},
 })
 
 const run = async () => {
@@ -79,7 +83,15 @@ const run = async () => {
     }
 }
 
-run().catch(error => {
-    console.error(error)
-    process.exitCode = 1
-})
+if (serve) {
+    // Hand the page to a person instead of Playwright and stay up until
+    // interrupted. Only the URL goes to stdout, so it can be piped.
+    process.stdout.write(`${server.origin}/\n`)
+    process.stderr.write("Serving the suites; press Ctrl-C to stop.\n")
+    process.once("SIGINT", () => server.close())
+} else {
+    run().catch(error => {
+        console.error(error)
+        process.exitCode = 1
+    })
+}

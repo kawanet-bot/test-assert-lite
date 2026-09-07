@@ -42,8 +42,12 @@ install-browser: install-playwright
 test: all install
 	cd .. && node browser/tests.cli.mjs browser/tests/bundled.mjs
 
+# The same bundle for a person: prints the URL and serves until Ctrl-C.
+serve: all
+	cd .. && node browser/tests.cli.mjs --serve browser/tests/bundled.mjs
+
 # Browser bundle cleanup remains owned by builder/Makefile.
 clean:
 	@: # NOP
 
-.PHONY: all bundled install install-playwright install-browser test clean
+.PHONY: all bundled install install-playwright install-browser test serve clean
