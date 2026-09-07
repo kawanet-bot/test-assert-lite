@@ -57,14 +57,27 @@ interface Memo {
     left: WeakMap<object, number>
     right: WeakMap<object, number>
     position: number
+    strict: boolean
 }
 
-// Matches node's *strict* deepEqual: Object.is for primitives, a shared
-// prototype and the same own enumerable keys (pairwise equal) for objects.
+const isPrimitive = (v: unknown): boolean => v == null || "object" !== typeof v
+
+// Two non-objects under the loose rules: ==, except that NaN equals
+// itself, the way node's deepEqual (and its equal) treats it.
+const looseSame = (a: unknown, b: unknown): boolean => a == b || (Number.isNaN(a) && Number.isNaN(b))
+
+// Strict is node's deepStrictEqual: Object.is for primitives, a shared
+// prototype, own enumerable string and symbol keys. Loose is its deepEqual:
+// == for primitives, the prototype ignored, symbol keys not walked. Kinds
+// (the internal tag), Error fields, Date/RegExp/wrapper values and the
+// key walk itself are shared by both.
 const isDeepEqual = (a: unknown, b: unknown, memo: Memo): boolean => {
     if (Object.is(a, b)) return true
-    if (a == null || b == null || "object" !== typeof a || "object" !== typeof b) return false
-    if (Object.getPrototypeOf(a) !== Object.getPrototypeOf(b)) return false
+    if (a == null || b == null || "object" !== typeof a || "object" !== typeof b) {
+        // An object never loosely equals a primitive either.
+        return !memo.strict && isPrimitive(a) && isPrimitive(b) && looseSame(a, b)
+    }
+    if (memo.strict && Object.getPrototypeOf(a) !== Object.getPrototypeOf(b)) return false
 
     // A shared prototype alone is not enough: an Arguments object or a fake
     // array-like can share one with a plain object or a real array. The
@@ -90,11 +103,11 @@ const isDeepEqual = (a: unknown, b: unknown, memo: Memo): boolean => {
     memo.left.set(a, position)
     memo.right.set(b, position)
 
-    // Own enumerable symbol keys count like string keys, on a typed array
-    // or a boxed primitive as much as on plain data. The one exception is
-    // a builtin that exposes engine-internal state through such a symbol
-    // (observed on URL, Node 18.x vs 24.x); that is not a real difference.
-    let symbolAware = true
+    // Under strict, own enumerable symbol keys count like string keys, on a
+    // typed array or a boxed primitive as much as on plain data. The one
+    // exception is a builtin that exposes engine-internal state through
+    // such a symbol (observed on URL, Node 18.x vs 24.x).
+    let symbolAware = memo.strict
 
     // How many leading own keys the walk below may skip, once a branch has
     // already compared what those keys stand for.
@@ -143,10 +156,16 @@ const isDeepEqual = (a: unknown, b: unknown, memo: Memo): boolean => {
         } else if (isDataView(a) && isDataView(b)) {
             if (!sameDataView(a, b)) return false
         } else if (isTypedArray(a) && isTypedArray(b)) {
-            if (!sameTypedArray(a, b)) return false
-            // The indices are settled by the bytes, and Object.keys() lists
-            // them first: only a property attached on top is left to walk.
-            skip = typedArrayLength.call(a)
+            if (memo.strict) {
+                if (!sameTypedArray(a, b)) return false
+                // The indices are settled by the bytes, and Object.keys()
+                // lists them first: only a property attached on top is left.
+                skip = typedArrayLength.call(a)
+            } else if (typedArrayLength.call(a) !== typedArrayLength.call(b)) {
+                // Loose compares the elements by value through the key walk
+                // below, so +0 meets -0 and every NaN meets every other.
+                return false
+            }
         } else if (!isWalkable(tag)) {
             return false
         }
@@ -166,26 +185,37 @@ const isDeepEqual = (a: unknown, b: unknown, memo: Memo): boolean => {
     }
 }
 
-const newMemo = (): Memo => ({left: new WeakMap(), right: new WeakMap(), position: 0})
+const newMemo = (strict: boolean): Memo => ({left: new WeakMap(), right: new WeakMap(), position: 0, strict})
 
-export const deepEqual = (actual: unknown, expected: unknown, message?: string | Error): void => {
-    if (isDeepEqual(actual, expected, newMemo())) return
-    if (isError(message)) throw message
+type DeepAssertion = (actual: unknown, expected: unknown, message?: string | Error) => void
 
-    // Keep the values even when a message is given: without them there is
-    // nothing to start debugging from.
-    const detail = `expected ${stringify(expected)} to deep-equal ${stringify(actual)}`
-    throw new AssertionError({
-        message: message == null ? detail : `${message}\n\n${detail}`,
-        actual, expected, operator: "deepStrictEqual",
-    })
+// The flag is fixed here rather than taken per call, since node's own
+// signatures have no room for it: one pair serves as deepStrictEqual /
+// notDeepStrictEqual, the other as the loose deepEqual / notDeepEqual.
+export const deepEqualPair = (strict: boolean): {deepEqual: DeepAssertion, notDeepEqual: DeepAssertion} => {
+    const deepEqual: DeepAssertion = (actual, expected, message) => {
+        if (isDeepEqual(actual, expected, newMemo(strict))) return
+        if (isError(message)) throw message
+
+        // Keep the values even when a message is given: without them there
+        // is nothing to start debugging from.
+        const detail = `expected ${stringify(expected)} to deep-equal ${stringify(actual)}`
+        throw new AssertionError({
+            message: message == null ? detail : `${message}\n\n${detail}`,
+            actual, expected, operator: strict ? "deepStrictEqual" : "deepEqual",
+        })
+    }
+
+    const notDeepEqual: DeepAssertion = (actual, expected, message) => {
+        if (!isDeepEqual(actual, expected, newMemo(strict))) return
+        if (isError(message)) throw message
+        throw new AssertionError({
+            message: message ?? `expected not to deep-equal ${stringify(expected)}`,
+            actual, expected, operator: strict ? "notDeepStrictEqual" : "notDeepEqual",
+        })
+    }
+
+    return {deepEqual, notDeepEqual}
 }
 
-export const notDeepEqual = (actual: unknown, expected: unknown, message?: string | Error): void => {
-    if (!isDeepEqual(actual, expected, newMemo())) return
-    if (isError(message)) throw message
-    throw new AssertionError({
-        message: message ?? `expected not to deep-equal ${stringify(expected)}`,
-        actual, expected, operator: "notDeepStrictEqual",
-    })
-}
+export const {deepEqual, notDeepEqual} = deepEqualPair(true)
