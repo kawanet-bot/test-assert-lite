@@ -1,5 +1,4 @@
 import {isError} from "./is-error.ts"
-import {isTesterError} from "./tester-error.ts"
 
 // Render a value as one readable line. Arrays expand two levels deep and
 // fold to "..." below that, since recursing without a limit overflows on a
@@ -17,18 +16,6 @@ export const stringify = (value: unknown, nest: number = 0): string => {
     } catch {
         return Object.prototype.toString.call(value)
     }
-}
-
-// node:test wraps failures in ERR_TEST_FAILURE, while TAL only wraps values
-// that are not already Errors. Both reporters should expose the same cause.
-export const errorText = (error: unknown): string => {
-    let inner = error
-    if (isTesterError(error)) {
-        const {cause} = error
-        inner = isError(cause) ? cause : error.message
-    }
-    if (isError(inner)) return inner.stack ?? `${inner.name}: ${inner.message}`
-    return String(inner)
 }
 
 // minimum subset of https://github.com/kawanet/html-ele
