@@ -57,10 +57,16 @@ test-bin:
 # scope, so the fixtures' bare import is not a self-reference to the
 # checkout and resolves through sample/node_modules instead, where a
 # symlink points at whichever copy is under test. Nothing is copied.
-# fail.mjs must fail; its output is noise in a green run, so it is dropped.
+# The link is remade every run, since the copy under test differs by lane;
+# ln -sfn replaces a link but would step into a real directory, hence the
+# rm. A missing $(PKG_ROOT) stops the recipe rather than handing ln an
+# empty target, which would leave a stray link named after the link path.
+# Only the exit codes matter here, so neither run's output is shown.
 test-cli:
-	cd ../.. && mkdir -p sample/node_modules && ln -sfn $$(realpath $(PKG_ROOT)) sample/node_modules/test-assert-lite
-	cd ../.. && ./$(PKG_ROOT)/dist/test-assert-lite.cli.mjs sample/pass.mjs
+	mkdir -p ../../sample/node_modules
+	[ -L ../../sample/node_modules/test-assert-lite ] || rm -rf ../../sample/node_modules/test-assert-lite
+	cd ../.. && target=$$(cd $(PKG_ROOT) && pwd -P) && ln -sfn "$$target" sample/node_modules/test-assert-lite
+	cd ../.. && ./$(PKG_ROOT)/dist/test-assert-lite.cli.mjs sample/pass.mjs > /dev/null 2>&1
 	cd ../.. && ! ./$(PKG_ROOT)/dist/test-assert-lite.cli.mjs sample/fail.mjs > /dev/null 2>&1
 
 # Script-context run of the minified bundle under $(PKG_ROOT): the browser
