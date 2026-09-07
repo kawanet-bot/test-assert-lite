@@ -1,192 +1,55 @@
 import {isError} from "./../common/is-error.ts"
 import {stringify} from "./../common/stringify.ts"
+import {inspectMap, inspectSet} from "./../inspect/collections.ts"
+import {
+    type DeepEqual,
+    type Inspect,
+    inspectArguments,
+    inspectArray,
+    inspectBigInt,
+    inspectBoolean,
+    inspectDate,
+    inspectError,
+    inspectNumber,
+    inspectObject,
+    inspectRegExp,
+    inspectString,
+    inspectURL,
+} from "./../inspect/inspect.ts"
+import {inspectArrayBuffer, inspectArrayBufferView, inspectDataView, inspectSharedArrayBuffer, typedArrayLength} from "./../inspect/typed-array.ts"
 import {AssertionError} from "./assertion-error.ts"
-import {isDataView, isTypedArray, sameArrayBuffer, sameDataView, sameTypedArray, typedArrayLength} from "./deep-equal-typed-arrays.ts"
 
 const toTag = (v: object): string => Object.prototype.toString.call(v)
 
-// --- kinds ---------------------------------------------------------------
-
-// Every value is sorted into one kind before anything is compared, and
-// both sides must land on the same one. A kind is settled by what cannot
-// be imitated wherever possible: the internal slot an intrinsic reads
-// (Date, RegExp, the wrappers, Map, Set, the buffers, URL), Array.isArray,
-// ArrayBuffer.isView. The tag alone decides only where no such slot is
-// reachable (Error, Arguments, a plain object).
-type Kind =
-    | "error" | "url" | "date" | "regexp" | "boolean" | "number" | "string" | "bigint"
-    | "map" | "set" | "arraybuffer" | "sharedarraybuffer" | "dataview" | "typedarray"
-    | "array" | "arguments" | "object"
-
-type IsKind = (v: object, tag: string) => boolean
-
-// An intrinsic works only on a receiver carrying the matching slot, and
-// throws otherwise. It is asked only of a candidate - a same-realm
-// instance (instanceof, so a masked tag cannot hide it) or one that shows
-// the kind's tag (an instance from another realm) - so a plain object
-// never pays for the throw.
-const slotted = (ctor: Function | undefined, tag: string, intrinsic: (this: never) => unknown): IsKind => (v, seen) => {
-    if (!((ctor != null && v instanceof ctor) || seen === tag)) return false
-    try {
-        intrinsic.call(v as never)
-        return true
-    } catch {
-        return false
-    }
-}
-const getter = (proto: object, name: string): (this: never) => unknown =>
-    Object.getOwnPropertyDescriptor(proto, name)!.get as (this: never) => unknown
-const absent = (): boolean => false
-
-const regExpSource = getter(RegExp.prototype, "source")
-const regExpFlags = getter(RegExp.prototype, "flags")
-
-const isURL = "undefined" !== typeof URL ? slotted(URL, "[object URL]", getter(URL.prototype, "href")) : absent
-const isDate = slotted(Date, "[object Date]", Date.prototype.getTime)
-const isRegExp = slotted(RegExp, "[object RegExp]", regExpSource)
-const isBooleanObject = slotted(Boolean, "[object Boolean]", Boolean.prototype.valueOf)
-const isNumberObject = slotted(Number, "[object Number]", Number.prototype.valueOf)
-const isStringObject = slotted(String, "[object String]", String.prototype.valueOf)
-const isBigIntObject = "undefined" !== typeof BigInt ? slotted(BigInt, "[object BigInt]", BigInt.prototype.valueOf) : absent
-const isMap = slotted(Map, "[object Map]", getter(Map.prototype, "size"))
-const isSet = slotted(Set, "[object Set]", getter(Set.prototype, "size"))
-const isArrayBuffer = slotted(ArrayBuffer, "[object ArrayBuffer]", getter(ArrayBuffer.prototype, "byteLength"))
-const isSharedArrayBuffer = "undefined" !== typeof SharedArrayBuffer
-    ? slotted(SharedArrayBuffer, "[object SharedArrayBuffer]", getter(SharedArrayBuffer.prototype, "byteLength"))
-    : absent
-const isArguments: IsKind = (_v, tag) => tag === "[object Arguments]"
-const isPlainObject: IsKind = (_v, tag) => tag === "[object Object]"
-
-// --- what each kind keeps outside its own enumerable properties ----------
-
-// Answers false when that part differs, which settles the comparison.
-// true means only that this part agrees: the walk over the own enumerable
-// properties still follows for every kind, as it does in node, so a Date
-// or a buffer with an extra property attached is still told apart.
-type SameKind = (a: object, b: object, memo: Memo) => boolean
-
-// Read through the intrinsics: an own property of the same name must not
-// be able to fool the comparison.
-const sameDate: SameKind = (a, b) => Object.is(Date.prototype.getTime.call(a as Date), Date.prototype.getTime.call(b as Date))
-
-// lastIndex is own but non-enumerable, so it needs an explicit check.
-const sameRegExp: SameKind = (a, b) =>
-    regExpSource.call(a as never) === regExpSource.call(b as never) &&
-    regExpFlags.call(a as never) === regExpFlags.call(b as never) &&
-    (a as RegExp).lastIndex === (b as RegExp).lastIndex
-
-// Boolean and Number wrap a primitive no own key exposes; String's
-// characters are own enumerable indices already, so for it this only adds
-// the value check the walk would not make on its own.
-const sameBoolean: SameKind = (a, b) => Object.is(Boolean.prototype.valueOf.call(a as Boolean), Boolean.prototype.valueOf.call(b as Boolean))
-const sameNumber: SameKind = (a, b) => Object.is(Number.prototype.valueOf.call(a as Number), Number.prototype.valueOf.call(b as Number))
-const sameString: SameKind = (a, b) => String.prototype.valueOf.call(a as String) === String.prototype.valueOf.call(b as String)
-
-// Where the global is missing nothing can carry the tag either, so the
-// row it belongs to is never reached.
-const sameBigInt: SameKind | undefined = "undefined" !== typeof BigInt
-    ? (a, b) => Object.is(BigInt.prototype.valueOf.call(a as BigInt), BigInt.prototype.valueOf.call(b as BigInt))
-    : undefined
-
-const sameURL: SameKind = (a, b) => (a as URL).href === (b as URL).href
-
-// has() (SameValueZero) clears out primitives and same-reference elements
-// in O(1) each; only what still needs a real deep comparison - normally
-// nothing, for a Set of primitives - reaches the O(n^2) match below.
-const sameSet: SameKind = (a, b, memo) => {
-    const left = a as Set<unknown>
-    const right = b as Set<unknown>
-    if (left.size !== right.size) return false
-    const leftoverB = new Set(right)
-    const leftoverA = [...left].filter(av => !leftoverB.delete(av))
-    const remaining = [...leftoverB]
-    return leftoverA.every(av => {
-        const i = remaining.findIndex(bv => isDeepEqual(av, bv, memo))
-        if (i < 0) return false
-        remaining.splice(i, 1)
-        return true
-    })
-}
-
-const sameMap: SameKind = (a, b, memo) => {
-    const left = a as Map<unknown, unknown>
-    const right = b as Map<unknown, unknown>
-    if (left.size !== right.size) return false
-    const leftoverB = new Map(right)
-    const leftoverA = [...left].filter(([ak, av]) => {
-        if (!leftoverB.has(ak) || !Object.is(leftoverB.get(ak), av)) return true
-        leftoverB.delete(ak)
-        return false
-    })
-    const remaining = [...leftoverB]
-    return leftoverA.every(([ak, av]) => {
-        const i = remaining.findIndex(([bk, bv]) => isDeepEqual(ak, bk, memo) && isDeepEqual(av, bv, memo))
-        if (i < 0) return false
-        remaining.splice(i, 1)
-        return true
-    })
-}
-
-const sameError: SameKind = (a, b, memo) => {
-    const left = a as Error & {cause?: unknown, errors?: unknown}
-    const right = b as Error & {cause?: unknown, errors?: unknown}
-    if (left.name !== right.name || left.message !== right.message) return false
-    if (("cause" in left) !== ("cause" in right)) return false
-    if ("cause" in left && !isDeepEqual(left.cause, right.cause, memo)) return false
-    // Checked by property name, not gated on AggregateError: node does
-    // the same for any Error that happens to carry one.
-    if (("errors" in left) !== ("errors" in right)) return false
-    return !("errors" in left) || isDeepEqual(left.errors, right.errors, memo)
-}
-
-const sameBuffer: SameKind = (a, b) => sameArrayBuffer(a as ArrayBufferLike, b as ArrayBufferLike)
-const sameView: SameKind = (a, b) => sameDataView(a as DataView, b as DataView)
-const sameBytes: SameKind = (a, b) => sameTypedArray(a as ArrayBufferView, b as ArrayBufferView)
-
-// The loose typed array comparison: the elements are compared by value
-// through the walk that follows, so +0 meets -0 and every NaN meets every
-// other, and only the length is settled here - through the intrinsic, as
-// the bytes are, so a subclass cannot report a length of its own.
-const sameViewLength: SameKind = (a, b) => typedArrayLength.call(a as ArrayBufferView) === typedArrayLength.call(b as ArrayBufferView)
-
-// length is not enumerable, so the walk would miss it.
-const sameLength: SameKind = (a, b) => (a as {length: unknown}).length === (b as {length: unknown}).length
-
 // --- the table -----------------------------------------------------------
 
-// One row per kind: how it is recognised, then what it compares of its
-// own under strict, then under loose. The loose column is written only
-// where loose compares differently; otherwise the strict one serves both.
-// A kind with nothing outside its own enumerable properties (a plain
-// object) has no comparison of its own and goes straight to the walk.
-type Row = [Kind, IsKind, SameKind?, SameKind?]
-
-// Order matters only where kinds overlap: an Error subclass carries the
-// Error slot and nothing else.
-const kinds: Row[] = [
-    ["error", isError, sameError],
-    ["url", isURL, sameURL],
-    ["date", isDate, sameDate],
-    ["regexp", isRegExp, sameRegExp],
-    ["boolean", isBooleanObject, sameBoolean],
-    ["number", isNumberObject, sameNumber],
-    ["string", isStringObject, sameString],
-    ["bigint", isBigIntObject, sameBigInt],
-    ["map", isMap, sameMap],
-    ["set", isSet, sameSet],
-    ["arraybuffer", isArrayBuffer, sameBuffer],
-    ["sharedarraybuffer", isSharedArrayBuffer, sameBuffer],
-    ["dataview", isDataView, sameView],
-    ["typedarray", isTypedArray, sameBytes, sameViewLength],
-    ["array", Array.isArray, sameLength],
-    ["arguments", isArguments, sameLength],
-    ["object", isPlainObject],
+// Every value is sorted into one kind before anything is compared, and
+// both sides must land on the same one. Order matters only where kinds
+// overlap: an Error subclass carries the Error slot and nothing else.
+const kinds: Inspect<object>[] = [
+    inspectError,
+    inspectURL,
+    inspectDate,
+    inspectRegExp,
+    inspectBoolean,
+    inspectNumber,
+    inspectString,
+    inspectBigInt,
+    inspectMap,
+    inspectSet,
+    inspectArrayBuffer,
+    inspectSharedArrayBuffer,
+    inspectDataView,
+    inspectArrayBufferView,
+    inspectArray,
+    inspectArguments,
+    inspectObject,
 ]
 
-// No row is any kind this has no comparison for: WeakMap, Promise, a class
-// instance with its own tag. Only a shared reference is equal then, which
-// the identity check before the kinds already answered.
-const rowOf = (v: object, tag: string): Row | undefined => kinds.find(([, is]) => is(v, tag))
+// No kind is any value this has no comparison for: WeakMap, Promise, a
+// class instance with its own tag. Only a shared reference is equal then,
+// which the identity check before the kinds already answered.
+const inspectOf = (v: object, tag: string): Inspect<object> | undefined => kinds.find(kind => kind.is(v, tag))
 
 // --- the comparison ------------------------------------------------------
 
@@ -203,6 +66,7 @@ interface Memo {
     right: WeakMap<object, number>
     position: number
     strict: boolean
+    deep: DeepEqual
 }
 
 const isPrimitive = (v: unknown): boolean => v == null || "object" !== typeof v
@@ -230,11 +94,9 @@ const isDeepEqual = (a: unknown, b: unknown, memo: Memo): boolean => {
     const tagA = toTag(a)
     const tagB = toTag(b)
     if (tagA !== tagB) return false
-    const row = rowOf(a, tagA)
-    if (row == null) return false
-    const [kind, , sameStrict, sameLoose] = row
-    if (kind !== rowOf(b, tagB)?.[0]) return false
-    const same = memo.strict ? sameStrict : sameLoose ?? sameStrict
+    const kind = inspectOf(a, tagA)
+    if (kind == null || kind !== inspectOf(b, tagB)) return false
+    const same = memo.strict || kind.loose == null ? kind.eq : kind.loose
 
     // Stamped before recursing into anything below - including an Error's
     // cause chain - so a cycle reached through any path is still caught.
@@ -247,18 +109,18 @@ const isDeepEqual = (a: unknown, b: unknown, memo: Memo): boolean => {
     memo.right.set(b, position)
 
     try {
-        if (same != null && !same(a, b, memo)) return false
+        if (false === same(a, b, memo.deep)) return false
 
         // Under strict, own enumerable symbol keys count like string keys,
         // on a typed array or a boxed primitive as much as on plain data.
         // The one exception is a builtin that exposes engine-internal state
         // through such a symbol (observed on URL, Node 18.x vs 24.x).
-        const symbolAware = memo.strict && kind !== "url"
+        const symbolAware = memo.strict && kind !== inspectURL
 
         // A typed array's indices are settled by the bytes under strict, and
         // Object.keys() lists them first: only a property attached on top
         // is left to walk.
-        const skip = kind === "typedarray" && memo.strict ? typedArrayLength.call(a as ArrayBufferView) : 0
+        const skip = kind === inspectArrayBufferView && memo.strict ? typedArrayLength.call(a as ArrayBufferView) : 0
 
         const other = b as Record<PropertyKey, unknown>
         const keysA = symbolAware ? ownKeys(a, skip) : Object.keys(a).slice(skip)
@@ -271,7 +133,10 @@ const isDeepEqual = (a: unknown, b: unknown, memo: Memo): boolean => {
     }
 }
 
-const newMemo = (strict: boolean): Memo => ({left: new WeakMap(), right: new WeakMap(), position: 0, strict})
+const newMemo = (strict: boolean): Memo => {
+    const memo: Memo = {left: new WeakMap(), right: new WeakMap(), position: 0, strict, deep: (a, b) => isDeepEqual(a, b, memo)}
+    return memo
+}
 
 type DeepAssertion = (actual: unknown, expected: unknown, message?: string | Error) => void
 
