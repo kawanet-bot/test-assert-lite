@@ -291,6 +291,30 @@ describeSlow(TITLE, () => {
         assert.deepEqual(order, ["after", "settled", "resumed"])
     })
 
+    // The declaration API is closed while a body is open, and a body that
+    // outlived its timeout is still open: what it declares must not land
+    // in the next run.
+    it("the declaration API stays rejected after the test timed out", async () => {
+        const local = createTAL()
+        local.reporter.output(() => undefined)
+        let caught: string | undefined
+        local.it("slow", {timeout: slow(10)}, async () => {
+            await new Promise(r => setTimeout(r, slow(40)))
+            try {
+                local.it("stray", () => undefined)
+            } catch (e) {
+                caught = (e as Error).message
+            }
+        })
+        await local.run()
+        await new Promise(r => setTimeout(r, slow(60)))
+
+        assert.equal(caught, "it() cannot be called from inside a test body; use t.test() instead")
+        local.reporter.output(() => undefined)
+        const second = await local.run()
+        assert.equal(second.counts.tests, 0)
+    })
+
     // A queued sibling keeps its skip when the parent gives up, and every
     // sibling is cancelled even while the reporter's output is slow.
     // With an in-flight child, cancelling it takes several slow reporter
