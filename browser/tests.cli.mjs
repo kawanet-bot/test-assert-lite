@@ -1,7 +1,7 @@
 // Browser counterpart of src/cli/test-assert-lite.cli.ts. The suites are ES
 // modules importing node:test, node:assert or the package name, so they are
 // served over a loopback HTTP server whose page carries an import map that
-// points all three at the ESM build (see htdocs/index.html).
+// points all three at the ESM build (see htdocs/console.html).
 
 import {chromium} from "playwright"
 import {readFile} from "node:fs/promises"
@@ -12,7 +12,13 @@ import {fileURLToPath} from "node:url"
 const USAGE = "Usage: node tests.cli.mjs <file...>\n"
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)))
-const index = fileURLToPath(new URL("./htdocs/index.html", import.meta.url))
+
+// Document root is htdocs/, with /dist aliased onto the build output since
+// dist/ has to stay where the package puts it. Nothing else is exposed.
+const roots = {
+    "/": resolve(root, "htdocs"),
+    "/dist/": resolve(root, "dist"),
+}
 
 const TYPES = {
     ".css": "text/css",
@@ -34,17 +40,17 @@ if (!files.length) {
     process.exit(1)
 }
 
-// The given files may live anywhere, so each gets a virtual path; every
-// other request maps onto the package root and must stay inside it. The
-// name is percent-encoded up front so the key matches what the browser
-// sends back for a space, a `#` or a non-ASCII character.
+// The given files may live anywhere, so each gets a virtual path. The name
+// is percent-encoded up front so the key matches what the browser sends
+// back for a space, a `#` or a non-ASCII character.
 const mounts = new Map(files.map((file, i) => [`/@tests/${i}/${encodeURIComponent(basename(file))}`, resolve(file)]))
 
 const locate = (pathname) => {
-    if (pathname === "/") return index
     if (mounts.has(pathname)) return mounts.get(pathname)
-    const path = resolve(root, "." + pathname)
-    return path.startsWith(root + sep) ? path : null
+    const prefix = pathname.startsWith("/dist/") ? "/dist/" : "/"
+    const base = roots[prefix]
+    const path = resolve(base, pathname.slice(prefix.length))
+    return path.startsWith(base + sep) ? path : null
 }
 
 const serve = async (req, res) => {
@@ -76,7 +82,7 @@ const run = async () => {
         // output matches what the Node CLI shows.
         page.on("console", msg => (msg.type() === "error" ? console.error : console.log)(msg.text()))
 
-        await page.goto(`${origin}/`)
+        await page.goto(`${origin}/console.html`)
         // A url tag resolves once the whole module graph has executed, so
         // run() below cannot overtake the registration; inline content would.
         for (const url of mounts.keys()) {
