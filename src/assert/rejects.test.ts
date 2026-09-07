@@ -108,6 +108,27 @@ describe(TITLE, () => {
         await assert.rejects(() => TAL.doesNotReject(without(Promise.reject(new Error("x")), "catch")), /expected not to reject/)
     })
 
+    // The brand is the internal slot, not the tag: an object claiming the
+    // Promise tag is judged by its shape like any other, and a tag getter
+    // is never consulted, so it cannot inject an error of its own.
+    it("judges an object claiming the Promise tag by its shape, without reading the tag", async () => {
+        const claiming = (extra: object): Promise<unknown> =>
+            ({[Symbol.toStringTag]: "Promise", then: (_ok: unknown, fail: (e: unknown) => void) => fail(new Error("x")), ...extra}) as unknown as Promise<unknown>
+        await refused(TAL.rejects(claiming({}), /x/))
+        await assert.doesNotReject(() => TAL.rejects(claiming({catch: () => undefined}), /x/))
+
+        const injected = (): never => {
+            throw new Error("injected")
+        }
+        const trapped = (extra: object): Promise<unknown> => Object.defineProperty(
+            {then: (_ok: unknown, fail: (e: unknown) => void) => fail(new Error("x")), ...extra},
+            Symbol.toStringTag,
+            {get: injected},
+        ) as unknown as Promise<unknown>
+        await refused(TAL.rejects(trapped({}), /x/))
+        await assert.doesNotReject(() => TAL.rejects(trapped({catch: () => undefined}), /x/))
+    })
+
     // A function that throws before it returns a promise has not rejected;
     // node:assert lets that error through untouched, and so does this.
     it("rejects lets a synchronous throw through as it is", async () => {

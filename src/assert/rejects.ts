@@ -7,12 +7,24 @@ type Filter = declared.TAL.ErrorFilter
 // node:assert takes as one, checked below.
 type Block = Promise<unknown> | (() => Promise<unknown>)
 
-// A Promise itself first - a same-realm one through instanceof, one from
-// another realm through its tag - as node:assert asks its brand first, so
-// a genuine Promise is taken even with its catch or then overwritten.
-// Otherwise an object carrying both then and catch, but not a function
-// that happens to carry them.
-const isPromise = (value: object): boolean => value instanceof Promise || "[object Promise]" === Object.prototype.toString.call(value)
+const noop = (): void => undefined
+
+// A Promise carries the slot the intrinsic then works on, wherever it was
+// created; anything else throws there before any tag or property of its
+// own could be consulted. That is the brand node:assert asks first, so a
+// genuine Promise is taken even with its catch or then overwritten. The
+// handlers keep the derived promise from rejecting on its own.
+const isPromise = (value: object): boolean => {
+    try {
+        Promise.prototype.then.call(value as Promise<unknown>, noop, noop)
+        return true
+    } catch {
+        return false
+    }
+}
+
+// Otherwise an object carrying both then and catch, as node:assert takes
+// one, but not a function that happens to carry them.
 const isThenable = (value: unknown): value is PromiseLike<unknown> =>
     value != null && "object" === typeof value && (isPromise(value) ||
         ("function" === typeof (value as {then?: unknown}).then && "function" === typeof (value as {catch?: unknown}).catch))
