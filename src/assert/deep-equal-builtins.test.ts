@@ -160,6 +160,16 @@ describe(TITLE, () => {
         assert.throws(() => TAL.deepEqual(extra, new String("x")), /deep-equal/)
     })
 
+    // Same for a symbol-keyed property: a boxed primitive is walked for
+    // those like plain data is, so only one side carrying it is a difference.
+    it("compares a symbol-keyed property attached to a boxed primitive", () => {
+        const sym = Symbol("k")
+        const withSymbol = (): String => Object.assign(new String("x"), {[sym]: true})
+        assert.doesNotThrow(() => TAL.deepEqual(withSymbol(), withSymbol()))
+        assert.throws(() => TAL.deepEqual(withSymbol(), new String("x")), /deep-equal/)
+        assert.throws(() => TAL.deepEqual(Object.assign(new Number(1), {[sym]: 1}), new Number(1)), /deep-equal/)
+    })
+
     // Unlike the opaque types in deep-equal-collections.test.ts, node's real
     // deepStrictEqual special cases URL by comparing href - matched here
     // since it costs little and a URL can plausibly appear in ordinary

@@ -26,6 +26,16 @@ describe(TITLE, () => {
         assert.throws(() => TAL.deepEqual(new Uint8Array([1, 2]), withExtra(1)), /deep-equal/)
     })
 
+    // A symbol-keyed property attached to a typed array is an own enumerable
+    // key like any other and gets the same treatment as on a plain object.
+    it("compares a symbol-keyed property attached to a typed array", () => {
+        const sym = Symbol("k")
+        const withSymbol = (v: unknown): Uint8Array => Object.assign(new Uint8Array([1, 2]), {[sym]: v})
+        assert.doesNotThrow(() => TAL.deepEqual(withSymbol(true), withSymbol(true)))
+        assert.throws(() => TAL.deepEqual(withSymbol(true), withSymbol(false)), /deep-equal/)
+        assert.throws(() => TAL.deepEqual(withSymbol(true), new Uint8Array([1, 2])), /deep-equal/)
+    })
+
     // The indices are skipped by count, read through the intrinsic length
     // accessor: a subclass lying about its length must not shift the
     // window onto (or off) the real indices.

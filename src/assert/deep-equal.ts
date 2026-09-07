@@ -81,6 +81,12 @@ const isDeepEqual = (a: unknown, b: unknown, memo: Memo): boolean => {
     memo.left.set(a, position)
     memo.right.set(b, position)
 
+    // Own enumerable symbol keys count like string keys, on a typed array
+    // or a boxed primitive as much as on plain data. The one exception is
+    // a builtin that exposes engine-internal state through such a symbol
+    // (observed on URL, Node 18.x vs 24.x); that is not a real difference.
+    let symbolAware = true
+
     try {
         if (isError(a)) {
             const otherError = b as Error & {cause?: unknown, errors?: unknown}
@@ -93,6 +99,7 @@ const isDeepEqual = (a: unknown, b: unknown, memo: Memo): boolean => {
             if ("errors" in a && !isDeepEqual((a as {errors?: unknown}).errors, otherError.errors, memo)) return false
         } else if ("undefined" !== typeof URL && a instanceof URL) {
             if (a.href !== (b as URL).href) return false
+            symbolAware = false
         } else if (a instanceof Date) {
             // Called through the prototype: an own property of the same
             // name must not be able to fool the comparison.
@@ -132,11 +139,6 @@ const isDeepEqual = (a: unknown, b: unknown, memo: Memo): boolean => {
         if ((tag === "[object Array]" || tag === "[object Arguments]") && (a as {length: unknown}).length !== other.length) {
             return false
         }
-
-        // Symbol keys are walked only for plain data: a builtin can carry
-        // engine-internal symbol state (observed on URL, Node 18.x vs
-        // 24.x) that must not be mistaken for a real difference.
-        const symbolAware = isWalkable(tag)
 
         // A typed array's indices were already covered by the byte comparison
         // above, and Object.keys() lists them first: only what follows them
