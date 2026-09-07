@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>test-assert-lite browser test</title>
+    <!-- Served by tests.cli.mjs. The suites import node:test and node:assert,
+         and this package is what stands in for those in a browser, so the
+         map points every one of them at the ESM build. -->
+    <script type="importmap">
+        {
+            "imports": {
+                "test-assert-lite": "/dist/test-assert-lite.mjs",
+                "node:test": "/dist/test-assert-lite.mjs",
+                "node:assert": "/dist/test-assert-lite.mjs"
+            }
+        }
+    </script>
+</head>
+<body>
+</body>
+</html>
