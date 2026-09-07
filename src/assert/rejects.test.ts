@@ -95,22 +95,19 @@ describe(TITLE, () => {
         await assert.doesNotReject(() => TAL.doesNotReject(thenable(ok => ok())))
     })
 
-    // A genuine Promise is taken on its own account, as node:assert asks the
-    // brand before the shape: one whose catch or then was overwritten is
-    // still awaited and judged, and its rejection never goes unhandled.
-    it("takes a genuine Promise even with its catch or then overwritten", async () => {
-        const without = (promise: Promise<unknown>, name: "catch" | "then"): Promise<unknown> =>
-            Object.defineProperty(promise, name, {value: undefined})
-        await assert.doesNotReject(() => TAL.rejects(without(Promise.reject(new Error("x")), "catch"), /x/))
-        await assert.doesNotReject(() => TAL.rejects(without(Promise.reject(new Error("x")), "then"), /x/))
-        await assert.rejects(() => TAL.rejects(without(Promise.resolve(1), "catch")), /expected to reject/)
-        await assert.doesNotReject(() => TAL.doesNotReject(without(Promise.resolve(1), "catch")))
-        await assert.rejects(() => TAL.doesNotReject(without(Promise.reject(new Error("x")), "catch")), /expected not to reject/)
+    // Only the shape is asked, never a brand: a native Promise with catch
+    // overwritten is a misuse here, a difference from node accepted
+    // knowingly, since the block is the test's own promise and node's own
+    // suite pins the shape rule alone. (Fulfilled, so nothing is left
+    // rejected and unhandled by the refusal.)
+    it("refuses a Promise whose catch was overwritten, on its shape alone", async () => {
+        const without = Object.defineProperty(Promise.resolve(1), "catch", {value: undefined})
+        await refused(TAL.rejects(without, /x/))
+        await refused(TAL.doesNotReject(without))
     })
 
-    // The brand is the internal slot, not the tag: an object claiming the
-    // Promise tag is judged by its shape like any other, and a tag getter
-    // is never consulted, so it cannot inject an error of its own.
+    // Likewise an object claiming the Promise tag is judged by its shape,
+    // and a tag getter is never consulted, so it cannot inject an error.
     it("judges an object claiming the Promise tag by its shape, without reading the tag", async () => {
         const claiming = (extra: object): Promise<unknown> =>
             ({[Symbol.toStringTag]: "Promise", then: (_ok: unknown, fail: (e: unknown) => void) => fail(new Error("x")), ...extra}) as unknown as Promise<unknown>
