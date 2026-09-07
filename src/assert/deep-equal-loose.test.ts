@@ -196,4 +196,16 @@ describe(TITLE, () => {
         assert.throws(() => loose.deepEqual(new SharedArrayBuffer(0), claim), /deep-equal/)
         assert.doesNotThrow(() => loose.deepEqual(new SharedArrayBuffer(0), new SharedArrayBuffer(0)))
     })
+
+    // Without the prototype check, a builtin whose own tag reads "Object"
+    // would be the easiest thing to mistake for a plain object; the kind
+    // is found through instanceof and the slot, not the tag, so it is not.
+    it("still compares a builtin by its value when its tag is masked as Object", () => {
+        const masked = <T extends object>(v: T): T => Object.defineProperty(v, Symbol.toStringTag, {value: "Object"})
+        assert.doesNotThrow(() => loose.deepEqual(masked(new Date(0)), masked(new Date(0))))
+        assert.throws(() => loose.deepEqual(masked(new Date(0)), masked(new Date(1))), /deep-equal/)
+        assert.throws(() => loose.deepEqual(masked(new Date(0)), {}), /deep-equal/)
+        assert.throws(() => loose.deepEqual({}, masked(new Date(0))), /deep-equal/)
+        assert.throws(() => loose.deepEqual(masked(new Map([[1, 2]])), masked(new Map([[1, 3]]))), /deep-equal/)
+    })
 })
