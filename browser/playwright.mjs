@@ -1,0 +1,53 @@
+// Playwright adapter for the browser test CLI: the one file that imports
+// playwright, which is not a dependency of this package. src/cli/ stays
+// free of it and reaches runInBrowser() through the hand-written .d.mts,
+// so this file is plain JavaScript on purpose.
+
+// Loaded on the call, not at import time, so the module itself can be
+// imported without Playwright and a missing package fails with a hint.
+const loadPlaywright = async () => {
+    try {
+        return await import("playwright")
+    } catch (error) {
+        if (error?.code !== "ERR_MODULE_NOT_FOUND") throw error
+        throw new Error("Playwright is not installed; run `make -C browser install` first")
+    }
+}
+
+/**
+ * Runs the suites at `urls` on `origin`'s console.html in headless Chromium
+ * and resolves to what run() resolved to. Page errors are collected and
+ * thrown together once run() has settled.
+ */
+export const runInBrowser = async ({origin, urls}) => {
+    const {chromium} = await loadPlaywright()
+    const browser = await chromium.launch()
+    try {
+        const page = await browser.newPage()
+        const pageErrors = []
+        page.on("pageerror", error => pageErrors.push(error))
+        // The default reporter writes to the page console; relay it so the
+        // output matches what the Node CLI shows.
+        page.on("console", msg => (msg.type() === "error" ? console.error : console.log)(msg.text()))
+
+        await page.goto(`${origin}/console.html`)
+        // A url tag resolves once the whole module graph has executed, so
+        // run() below cannot overtake the registration; inline content would.
+        for (const url of urls) {
+            await page.addScriptTag({type: "module", url})
+        }
+
+        // The suites register into the module instance behind the import
+        // map, so run() must come from that same instance. evaluate()
+        // resolves to what run() resolved to: no polling and no timeout, a
+        // hanging test hangs, the same as in node --test.
+        const summary = await page.evaluate(() => import("test-assert-lite").then(m => m.run()))
+
+        if (pageErrors.length) {
+            throw new AggregateError(pageErrors, "Browser page errors occurred")
+        }
+        return summary
+    } finally {
+        await browser.close()
+    }
+}
