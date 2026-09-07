@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>test-assert-lite browser test</title>
+    <!-- The page browser/tests.cli.mjs drives: it loads the suites, calls
+         run() and reads the console, so nothing renders here. The suites
+         import node:test and node:assert, and this package is what stands
+         in for those in a browser, so the map points all of them at the
+         ESM build. index.html is reserved for a page people open. -->
+    <script type="importmap">
+        {
+            "imports": {
+                "test-assert-lite": "/dist/test-assert-lite.mjs",
+                "node:test": "/dist/test-assert-lite.mjs",
+                "node:assert": "/dist/test-assert-lite.mjs"
+            }
+        }
+    </script>
+</head>
+<body>
+</body>
+</html>
