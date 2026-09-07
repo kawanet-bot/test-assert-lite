@@ -1,7 +1,7 @@
 // Browser counterpart of test-assert-lite.cli.ts. The suites are ES modules
 // importing node:test, node:assert or the package name, so they are served
-// over a loopback HTTP server whose page carries an import map pointing
-// all three at the ESM build (htdocs/console.html), then run in Chromium
+// over a loopback HTTP server whose pages get an import map pointing all
+// three at the ESM build, then run in Chromium (htdocs/console.html)
 // through browser/playwright.mjs, the only file that touches Playwright.
 
 import {readFileSync} from "node:fs"
@@ -78,19 +78,28 @@ const scriptUrls = scripts.map((script, i) => `/@tal/scripts/${i}/${encodeURICom
 const aliasDirs = aliases.map((_, i) => `/@tal/aliases/${i}/`)
 const aliasUrls = aliases.map(({file}, i) => `${aliasDirs[i]}${encodeURIComponent(basename(file))}`)
 
-// The pages carry a static import map, and a map can only be inline and
-// cannot change once a module has loaded, so with --alias present the
-// pages are served with the map extended; the rest of the page is served
-// as it is on disk.
-const withAliases = (page: string): string => {
-    const html = readFileSync(resolve(root, "htdocs", page), "utf8")
-    return html.replace(/(<script type="importmap">)([^]*?)(<\/script>)/, (_, open, json, close) => {
-        const map = JSON.parse(json) as {imports: Record<string, string>}
-        for (const [i, {specifier}] of aliases.entries()) map.imports[specifier] = aliasUrls[i] as string
-        return `${open}\n${JSON.stringify(map, null, 4)}\n${close}`
-    })
+// This package stands in for node:test and node:assert in a browser: each
+// builtin maps onto the subpath of the same name, and the subpaths resolve
+// too. An alias adds its specifier. A map has to be inline and in place
+// before the first module loads, so it goes in at the end of each page's
+// head, past any mention of that tag in a comment.
+const imports: Record<string, string> = {
+    "test-assert-lite": "/dist/test-assert-lite.mjs",
+    "test-assert-lite/test": "/exports/test.mjs",
+    "test-assert-lite/assert": "/exports/assert.mjs",
+    "test-assert-lite/assert/strict": "/exports/assert/strict.mjs",
+    "node:test": "/exports/test.mjs",
+    "node:assert": "/exports/assert.mjs",
+    "node:assert/strict": "/exports/assert/strict.mjs",
 }
-const pages = aliases.length ? ["console.html", "index.html"] : []
+for (const [i, {specifier}] of aliases.entries()) imports[specifier] = aliasUrls[i] as string
+const importmap = `<script type="importmap">\n${JSON.stringify({imports}, null, 4)}\n</script>\n`
+const withImportmap = (page: string): string => {
+    const html = readFileSync(resolve(root, "htdocs", page), "utf8")
+    const at = html.lastIndexOf("</head>")
+    return html.slice(0, at) + importmap + html.slice(at)
+}
+const pages = ["console.html", "index.html"]
 
 // Document root is htdocs/, with /dist and /exports aliased onto the build
 // output and the subpath bridges, which have to stay where the package
@@ -109,7 +118,7 @@ const server = await startServer({
         "/@tal/scripts.json": {type: "application/json", body: JSON.stringify(scriptUrls)},
         "/@tal/tests.json": {type: "application/json", body: JSON.stringify(urls)},
         ...Object.fromEntries(pages.flatMap(page => {
-            const body = {type: "text/html", body: withAliases(page)}
+            const body = {type: "text/html", body: withImportmap(page)}
             return page === "index.html" ? [[`/${page}`, body], ["/", body]] : [[`/${page}`, body]]
         })),
     },
