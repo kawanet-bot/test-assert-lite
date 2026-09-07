@@ -2,6 +2,11 @@
 SHELL := bash
 .SHELLFLAGS := -eo pipefail -c
 
+# Sequential by design: the bundles take well under a second together, so
+# -j buys nothing and only interleaves output. This also blocks a -j
+# inherited through MAKEFLAGS.
+.NOTPARALLEL:
+
 # Tests live beside the sources, so the library inputs are the src/ tree
 # with the test files filtered back out. Sources are nested, so this walks
 # the tree. src/test-utils/ holds helpers only the suites use, and src/cli/

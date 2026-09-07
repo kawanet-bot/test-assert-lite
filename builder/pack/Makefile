@@ -2,6 +2,11 @@
 SHELL := bash
 .SHELLFLAGS := -eo pipefail -c
 
+# Sequential by design: the checks are quick and their output reads best
+# in order, so -j buys nothing. This also blocks a -j inherited through
+# MAKEFLAGS.
+.NOTPARALLEL:
+
 # Documented runtime named export every consumer shape must expose.
 NAMED_EXPORTS := after before createTAL describe it run strict suite test
 

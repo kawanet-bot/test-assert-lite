@@ -2,6 +2,11 @@
 SHELL := bash
 .SHELLFLAGS := -eo pipefail -c
 
+# Sequential by design: nothing here gains from -j, and `test` leans on
+# install running before the build. This also blocks a -j inherited
+# through MAKEFLAGS.
+.NOTPARALLEL:
+
 PLAYWRIGHT_VERSION := 1.62.1
 
 MJS_DST := ../dist/test-assert-lite.mjs
