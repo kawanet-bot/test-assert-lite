@@ -3,7 +3,6 @@
 // served over a loopback HTTP server whose page carries an import map that
 // points all three at the ESM build (see htdocs/console.html).
 
-import {chromium} from "playwright"
 import {basename, resolve} from "node:path"
 import {fileURLToPath} from "node:url"
 import {startServer} from "../src/cli/server.ts"
@@ -41,9 +40,21 @@ const server = await startServer({
     data: {"/@tests.json": {type: "application/json", body: JSON.stringify(Object.keys(mounts))}},
 })
 
+// Playwright is not a dependency of this package, so it is loaded only on
+// the path that needs it: --serve works without it.
+const loadPlaywright = async () => {
+    try {
+        return await import("playwright")
+    } catch (error) {
+        if (error?.code !== "ERR_MODULE_NOT_FOUND") throw error
+        throw new Error("Playwright is not installed; run `make -C browser install` first")
+    }
+}
+
 const run = async () => {
     let browser
     try {
+        const {chromium} = await loadPlaywright()
         browser = await chromium.launch()
         const page = await browser.newPage()
         const pageErrors = []
