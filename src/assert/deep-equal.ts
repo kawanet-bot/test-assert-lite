@@ -1,14 +1,14 @@
 import {isError} from "./../common/is-error.ts"
 import {stringify} from "./../common/stringify.ts"
 import {AssertionError} from "./assertion-error.ts"
-import {isDataView, isTypedArray, sameArrayBuffer, sameDataView, sameTypedArray} from "./deep-equal-typed-arrays.ts"
+import {isDataView, isTypedArray, sameArrayBuffer, sameDataView, sameTypedArray, typedArrayLength} from "./deep-equal-typed-arrays.ts"
 
 const toTag = (v: object): string => Object.prototype.toString.call(v)
 
 // Symbol keys are rare in practice, but cheap enough to walk alongside
 // Object.keys() rather than carve out as a separate scope decision.
-const ownKeys = (v: object): PropertyKey[] =>
-    [...Object.keys(v), ...Object.getOwnPropertySymbols(v).filter(s => Object.prototype.propertyIsEnumerable.call(v, s))]
+const ownKeys = (v: object, skip: number): PropertyKey[] =>
+    [...Object.keys(v).slice(skip), ...Object.getOwnPropertySymbols(v).filter(s => Object.prototype.propertyIsEnumerable.call(v, s))]
 
 // Array/Arguments elements are own enumerable keys, so the walk below
 // applies to them too (typed arrays take their own path first). Anything
@@ -123,7 +123,7 @@ const isDeepEqual = (a: unknown, b: unknown, memo: Memo): boolean => {
         } else if (isDataView(a) && isDataView(b)) {
             if (!sameDataView(a, b)) return false
         } else if (isTypedArray(a) && isTypedArray(b)) {
-            return sameTypedArray(a, b)
+            if (!sameTypedArray(a, b)) return false
         } else if (!isWalkable(tag)) {
             return false
         }
@@ -137,8 +137,13 @@ const isDeepEqual = (a: unknown, b: unknown, memo: Memo): boolean => {
         // engine-internal symbol state (observed on URL, Node 18.x vs
         // 24.x) that must not be mistaken for a real difference.
         const symbolAware = isWalkable(tag)
-        const keysA = symbolAware ? ownKeys(a) : Object.keys(a)
-        const keysB = new Set(symbolAware ? ownKeys(b) : Object.keys(b))
+
+        // A typed array's indices were already covered by the byte comparison
+        // above, and Object.keys() lists them first: only what follows them
+        // (a property someone attached on top) is left to walk.
+        const skip = isTypedArray(a) ? typedArrayLength.call(a) : 0
+        const keysA = symbolAware ? ownKeys(a, skip) : Object.keys(a).slice(skip)
+        const keysB = new Set(symbolAware ? ownKeys(b, skip) : Object.keys(b).slice(skip))
         return keysA.length === keysB.size &&
             keysA.every(key => keysB.has(key) && isDeepEqual((a as Record<PropertyKey, unknown>)[key], (other as Record<PropertyKey, unknown>)[key], memo))
     } finally {

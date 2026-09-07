@@ -14,13 +14,30 @@ describe(TITLE, () => {
         assert.throws(() => TAL.deepEqual(new Uint8Array([1, 2]), new Int8Array([1, 2])), /deep-equal/)
     })
 
-    // Deliberate trade-off for large-buffer performance: returning directly
-    // from the byte comparison skips the own-key walk entirely, so a custom
-    // own enumerable property added on top of a typed array's indices - not
-    // a realistic pattern for one - goes unnoticed, unlike a plain array's would.
-    it("does not notice an extra own property on a typed array (documented trade-off)", () => {
-        const withExtra = Object.assign(new Uint8Array([1, 2]), {tag: 1})
-        assert.doesNotThrow(() => TAL.deepEqual(withExtra, new Uint8Array([1, 2])))
+    // The byte comparison settles the indices; a property attached on top
+    // of them is still an own enumerable key and is compared the way a
+    // plain array's would be, without re-walking the indices themselves.
+    it("compares an extra own property attached to a typed array", () => {
+        const withExtra = (tag: number): Uint8Array => Object.assign(new Uint8Array([1, 2]), {tag})
+        assert.doesNotThrow(() => TAL.deepEqual(withExtra(1), withExtra(1)))
+        assert.throws(() => TAL.deepEqual(withExtra(1), withExtra(2)), /deep-equal/)
+        assert.throws(() => TAL.deepEqual(withExtra(1), new Uint8Array([1, 2])), /deep-equal/)
+        // Same bytes, but only one side carries the property.
+        assert.throws(() => TAL.deepEqual(new Uint8Array([1, 2]), withExtra(1)), /deep-equal/)
+    })
+
+    // The indices are skipped by count, read through the intrinsic length
+    // accessor: a subclass lying about its length must not shift the
+    // window onto (or off) the real indices.
+    it("still walks the right keys when a subclass overrides length", () => {
+        class Short extends Uint8Array {
+            get length(): number {
+                return 0
+            }
+        }
+        const withExtra = (tag: number): Short => Object.assign(new Short([1, 2]), {tag})
+        assert.doesNotThrow(() => TAL.deepEqual(withExtra(1), withExtra(1)))
+        assert.throws(() => TAL.deepEqual(withExtra(1), withExtra(2)), /deep-equal/)
     })
 
     // Object.is(NaN, NaN) is always true regardless of payload bits, but a

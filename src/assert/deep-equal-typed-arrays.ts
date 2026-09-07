@@ -37,8 +37,13 @@ const byteRangeOf = <T extends object>(proto: object) => {
     }
 }
 
+const typedArrayProto = Object.getPrototypeOf(Uint8Array.prototype) as object
 const dataView = byteRangeOf<DataView>(DataView.prototype)
-const typedArray = byteRangeOf<ArrayBufferView>(Object.getPrototypeOf(Uint8Array.prototype) as object)
+const typedArray = byteRangeOf<ArrayBufferView>(typedArrayProto)
+
+// Same reasoning as byteRangeOf: the element count comes from the
+// intrinsic accessor, not from a `length` the instance could override.
+export const typedArrayLength = Object.getOwnPropertyDescriptor(typedArrayProto, "length")!.get as (this: ArrayBufferView) => number
 
 // Exact for any binary content, unlike Object.is, which treats every NaN
 // payload as the same value. Falls back to comparing every byte when the
@@ -94,8 +99,8 @@ export const sameDataView = (a: DataView, b: DataView) => {
 
 // Brand-checked on both sides: the tag alone can be shared by a
 // plain object with no typed-array slots, which read() would
-// throw on. Returned directly, skipping the own-key walk below,
-// since a typed array's own properties beyond its indices aren't.
+// throw on. Covers the indices only; anything attached beyond
+// them is left to the caller's own-key walk.
 export const sameTypedArray = (a: ArrayBufferView, b: ArrayBufferView) => {
     return deepEqualTypedArrays(typedArray.read(a), typedArray.read(b))
 }
