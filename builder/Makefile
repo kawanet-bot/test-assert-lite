@@ -11,13 +11,12 @@ TEST_SRC := $(shell find ../src -name '*.test.ts') $(wildcard ../src/test-utils/
 CLI_SRC := $(wildcard ../src/cli/*.ts)
 TYPES := $(wildcard ../types/*.d.ts)
 BUILDER_SRC := $(wildcard ./*.ts)
-BROWSER_SRC := $(wildcard ../browser/*.js)
 
 MJS_DST := ../dist/test-assert-lite.mjs
 MINJS_DST := ../dist/test-assert-lite.min.js
 CLI_DST := ../dist/test-assert-lite.cli.mjs
 PKG_DST := ../dist/package.json
-BROWSER_TEST_DST := ../browser/tests/bundled.js
+BROWSER_TEST_DST := ../browser/tests/bundled.mjs
 BUILDER_TEST_DST := ./tests/bundled.mjs
 
 MJS_CONFIG := ./rollup-mjs.config.ts
@@ -42,10 +41,8 @@ MINJS_MAX_BYTES := 25000
 CLI_MAX_BYTES := 2000
 
 # Shared by both test bundles, which inline the same suites while the
-# package itself stays external. The browser one also inlines
-# browser/import.js and is wrapped as an IIFE, so it sets the ceiling.
-# Development-only output, never published, so this only guards against
-# gross growth and can stay generous.
+# package itself stays external. Development-only output, never published,
+# so this only guards against gross growth and can stay generous.
 TEST_MAX_BYTES := 200000
 
 ALL := $(MJS_DST) $(MINJS_DST) $(CLI_DST) $(BUILDER_TEST_DST)
@@ -104,13 +101,15 @@ $(PKG_DST):
 	@ls -l $@
 	@echo ""
 
-# Bundle of the test suites for browser/tests.html, with node:test and
-# node:assert pointed at the global from the .min.js build.
-$(BROWSER_TEST_DST): $(BROWSER_TEST_CONFIG) $(SRC) $(BUILDER_SRC) $(TEST_SRC) $(TYPES) $(BROWSER_SRC) $(MINJS_DST)
+# Bundle of the test suites for the browser, with node:test, node:assert
+# and the package name left external for the import map served by
+# browser/tests.cli.mjs, which points all three at the .mjs build.
+$(BROWSER_TEST_DST): $(BROWSER_TEST_CONFIG) $(SRC) $(BUILDER_SRC) $(TEST_SRC) $(TYPES) $(MJS_DST)
 	@mkdir -p $(dir $@)
 	../node_modules/.bin/rollup -c $<
 	@# An inlined copy of the library would be a second harness beside the
-	@# global one, so the suites must reach it through the alias only.
+	@# one the import map serves, so the suites must reach it through the
+	@# alias only.
 	@! grep -q 'const createTAL' $@ || { echo "ERROR: $@ inlines the library" >&2; exit 1; }
 	@ls -l $@
 	@test "$$(wc -c < $@)" -le $(TEST_MAX_BYTES) || { echo "ERROR: $@ exceeds $(TEST_MAX_BYTES) byte cap" >&2; exit 1; }
