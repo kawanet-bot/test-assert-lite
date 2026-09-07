@@ -33,10 +33,17 @@ const TYPES: Record<string, string> = {
     ".mjs": "text/javascript",
 }
 
-// A resolved path that leaves the directory, through "..", is refused.
+// The browser percent-encodes what it requests, so the path is decoded
+// before it meets the file system; a malformed escape is a 404. A resolved
+// path that leaves the directory, through "..", is refused.
 const within = (dir: string, rel: string): string | null => {
     const base = resolve(dir)
-    const path = resolve(base, rel)
+    let path: string
+    try {
+        path = resolve(base, decodeURIComponent(rel))
+    } catch {
+        return null
+    }
     return path.startsWith(base + sep) ? path : null
 }
 
