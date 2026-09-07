@@ -52,6 +52,15 @@ if (!files.length) {
     process.exit(1)
 }
 
+// The hook below only sees ESM resolution; a require() bypasses it and
+// registers with Node's own runner. Suites are ES modules, so refuse the
+// extensions that can only be CommonJS up front.
+const commonjs = files.filter(file => /\.c[jt]s$/.test(file))
+if (commonjs.length) {
+    process.stderr.write(`CommonJS suites are not supported: ${commonjs.join(", ")}\n`)
+    process.exit(1)
+}
+
 register(`data:text/javascript,${encodeURIComponent(HOOK)}`, {data: {parentURL: packageRoot()}})
 
 for (const file of files) {
