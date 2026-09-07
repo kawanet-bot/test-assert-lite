@@ -1,9 +1,9 @@
 import {isError} from "./../common/is-error.ts"
 import {stringify} from "./../common/stringify.ts"
+import {inspectMap, inspectSet} from "./../inspect/collections.ts"
 import {
     type DeepEqual,
     type Inspect,
-    getter,
     inspectArguments,
     inspectArray,
     inspectBigInt,
@@ -15,53 +15,11 @@ import {
     inspectRegExp,
     inspectString,
     inspectURL,
-    slotted,
 } from "./../inspect/inspect.ts"
 import {inspectArrayBuffer, inspectArrayBufferView, inspectDataView, inspectSharedArrayBuffer, typedArrayLength} from "./../inspect/typed-array.ts"
 import {AssertionError} from "./assertion-error.ts"
 
 const toTag = (v: object): string => Object.prototype.toString.call(v)
-
-// --- kinds not yet in src/inspect/ ---------------------------------------
-
-// has() (SameValueZero) clears out primitives and same-reference elements
-// in O(1) each; only what still needs a real deep comparison - normally
-// nothing, for a Set of primitives - reaches the O(n^2) match below.
-const inspectSet: Inspect<Set<unknown>> = {
-    is: slotted(Set, "[object Set]", getter(Set.prototype, "size")),
-    eq: (left, right, deep) => {
-        if (left.size !== right.size) return false
-        const leftoverB = new Set(right)
-        const leftoverA = [...left].filter(av => !leftoverB.delete(av))
-        const remaining = [...leftoverB]
-        return leftoverA.every(av => {
-            const i = remaining.findIndex(bv => deep(av, bv))
-            if (i < 0) return false
-            remaining.splice(i, 1)
-            return true
-        })
-    },
-}
-
-const inspectMap: Inspect<Map<unknown, unknown>> = {
-    is: slotted(Map, "[object Map]", getter(Map.prototype, "size")),
-    eq: (left, right, deep) => {
-        if (left.size !== right.size) return false
-        const leftoverB = new Map(right)
-        const leftoverA = [...left].filter(([ak, av]) => {
-            if (!leftoverB.has(ak) || !Object.is(leftoverB.get(ak), av)) return true
-            leftoverB.delete(ak)
-            return false
-        })
-        const remaining = [...leftoverB]
-        return leftoverA.every(([ak, av]) => {
-            const i = remaining.findIndex(([bk, bv]) => deep(ak, bk) && deep(av, bv))
-            if (i < 0) return false
-            remaining.splice(i, 1)
-            return true
-        })
-    },
-}
 
 // --- the table -----------------------------------------------------------
 
