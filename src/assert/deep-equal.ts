@@ -133,25 +133,30 @@ const sameError: SameKind = (a, b, memo) => {
 
 const sameBuffer: SameKind = (a, b) => sameArrayBuffer(a as ArrayBufferLike, b as ArrayBufferLike)
 const sameView: SameKind = (a, b) => sameDataView(a as DataView, b as DataView)
+const sameBytes: SameKind = (a, b) => sameTypedArray(a as ArrayBufferView, b as ArrayBufferView)
 
-// Strict compares the bytes. Loose compares the elements by value through
-// the walk that follows, so +0 meets -0 and every NaN meets every other;
-// only the length is settled here.
-const sameElements: SameKind = (a, b, memo) => memo.strict
-    ? sameTypedArray(a as ArrayBufferView, b as ArrayBufferView)
-    : typedArrayLength.call(a as ArrayBufferView) === typedArrayLength.call(b as ArrayBufferView)
+// The loose typed array comparison: the elements are compared by value
+// through the walk that follows, so +0 meets -0 and every NaN meets every
+// other, and only the length is settled here - through the intrinsic, as
+// the bytes are, so a subclass cannot report a length of its own.
+const sameViewLength: SameKind = (a, b) => typedArrayLength.call(a as ArrayBufferView) === typedArrayLength.call(b as ArrayBufferView)
 
 // length is not enumerable, so the walk would miss it.
 const sameLength: SameKind = (a, b) => (a as {length: unknown}).length === (b as {length: unknown}).length
 
 // --- the table -----------------------------------------------------------
 
+// One row per kind: how it is recognised, then what it compares of its
+// own under strict, then under loose. The loose column is written only
+// where loose compares differently; otherwise the strict one serves both.
+// A kind with nothing outside its own enumerable properties (a plain
+// object) has no comparison of its own and goes straight to the walk.
+type Row = [Kind, IsKind, SameKind?, SameKind?]
+
 // Order matters only where kinds overlap: an Error subclass carries the
 // Error slot and nothing else, and ArrayBuffer.isView() answers for the
 // typed arrays and DataView together before their brand tells them apart.
-// A kind with nothing outside its own enumerable properties has no
-// comparison of its own and goes straight to the walk.
-const kinds: [Kind, IsKind, SameKind?][] = [
+const kinds: Row[] = [
     ["error", v => isError(v), sameError],
     ["url", isURL, sameURL],
     ["date", isDate, sameDate],
@@ -165,7 +170,7 @@ const kinds: [Kind, IsKind, SameKind?][] = [
     ["arraybuffer", isArrayBuffer, sameBuffer],
     ["sharedarraybuffer", isSharedArrayBuffer, sameBuffer],
     ["dataview", v => ArrayBuffer.isView(v) && isDataView(v), sameView],
-    ["typedarray", v => ArrayBuffer.isView(v) && isTypedArray(v), sameElements],
+    ["typedarray", v => ArrayBuffer.isView(v) && isTypedArray(v), sameBytes, sameViewLength],
     ["array", v => Array.isArray(v), sameLength],
     ["arguments", isArguments, sameLength],
     ["object", isPlainObject],
@@ -174,7 +179,7 @@ const kinds: [Kind, IsKind, SameKind?][] = [
 // No row is any kind this has no comparison for: WeakMap, Promise, a class
 // instance with its own tag. Only a shared reference is equal then, which
 // the identity check before the kinds already answered.
-const rowOf = (v: object, tag: string): [Kind, IsKind, SameKind?] | undefined => kinds.find(([, is]) => is(v, tag))
+const rowOf = (v: object, tag: string): Row | undefined => kinds.find(([, is]) => is(v, tag))
 
 // --- the comparison ------------------------------------------------------
 
@@ -220,8 +225,9 @@ const isDeepEqual = (a: unknown, b: unknown, memo: Memo): boolean => {
     if (tagA !== tagB) return false
     const row = rowOf(a, tagA)
     if (row == null) return false
-    const [kind, , same] = row
+    const [kind, , sameStrict, sameLoose] = row
     if (kind !== rowOf(b, tagB)?.[0]) return false
+    const same = memo.strict ? sameStrict : sameLoose ?? sameStrict
 
     // Stamped before recursing into anything below - including an Error's
     // cause chain - so a cycle reached through any path is still caught.
