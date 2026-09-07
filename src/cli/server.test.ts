@@ -1,5 +1,5 @@
 import {strict as assert} from "node:assert"
-import {mkdir, mkdtemp, rm, writeFile} from "node:fs/promises"
+import {mkdir, mkdtemp, rm, symlink, writeFile} from "node:fs/promises"
 import {request} from "node:http"
 import {tmpdir} from "node:os"
 import {join} from "node:path"
@@ -36,6 +36,8 @@ describe("cli/server", () => {
         await writeFile(join(dir, "dist", "nested", "deep.mjs"), "export const deep = 1")
         await writeFile(join(dir, "dist", "legacy.cjs"), "module.exports = {}")
         await writeFile(join(dir, "dist", "source.ts"), "export const source: number = 1")
+        await symlink("..", join(dir, "dist", "up"))
+        await symlink("lib.mjs", join(dir, "dist", "alias.mjs"))
         await writeFile(join(dir, "elsewhere", "suite.mjs"), "export const suite = 1")
         await writeFile(join(dir, "secret.json"), "{}")
         server = await startServer({
@@ -56,6 +58,11 @@ describe("cli/server", () => {
     it("refuses a kind it does not serve with 403", async () => {
         assert.equal((await get(server.origin, "/dist/legacy.cjs")).status, 403)
         assert.equal((await get(server.origin, "/dist/source.ts")).status, 403)
+    })
+
+    it("follows a symlink inside the directory but not one leading out", async () => {
+        assert.equal((await get(server.origin, "/dist/alias.mjs")).status, 200)
+        assert.equal((await get(server.origin, "/dist/up/secret.json")).status, 404)
     })
 
     it("refuses a malformed escape and an encoded traversal", async () => {
