@@ -10,7 +10,9 @@ import {readFileSync} from "node:fs"
 import {register} from "node:module"
 import {resolve} from "node:path"
 import {pathToFileURL} from "node:url"
-import {run} from "../index.ts"
+// By name, not from src/: the suites reach the package through the hook
+// below, so run() has to be the instance the package's exports point at.
+import {run} from "test-assert-lite"
 
 const USAGE = "Usage: test-assert <file...>\n"
 
