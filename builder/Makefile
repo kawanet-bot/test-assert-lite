@@ -9,24 +9,24 @@ SHELL := bash
 
 # Tests live beside the sources, so the library inputs are the src/ tree
 # with the test files filtered back out. Sources are nested, so this walks
-# the tree. src/test-utils/ holds helpers only the suites use, and src/cli/
+# the tree. src/test-utils/ holds helpers only the suites use, and src/extras/
 # is a separate build target below, so neither counts as library input.
-SRC := $(shell find ../src -name '*.ts' -not -name '*.test.ts' -not -path '*/test-utils/*' -not -path '*/cli/*')
+SRC := $(shell find ../src -name '*.ts' -not -name '*.test.ts' -not -path '*/test-utils/*' -not -path '*/extras/*')
 TEST_SRC := $(shell find ../src -name '*.test.ts') $(wildcard ../src/test-utils/*.ts)
-CLI_SRC := $(wildcard ../src/cli/*.ts) ../browser/playwright.mjs
+EXTRAS_SRC := $(wildcard ../src/extras/*.ts) ../src/extras/playwright.mjs
 TYPES := $(wildcard ../types/*.d.ts)
 BUILDER_SRC := $(wildcard ./*.ts)
 
 MJS_DST := ../dist/test-assert-lite.mjs
 MINJS_DST := ../dist/test-assert-lite.min.js
-CLI_DST := ../dist/test-assert-lite.cli.mjs
+EXTRAS_DST := ../dist/test-assert-lite.extras.mjs
 PKG_DST := ../dist/package.json
 BROWSER_TEST_DST := ../browser/tests/bundled.mjs
 BUILDER_TEST_DST := ./tests/bundled.mjs
 
 MJS_CONFIG := ./rollup-mjs.config.ts
 MINJS_CONFIG := ./rollup-minjs.config.ts
-CLI_CONFIG := ./rollup-cli.config.ts
+EXTRAS_CONFIG := ./rollup-extras.config.ts
 BROWSER_TEST_CONFIG := ./rollup-browser-test.config.ts
 BUILDER_TEST_CONFIG := ./rollup-builder-test.config.ts
 
@@ -40,17 +40,17 @@ MJS_MAX_BYTES := 100000
 # ratio the two currently show (about a third).
 MINJS_MAX_BYTES := 35000
 
-# The CLI externalizes the library, Node builtins and Playwright (see
-# rollup-cli.config.ts) but carries the loopback server and the browser
-# application, so the cap is set well above what those come to.
-CLI_MAX_BYTES := 40000
+# The extras bundle externalizes the library, Node builtins and Playwright
+# (see rollup-extras.config.ts) but carries the loopback server and the
+# browser application, so the cap is set well above what those come to.
+EXTRAS_MAX_BYTES := 40000
 
 # Shared by both test bundles, which inline the same suites while the
 # package itself stays external. Development-only output, never published,
 # so this only guards against gross growth and can stay generous.
 TEST_MAX_BYTES := 300000
 
-ALL := $(MJS_DST) $(MINJS_DST) $(CLI_DST) $(BUILDER_TEST_DST)
+ALL := $(MJS_DST) $(MINJS_DST) $(EXTRAS_DST) $(BUILDER_TEST_DST)
 
 # Build/test paths require Node's native TypeScript type-strip (default on
 # Node 22.18+). Older runtimes report BUILDABLE=NO and skip the build.
@@ -80,15 +80,15 @@ $(MJS_DST): $(MJS_CONFIG) $(SRC) $(BUILDER_SRC)
 	@test "$$(wc -c < $@)" -le $(MJS_MAX_BYTES) || { echo "ERROR: $@ exceeds $(MJS_MAX_BYTES) byte cap" >&2; exit 1; }
 	@echo ""
 
-# The CLI, built alongside the library bundle it resolves at runtime
-# through a plain relative import rather than package self-reference (see
-# rollup-cli.config.ts for why). It needs that bundle in place first.
-$(CLI_DST): $(CLI_CONFIG) $(CLI_SRC) $(BUILDER_SRC) $(MJS_DST)
+# The extras (the CLI as a function), built alongside the library bundle
+# they resolve at runtime through a plain relative import rather than
+# package self-reference (see rollup-extras.config.ts for why). The
+# executable bin/cli.mjs is hand-written and reaches this by subpath.
+$(EXTRAS_DST): $(EXTRAS_CONFIG) $(EXTRAS_SRC) $(BUILDER_SRC) $(MJS_DST)
 	@mkdir -p $(dir $@)
 	../node_modules/.bin/rollup -c $<
-	@chmod +x $@
 	@ls -l $@
-	@test "$$(wc -c < $@)" -le $(CLI_MAX_BYTES) || { echo "ERROR: $@ exceeds $(CLI_MAX_BYTES) byte cap" >&2; exit 1; }
+	@test "$$(wc -c < $@)" -le $(EXTRAS_MAX_BYTES) || { echo "ERROR: $@ exceeds $(EXTRAS_MAX_BYTES) byte cap" >&2; exit 1; }
 	@echo ""
 
 # The browser build. dist/package.json marks dist/ as CommonJS so Node can
@@ -148,7 +148,7 @@ test:
 # a side effect and never calls run() itself.
 test-full: test-quick
 	cd .. && node --test 'src/**/*.test.ts'
-	cd .. && ./$(CLI_DST:../%=%) $(BUILDER_TEST_DST:./%=builder/%)
+	cd .. && ./bin/cli.mjs $(BUILDER_TEST_DST:./%=builder/%)
 
 test-quick: all
 	cd .. && node_modules/.bin/tsc --noEmit

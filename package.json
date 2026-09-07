@@ -4,7 +4,7 @@
   "version": "0.0.1",
   "author": "Kawanet",
   "bin": {
-    "test-assert": "./dist/test-assert-lite.cli.mjs"
+    "test-assert": "./bin/cli.mjs"
   },
   "bugs": {
     "url": "https://github.com/kawanet/test-assert-lite/issues"
@@ -38,6 +38,11 @@
       "module-sync": "./dist/test-assert-lite.mjs",
       "import": "./dist/test-assert-lite.mjs"
     },
+    "./extras": {
+      "types": "./types/extras.d.ts",
+      "module-sync": "./dist/test-assert-lite.extras.mjs",
+      "import": "./dist/test-assert-lite.extras.mjs"
+    },
     "./test": {
       "types": "./exports/test.d.mts",
       "module-sync": "./exports/test.mjs",
@@ -61,12 +66,13 @@
     "browser/import.mjs",
     "browser/package.json",
     "dist/package.json",
-    "dist/test-assert-lite.cli.mjs",
     "dist/test-assert-lite.min.js",
     "exports/",
     "htdocs/",
     "dist/test-assert-lite.mjs",
-    "types/*.d.ts"
+    "types/*.d.ts",
+    "bin/cli.mjs",
+    "dist/test-assert-lite.extras.mjs"
   ],
   "homepage": "https://github.com/kawanet/test-assert-lite#readme",
   "keywords": [

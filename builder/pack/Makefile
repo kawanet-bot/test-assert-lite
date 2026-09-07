@@ -50,7 +50,7 @@ test: test-bundled test-bin test-cli test-iife
 # bundle's own self-reference resolves to. The slow suites, skipped in a
 # plain run, are wanted here: this is the packed copy on every Node line.
 test-bundled:
-	cd ../.. && TAL_SLOW_TESTS=1 ./$(PKG_ROOT)/dist/test-assert-lite.cli.mjs builder/tests/bundled.mjs
+	cd ../.. && TAL_SLOW_TESTS=1 ./$(PKG_ROOT)/bin/cli.mjs builder/tests/bundled.mjs
 
 # npm accepts a broken bin mapping silently -- the .bin link is just
 # never created -- so assert the link exists, resolves and is executable.
@@ -71,8 +71,8 @@ test-cli:
 	mkdir -p ../../sample/node_modules
 	[ -L ../../sample/node_modules/test-assert-lite ] || rm -rf ../../sample/node_modules/test-assert-lite
 	cd ../.. && target=$$(cd $(PKG_ROOT) && pwd -P) && ln -sfn "$$target" sample/node_modules/test-assert-lite
-	cd ../.. && ./$(PKG_ROOT)/dist/test-assert-lite.cli.mjs sample/pass.mjs > /dev/null 2>&1
-	cd ../.. && ! ./$(PKG_ROOT)/dist/test-assert-lite.cli.mjs sample/fail.mjs > /dev/null 2>&1
+	cd ../.. && ./$(PKG_ROOT)/bin/cli.mjs sample/pass.mjs > /dev/null 2>&1
+	cd ../.. && ! ./$(PKG_ROOT)/bin/cli.mjs sample/fail.mjs > /dev/null 2>&1
 
 # Script-context run of the minified bundle under $(PKG_ROOT): the browser
 # IIFE consumer shape; in the default root it also proves the tarball

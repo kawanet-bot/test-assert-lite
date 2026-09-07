@@ -11,6 +11,7 @@ PLAYWRIGHT_VERSION := 1.62.1
 
 MJS_DST := ../dist/test-assert-lite.mjs
 MINJS_DST := ../dist/test-assert-lite.min.js
+EXTRAS_DST := ../dist/test-assert-lite.extras.mjs
 BROWSER_TEST_DST := ../browser/tests/bundled.mjs
 
 # The bundle rule, its size check, and its dependencies belong to the
@@ -20,7 +21,7 @@ all: bundled
 # Build tools come from the package's own npm install; `serve` must not
 # pull Playwright in, so the bundle does not depend on install-playwright.
 bundled:
-	$(MAKE) -C ../builder $(MJS_DST) $(MINJS_DST) $(BROWSER_TEST_DST)
+	$(MAKE) -C ../builder $(MJS_DST) $(MINJS_DST) $(EXTRAS_DST) $(BROWSER_TEST_DST)
 
 # Keep Playwright out of package.json. CI installs it transiently alongside
 # the project's build dependencies, then downloads only the headless shell.
@@ -47,11 +48,11 @@ install-browser: install-playwright
 # `make -C browser test` works from a clean checkout. It is cheap once
 # Playwright and the browser are present (see LAUNCHABLE).
 test: install all
-	cd .. && node src/cli/test-assert-lite.cli.ts --chromium browser/tests/bundled.mjs
+	cd .. && node bin/cli.mjs --chromium browser/tests/bundled.mjs
 
 # The same bundle for a person: prints the URL and serves until Ctrl-C.
 serve: all
-	cd .. && node src/cli/test-assert-lite.cli.ts --serve browser/tests/bundled.mjs
+	cd .. && node bin/cli.mjs --serve browser/tests/bundled.mjs
 
 # Browser bundle cleanup remains owned by builder/Makefile.
 clean:

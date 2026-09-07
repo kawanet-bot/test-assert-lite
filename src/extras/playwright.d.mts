@@ -1,4 +1,4 @@
-// Hand-written declarations for playwright.mjs, so src/cli/ can call it
+// Hand-written declarations for playwright.mjs, so cli.ts can call it
 // with types while Playwright's own types stay out of this package.
 
 import type {TAL} from "test-assert-lite"
