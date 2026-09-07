@@ -78,7 +78,15 @@ const sameRegExp: SameKind = (a, b) =>
 // Boolean and Number wrap a primitive no own key exposes; String's
 // characters are own enumerable indices already, so for it this only adds
 // the value check the walk would not make on its own.
-const sameWrapper = (valueOf: (this: never) => unknown): SameKind => (a, b) => Object.is(valueOf.call(a as never), valueOf.call(b as never))
+const sameBoolean: SameKind = (a, b) => Object.is(Boolean.prototype.valueOf.call(a as Boolean), Boolean.prototype.valueOf.call(b as Boolean))
+const sameNumber: SameKind = (a, b) => Object.is(Number.prototype.valueOf.call(a as Number), Number.prototype.valueOf.call(b as Number))
+const sameString: SameKind = (a, b) => String.prototype.valueOf.call(a as String) === String.prototype.valueOf.call(b as String)
+
+// Where the global is missing nothing can carry the tag either, so the
+// row it belongs to is never reached.
+const sameBigInt: SameKind | undefined = "undefined" !== typeof BigInt
+    ? (a, b) => Object.is(BigInt.prototype.valueOf.call(a as BigInt), BigInt.prototype.valueOf.call(b as BigInt))
+    : undefined
 
 const sameURL: SameKind = (a, b) => (a as URL).href === (b as URL).href
 
@@ -154,24 +162,23 @@ const sameLength: SameKind = (a, b) => (a as {length: unknown}).length === (b as
 type Row = [Kind, IsKind, SameKind?, SameKind?]
 
 // Order matters only where kinds overlap: an Error subclass carries the
-// Error slot and nothing else, and ArrayBuffer.isView() answers for the
-// typed arrays and DataView together before their brand tells them apart.
+// Error slot and nothing else.
 const kinds: Row[] = [
-    ["error", v => isError(v), sameError],
+    ["error", isError, sameError],
     ["url", isURL, sameURL],
     ["date", isDate, sameDate],
     ["regexp", isRegExp, sameRegExp],
-    ["boolean", isBooleanObject, sameWrapper(Boolean.prototype.valueOf)],
-    ["number", isNumberObject, sameWrapper(Number.prototype.valueOf)],
-    ["string", isStringObject, sameWrapper(String.prototype.valueOf)],
-    ["bigint", isBigIntObject, "undefined" !== typeof BigInt ? sameWrapper(BigInt.prototype.valueOf) : undefined],
+    ["boolean", isBooleanObject, sameBoolean],
+    ["number", isNumberObject, sameNumber],
+    ["string", isStringObject, sameString],
+    ["bigint", isBigIntObject, sameBigInt],
     ["map", isMap, sameMap],
     ["set", isSet, sameSet],
     ["arraybuffer", isArrayBuffer, sameBuffer],
     ["sharedarraybuffer", isSharedArrayBuffer, sameBuffer],
-    ["dataview", v => ArrayBuffer.isView(v) && isDataView(v), sameView],
-    ["typedarray", v => ArrayBuffer.isView(v) && isTypedArray(v), sameBytes, sameViewLength],
-    ["array", v => Array.isArray(v), sameLength],
+    ["dataview", isDataView, sameView],
+    ["typedarray", isTypedArray, sameBytes, sameViewLength],
+    ["array", Array.isArray, sameLength],
     ["arguments", isArguments, sameLength],
     ["object", isPlainObject],
 ]

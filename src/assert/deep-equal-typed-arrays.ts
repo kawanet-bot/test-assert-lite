@@ -80,8 +80,10 @@ const deepEqualTypedArrays = (a: ByteRange, b: ByteRange): boolean => {
     )
 }
 
-export const isDataView = dataView.is
-export const isTypedArray = typedArray.is
+// ArrayBuffer.isView() answers for the typed arrays and DataView together
+// without a throw, so nothing else ever reaches the brand check behind it.
+export const isDataView = (v: object): v is DataView => ArrayBuffer.isView(v) && dataView.is(v)
+export const isTypedArray = (v: object): v is ArrayBufferView => ArrayBuffer.isView(v) && typedArray.is(v)
 
 // Tag rather than instanceof SharedArrayBuffer: that global may
 // not exist in every environment, while nothing could carry
