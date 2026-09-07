@@ -30,20 +30,20 @@ if (files.length !== 1) {
     process.exit(1)
 }
 
-// The suite's directory is mounted at /@tests/0/, so a sibling or a nested
+// The suite's directory is mounted at /@tal/0/, so a sibling or a nested
 // import resolves beside it while nothing above stays reachable. The name
 // is percent-encoded so the URL matches what the browser sends back for a
 // space, a `#` or a non-ASCII character.
 const file = resolve(files[0] as string)
-const urls = [`/@tests/0/${encodeURIComponent(basename(file))}`]
+const urls = [`/@tal/0/${encodeURIComponent(basename(file))}`]
 
 // Document root is htdocs/, with /dist aliased onto the build output since
 // dist/ has to stay where the package puts it. Nothing else is exposed.
 // index.html asks for the mount list and imports each entry itself.
 const server = await startServer({
     root: resolve(root, "htdocs"),
-    aliases: {"/dist/": resolve(root, "dist"), "/@tests/0/": dirname(file)},
-    data: {"/@tests.json": {type: "application/json", body: JSON.stringify(urls)}},
+    aliases: {"/dist/": resolve(root, "dist"), "/@tal/0/": dirname(file)},
+    data: {"/@tal/tests.json": {type: "application/json", body: JSON.stringify(urls)}},
 })
 
 const run = async (): Promise<void> => {

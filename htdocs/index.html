@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <link rel="stylesheet" href="/styles/test-assert-lite.css"/>
     <!-- The page people open, from `browser/tests.cli.mjs --serve`. It
-         imports whatever the CLI mounted, listed at /@tests.json, and shows
+         imports whatever the CLI mounted, listed at /@tal/tests.json, and shows
          the HTML reporter; console.html is the one the CLI drives itself.
          Same import map as there. -->
     <script type="importmap">
@@ -26,7 +26,7 @@
     import {reporter, run} from "test-assert-lite";
 
     // One at a time, so the suites register in command-line order.
-    for (const url of await (await fetch("/@tests.json")).json()) {
+    for (const url of await (await fetch("/@tal/tests.json")).json()) {
         await import(url);
     }
 
