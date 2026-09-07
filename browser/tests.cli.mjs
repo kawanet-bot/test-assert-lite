@@ -35,8 +35,10 @@ if (!files.length) {
 }
 
 // The given files may live anywhere, so each gets a virtual path; every
-// other request maps onto the package root and must stay inside it.
-const mounts = new Map(files.map((file, i) => [`/@tests/${i}/${basename(file)}`, resolve(file)]))
+// other request maps onto the package root and must stay inside it. The
+// name is percent-encoded up front so the key matches what the browser
+// sends back for a space, a `#` or a non-ASCII character.
+const mounts = new Map(files.map((file, i) => [`/@tests/${i}/${encodeURIComponent(basename(file))}`, resolve(file)]))
 
 const locate = (pathname) => {
     if (pathname === "/") return index
