@@ -73,9 +73,12 @@ const isDeepEqual = (a: unknown, b: unknown, memo: Memo): boolean => {
     const other = b as Record<string, unknown>
     if (tag !== toTag(b)) return false
 
-    // The tag itself can be claimed through an own Symbol.toStringTag, and
-    // "Array" is the one worth guarding: Array.isArray() sees through it.
-    if (tag === "[object Array]" && Array.isArray(a) !== Array.isArray(b)) return false
+    // The tag itself can be claimed through an own Symbol.toStringTag, in
+    // either direction: a lookalike can claim "Array", a real array can
+    // hide behind "Object". Array-ness is settled by Array.isArray() on
+    // its own, which no property can fake.
+    const isArray = Array.isArray(a)
+    if (isArray !== Array.isArray(b)) return false
 
     // Stamped before recursing into anything below - including an Error's
     // cause chain - so a cycle reached through any path is still caught.
@@ -149,7 +152,7 @@ const isDeepEqual = (a: unknown, b: unknown, memo: Memo): boolean => {
         }
 
         // length is not enumerable, so the walk below would miss it.
-        if ((tag === "[object Array]" || tag === "[object Arguments]") && (a as {length: unknown}).length !== other.length) {
+        if ((isArray || tag === "[object Arguments]") && (a as {length: unknown}).length !== other.length) {
             return false
         }
 

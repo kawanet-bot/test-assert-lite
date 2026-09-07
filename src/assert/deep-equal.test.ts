@@ -109,6 +109,27 @@ describe(TITLE, () => {
         assert.doesNotThrow(() => TAL.deepEqual(new Proxy([1, 2], {}), [1, 2]))
     })
 
+    // The reverse disguise: a real array whose own tag says "Object" no
+    // longer looks like an array to the tag check, so both the array-ness
+    // test and the length check have to rest on Array.isArray instead.
+    it("is not fooled by a real array hiding behind an Object tag", () => {
+        const hidden = (...items: number[]): number[] =>
+            Object.defineProperty(items, Symbol.toStringTag, {value: "Object"})
+        assert.equal(Object.prototype.toString.call(hidden(1)), "[object Object]")
+
+        const lookalike: unknown[] = Object.create(Array.prototype)
+        lookalike[0] = 1
+        Object.defineProperty(lookalike, "length", {value: 1, enumerable: false})
+        Object.defineProperty(lookalike, Symbol.toStringTag, {value: "Object"})
+        assert.throws(() => TAL.deepEqual(hidden(1), lookalike), /deep-equal/)
+        assert.throws(() => TAL.deepEqual(lookalike, hidden(1)), /deep-equal/)
+
+        const stretched = hidden(1, 2)
+        stretched.length = 5
+        assert.throws(() => TAL.deepEqual(hidden(1, 2), stretched), /deep-equal/)
+        assert.doesNotThrow(() => TAL.deepEqual(hidden(1, 2), hidden(1, 2)))
+    })
+
     // .length is not enumerable, so a manually stretched array needs its
     // own check alongside the own-key comparison.
     it("checks array length even when no extra index became enumerable", () => {
