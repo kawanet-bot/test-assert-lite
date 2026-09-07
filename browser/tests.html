@@ -5,16 +5,28 @@
     <title>test-assert-lite browser test</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <link rel="stylesheet" href="../styles/test-assert-lite.css"/>
+    <!-- Serve the package root over HTTP to open this page: Chromium refuses
+         module imports from file://. Same map as htdocs/index.html, relative. -->
+    <script type="importmap">
+        {
+            "imports": {
+                "test-assert-lite": "../dist/test-assert-lite.mjs",
+                "node:test": "../dist/test-assert-lite.mjs",
+                "node:assert": "../dist/test-assert-lite.mjs"
+            }
+        }
+    </script>
 </head>
 <body>
 <h1>test-assert-lite browser test</h1>
 <div id="output"></div>
-<script src="../dist/test-assert-lite.min.js"></script>
-<script src="./tests/bundled.js"></script>
-<script>
-    TAL.reporter.format(TAL.reporter.html());
-    TAL.reporter.output(text => document.querySelector("#output")?.insertAdjacentHTML("beforeend", text));
-    TAL.run().then(summary => (window.testSummary = summary));
+<script type="module">
+    import {reporter, run} from "test-assert-lite";
+    import "./tests/bundled.mjs";
+
+    reporter.format(reporter.html());
+    reporter.output(text => document.querySelector("#output")?.insertAdjacentHTML("beforeend", text));
+    run().then(summary => (window.testSummary = summary));
 </script>
 </body>
 </html>
