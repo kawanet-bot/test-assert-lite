@@ -3,7 +3,6 @@ import {stringify} from "./../common/stringify.ts"
 import {
     type DeepEqual,
     type Inspect,
-    absent,
     getter,
     inspectArguments,
     inspectArray,
@@ -18,8 +17,8 @@ import {
     inspectURL,
     slotted,
 } from "./../inspect/inspect.ts"
+import {inspectArrayBuffer, inspectArrayBufferView, inspectDataView, inspectSharedArrayBuffer, typedArrayLength} from "./../inspect/typed-array.ts"
 import {AssertionError} from "./assertion-error.ts"
-import {isDataView, isTypedArray, sameArrayBuffer, sameDataView, sameTypedArray, typedArrayLength} from "./deep-equal-typed-arrays.ts"
 
 const toTag = (v: object): string => Object.prototype.toString.call(v)
 
@@ -62,33 +61,6 @@ const inspectMap: Inspect<Map<unknown, unknown>> = {
             return true
         })
     },
-}
-
-const inspectArrayBuffer: Inspect<ArrayBuffer> = {
-    is: slotted(ArrayBuffer, "[object ArrayBuffer]", getter(ArrayBuffer.prototype, "byteLength")),
-    eq: sameArrayBuffer,
-}
-
-const inspectSharedArrayBuffer: Inspect<SharedArrayBuffer> = {
-    is: "undefined" !== typeof SharedArrayBuffer
-        ? slotted(SharedArrayBuffer, "[object SharedArrayBuffer]", getter(SharedArrayBuffer.prototype, "byteLength"))
-        : absent(),
-    eq: sameArrayBuffer,
-}
-
-const inspectDataView: Inspect<DataView> = {
-    is: isDataView,
-    eq: sameDataView,
-}
-
-// The loose typed array comparison: the elements are compared by value
-// through the walk that follows, so +0 meets -0 and every NaN meets every
-// other, and only the length is settled here - through the intrinsic, as
-// the bytes are, so a subclass cannot report a length of its own.
-const inspectArrayBufferView: Inspect<ArrayBufferView> = {
-    is: isTypedArray,
-    eq: sameTypedArray,
-    loose: (a, b) => typedArrayLength.call(a) === typedArrayLength.call(b),
 }
 
 // --- the table -----------------------------------------------------------

@@ -1,3 +1,5 @@
+import {type Inspect, absent, getter, slotted} from "./inspect.ts"
+
 const sameElements = (a: ArrayLike<number>, b: ArrayLike<number>): boolean => {
     for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false
     return true
@@ -82,20 +84,20 @@ const deepEqualTypedArrays = (a: ByteRange, b: ByteRange): boolean => {
 
 // ArrayBuffer.isView() answers for the typed arrays and DataView together
 // without a throw, so nothing else ever reaches the brand check behind it.
-export const isDataView = (v: object): v is DataView => ArrayBuffer.isView(v) && dataView.is(v)
-export const isTypedArray = (v: object): v is ArrayBufferView => ArrayBuffer.isView(v) && typedArray.is(v)
+const isDataView = (v: object): v is DataView => ArrayBuffer.isView(v) && dataView.is(v)
+const isTypedArray = (v: object): v is ArrayBufferView => ArrayBuffer.isView(v) && typedArray.is(v)
 
 // Tag rather than instanceof SharedArrayBuffer: that global may
 // not exist in every environment, while nothing could carry
 // this tag there either, so the check is safe either way.
-export const sameArrayBuffer = (a: ArrayBufferLike, b: ArrayBufferLike) => {
+const sameArrayBuffer = (a: ArrayBufferLike, b: ArrayBufferLike) => {
     return deepEqualTypedArrays(typedArray.read(new Uint8Array(a)), typedArray.read(new Uint8Array(b)))
 }
 
 // Neither instanceof DataView (fails cross-realm) nor the tag
 // (a typed array can spoof Symbol.toStringTag to claim it too)
 // would be safe here - see the brand-check comment on byteRangeOf.
-export const sameDataView = (a: DataView, b: DataView) => {
+const sameDataView = (a: DataView, b: DataView) => {
     return deepEqualTypedArrays(dataView.read(a), dataView.read(b))
 }
 
@@ -103,6 +105,33 @@ export const sameDataView = (a: DataView, b: DataView) => {
 // plain object with no typed-array slots, which read() would
 // throw on. Covers the indices only; anything attached beyond
 // them is left to the caller's own-key walk.
-export const sameTypedArray = (a: ArrayBufferView, b: ArrayBufferView) => {
+const sameTypedArray = (a: ArrayBufferView, b: ArrayBufferView) => {
     return deepEqualTypedArrays(typedArray.read(a), typedArray.read(b))
+}
+
+export const inspectArrayBuffer: Inspect<ArrayBuffer> = {
+    is: slotted(ArrayBuffer, "[object ArrayBuffer]", getter(ArrayBuffer.prototype, "byteLength")),
+    eq: sameArrayBuffer,
+}
+
+export const inspectSharedArrayBuffer: Inspect<SharedArrayBuffer> = {
+    is: "undefined" !== typeof SharedArrayBuffer
+        ? slotted(SharedArrayBuffer, "[object SharedArrayBuffer]", getter(SharedArrayBuffer.prototype, "byteLength"))
+        : absent(),
+    eq: sameArrayBuffer,
+}
+
+export const inspectDataView: Inspect<DataView> = {
+    is: isDataView,
+    eq: sameDataView,
+}
+
+// The loose typed array comparison: the elements are compared by value
+// through the walk that follows, so +0 meets -0 and every NaN meets every
+// other, and only the length is settled here - through the intrinsic, as
+// the bytes are, so a subclass cannot report a length of its own.
+export const inspectArrayBufferView: Inspect<ArrayBufferView> = {
+    is: isTypedArray,
+    eq: sameTypedArray,
+    loose: (a, b) => typedArrayLength.call(a) === typedArrayLength.call(b),
 }
