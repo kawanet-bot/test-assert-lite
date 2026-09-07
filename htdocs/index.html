@@ -15,16 +15,17 @@
 <h1>test-assert-lite browser test</h1>
 <div id="output"></div>
 <script type="module">
-    import {reporter, run} from "test-assert-lite";
-
     // Classic scripts first, one at a time, so the globals they leave are
-    // in place before any suite loads.
+    // in place before any module loads: the library itself is one of them,
+    // and what "test-assert-lite" resolves to reads its global.
     for (const src of await (await fetch("/@tal/scripts.json")).json()) {
         await new Promise((resolve, reject) => {
             const script = Object.assign(document.createElement("script"), {src, onload: resolve, onerror: reject});
             document.head.append(script);
         });
     }
+
+    const {reporter, run} = await import("test-assert-lite");
 
     // One at a time, so the suites register in command-line order.
     for (const url of await (await fetch("/@tal/tests.json")).json()) {
