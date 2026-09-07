@@ -31,21 +31,43 @@ describe("cli/server", () => {
         await writeFile(join(dir, "htdocs", "page.html"), "<p>page</p>")
         await writeFile(join(dir, "htdocs", "index.html"), "<p>index</p>")
         await writeFile(join(dir, "dist", "lib.mjs"), "export const lib = 1")
+        await writeFile(join(dir, "dist", "my lib.mjs"), "export const lib = 2")
+        await mkdir(join(dir, "dist", "nested"))
+        await writeFile(join(dir, "dist", "nested", "deep.mjs"), "export const deep = 1")
+        await writeFile(join(dir, "dist", "legacy.cjs"), "module.exports = {}")
+        await writeFile(join(dir, "dist", "source.ts"), "export const source: number = 1")
         await writeFile(join(dir, "elsewhere", "suite.mjs"), "export const suite = 1")
         await writeFile(join(dir, "secret.json"), "{}")
         server = await startServer({
             root: join(dir, "htdocs"),
             aliases: {"/dist/": join(dir, "dist")},
-            files: {"/@tests/0/my%20suite.mjs": join(dir, "elsewhere", "suite.mjs")},
-            data: {"/@tests.json": {type: "application/json", body: '["/@tests/0/my%20suite.mjs"]'}},
+            files: {"/@tal/0/my%20suite.mjs": join(dir, "elsewhere", "suite.mjs")},
+            data: {"/@tal/tests.json": {type: "application/json", body: '["/@tal/0/my%20suite.mjs"]'}},
         })
     })
 
+    it("decodes a percent-encoded path under an alias, and nested paths", async () => {
+        const res = await get(server.origin, "/dist/my%20lib.mjs")
+        assert.equal(res.status, 200)
+        assert.equal(res.body, "export const lib = 2")
+        assert.equal((await get(server.origin, "/dist/nested/deep.mjs")).status, 200)
+    })
+
+    it("refuses a kind it does not serve with 403", async () => {
+        assert.equal((await get(server.origin, "/dist/legacy.cjs")).status, 403)
+        assert.equal((await get(server.origin, "/dist/source.ts")).status, 403)
+    })
+
+    it("refuses a malformed escape and an encoded traversal", async () => {
+        assert.equal((await get(server.origin, "/dist/%zz.mjs")).status, 404)
+        assert.equal((await get(server.origin, "/dist/%2e%2e/secret.json")).status, 404)
+    })
+
     it("serves an in-memory response", async () => {
-        const res = await get(server.origin, "/@tests.json")
+        const res = await get(server.origin, "/@tal/tests.json")
         assert.equal(res.status, 200)
         assert.equal(res.type, "application/json; charset=utf-8")
-        assert.deepEqual(JSON.parse(res.body), ["/@tests/0/my%20suite.mjs"])
+        assert.deepEqual(JSON.parse(res.body), ["/@tal/0/my%20suite.mjs"])
     })
 
     after(async () => {
@@ -71,8 +93,8 @@ describe("cli/server", () => {
     })
 
     it("serves a mounted file by its exact, encoded path", async () => {
-        assert.equal((await get(server.origin, "/@tests/0/my%20suite.mjs")).status, 200)
-        assert.equal((await get(server.origin, "/@tests/1/other.mjs")).status, 404)
+        assert.equal((await get(server.origin, "/@tal/0/my%20suite.mjs")).status, 200)
+        assert.equal((await get(server.origin, "/@tal/1/other.mjs")).status, 404)
     })
 
     it("serves index.html for a directory path, and no listing", async () => {

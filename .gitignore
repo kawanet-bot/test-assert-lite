@@ -3,7 +3,7 @@
 *.mjs
 !browser/import.js
 !browser/playwright.mjs
-!sample/*.mjs
+!sample/**/*.mjs
 *.tgz
 *~
 .DS_Store

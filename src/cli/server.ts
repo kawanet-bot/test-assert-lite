@@ -33,10 +33,17 @@ const TYPES: Record<string, string> = {
     ".mjs": "text/javascript",
 }
 
-// A resolved path that leaves the directory, through "..", is refused.
+// The browser percent-encodes what it requests, so the path is decoded
+// before it meets the file system; a malformed escape is a 404. A resolved
+// path that leaves the directory, through "..", is refused.
 const within = (dir: string, rel: string): string | null => {
     const base = resolve(dir)
-    const path = resolve(base, rel)
+    let path: string
+    try {
+        path = resolve(base, decodeURIComponent(rel))
+    } catch {
+        return null
+    }
     return path.startsWith(base + sep) ? path : null
 }
 
@@ -61,10 +68,18 @@ const respond = async (options: ServerOptions, req: IncomingMessage, res: Server
         return
     }
     const path = locate(options, pathname)
+    // Only the kinds a test page is made of are served; anything else on
+    // disk, a .cjs or a .ts say, is refused rather than handed out as bytes.
+    const type = path == null ? undefined : TYPES[extname(path)]
+    if (path != null && type == null) {
+        res.writeHead(403)
+        res.end()
+        return
+    }
     try {
         if (path == null) throw new Error("outside")
         const body = await readFile(path)
-        res.writeHead(200, {"content-type": `${TYPES[extname(path)] ?? "application/octet-stream"}; charset=utf-8`})
+        res.writeHead(200, {"content-type": `${type}; charset=utf-8`})
         res.end(body)
     } catch {
         res.writeHead(404)
