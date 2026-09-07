@@ -2,6 +2,7 @@
 *.js
 *.mjs
 !browser/import.js
+!browser/import.mjs
 !browser/playwright.mjs
 !exports/**/*.mjs
 !sample/**/*.mjs

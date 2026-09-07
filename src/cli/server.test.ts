@@ -43,8 +43,8 @@ describe("cli/server", () => {
         server = await startServer({
             root: join(dir, "htdocs"),
             aliases: {"/dist/": join(dir, "dist")},
-            files: {"/@tal/0/my%20suite.mjs": join(dir, "elsewhere", "suite.mjs")},
-            data: {"/@tal/tests.json": {type: "application/json", body: '["/@tal/0/my%20suite.mjs"]'}},
+            files: {"/@tal/tests/0/my%20suite.mjs": join(dir, "elsewhere", "suite.mjs")},
+            data: {"/@tal/tests.json": {type: "application/json", body: '["/@tal/tests/0/my%20suite.mjs"]'}},
         })
     })
 
@@ -74,7 +74,7 @@ describe("cli/server", () => {
         const res = await get(server.origin, "/@tal/tests.json")
         assert.equal(res.status, 200)
         assert.equal(res.type, "application/json; charset=utf-8")
-        assert.deepEqual(JSON.parse(res.body), ["/@tal/0/my%20suite.mjs"])
+        assert.deepEqual(JSON.parse(res.body), ["/@tal/tests/0/my%20suite.mjs"])
     })
 
     after(async () => {
@@ -100,8 +100,8 @@ describe("cli/server", () => {
     })
 
     it("serves a mounted file by its exact, encoded path", async () => {
-        assert.equal((await get(server.origin, "/@tal/0/my%20suite.mjs")).status, 200)
-        assert.equal((await get(server.origin, "/@tal/1/other.mjs")).status, 404)
+        assert.equal((await get(server.origin, "/@tal/tests/0/my%20suite.mjs")).status, 200)
+        assert.equal((await get(server.origin, "/@tal/tests/1/other.mjs")).status, 404)
     })
 
     it("serves index.html for a directory path, and no listing", async () => {

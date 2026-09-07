@@ -4,24 +4,9 @@
     <meta charset="utf-8"/>
     <title>test-assert-lite browser test</title>
     <!-- The page src/cli/browser.cli.ts drives: it loads the suites, calls
-         run() and reads the console, so nothing renders here. The suites
-         import node:test and node:assert, and this package is what stands
-         in for those in a browser: each builtin maps onto the subpath of
-         the same name, and the subpaths themselves resolve too. index.html
-         is the page people open. -->
-    <script type="importmap">
-        {
-            "imports": {
-                "test-assert-lite": "/dist/test-assert-lite.mjs",
-                "test-assert-lite/test": "/exports/test.mjs",
-                "test-assert-lite/assert": "/exports/assert.mjs",
-                "test-assert-lite/assert/strict": "/exports/assert/strict.mjs",
-                "node:test": "/exports/test.mjs",
-                "node:assert": "/exports/assert.mjs",
-                "node:assert/strict": "/exports/assert/strict.mjs"
-            }
-        }
-    </script>
+         run() and reads the console, so nothing renders here. The CLI
+         serves this page with the import map the suites need added at the
+         end of the head. index.html is the page people open. -->
 </head>
 <body>
 </body>
