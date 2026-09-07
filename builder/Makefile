@@ -41,9 +41,9 @@ MJS_MAX_BYTES := 70000
 MINJS_MAX_BYTES := 25000
 
 # The CLI externalizes both the library and Node builtins (see
-# rollup-cli.config.ts), so it carries little more than argv handling and
-# the load-then-run loop.
-CLI_MAX_BYTES := 2000
+# rollup-cli.config.ts), so it carries little more than argv handling, the
+# inline resolve hook and the load-then-run loop.
+CLI_MAX_BYTES := 3000
 
 # Shared by both test bundles, which inline the same suites while the
 # package itself stays external. Development-only output, never published,
