@@ -111,7 +111,9 @@ const main = async (args: string[]): Promise<number> => {
 /**
  * Runs the command line with `args` and resolves to its exit code. Writes
  * what the command line writes, and rejects with what it could not handle,
- * but never exits the process: that is the executable's part.
+ * but never exits the process: that is the executable's part. Meant for
+ * one call per process, as the command line is: Node mode installs a
+ * resolve hook that stays, and a suite once loaded is not loaded again.
  */
 export const CLI = async ({args}: CLIOptions): Promise<number> => {
     try {
