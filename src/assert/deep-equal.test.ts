@@ -150,6 +150,51 @@ describe(TITLE, () => {
         assert.throws(() => TAL.deepEqual(x1, y1), /deep-equal/)
     })
 
+    // A revisit that only one side recognises - the other side reaching a
+    // fresh object at that point - is a cycle the other side lacks. This
+    // has to hold in both orders: stamping the fresh object afresh used to
+    // let one order slip through.
+    it("tells apart a self-cycle from a path that merely leads into one, in either order", () => {
+        const loop: Record<string, unknown> = {}
+        loop.next = loop
+        const intoLoop: Record<string, unknown> = {}
+        intoLoop.next = {next: loop}
+        assert.throws(() => TAL.deepEqual(loop, intoLoop), /deep-equal/)
+        assert.throws(() => TAL.deepEqual(intoLoop, loop), /deep-equal/)
+
+        // Wrapping a *different* self-cycle: the same one would be found
+        // by reference before any structure is looked at.
+        const otherLoop: Record<string, unknown> = {}
+        otherLoop.next = otherLoop
+        const wrapsOther: Record<string, unknown> = {next: otherLoop}
+        assert.throws(() => TAL.deepEqual(loop, wrapsOther), /deep-equal/)
+        assert.throws(() => TAL.deepEqual(wrapsOther, loop), /deep-equal/)
+
+        const selfSet = new Set<unknown>()
+        selfSet.add(selfSet)
+        const otherSelfSet = new Set<unknown>()
+        otherSelfSet.add(otherSelfSet)
+        const wrapsOtherSet = new Set<unknown>([otherSelfSet])
+        assert.throws(() => TAL.deepEqual(selfSet, wrapsOtherSet), /deep-equal/)
+        assert.throws(() => TAL.deepEqual(wrapsOtherSet, selfSet), /deep-equal/)
+    })
+
+    // The stricter revisit rule must not reject a legitimate shape: the
+    // same object reached twice on one side while the other side has two
+    // equal copies, or a cycle sitting behind an alias on both sides.
+    it("still accepts a shared reference against equal copies, and aliased cycles", () => {
+        const shared = {inner: 0}
+        assert.doesNotThrow(() => TAL.deepEqual([{inner: 0}, {inner: 0}], [shared, shared]))
+        assert.doesNotThrow(() => TAL.deepEqual([shared, shared], [{inner: 0}, {inner: 0}]))
+
+        const inner: Record<string, unknown> = {}
+        inner.loop = inner
+        const outer: Record<string, unknown> = {loop: inner}
+        const actual: Record<string, unknown> = {loop: outer}
+        assert.doesNotThrow(() => TAL.deepEqual(actual, outer))
+        assert.doesNotThrow(() => TAL.deepEqual(outer, actual))
+    })
+
     it("notDeepEqual is the exact negation", () => {
         assert.doesNotThrow(() => TAL.notDeepEqual([1, 2], [1, 3]))
         assert.throws(() => TAL.notDeepEqual([1, 2], [1, 2]), /expected not to deep-equal/)

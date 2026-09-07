@@ -75,8 +75,10 @@ const isDeepEqual = (a: unknown, b: unknown, memo: Memo): boolean => {
 
     // Stamped before recursing into anything below - including an Error's
     // cause chain - so a cycle reached through any path is still caught.
+    // A revisit on either side alone is a cycle the other side lacks, so
+    // it counts as a difference rather than being stamped afresh.
     const stamp = memo.left.get(a)
-    if (stamp != null) return memo.right.get(b) === stamp
+    if (stamp != null || memo.right.has(b)) return memo.right.get(b) === stamp
     const position = ++memo.position
     memo.left.set(a, position)
     memo.right.set(b, position)
