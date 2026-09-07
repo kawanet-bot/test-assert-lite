@@ -93,6 +93,10 @@ const isDeepEqual = (a: unknown, b: unknown, memo: Memo): boolean => {
     // (observed on URL, Node 18.x vs 24.x); that is not a real difference.
     let symbolAware = true
 
+    // How many leading own keys the walk below may skip, once a branch has
+    // already compared what those keys stand for.
+    let skip = 0
+
     try {
         if (isError(a)) {
             const otherError = b as Error & {cause?: unknown, errors?: unknown}
@@ -137,6 +141,9 @@ const isDeepEqual = (a: unknown, b: unknown, memo: Memo): boolean => {
             if (!sameDataView(a, b)) return false
         } else if (isTypedArray(a) && isTypedArray(b)) {
             if (!sameTypedArray(a, b)) return false
+            // The indices are settled by the bytes, and Object.keys() lists
+            // them first: only a property attached on top is left to walk.
+            skip = typedArrayLength.call(a)
         } else if (!isWalkable(tag)) {
             return false
         }
@@ -146,10 +153,6 @@ const isDeepEqual = (a: unknown, b: unknown, memo: Memo): boolean => {
             return false
         }
 
-        // A typed array's indices were already covered by the byte comparison
-        // above, and Object.keys() lists them first: only what follows them
-        // (a property someone attached on top) is left to walk.
-        const skip = isTypedArray(a) ? typedArrayLength.call(a) : 0
         const keysA = symbolAware ? ownKeys(a, skip) : Object.keys(a).slice(skip)
         const keysB = new Set(symbolAware ? ownKeys(b, skip) : Object.keys(b).slice(skip))
         return keysA.length === keysB.size &&

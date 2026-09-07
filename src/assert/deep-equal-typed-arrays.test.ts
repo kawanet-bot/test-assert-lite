@@ -36,6 +36,17 @@ describe(TITLE, () => {
         assert.throws(() => TAL.deepEqual(withSymbol(true), new Uint8Array([1, 2])), /deep-equal/)
     })
 
+    // Skipping the indices is tied to the typed-array comparison itself: a
+    // typed array disguised as an ArrayBuffer (its prototype and tag) is
+    // compared by bytes as a buffer, where its indices are still own keys
+    // that the real ArrayBuffer lacks - and must stay a difference.
+    it("still counts the indices of a typed array disguised as an ArrayBuffer", () => {
+        const disguised = Object.setPrototypeOf(new Uint8Array(3), ArrayBuffer.prototype) as unknown as ArrayBuffer
+        Object.defineProperty(disguised, Symbol.toStringTag, {value: "ArrayBuffer"})
+        assert.throws(() => TAL.deepEqual(new ArrayBuffer(3), disguised), /deep-equal/)
+        assert.throws(() => TAL.deepEqual(disguised, new ArrayBuffer(3)), /deep-equal/)
+    })
+
     // The indices are skipped by count, read through the intrinsic length
     // accessor: a subclass lying about its length must not shift the
     // window onto (or off) the real indices.
