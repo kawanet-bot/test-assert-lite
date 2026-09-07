@@ -10,19 +10,19 @@ const loadPlaywright = async () => {
         return await import("playwright")
     } catch (error) {
         if (error?.code !== "ERR_MODULE_NOT_FOUND") throw error
-        throw new Error("Playwright is not installed; run `make -C browser install` first")
+        throw new Error("Playwright is not installed: `npm install playwright` and `npx playwright install chromium`")
     }
 }
 
 /**
- * Runs the suites at `urls` on `origin`'s console.html in headless Chromium,
- * after the classic `scripts` (a library's IIFE build, say) have run, and
- * resolves to what run() resolved to. Page errors are collected and
- * thrown together once run() has settled.
+ * Runs the suites at `urls` on `origin`'s console.html in a headless
+ * `browser` (chromium unless told otherwise), after the classic `scripts`
+ * (a library's IIFE build, say) have run, and resolves to what run()
+ * resolved to. Page errors are collected and thrown once run() has settled.
  */
-export const runInBrowser = async ({origin, scripts = [], urls}) => {
-    const {chromium} = await loadPlaywright()
-    const browser = await chromium.launch()
+export const runInBrowser = async ({origin, scripts = [], urls, browser: name = "chromium"}) => {
+    const playwright = await loadPlaywright()
+    const browser = await playwright[name].launch()
     try {
         const page = await browser.newPage()
         const pageErrors = []
@@ -46,8 +46,9 @@ export const runInBrowser = async ({origin, scripts = [], urls}) => {
         // The suites register into the module instance behind the import
         // map, so run() must come from that same instance. evaluate()
         // resolves to what run() resolved to: no polling and no timeout, a
-        // hanging test hangs, the same as in node --test.
-        const summary = await page.evaluate(() => import("test-assert-lite").then(m => m.run()))
+        // hanging test hangs, the same as in node --test. The name is passed
+        // in so a bundler never takes this page-side import for its own.
+        const summary = await page.evaluate(name => import(name).then(m => m.run()), "test-assert-lite")
 
         if (pageErrors.length) {
             throw new AggregateError(pageErrors, "Browser page errors occurred")

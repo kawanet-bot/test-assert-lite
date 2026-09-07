@@ -10,10 +10,12 @@ export interface BrowserRunOptions {
     scripts?: string[]
     /** Suite URLs on that origin, loaded as module scripts in this order. */
     urls: string[]
+    /** Which of Playwright's browsers to launch; chromium by default. */
+    browser?: "chromium" | "firefox" | "webkit"
 }
 
 /**
- * Runs the suites in headless Chromium and resolves to what run() resolved
+ * Runs the suites in a headless browser and resolves to what run() resolved
  * to. Rejects when Playwright is missing or the page reported errors.
  */
 export function runInBrowser(options: BrowserRunOptions): Promise<TAL.TestSummary>

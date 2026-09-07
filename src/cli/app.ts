@@ -6,6 +6,7 @@
 import {readFileSync} from "node:fs"
 import {basename, dirname, resolve} from "node:path"
 import {fileURLToPath} from "node:url"
+import {packageRoot} from "./package-root.ts"
 import {startServer} from "./server.ts"
 
 export interface AppOptions {
@@ -28,9 +29,9 @@ export interface App {
     close(): void
 }
 
-// The package root, holding dist/, exports/ and htdocs/. The pages and
-// the build output are served from there whatever the suite's location.
-const root = resolve(fileURLToPath(new URL("../..", import.meta.url)))
+// The package root holds dist/, exports/, htdocs/ and the IIFE's shim;
+// they are served from there whatever the suite's location.
+const root = fileURLToPath(packageRoot())
 
 // This package stands in for node:test and node:assert in a browser: each
 // builtin maps onto the subpath of the same name, and the subpaths resolve

@@ -1,73 +1,105 @@
 #!/usr/bin/env node
 
-// Mocha's CLI loads every test file first and calls run() once at the
-// end, since run() only reports whatever has been registered by then.
-// This CLI follows the same two-phase shape. Directory search and glob
-// expansion are left to the shell on purpose: only explicit file names
-// are accepted here, matching the project's "-lite" scope.
+// The test runner. By default the suites run in this Node process;
+// --chromium runs them in headless Chromium through Playwright, and
+// --serve hands the same page to a person. Directory search and glob
+// expansion are left to the shell: only explicit file names are accepted.
 
-import {readFileSync} from "node:fs"
-import {register} from "node:module"
 import {resolve} from "node:path"
-import {pathToFileURL} from "node:url"
-// By name, not from src/: the suites reach the package through the hook
-// below, so run() has to be the instance the package's exports point at.
-import {run} from "test-assert-lite"
+import {parseArgs} from "node:util"
+import {runInBrowser} from "../../browser/playwright.mjs"
+import {startApp} from "./app.ts"
+import {runInNode} from "./node.ts"
 
-const USAGE = "Usage: test-assert <file...>\n"
-
-// Suites are written against node:test and node:assert, and this package
-// stands in for both: an import map in the browser, a resolve hook here.
-// Each builtin maps onto the subpath of the same name by exact match, so
-// a subpath this package lacks still reaches the real one. Inline as data:.
-const HOOK = `let parentURL
-const mapped = new Set(["node:test", "node:assert", "node:assert/strict"])
-export const initialize = (data) => { parentURL = data.parentURL }
-export const resolve = (specifier, context, next) =>
-    mapped.has(specifier)
-        ? next("test-assert-lite/" + specifier.slice("node:".length), {...context, parentURL})
-        : next(specifier, context)
+const USAGE = `Usage: test-assert [options] <file...>
+  --chromium                  run the suite in headless Chromium through Playwright
+  --serve                     serve the suite for a browser and print the URL
+  --script <file>             classic script to run first (browser modes, repeatable)
+  --alias <specifier>=<file>  ES module a bare specifier resolves to (browser modes, repeatable)
 `
 
-// The hook resolves the package from here rather than from the suite, so
-// a suite outside any project, or beside another copy, still lands on the
-// instance run() reads. Walking up finds the root from src/ and dist/ alike.
-const packageRoot = (): string => {
-    for (let dir = new URL("./", import.meta.url); dir.pathname !== "/"; dir = new URL("../", dir)) {
-        try {
-            if (JSON.parse(readFileSync(new URL("package.json", dir), "utf8")).name === "test-assert-lite") return dir.href
-        } catch {
-            // no package.json at this level
-        }
-    }
-    throw new Error("test-assert-lite: package root not found")
-}
-
-const files = process.argv.slice(2)
-
-if (files.includes("-h") || files.includes("--help")) {
-    process.stdout.write(USAGE)
-    process.exit(0)
-}
-
-if (!files.length) {
+const fail = (message?: string): never => {
+    if (message != null) process.stderr.write(`${message}\n`)
     process.stderr.write(USAGE)
     process.exit(1)
 }
 
-// The hook below only sees ESM resolution; a require() bypasses it and
-// registers with Node's own runner. Suites are ES modules, so refuse the
-// extensions that can only be CommonJS up front.
-const commonjs = files.filter(file => /\.c[jt]s$/.test(file))
-if (commonjs.length) {
-    process.stderr.write(`CommonJS suites are not supported: ${commonjs.join(", ")}\n`)
-    process.exit(1)
+// parseArgs settles the flag forms (--x=v, -h, --) and rejects a flag this
+// CLI does not know rather than taking it for a file name; its wording on
+// such an error gives way to the usage text.
+const parse = () => {
+    try {
+        return parseArgs({
+            args: process.argv.slice(2),
+            options: {
+                chromium: {type: "boolean", default: false},
+                serve: {type: "boolean", default: false},
+                script: {type: "string", multiple: true, default: []},
+                alias: {type: "string", multiple: true, default: []},
+                help: {type: "boolean", short: "h", default: false},
+            },
+            allowPositionals: true,
+        })
+    } catch {
+        return fail()
+    }
 }
 
-register(`data:text/javascript,${encodeURIComponent(HOOK)}`, {data: {parentURL: packageRoot()}})
+const {values, positionals: files} = parse()
 
-for (const file of files) {
-    await import(pathToFileURL(resolve(file)).href)
+if (values.help) {
+    process.stdout.write(USAGE)
+    process.exit(0)
 }
 
-process.exitCode = (await run()).success ? 0 : 1
+// A browser run takes one suite: several entries would each get their own
+// mount, and a module shared between them would load once per mount as a
+// separate instance. Bundle first, as the project's own suites are.
+const browser = values.chromium || values.serve
+if (values.chromium && values.serve) fail("--chromium and --serve are exclusive")
+if (!browser && (values.script.length || values.alias.length)) fail("--script and --alias apply to --chromium and --serve only")
+if (browser ? files.length !== 1 : !files.length) fail()
+
+if (!browser) {
+    // The resolve hook only sees ESM resolution; a require() bypasses it
+    // and registers with Node's own runner. Suites are ES modules, so
+    // refuse the extensions that can only be CommonJS up front.
+    const commonjs = files.filter(file => /\.c[jt]s$/.test(file))
+    if (commonjs.length) fail(`CommonJS suites are not supported: ${commonjs.join(", ")}`)
+
+    process.exitCode = (await runInNode(files)).success ? 0 : 1
+} else {
+    // Each --alias is `<specifier>=<file>`, split at the first "=".
+    const aliases = values.alias.map(entry => {
+        const at = entry.indexOf("=")
+        if (at < 1 || at === entry.length - 1) fail(`--alias takes <specifier>=<file>: ${entry}`)
+        return {specifier: entry.slice(0, at), file: resolve(entry.slice(at + 1))}
+    })
+    const app = await startApp({
+        file: resolve(files[0] as string),
+        scripts: values.script.map(script => resolve(script)),
+        aliases,
+    })
+
+    if (values.serve) {
+        // Only the URL goes to stdout, so it can be piped. Stays up until
+        // interrupted.
+        process.stdout.write(`${app.origin}/\n`)
+        process.stderr.write("Serving the suite; press Ctrl-C to stop.\n")
+        process.once("SIGINT", () => app.close())
+    } else {
+        try {
+            const {counts, success} = await runInBrowser({...app, browser: "chromium"})
+
+            // success rather than the counter: a failure outside a test
+            // body, such as a hook that threw, never reaches failed.
+            if (!success) throw new Error(`Reported ${counts.failed} failed test(s)`)
+            if (!counts.tests) throw new Error("Ran no tests")
+        } catch (error: unknown) {
+            console.error(error)
+            process.exitCode = 1
+        } finally {
+            app.close()
+        }
+    }
+}
