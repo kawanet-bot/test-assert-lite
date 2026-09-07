@@ -315,6 +315,24 @@ describeSlow(TITLE, () => {
         assert.equal(second.counts.tests, 0)
     })
 
+    // A suite body runs when the walk reaches it, which may be while an
+    // earlier test's body is still open past its timeout. Its declarations
+    // are the suite's own and must be taken.
+    it("a suite after a timed out test still declares its tests", async () => {
+        const local = createTAL()
+        local.reporter.output(() => undefined)
+        local.it("slow", {timeout: slow(10)}, async () => {
+            await new Promise(r => setTimeout(r, slow(60)))
+        })
+        local.describe("S", () => {
+            local.it("a", () => undefined)
+            local.it("b", () => undefined)
+        })
+        const summary = await local.run()
+
+        assert.deepEqual(summary.counts, {tests: 3, suites: 1, passed: 2, failed: 0, cancelled: 1, skipped: 0})
+    })
+
     // A queued sibling keeps its skip when the parent gives up, and every
     // sibling is cancelled even while the reporter's output is slow.
     // With an in-flight child, cancelling it takes several slow reporter

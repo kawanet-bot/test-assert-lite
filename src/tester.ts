@@ -376,6 +376,7 @@ export class Test {
         const {harness} = this.run
         const previous = harness.current
         harness.current = this
+        harness.openSuites++
         try {
             const body = (this.fn as SuiteFn | undefined)?.({name: this.name})
             if (body != null) await body
@@ -383,6 +384,7 @@ export class Test {
         } catch (e) {
             return testRunnerError(e, "testCodeFailure")
         } finally {
+            harness.openSuites--
             harness.current = previous
         }
     }
