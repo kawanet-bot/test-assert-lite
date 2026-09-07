@@ -16,7 +16,7 @@ const toTag = (v: object): string => Object.prototype.toString.call(v)
 type Kind =
     | "error" | "url" | "date" | "regexp" | "boolean" | "number" | "string" | "bigint"
     | "map" | "set" | "arraybuffer" | "sharedarraybuffer" | "dataview" | "typedarray"
-    | "array" | "arguments" | "object" | "other"
+    | "array" | "arguments" | "object"
 
 type IsKind = (v: object, tag: string) => boolean
 
@@ -57,48 +57,48 @@ const isSharedArrayBuffer = "undefined" !== typeof SharedArrayBuffer
 const isArguments: IsKind = (_v, tag) => tag === "[object Arguments]"
 const isPlainObject: IsKind = (_v, tag) => tag === "[object Object]"
 
-// Order matters only where kinds overlap: an Error subclass carries the
-// Error slot and nothing else, and ArrayBuffer.isView() answers for the
-// typed arrays and DataView together before their brand tells them apart.
-const kinds: [Kind, IsKind][] = [
-    ["error", v => isError(v)],
-    ["url", isURL],
-    ["date", isDate],
-    ["regexp", isRegExp],
-    ["boolean", isBooleanObject],
-    ["number", isNumberObject],
-    ["string", isStringObject],
-    ["bigint", isBigIntObject],
-    ["map", isMap],
-    ["set", isSet],
-    ["arraybuffer", isArrayBuffer],
-    ["sharedarraybuffer", isSharedArrayBuffer],
-    ["dataview", v => ArrayBuffer.isView(v) && isDataView(v)],
-    ["typedarray", v => ArrayBuffer.isView(v) && isTypedArray(v)],
-    ["array", v => Array.isArray(v)],
-    ["arguments", isArguments],
-    ["object", isPlainObject],
-]
+// --- what each kind keeps outside its own enumerable properties ----------
 
-// "other" is any kind this has no comparison for: WeakMap, Promise, a
-// class instance with its own tag. Only a shared reference is equal then,
-// which the identity check before the kinds already answered.
-const kindOf = (v: object, tag: string): Kind => kinds.find(([, is]) => is(v, tag))?.[0] ?? "other"
+// Answers false when that part differs, which settles the comparison.
+// true means only that this part agrees: the walk over the own enumerable
+// properties still follows for every kind, as it does in node, so a Date
+// or a buffer with an extra property attached is still told apart.
+type SameKind = (a: object, b: object, memo: Memo) => boolean
 
-// --- collections ---------------------------------------------------------
+// Read through the intrinsics: an own property of the same name must not
+// be able to fool the comparison.
+const sameDate: SameKind = (a, b) => Object.is(Date.prototype.getTime.call(a as Date), Date.prototype.getTime.call(b as Date))
 
-// Symbol keys are rare in practice, but cheap enough to walk alongside
-// Object.keys() rather than carve out as a separate scope decision.
-const ownKeys = (v: object, skip: number): PropertyKey[] =>
-    [...Object.keys(v).slice(skip), ...Object.getOwnPropertySymbols(v).filter(s => Object.prototype.propertyIsEnumerable.call(v, s))]
+// lastIndex is own but non-enumerable, so it needs an explicit check.
+const sameRegExp: SameKind = (a, b) =>
+    regExpSource.call(a as never) === regExpSource.call(b as never) &&
+    regExpFlags.call(a as never) === regExpFlags.call(b as never) &&
+    (a as RegExp).lastIndex === (b as RegExp).lastIndex
+
+// Boolean and Number wrap a primitive no own key exposes; String's
+// characters are own enumerable indices already, so for it this only adds
+// the value check the walk would not make on its own.
+const sameBoolean: SameKind = (a, b) => Object.is(Boolean.prototype.valueOf.call(a as Boolean), Boolean.prototype.valueOf.call(b as Boolean))
+const sameNumber: SameKind = (a, b) => Object.is(Number.prototype.valueOf.call(a as Number), Number.prototype.valueOf.call(b as Number))
+const sameString: SameKind = (a, b) => String.prototype.valueOf.call(a as String) === String.prototype.valueOf.call(b as String)
+
+// Where the global is missing nothing can carry the tag either, so the
+// row it belongs to is never reached.
+const sameBigInt: SameKind | undefined = "undefined" !== typeof BigInt
+    ? (a, b) => Object.is(BigInt.prototype.valueOf.call(a as BigInt), BigInt.prototype.valueOf.call(b as BigInt))
+    : undefined
+
+const sameURL: SameKind = (a, b) => (a as URL).href === (b as URL).href
 
 // has() (SameValueZero) clears out primitives and same-reference elements
 // in O(1) each; only what still needs a real deep comparison - normally
 // nothing, for a Set of primitives - reaches the O(n^2) match below.
-const sameSet = (a: Set<unknown>, b: Set<unknown>, memo: Memo): boolean => {
-    if (a.size !== b.size) return false
-    const leftoverB = new Set(b)
-    const leftoverA = [...a].filter(av => !leftoverB.delete(av))
+const sameSet: SameKind = (a, b, memo) => {
+    const left = a as Set<unknown>
+    const right = b as Set<unknown>
+    if (left.size !== right.size) return false
+    const leftoverB = new Set(right)
+    const leftoverA = [...left].filter(av => !leftoverB.delete(av))
     const remaining = [...leftoverB]
     return leftoverA.every(av => {
         const i = remaining.findIndex(bv => isDeepEqual(av, bv, memo))
@@ -108,10 +108,12 @@ const sameSet = (a: Set<unknown>, b: Set<unknown>, memo: Memo): boolean => {
     })
 }
 
-const sameMap = (a: Map<unknown, unknown>, b: Map<unknown, unknown>, memo: Memo): boolean => {
-    if (a.size !== b.size) return false
-    const leftoverB = new Map(b)
-    const leftoverA = [...a].filter(([ak, av]) => {
+const sameMap: SameKind = (a, b, memo) => {
+    const left = a as Map<unknown, unknown>
+    const right = b as Map<unknown, unknown>
+    if (left.size !== right.size) return false
+    const leftoverB = new Map(right)
+    const leftoverA = [...left].filter(([ak, av]) => {
         if (!leftoverB.has(ak) || !Object.is(leftoverB.get(ak), av)) return true
         leftoverB.delete(ak)
         return false
@@ -125,7 +127,7 @@ const sameMap = (a: Map<unknown, unknown>, b: Map<unknown, unknown>, memo: Memo)
     })
 }
 
-const sameError = (a: Error, b: Error, memo: Memo): boolean => {
+const sameError: SameKind = (a, b, memo) => {
     const left = a as Error & {cause?: unknown, errors?: unknown}
     const right = b as Error & {cause?: unknown, errors?: unknown}
     if (left.name !== right.name || left.message !== right.message) return false
@@ -137,7 +139,61 @@ const sameError = (a: Error, b: Error, memo: Memo): boolean => {
     return !("errors" in left) || isDeepEqual(left.errors, right.errors, memo)
 }
 
+const sameBuffer: SameKind = (a, b) => sameArrayBuffer(a as ArrayBufferLike, b as ArrayBufferLike)
+const sameView: SameKind = (a, b) => sameDataView(a as DataView, b as DataView)
+const sameBytes: SameKind = (a, b) => sameTypedArray(a as ArrayBufferView, b as ArrayBufferView)
+
+// The loose typed array comparison: the elements are compared by value
+// through the walk that follows, so +0 meets -0 and every NaN meets every
+// other, and only the length is settled here - through the intrinsic, as
+// the bytes are, so a subclass cannot report a length of its own.
+const sameViewLength: SameKind = (a, b) => typedArrayLength.call(a as ArrayBufferView) === typedArrayLength.call(b as ArrayBufferView)
+
+// length is not enumerable, so the walk would miss it.
+const sameLength: SameKind = (a, b) => (a as {length: unknown}).length === (b as {length: unknown}).length
+
+// --- the table -----------------------------------------------------------
+
+// One row per kind: how it is recognised, then what it compares of its
+// own under strict, then under loose. The loose column is written only
+// where loose compares differently; otherwise the strict one serves both.
+// A kind with nothing outside its own enumerable properties (a plain
+// object) has no comparison of its own and goes straight to the walk.
+type Row = [Kind, IsKind, SameKind?, SameKind?]
+
+// Order matters only where kinds overlap: an Error subclass carries the
+// Error slot and nothing else.
+const kinds: Row[] = [
+    ["error", isError, sameError],
+    ["url", isURL, sameURL],
+    ["date", isDate, sameDate],
+    ["regexp", isRegExp, sameRegExp],
+    ["boolean", isBooleanObject, sameBoolean],
+    ["number", isNumberObject, sameNumber],
+    ["string", isStringObject, sameString],
+    ["bigint", isBigIntObject, sameBigInt],
+    ["map", isMap, sameMap],
+    ["set", isSet, sameSet],
+    ["arraybuffer", isArrayBuffer, sameBuffer],
+    ["sharedarraybuffer", isSharedArrayBuffer, sameBuffer],
+    ["dataview", isDataView, sameView],
+    ["typedarray", isTypedArray, sameBytes, sameViewLength],
+    ["array", Array.isArray, sameLength],
+    ["arguments", isArguments, sameLength],
+    ["object", isPlainObject],
+]
+
+// No row is any kind this has no comparison for: WeakMap, Promise, a class
+// instance with its own tag. Only a shared reference is equal then, which
+// the identity check before the kinds already answered.
+const rowOf = (v: object, tag: string): Row | undefined => kinds.find(([, is]) => is(v, tag))
+
 // --- the comparison ------------------------------------------------------
+
+// Symbol keys are rare in practice, but cheap enough to walk alongside
+// Object.keys() rather than carve out as a separate scope decision.
+const ownKeys = (v: object, skip: number): PropertyKey[] =>
+    [...Object.keys(v).slice(skip), ...Object.getOwnPropertySymbols(v).filter(s => Object.prototype.propertyIsEnumerable.call(v, s))]
 
 // Stamps each (left, right) pair by the order it was first entered. A
 // revisit is equal only if the right side carries the same stamp - the
@@ -158,8 +214,8 @@ export const looseSame = (a: unknown, b: unknown): boolean => a == b || (Number.
 // Strict is node's deepStrictEqual: Object.is for primitives, a shared
 // prototype, own enumerable string and symbol keys. Loose is its deepEqual:
 // == for primitives, the prototype ignored, symbol keys not walked. The
-// kinds, Error fields, Date/RegExp/wrapper values and the key walk itself
-// are shared by both.
+// kinds, what each kind compares of its own, and the key walk itself are
+// shared by both.
 const isDeepEqual = (a: unknown, b: unknown, memo: Memo): boolean => {
     if (Object.is(a, b)) return true
     if (a == null || b == null || "object" !== typeof a || "object" !== typeof b) {
@@ -174,8 +230,11 @@ const isDeepEqual = (a: unknown, b: unknown, memo: Memo): boolean => {
     const tagA = toTag(a)
     const tagB = toTag(b)
     if (tagA !== tagB) return false
-    const kind = kindOf(a, tagA)
-    if (kind !== kindOf(b, tagB) || kind === "other") return false
+    const row = rowOf(a, tagA)
+    if (row == null) return false
+    const [kind, , sameStrict, sameLoose] = row
+    if (kind !== rowOf(b, tagB)?.[0]) return false
+    const same = memo.strict ? sameStrict : sameLoose ?? sameStrict
 
     // Stamped before recursing into anything below - including an Error's
     // cause chain - so a cycle reached through any path is still caught.
@@ -187,65 +246,19 @@ const isDeepEqual = (a: unknown, b: unknown, memo: Memo): boolean => {
     memo.left.set(a, position)
     memo.right.set(b, position)
 
-    // Under strict, own enumerable symbol keys count like string keys, on a
-    // typed array or a boxed primitive as much as on plain data. The one
-    // exception is a builtin that exposes engine-internal state through
-    // such a symbol (observed on URL, Node 18.x vs 24.x).
-    let symbolAware = memo.strict
-
-    // How many leading own keys the walk below may skip, once the kind's
-    // own comparison has already covered what those keys stand for.
-    let skip = 0
-
     try {
-        if (kind === "error") {
-            if (!sameError(a as Error, b as Error, memo)) return false
-        } else if (kind === "url") {
-            if ((a as URL).href !== (b as URL).href) return false
-            symbolAware = false
-        } else if (kind === "date") {
-            // Read through the intrinsic: an own property of the same
-            // name must not be able to fool the comparison.
-            if (!Object.is(Date.prototype.getTime.call(a), Date.prototype.getTime.call(b))) return false
-        } else if (kind === "regexp") {
-            // source and flags likewise. lastIndex is own but
-            // non-enumerable, so it needs an explicit check of its own.
-            if (regExpSource.call(a as never) !== regExpSource.call(b as never)) return false
-            if (regExpFlags.call(a as never) !== regExpFlags.call(b as never)) return false
-            if ((a as RegExp).lastIndex !== (b as RegExp).lastIndex) return false
-        } else if (kind === "boolean") {
-            if (!Object.is(Boolean.prototype.valueOf.call(a), Boolean.prototype.valueOf.call(b))) return false
-        } else if (kind === "number") {
-            if (!Object.is(Number.prototype.valueOf.call(a), Number.prototype.valueOf.call(b))) return false
-        } else if (kind === "string") {
-            // The one wrapper whose characters are already own
-            // enumerable indices; still read through the intrinsic.
-            if (String.prototype.valueOf.call(a) !== String.prototype.valueOf.call(b)) return false
-        } else if (kind === "bigint") {
-            if (!Object.is(BigInt.prototype.valueOf.call(a), BigInt.prototype.valueOf.call(b))) return false
-        } else if (kind === "map") {
-            if (!sameMap(a as Map<unknown, unknown>, b as Map<unknown, unknown>, memo)) return false
-        } else if (kind === "set") {
-            if (!sameSet(a as Set<unknown>, b as Set<unknown>, memo)) return false
-        } else if (kind === "arraybuffer" || kind === "sharedarraybuffer") {
-            if (!sameArrayBuffer(a as ArrayBufferLike, b as ArrayBufferLike)) return false
-        } else if (kind === "dataview") {
-            if (!sameDataView(a as DataView, b as DataView)) return false
-        } else if (kind === "typedarray") {
-            if (memo.strict) {
-                if (!sameTypedArray(a as ArrayBufferView, b as ArrayBufferView)) return false
-                // The indices are settled by the bytes, and Object.keys()
-                // lists them first: only a property attached on top is left.
-                skip = typedArrayLength.call(a as ArrayBufferView)
-            } else if (typedArrayLength.call(a as ArrayBufferView) !== typedArrayLength.call(b as ArrayBufferView)) {
-                // Loose compares the elements by value through the key
-                // walk below, so +0 meets -0 and every NaN meets every other.
-                return false
-            }
-        } else if (kind === "array" || kind === "arguments") {
-            // length is not enumerable, so the walk below would miss it.
-            if ((a as {length: unknown}).length !== (b as {length: unknown}).length) return false
-        }
+        if (same != null && !same(a, b, memo)) return false
+
+        // Under strict, own enumerable symbol keys count like string keys,
+        // on a typed array or a boxed primitive as much as on plain data.
+        // The one exception is a builtin that exposes engine-internal state
+        // through such a symbol (observed on URL, Node 18.x vs 24.x).
+        const symbolAware = memo.strict && kind !== "url"
+
+        // A typed array's indices are settled by the bytes under strict, and
+        // Object.keys() lists them first: only a property attached on top
+        // is left to walk.
+        const skip = kind === "typedarray" && memo.strict ? typedArrayLength.call(a as ArrayBufferView) : 0
 
         const other = b as Record<PropertyKey, unknown>
         const keysA = symbolAware ? ownKeys(a, skip) : Object.keys(a).slice(skip)
