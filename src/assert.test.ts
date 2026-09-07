@@ -49,6 +49,57 @@ describe(TITLE, () => {
         assert.doesNotThrow(() => TAL.strict.notEqual(1, 2))
         assert.throws(() => TAL.strict.notEqual(1, 1), /expected not 1/)
     })
+
+    // node's `assert` (as opposed to `assert.strict`) compares with ==,
+    // NaN still equal to itself; the *StrictEqual names stay strict there.
+    it("assert compares loosely in equal / notEqual, strictly in strictEqual", () => {
+        assert.doesNotThrow(() => TAL.assert.equal(1, "1"))
+        assert.doesNotThrow(() => TAL.assert.equal(0, -0))
+        assert.doesNotThrow(() => TAL.assert.equal(null, undefined))
+        assert.doesNotThrow(() => TAL.assert.equal(NaN, NaN))
+        assert.throws(() => TAL.assert.equal(1, "2"), /expected "2", got 1/)
+        assert.throws(() => TAL.assert.notEqual(1, "1"), /expected not "1"/)
+        assert.doesNotThrow(() => TAL.assert.notEqual(1, 2))
+
+        assert.throws(() => TAL.assert.strictEqual(1, "1"))
+        assert.doesNotThrow(() => TAL.assert.notStrictEqual(1, "1"))
+        assert.equal(TAL.assert.strictEqual, TAL.strict.equal)
+        assert.equal(TAL.assert.deepStrictEqual, TAL.strict.deepEqual)
+    })
+
+    it("assert reaches the same loose deepEqual, and the strict one by its name", () => {
+        assert.doesNotThrow(() => TAL.assert.deepEqual({a: 1}, {a: "1"}))
+        assert.throws(() => TAL.assert.deepStrictEqual({a: 1}, {a: "1"}), /deep-equal/)
+        assert.throws(() => TAL.assert.notDeepEqual({a: 1}, {a: "1"}), /expected not to deep-equal/)
+    })
+
+    // Both callables work as ok, and both lead to the strict one via .strict.
+    it("assert is callable like strict, and .strict leads to strict from either", () => {
+        assert.doesNotThrow(() => TAL.assert(1))
+        assert.throws(() => TAL.assert(0), /expected truthy/)
+        assert.equal(TAL.assert.strict, TAL.strict)
+        assert.equal(TAL.strict.strict, TAL.strict)
+        assert.notEqual(TAL.assert, TAL.strict)
+    })
+
+    // Everything that has no loose counterpart is the very same function.
+    it("assert and strict share fail / throws / match / ok / ifError", () => {
+        assert.equal(TAL.assert.fail, TAL.strict.fail)
+        assert.equal(TAL.assert.throws, TAL.strict.throws)
+        assert.equal(TAL.assert.doesNotThrow, TAL.strict.doesNotThrow)
+        assert.equal(TAL.assert.match, TAL.strict.match)
+        assert.equal(TAL.assert.doesNotMatch, TAL.strict.doesNotMatch)
+        assert.equal(TAL.assert.ok, TAL.strict.ok)
+        assert.equal(TAL.assert.ifError, TAL.strict.ifError)
+    })
+
+    it("the loose failures name the loose operators", () => {
+        const operator = (fn: () => void): string | undefined => (catchError(fn) as {operator?: string} | undefined)?.operator
+        assert.equal(operator(() => TAL.assert.equal(1, 2)), "equal")
+        assert.equal(operator(() => TAL.assert.notEqual(1, 1)), "notEqual")
+        assert.equal(operator(() => TAL.strict.equal(1, 2)), "strictEqual")
+        assert.equal(operator(() => TAL.strict.notEqual(1, 1)), "notStrictEqual")
+    })
     it("match and doesNotMatch", () => {
         assert.doesNotThrow(() => TAL.strict.match("abc", /b/))
         assert.throws(() => TAL.strict.match("abc", /z/), /did not match/)

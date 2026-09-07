@@ -18,6 +18,7 @@ void runtime
 test("require entry", () => {
     const m: typeof declared = require("test-assert-lite")
     assert.equal(typeof m.after, "function")
+    assert.equal(typeof m.assert, "function")
     assert.equal(typeof m.before, "function")
     assert.equal(typeof m.createTAL, "function")
     assert.equal(typeof m.describe, "function")
@@ -34,6 +35,7 @@ test("require entry", () => {
 test("minified entry (.min.js)", () => {
     const m: typeof declared = require(path.join(path.dirname(require.resolve("test-assert-lite")), "test-assert-lite.min.js"))
     assert.equal(typeof m.after, "function")
+    assert.equal(typeof m.assert, "function")
     assert.equal(typeof m.before, "function")
     assert.equal(typeof m.createTAL, "function")
     assert.equal(typeof m.describe, "function")
@@ -47,6 +49,7 @@ test("minified entry (.min.js)", () => {
 
 test("import entry (.mjs)", () => {
     assert.equal(typeof m.after, "function")
+    assert.equal(typeof m.assert, "function")
     assert.equal(typeof m.before, "function")
     assert.equal(typeof m.createTAL, "function")
     assert.equal(typeof m.describe, "function")
@@ -69,6 +72,9 @@ test("static variants", () => {
 
 // `strict` doubles as `ok`, so the assertion helpers hang off the function.
 test("assert surface", () => {
+    assert.equal(typeof m.assert.ok, "function")
+    assert.equal(typeof m.assert.deepEqual, "function")
+    assert.equal(m.assert.strict, m.strict)
     assert.equal(typeof m.strict.ok, "function")
     assert.equal(typeof m.strict.equal, "function")
     assert.equal(typeof m.strict.notEqual, "function")
@@ -104,6 +110,7 @@ test("createTAL returns the same shape", () => {
     assert.equal(typeof h.it, "function")
     assert.equal(typeof h.before, "function")
     assert.equal(typeof h.after, "function")
+    assert.equal(typeof h.assert, "function")
     assert.equal(typeof h.run, "function")
     assert.equal(typeof h.reporter, "object")
     assert.equal(typeof h.strict, "function")

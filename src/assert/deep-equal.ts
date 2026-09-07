@@ -64,7 +64,7 @@ const isPrimitive = (v: unknown): boolean => v == null || "object" !== typeof v
 
 // Two non-objects under the loose rules: ==, except that NaN equals
 // itself, the way node's deepEqual (and its equal) treats it.
-const looseSame = (a: unknown, b: unknown): boolean => a == b || (Number.isNaN(a) && Number.isNaN(b))
+export const looseSame = (a: unknown, b: unknown): boolean => a == b || (Number.isNaN(a) && Number.isNaN(b))
 
 // Strict is node's deepStrictEqual: Object.is for primitives, a shared
 // prototype, own enumerable string and symbol keys. Loose is its deepEqual:
@@ -217,5 +217,3 @@ export const deepEqualPair = (strict: boolean): {deepEqual: DeepAssertion, notDe
 
     return {deepEqual, notDeepEqual}
 }
-
-export const {deepEqual, notDeepEqual} = deepEqualPair(true)

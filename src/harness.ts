@@ -14,6 +14,7 @@ export const createTAL: typeof declared.createTAL = () => {
 
     return {
         after,
+        assert: assert.assert,
         before,
         describe: suite,
         it: test,

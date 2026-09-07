@@ -17,6 +17,7 @@ describe(TITLE, () => {
         assert.equal(typeof local.after, "function")
         assert.equal(typeof local.run, "function")
         assert.equal(typeof local.reporter, "object")
+        assert.equal(typeof local.assert, "function")
         assert.equal(typeof local.strict, "function")
     })
 

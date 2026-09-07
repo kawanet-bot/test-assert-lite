@@ -1,6 +1,6 @@
 import type * as declared from "test-assert-lite"
 import {AssertionError} from "./assert/assertion-error.ts"
-import {deepEqual, notDeepEqual} from "./assert/deep-equal.ts"
+import {deepEqualPair, looseSame} from "./assert/deep-equal.ts"
 import {doesNotThrow, throws} from "./assert/throws.ts"
 import {isError} from "./common/is-error.ts"
 import {stringify} from "./common/stringify.ts"
@@ -16,29 +16,41 @@ const ok: declared.TAL.Assert["ok"] = (value, message) => {
     })
 }
 
-// This is the strict flavour, so equal compares with Object.is: NaN equals
-// NaN, and 0 differs from -0.
-const equal = (actual: unknown, expected: unknown, message?: string | Error): void => {
-    if (Object.is(actual, expected)) return
-    if (isError(message)) throw message
+type Equality = (actual: unknown, expected: unknown, message?: string | Error) => void
 
-    // Keep the values even when a message is given: without them there is
-    // nothing to start from. node:assert does this for strictEqual alone.
-    const detail = `expected ${stringify(expected)}, got ${stringify(actual)}`
-    throw new AssertionError({
-        message: message == null ? detail : `${message}\n\n${detail}`,
-        actual, expected, operator: "strictEqual",
-    })
+// Strict compares with Object.is: NaN equals NaN, and 0 differs from -0.
+// Loose compares with ==, NaN still equal to itself, as node's equal does.
+const equalPair = (strict: boolean): {equal: Equality, notEqual: Equality} => {
+    const same = strict ? Object.is : looseSame
+
+    const equal: Equality = (actual, expected, message) => {
+        if (same(actual, expected)) return
+        if (isError(message)) throw message
+
+        // Keep the values even when a message is given: without them there
+        // is nothing to start from. node:assert does this for strictEqual alone.
+        const detail = `expected ${stringify(expected)}, got ${stringify(actual)}`
+        throw new AssertionError({
+            message: message == null ? detail : `${message}\n\n${detail}`,
+            actual, expected, operator: strict ? "strictEqual" : "equal",
+        })
+    }
+
+    const notEqual: Equality = (actual, expected, message) => {
+        if (!same(actual, expected)) return
+        if (isError(message)) throw message
+        throw new AssertionError({
+            message: message ?? `expected not ${stringify(expected)}`,
+            actual, expected, operator: strict ? "notStrictEqual" : "notEqual",
+        })
+    }
+
+    return {equal, notEqual}
 }
 
-const notEqual = (actual: unknown, expected: unknown, message?: string | Error): void => {
-    if (!Object.is(actual, expected)) return
-    if (isError(message)) throw message
-    throw new AssertionError({
-        message: message ?? `expected not ${stringify(expected)}`,
-        actual, expected, operator: "notStrictEqual",
-    })
-}
+// The four assertions that come in a strict and a loose flavour; the
+// strict ones also serve as the *StrictEqual names of both.
+const flavour = (strict: boolean) => ({...equalPair(strict), ...deepEqualPair(strict)})
 
 const match = (value: string, regExp: RegExp, message?: string | Error): void => {
     if (regExp.test(value)) return
@@ -61,12 +73,17 @@ const doesNotMatch = (value: string, regExp: RegExp, message?: string | Error): 
 // The assertions hold no state, so they sit at module level and the factory
 // only assembles them. Options such as a diff mode would enter here.
 export interface AssertControl {
+    // node's `assert`: equal / deepEqual are the loose ones.
+    assert: declared.TAL.Assert
+    // node's `assert.strict`: the same names, all strict.
     strict: declared.TAL.Assert
     methods: declared.TAL.AssertMethods
 }
 
 export const createAssert = (): AssertControl => {
-    const base = {
+    const strictOnly = flavour(true)
+
+    const shared = {
         fail: (message?: string | Error): never => {
             if (isError(message)) throw message
             throw new AssertionError({
@@ -74,14 +91,10 @@ export const createAssert = (): AssertControl => {
                 operator: "fail",
             })
         },
-        equal,
-        notEqual,
-        deepEqual,
-        notDeepEqual,
-        strictEqual: equal,
-        notStrictEqual: notEqual,
-        deepStrictEqual: deepEqual,
-        notDeepStrictEqual: notDeepEqual,
+        strictEqual: strictOnly.equal,
+        notStrictEqual: strictOnly.notEqual,
+        deepStrictEqual: strictOnly.deepEqual,
+        notDeepStrictEqual: strictOnly.notDeepEqual,
         throws,
         doesNotThrow,
         match,
@@ -97,14 +110,21 @@ export const createAssert = (): AssertControl => {
     }
 
     // For t.assert. Here ok / ifError are plain checks, not assertion signatures.
-    const methods: declared.TAL.AssertMethods = {...base, ok, ifError}
+    const methods: declared.TAL.AssertMethods = {...shared, ...strictOnly, ok, ifError}
 
-    // The node:assert/strict shape, where the module itself works as ok.
-    const strict: declared.TAL.Assert = Object.assign(
+    // The node:assert shape, where the module itself works as ok.
+    const callable = (own: ReturnType<typeof flavour>): declared.TAL.Assert => Object.assign(
         ((value: unknown, message?: string | Error) => ok(value, message)) as declared.TAL.Assert,
-        base,
+        shared,
+        own,
         {ok, ifError: ifError as declared.TAL.Assert["ifError"]},
     )
 
-    return {strict, methods}
+    const strict = callable(strictOnly)
+    const assert = callable(flavour(false))
+    // As in node, `.strict` leads to the strict one from either.
+    assert.strict = strict
+    strict.strict = strict
+
+    return {assert, strict, methods}
 }
