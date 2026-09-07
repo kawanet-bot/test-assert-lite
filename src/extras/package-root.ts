@@ -1,5 +1,5 @@
 // The package root as a file: URL ending in "/", found by walking up from
-// wherever this code runs, src/cli/ or dist/, to the package.json that
+// wherever this code runs, src/extras/ or dist/, to the package.json that
 // carries this package's name. What the CLI serves or resolves hangs off
 // it, so a suite anywhere on disk still lands on this copy of the package.
 

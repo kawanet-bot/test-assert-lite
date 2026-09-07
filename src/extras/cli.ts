@@ -7,9 +7,9 @@
 
 import {resolve} from "node:path"
 import {parseArgs} from "node:util"
-import {runInBrowser} from "../../browser/playwright.mjs"
 import {startApp} from "./app.ts"
 import {runInNode} from "./node.ts"
+import {runInBrowser} from "./playwright.mjs"
 
 const USAGE = `Usage: test-assert [options] <file...>
   --chromium                  run the suite in headless Chromium through Playwright

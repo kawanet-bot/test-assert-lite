@@ -47,11 +47,11 @@ install-browser: install-playwright
 # `make -C browser test` works from a clean checkout. It is cheap once
 # Playwright and the browser are present (see LAUNCHABLE).
 test: install all
-	cd .. && node src/cli/test-assert-lite.cli.ts --chromium browser/tests/bundled.mjs
+	cd .. && node src/extras/cli.ts --chromium browser/tests/bundled.mjs
 
 # The same bundle for a person: prints the URL and serves until Ctrl-C.
 serve: all
-	cd .. && node src/cli/test-assert-lite.cli.ts --serve browser/tests/bundled.mjs
+	cd .. && node src/extras/cli.ts --serve browser/tests/bundled.mjs
 
 # Browser bundle cleanup remains owned by builder/Makefile.
 clean:

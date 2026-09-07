@@ -12,7 +12,7 @@ const stripShebang = (): Plugin => ({
 })
 
 const rollupConfig: RollupOptions = {
-    input: "../src/cli/test-assert-lite.cli.ts",
+    input: "../src/extras/cli.ts",
 
     // Every bare import stays external, the package's own name among
     // them; that one is rewritten below.
