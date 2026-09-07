@@ -5,19 +5,18 @@ import type {RollupOptions} from "rollup"
 import {showFiles} from "./show-files.ts"
 
 // Self-eating build: the suites are written against `node:test` and
-// `node:assert`, and this config points those at the package itself, so the
-// bundle exercises the library with the library.
+// `node:assert`, and the CLI that runs this bundle points both at the
+// package itself through a resolve hook, so they stay as written here and
+// the bundle exercises the library with the library.
 const rollupConfig: RollupOptions = {
     // src/cli/ tests exercise Node-only code such as the HTTP server, and
     // this bundle runs under the package's own CLI, so they stay out.
     input: ["../src/**/*.test.ts", "!../src/cli/*"],
 
-    // Only the package name stays external, plus the builtins a suite
-    // reaches for directly that are not aliased away. A regular expression
-    // such as /^[^./]/ would externalise `node:test` before the alias
-    // plugin runs, leaving the suites bound to the real runner without any
-    // warning.
-    external: ["test-assert-lite", "node:module", "node:path"],
+    // Left to the CLI's hook, plus the builtins a suite reaches for
+    // directly. Listed by name rather than by pattern so the alias below
+    // still sees the relative entry imports first.
+    external: ["test-assert-lite", "node:test", "node:assert", "node:module", "node:path"],
 
     output: {
         file: "./tests/bundled.mjs",
@@ -29,14 +28,12 @@ const rollupConfig: RollupOptions = {
     treeshake: false,
 
     plugins: [
+        // The suites reach the subject by relative path so they run on the
+        // sources directly under `node --test`. Only the entry is matched,
+        // whatever directory the suite sits in: anything else stays inlined,
+        // which is what src/test-utils/ needs.
         alias({
             entries: [
-                {find: "node:test", replacement: "test-assert-lite"},
-                {find: "node:assert", replacement: "test-assert-lite"},
-                // The suites reach the subject by relative path so they run on
-                // the sources directly under `node --test`. Only the entry is
-                // matched, whatever directory the suite sits in: anything else
-                // stays inlined, which is what src/test-utils/ needs.
                 {find: /^(\.\.?\/)+index\.ts$/, replacement: "test-assert-lite"},
             ],
         }),

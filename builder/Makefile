@@ -41,9 +41,9 @@ MJS_MAX_BYTES := 70000
 MINJS_MAX_BYTES := 25000
 
 # The CLI externalizes both the library and Node builtins (see
-# rollup-cli.config.ts), so it carries little more than argv handling and
-# the load-then-run loop.
-CLI_MAX_BYTES := 2000
+# rollup-cli.config.ts), so it carries little more than argv handling, the
+# inline resolve hook and the load-then-run loop.
+CLI_MAX_BYTES := 3000
 
 # Shared by both test bundles, which inline the same suites while the
 # package itself stays external. Development-only output, never published,
@@ -120,8 +120,9 @@ $(BROWSER_TEST_DST): $(BROWSER_TEST_CONFIG) $(SRC) $(BUILDER_SRC) $(TEST_SRC) $(
 	@test "$$(wc -c < $@)" -le $(TEST_MAX_BYTES) || { echo "ERROR: $@ exceeds $(TEST_MAX_BYTES) byte cap" >&2; exit 1; }
 	@echo ""
 
-# Bundle of the test suites with node:test and node:assert aliased to this
-# package, so the suites exercise the library with the library.
+# Bundle of the test suites with node:test and node:assert left as
+# written: the CLI's resolve hook points both at this package, so the
+# suites exercise the library with the library.
 $(BUILDER_TEST_DST): $(BUILDER_TEST_CONFIG) $(SRC) $(BUILDER_SRC) $(TEST_SRC) $(TYPES) $(MJS_DST)
 	@mkdir -p $(dir $@)
 	../node_modules/.bin/rollup -c $<
