@@ -1,8 +1,6 @@
-#!/usr/bin/env node
-
-// The test runner. By default the suites run in this Node process;
-// --chromium runs them in headless Chromium through Playwright, and
-// --serve hands the same page to a person. Directory search and glob
+// The command line as a function. By default the suites run in this Node
+// process; --chromium runs them in headless Chromium through Playwright,
+// and --serve hands the same page to a person. Directory search and glob
 // expansion are left to the shell: only explicit file names are accepted.
 
 import {resolve} from "node:path"
@@ -11,6 +9,11 @@ import {startApp} from "./app.ts"
 import {runInNode} from "./node.ts"
 import {runInBrowser} from "./playwright.mjs"
 
+export interface CLIOptions {
+    /** The arguments as the executable gets them: process.argv.slice(2). */
+    args: string[]
+}
+
 const USAGE = `Usage: test-assert [options] <file...>
   --chromium                  run the suite in headless Chromium through Playwright
   --serve                     serve the suite for a browser and print the URL
@@ -18,19 +21,18 @@ const USAGE = `Usage: test-assert [options] <file...>
   --alias <specifier>=<file>  ES module a bare specifier resolves to (browser modes, repeatable)
 `
 
-const fail = (message?: string): never => {
-    if (message != null) process.stderr.write(`${message}\n`)
-    process.stderr.write(USAGE)
-    process.exit(1)
+// Wrong arguments end in the usage text and exit code 1, after the reason
+// when there is one to give.
+class UsageError extends Error {
 }
 
 // parseArgs settles the flag forms (--x=v, -h, --) and rejects a flag this
 // CLI does not know rather than taking it for a file name; its wording on
 // such an error gives way to the usage text.
-const parse = () => {
+const parse = (args: string[]) => {
     try {
         return parseArgs({
-            args: process.argv.slice(2),
+            args,
             options: {
                 chromium: {type: "boolean", default: false},
                 serve: {type: "boolean", default: false},
@@ -41,38 +43,40 @@ const parse = () => {
             allowPositionals: true,
         })
     } catch {
-        return fail()
+        throw new UsageError()
     }
 }
 
-const {values, positionals: files} = parse()
+const main = async (args: string[]): Promise<number> => {
+    const {values, positionals: files} = parse(args)
 
-if (values.help) {
-    process.stdout.write(USAGE)
-    process.exit(0)
-}
+    if (values.help) {
+        process.stdout.write(USAGE)
+        return 0
+    }
 
-// A browser run takes one suite: several entries would each get their own
-// mount, and a module shared between them would load once per mount as a
-// separate instance. Bundle first, as the project's own suites are.
-const browser = values.chromium || values.serve
-if (values.chromium && values.serve) fail("--chromium and --serve are exclusive")
-if (!browser && (values.script.length || values.alias.length)) fail("--script and --alias apply to --chromium and --serve only")
-if (browser ? files.length !== 1 : !files.length) fail()
+    // A browser run takes one suite: several entries would each get their
+    // own mount, and a module shared between them would load once per
+    // mount as a separate instance. Bundle first, as this package's are.
+    const browser = values.chromium || values.serve
+    if (values.chromium && values.serve) throw new UsageError("--chromium and --serve are exclusive")
+    if (!browser && (values.script.length || values.alias.length)) throw new UsageError("--script and --alias apply to --chromium and --serve only")
+    if (browser ? files.length !== 1 : !files.length) throw new UsageError()
 
-if (!browser) {
-    // The resolve hook only sees ESM resolution; a require() bypasses it
-    // and registers with Node's own runner. Suites are ES modules, so
-    // refuse the extensions that can only be CommonJS up front.
-    const commonjs = files.filter(file => /\.c[jt]s$/.test(file))
-    if (commonjs.length) fail(`CommonJS suites are not supported: ${commonjs.join(", ")}`)
+    if (!browser) {
+        // The resolve hook only sees ESM resolution; a require() bypasses
+        // it and registers with Node's own runner. Suites are ES modules,
+        // so refuse the extensions that can only be CommonJS up front.
+        const commonjs = files.filter(file => /\.c[jt]s$/.test(file))
+        if (commonjs.length) throw new UsageError(`CommonJS suites are not supported: ${commonjs.join(", ")}`)
 
-    process.exitCode = (await runInNode(files)).success ? 0 : 1
-} else {
+        return (await runInNode(files)).success ? 0 : 1
+    }
+
     // Each --alias is `<specifier>=<file>`, split at the first "=".
     const aliases = values.alias.map(entry => {
         const at = entry.indexOf("=")
-        if (at < 1 || at === entry.length - 1) fail(`--alias takes <specifier>=<file>: ${entry}`)
+        if (at < 1 || at === entry.length - 1) throw new UsageError(`--alias takes <specifier>=<file>: ${entry}`)
         return {specifier: entry.slice(0, at), file: resolve(entry.slice(at + 1))}
     })
     const app = await startApp({
@@ -82,24 +86,40 @@ if (!browser) {
     })
 
     if (values.serve) {
-        // Only the URL goes to stdout, so it can be piped. Stays up until
-        // interrupted.
+        // Only the URL goes to stdout, so it can be piped. The server keeps
+        // the process alive until an interrupt, which resolves this.
         process.stdout.write(`${app.origin}/\n`)
         process.stderr.write("Serving the suite; press Ctrl-C to stop.\n")
-        process.once("SIGINT", () => app.close())
-    } else {
-        try {
-            const {counts, success} = await runInBrowser({...app, browser: "chromium"})
+        await new Promise<void>(stop => process.once("SIGINT", () => stop()))
+        app.close()
+        return 0
+    }
 
-            // success rather than the counter: a failure outside a test
-            // body, such as a hook that threw, never reaches failed.
-            if (!success) throw new Error(`Reported ${counts.failed} failed test(s)`)
-            if (!counts.tests) throw new Error("Ran no tests")
-        } catch (error: unknown) {
-            console.error(error)
-            process.exitCode = 1
-        } finally {
-            app.close()
-        }
+    try {
+        const {counts, success} = await runInBrowser({...app, browser: "chromium"})
+
+        // success rather than the counter: a failure outside a test body,
+        // such as a hook that threw, never reaches failed.
+        if (!success) throw new Error(`Reported ${counts.failed} failed test(s)`)
+        if (!counts.tests) throw new Error("Ran no tests")
+        return 0
+    } finally {
+        app.close()
+    }
+}
+
+/**
+ * Runs the command line with `args` and resolves to its exit code. Writes
+ * what the command line writes, and rejects with what it could not handle,
+ * but never exits the process: that is the executable's part.
+ */
+export const CLI = async ({args}: CLIOptions): Promise<number> => {
+    try {
+        return await main(args)
+    } catch (error: unknown) {
+        if (!(error instanceof UsageError)) throw error
+        if (error.message) process.stderr.write(`${error.message}\n`)
+        process.stderr.write(USAGE)
+        return 1
     }
 }
