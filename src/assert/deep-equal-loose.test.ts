@@ -135,4 +135,54 @@ describe(TITLE, () => {
         assert.equal(failed(() => loose.notDeepEqual(1, 1)).operator, "notDeepEqual")
         assert.equal(failed(() => strict.deepEqual(1, 2)).operator, "deepStrictEqual")
     })
+
+    // With the prototype out of the picture, a builtin from another realm
+    // (an iframe, a vm context) must still be recognised as its kind on
+    // either side, or the result would depend on the argument order.
+    // Simulated by giving the instance a copy of its prototype that sits
+    // outside the local chain - which is what a foreign realm's instance
+    // looks like from here: `instanceof` says no, the slot is real.
+    it("recognises builtins from another realm on either side", () => {
+        const foreignProto = new Map<object, object>()
+        const foreign = <T extends object>(value: T): T => {
+            const proto = Object.getPrototypeOf(value) as object
+            if (!foreignProto.has(proto)) foreignProto.set(proto, Object.create(Object.prototype, Object.getOwnPropertyDescriptors(proto)) as object)
+            return Object.setPrototypeOf(value, foreignProto.get(proto)!)
+        }
+        const pairs: [string, () => object, () => object][] = [
+            ["Date", () => foreign(new Date(0)), () => new Date(0)],
+            ["RegExp", () => foreign(/a/g), () => /a/g],
+            ["Number", () => foreign(new Number(1)), () => new Number(1)],
+            ["String", () => foreign(new String("x")), () => new String("x")],
+            ["Map", () => foreign(new Map([[1, 2]])), () => new Map([[1, 2]])],
+            ["Set", () => foreign(new Set([1])), () => new Set([1])],
+            ["ArrayBuffer", () => foreign(new Uint8Array([1]).buffer), () => new Uint8Array([1]).buffer],
+            ["URL", () => foreign(new URL("http://x")), () => new URL("http://x")],
+        ]
+        for (const [kind, far, near] of pairs) {
+            assert.equal(far() instanceof near().constructor, false, kind)
+            assert.doesNotThrow(() => loose.deepEqual(far(), near()), kind)
+            assert.doesNotThrow(() => loose.deepEqual(near(), far()), kind)
+        }
+        // The values are still compared, in either order.
+        assert.throws(() => loose.deepEqual(foreign(new Date(0)), new Date(1)), /deep-equal/)
+        assert.throws(() => loose.deepEqual(new Date(1), foreign(new Date(0))), /deep-equal/)
+        assert.throws(() => loose.deepEqual(new Map([[1, 2]]), foreign(new Map([[1, 3]]))), /deep-equal/)
+        // Strict still holds the prototype against it.
+        assert.throws(() => strict.deepEqual(foreign(new Date(0)), new Date(0)), /deep-equal/)
+    })
+
+    // The tag alone can be claimed by any object; without the internal
+    // slot behind it the two are simply different, in either order, and
+    // the failure is an ordinary one rather than the intrinsic's TypeError.
+    it("treats a tag without the slot behind it as a difference, not a TypeError", () => {
+        const claim = (tag: string): object => Object.defineProperty({}, Symbol.toStringTag, {value: tag})
+        assert.throws(() => loose.deepEqual(claim("Date"), new Date(0)), /deep-equal/)
+        assert.throws(() => loose.deepEqual(new Date(0), claim("Date")), /deep-equal/)
+        assert.throws(() => loose.deepEqual(claim("Map"), new Map()), /deep-equal/)
+        assert.throws(() => loose.deepEqual(new Set(), claim("Set")), /deep-equal/)
+        assert.throws(() => loose.deepEqual(claim("RegExp"), /a/), /deep-equal/)
+        // Two claims with nothing behind them are not equal either.
+        assert.throws(() => loose.deepEqual(claim("Date"), claim("Date")), /deep-equal/)
+    })
 })

@@ -5,6 +5,40 @@ import {isDataView, isTypedArray, sameArrayBuffer, sameDataView, sameTypedArray,
 
 const toTag = (v: object): string => Object.prototype.toString.call(v)
 
+// A kind check that holds across realms and cannot be imitated: an
+// intrinsic method or accessor works only on a receiver carrying the
+// matching internal slot, wherever that receiver was created. Reached
+// only once the tag already claims the kind, so a plain object never
+// pays for the throw.
+const branded = <T extends object>(intrinsic: (this: T) => unknown) => (v: object): v is T => {
+    try {
+        intrinsic.call(v as T)
+        return true
+    } catch {
+        return false
+    }
+}
+const getter = (proto: object, name: string): (this: object) => unknown =>
+    Object.getOwnPropertyDescriptor(proto, name)!.get as (this: object) => unknown
+
+const isDate = branded<Date>(Date.prototype.getTime)
+const regExpSource = getter(RegExp.prototype, "source")
+const regExpFlags = getter(RegExp.prototype, "flags")
+const isRegExp = branded<RegExp>(regExpSource)
+const isBoolean = branded<Boolean>(Boolean.prototype.valueOf)
+const isNumber = branded<Number>(Number.prototype.valueOf)
+const isString = branded<String>(String.prototype.valueOf)
+const isBigInt = "undefined" !== typeof BigInt ? branded<BigInt>(BigInt.prototype.valueOf) : (_v: object): _v is BigInt => false
+const isMap = branded<Map<unknown, unknown>>(getter(Map.prototype, "size"))
+const isSet = branded<Set<unknown>>(getter(Set.prototype, "size"))
+const isArrayBuffer = branded<ArrayBuffer>(getter(ArrayBuffer.prototype, "byteLength"))
+const isURL = "undefined" !== typeof URL ? branded<URL>(getter(URL.prototype, "href")) : (_v: object): _v is URL => false
+
+// The tag names the kind cheaply, on both sides at once (they were already
+// compared); the brand check then confirms it. A tag that claims a kind
+// without the slot behind it falls through as not walkable.
+const both = <T extends object>(is: (v: object) => v is T, a: object, b: object): a is T => is(a) && is(b)
+
 // Symbol keys are rare in practice, but cheap enough to walk alongside
 // Object.keys() rather than carve out as a separate scope decision.
 const ownKeys = (v: object, skip: number): PropertyKey[] =>
@@ -123,35 +157,34 @@ const isDeepEqual = (a: unknown, b: unknown, memo: Memo): boolean => {
             // does the same for any Error that happens to carry one.
             if (("errors" in a) !== ("errors" in otherError)) return false
             if ("errors" in a && !isDeepEqual((a as {errors?: unknown}).errors, otherError.errors, memo)) return false
-        } else if ("undefined" !== typeof URL && a instanceof URL) {
+        } else if (tag === "[object URL]" && both(isURL, a, b)) {
             if (a.href !== (b as URL).href) return false
             symbolAware = false
-        } else if (a instanceof Date) {
+        } else if (tag === "[object Date]" && both(isDate, a, b)) {
             // Called through the prototype: an own property of the same
             // name must not be able to fool the comparison.
             if (!Object.is(Date.prototype.getTime.call(a), Date.prototype.getTime.call(b))) return false
-        } else if (a instanceof RegExp) {
-            // lastIndex is own but non-enumerable, so - like getTime above -
-            // it needs an explicit check of its own.
-            const otherRegExp = b as RegExp
-            if (a.source !== otherRegExp.source || a.flags !== otherRegExp.flags || a.lastIndex !== otherRegExp.lastIndex) {
-                return false
-            }
-        } else if (a instanceof Boolean) {
+        } else if (tag === "[object RegExp]" && both(isRegExp, a, b)) {
+            // source and flags are read through the intrinsic accessors, as
+            // getTime is above. lastIndex is own but non-enumerable, so it
+            // needs an explicit check of its own.
+            if (regExpSource.call(a) !== regExpSource.call(b) || regExpFlags.call(a) !== regExpFlags.call(b)) return false
+            if (a.lastIndex !== (b as RegExp).lastIndex) return false
+        } else if (tag === "[object Boolean]" && both(isBoolean, a, b)) {
             if (!Object.is(Boolean.prototype.valueOf.call(a), Boolean.prototype.valueOf.call(b))) return false
-        } else if (a instanceof Number) {
+        } else if (tag === "[object Number]" && both(isNumber, a, b)) {
             if (!Object.is(Number.prototype.valueOf.call(a), Number.prototype.valueOf.call(b))) return false
-        } else if (a instanceof String) {
+        } else if (tag === "[object String]" && both(isString, a, b)) {
             // The one wrapper whose characters are already own enumerable
             // indices; still called through the prototype like the above.
             if (String.prototype.valueOf.call(a) !== String.prototype.valueOf.call(b)) return false
-        } else if ("undefined" !== typeof BigInt && a instanceof BigInt) {
+        } else if (tag === "[object BigInt]" && both(isBigInt, a, b)) {
             if (!Object.is(BigInt.prototype.valueOf.call(a), BigInt.prototype.valueOf.call(b))) return false
-        } else if (a instanceof Map) {
+        } else if (tag === "[object Map]" && both(isMap, a, b)) {
             if (!sameMap(a, b as Map<unknown, unknown>, memo)) return false
-        } else if (a instanceof Set) {
+        } else if (tag === "[object Set]" && both(isSet, a, b)) {
             if (!sameSet(a, b as Set<unknown>, memo)) return false
-        } else if (a instanceof ArrayBuffer || tag === "[object SharedArrayBuffer]") {
+        } else if ((tag === "[object ArrayBuffer]" && both(isArrayBuffer, a, b)) || tag === "[object SharedArrayBuffer]") {
             if (!sameArrayBuffer(a as ArrayBufferLike, b as ArrayBufferLike)) return false
         } else if (isDataView(a) && isDataView(b)) {
             if (!sameDataView(a, b)) return false

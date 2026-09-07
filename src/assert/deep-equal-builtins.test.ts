@@ -202,4 +202,23 @@ describe(TITLE, () => {
         b.x = 2
         assert.equal(catchError(() => TAL.deepEqual(a, b))?.name, "AssertionError")
     })
+
+    // An object given a builtin's prototype, own properties and tag still
+    // lacks the internal slot the intrinsic reads. The kind check must
+    // see that first, so the failure is a difference rather than the
+    // intrinsic's own TypeError escaping the assertion.
+    it("fails a lookalike without the internal slot as a difference, not a TypeError", () => {
+        const lookalike = <T extends object>(real: T, tag: string): T => {
+            const copy = Object.create(Object.getPrototypeOf(real), Object.getOwnPropertyDescriptors(real)) as T
+            Object.defineProperty(copy, Symbol.toStringTag, {value: tag})
+            return copy
+        }
+        const date = new Date(2000)
+        assert.equal(catchError(() => TAL.deepEqual(date, lookalike(date, "Date")))?.name, "AssertionError")
+        assert.equal(catchError(() => TAL.deepEqual(lookalike(date, "Date"), date))?.name, "AssertionError")
+        const regExp = /abc/g
+        assert.equal(catchError(() => TAL.deepEqual(regExp, lookalike(regExp, "RegExp")))?.name, "AssertionError")
+        const map = new Map([[1, 2]])
+        assert.equal(catchError(() => TAL.deepEqual(map, lookalike(map, "Map")))?.name, "AssertionError")
+    })
 })
