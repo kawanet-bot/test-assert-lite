@@ -9,6 +9,7 @@ export const {
     deepEqual,
     deepStrictEqual,
     doesNotMatch,
+    doesNotReject,
     doesNotThrow,
     equal,
     fail,
@@ -19,6 +20,7 @@ export const {
     notEqual,
     notStrictEqual,
     ok,
+    rejects,
     strictEqual,
     throws,
 } = strict

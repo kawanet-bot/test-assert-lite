@@ -83,10 +83,12 @@ describe(TITLE, () => {
     })
 
     // Everything that has no loose counterpart is the very same function.
-    it("assert and strict share fail / throws / match / ok / ifError", () => {
+    it("assert and strict share fail / throws / rejects / match / ok / ifError", () => {
         assert.equal(TAL.assert.fail, TAL.strict.fail)
         assert.equal(TAL.assert.throws, TAL.strict.throws)
         assert.equal(TAL.assert.doesNotThrow, TAL.strict.doesNotThrow)
+        assert.equal(TAL.assert.rejects, TAL.strict.rejects)
+        assert.equal(TAL.assert.doesNotReject, TAL.strict.doesNotReject)
         assert.equal(TAL.assert.match, TAL.strict.match)
         assert.equal(TAL.assert.doesNotMatch, TAL.strict.doesNotMatch)
         assert.equal(TAL.assert.ok, TAL.strict.ok)
