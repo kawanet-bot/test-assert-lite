@@ -47,6 +47,10 @@ describe(TITLE, () => {
         await assert.rejects(() => TAL.rejects(boom, /nope/), /did not match/)
         await assert.doesNotReject(() => TAL.rejects(boom, RangeError))
         await assert.rejects(() => TAL.rejects(boom, TypeError), /did not match/)
+        // A class that does not extend Error matches by instanceof too.
+        class Plain {}
+        await assert.doesNotReject(() => TAL.rejects(Promise.reject(new Plain()), Plain))
+        await assert.rejects(() => TAL.rejects(boom, Plain), TypeError)
         await assert.doesNotReject(() => TAL.rejects(boom, (e: unknown) => e instanceof RangeError))
         await assert.rejects(() => TAL.rejects(boom, () => false), /did not match/)
         await assert.doesNotReject(() => TAL.rejects(boom, {message: "boom", name: "RangeError"}))

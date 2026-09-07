@@ -36,12 +36,16 @@ const isPredicate = (value: unknown): value is Predicate =>
     value instanceof RegExp || "function" === typeof value || ("object" === typeof value && value != null && keysOf(value).length > 0)
 
 // Whether `thrown` satisfies `expected`, for every matcher node:assert takes:
-// a RegExp against String(thrown), an Error class, a validation function,
-// or an object whose properties thrown must carry.
+// a RegExp against String(thrown), a class, a validation function, or an
+// object whose properties thrown must carry.
 const matches = (thrown: unknown, expected: Predicate): boolean => {
     if (expected instanceof RegExp) return expected.test(String(thrown))
     if ("function" === typeof expected) {
-        if (isErrorClass(expected)) return thrown instanceof expected
+        // In node's order: any class answers by instanceof first, Error or
+        // not. An arrow function has no prototype and is asked instead, as
+        // is any other class, which throws on the call as it does in node.
+        if (expected.prototype != null && thrown instanceof expected) return true
+        if (isErrorClass(expected)) return false
         return (expected as (thrown: unknown) => boolean)(thrown) === true
     }
     if (thrown == null || "object" !== typeof thrown) return false

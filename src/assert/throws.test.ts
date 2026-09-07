@@ -55,11 +55,32 @@ describe(TITLE, () => {
         assert.throws(() => TAL.throws(boom, TypeError), /did not match/)
     })
 
+    // node:assert asks instanceof of any class, not only an Error subclass.
+    // One the exception is not an instance of gets called as a validation
+    // function, which a class refuses with a TypeError, in node as here.
+    it("throws matches a class that does not extend Error by instanceof", () => {
+        class Plain {}
+        class Other {}
+        class Custom extends Error {}
+        const plain = (): never => {
+            throw new Plain()
+        }
+        assert.doesNotThrow(() => TAL.throws(plain, Plain))
+        assert.throws(() => TAL.throws(plain, Custom), /did not match/)
+        assert.throws(() => TAL.throws(plain, Other), TypeError)
+        assert.throws(() => TAL.throws(boom, Plain), TypeError)
+    })
+
     it("throws accepts a validation function that returns true", () => {
         assert.doesNotThrow(() => TAL.throws(boom, (e: unknown) => e instanceof RangeError))
         assert.throws(() => TAL.throws(boom, () => false), /did not match/)
         // Anything but `true` is a mismatch, as in node:assert.
         assert.throws(() => TAL.throws(boom, () => 1 as never), /did not match/)
+        // A function with a prototype is still a validation function when
+        // the exception is not an instance of it.
+        assert.doesNotThrow(() => TAL.throws(boom, function (e: unknown) {
+            return e instanceof RangeError
+        }))
     })
 
     it("throws compares the properties of an object, RegExp values by test", () => {
@@ -132,6 +153,14 @@ describe(TITLE, () => {
 
         assert.ok(catchError(() => TAL.doesNotThrow(boom, /nope/)) instanceof RangeError)
         assert.ok(catchError(() => TAL.doesNotThrow(boom, TypeError)) instanceof RangeError)
+
+        // A class that does not extend Error filters by instanceof as well.
+        class Plain {}
+        const plain = (): never => {
+            throw new Plain()
+        }
+        assert.throws(() => TAL.doesNotThrow(plain, Plain), /expected not to throw/)
+        assert.ok(catchError(() => TAL.doesNotThrow(plain, RangeError)) instanceof Plain)
     })
 
     // node:assert takes only a RegExp or a function here; an Error instance
