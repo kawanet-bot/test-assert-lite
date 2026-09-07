@@ -9,6 +9,7 @@ const SYMBOL = {
     pass: "✔ ",
     fail: "✖ ",
     skip: "﹣ ",
+    warn: "⚠ ",
     info: "ℹ ",
     suite: "▶ ",
 } as const
@@ -35,14 +36,22 @@ const indent = (nesting: number): string => "  ".repeat(nesting)
 
 const paint = (on: boolean, color: string, text: string): string => on ? `${color}${text}${COLOR.reset}` : text
 
-// One result line: symbol, name, duration and skip note. A skip outranks
-// the verdict in the symbol, so a skipped failure still reads as skipped.
-// The failing list reuses the line flush left, as node:test's spec does.
+// The note after a result: the skip's or the todo's reason, or its bare mark.
+export const directive = (data: declared.TAL.TestPass | declared.TAL.TestFail): string => {
+    const mark = data.skip != null ? ["SKIP", data.skip] as const : data.todo != null ? ["TODO", data.todo] as const : undefined
+    if (mark == null) return ""
+    return ` # ${"string" === typeof mark[1] && mark[1] ? mark[1] : mark[0]}`
+}
+
+// One result line: symbol, name, duration and note. A skip outranks the
+// verdict in the symbol, so a skipped failure still reads as skipped; a
+// failed todo is a warning rather than a failure, as node:test's spec has it.
 const resultLine = (data: declared.TAL.TestPass | declared.TAL.TestFail, isPass: boolean, colors: boolean, indented: boolean): string => {
     const skipped = data.skip != null
-    const symbol = skipped ? SYMBOL.skip : isPass ? SYMBOL.pass : SYMBOL.fail
-    const color = skipped ? COLOR.gray : isPass ? COLOR.green : COLOR.red
-    const note = "string" === typeof data.skip ? ` # ${data.skip}` : skipped ? " # SKIP" : ""
+    const todo = !skipped && data.todo != null
+    const symbol = skipped ? SYMBOL.skip : isPass ? SYMBOL.pass : todo ? SYMBOL.warn : SYMBOL.fail
+    const color = skipped ? COLOR.gray : isPass ? COLOR.green : todo ? COLOR.yellow : COLOR.red
+    const note = directive(data)
     const ms = paint(colors, COLOR.gray, ` (${data.details.duration_ms.toFixed(3)}ms)`)
     return paint(colors, color, `${indented ? indent(data.nesting) : ""}${symbol}${data.name}`) + ms + note
 }

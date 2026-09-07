@@ -70,7 +70,7 @@ describeSlow(TITLE, () => {
         const summary = await local.run()
 
         assert.equal(settled, false)
-        assert.deepEqual(summary.counts, {tests: 1, suites: 0, passed: 0, failed: 0, cancelled: 1, skipped: 0})
+        assert.deepEqual(summary.counts, {tests: 1, suites: 0, passed: 0, failed: 0, cancelled: 1, skipped: 0, todo: 0})
     })
 
     // What a body does after the run has ended is dropped.
@@ -86,7 +86,7 @@ describeSlow(TITLE, () => {
         })
         const summary = await local.run()
         assert.equal(settled, false)
-        assert.deepEqual(summary.counts, {tests: 1, suites: 0, passed: 0, failed: 0, cancelled: 1, skipped: 0})
+        assert.deepEqual(summary.counts, {tests: 1, suites: 0, passed: 0, failed: 0, cancelled: 1, skipped: 0, todo: 0})
 
         await new Promise(r => setTimeout(r, slow(80)))
         assert.equal(settled, true)
@@ -131,7 +131,7 @@ describeSlow(TITLE, () => {
         const late = ofType(events, "test:fail").filter(e => e.data.name.startsWith("late"))
         assert.deepEqual(late.map(e => `${e.data.name}@${e.data.nesting}#${e.data.testNumber}`), ["late awaited@0#3", "late unawaited@0#4"])
         assert.equal((late[0]?.data.details.error as {failureType?: string}).failureType, "parentAlreadyFinished")
-        assert.deepEqual(summary.counts, {tests: 4, suites: 0, passed: 1, failed: 2, cancelled: 1, skipped: 0})
+        assert.deepEqual(summary.counts, {tests: 4, suites: 0, passed: 1, failed: 2, cancelled: 1, skipped: 0, todo: 0})
         assert.equal(summary.success, false)
     })
 
@@ -156,7 +156,7 @@ describeSlow(TITLE, () => {
         assert.deepEqual(results, ["child@1#1", "parent@0#1", "next@0#2"])
         const child = ofType(events, "test:fail").find(e => e.data.name === "child")?.data
         assert.equal((child?.details.error as {failureType?: string}).failureType, "cancelledByParent")
-        assert.deepEqual(summary.counts, {tests: 3, suites: 0, passed: 1, failed: 0, cancelled: 2, skipped: 0})
+        assert.deepEqual(summary.counts, {tests: 3, suites: 0, passed: 1, failed: 0, cancelled: 2, skipped: 0, todo: 0})
     })
 
     // A child's own timer may fire after its parent already gave up on it.
@@ -173,7 +173,7 @@ describeSlow(TITLE, () => {
         const summary = await local.run()
 
         assert.deepEqual(names(events, "test:fail"), ["child", "parent"])
-        assert.deepEqual(summary.counts, {tests: 2, suites: 0, passed: 0, failed: 0, cancelled: 2, skipped: 0})
+        assert.deepEqual(summary.counts, {tests: 2, suites: 0, passed: 0, failed: 0, cancelled: 2, skipped: 0, todo: 0})
     })
 
     // A child that settled on its own but is still reporting when the
@@ -233,7 +233,7 @@ describeSlow(TITLE, () => {
 
         assert.deepEqual(names(events, "test:start"), ["parent", "child", "g1", "g2"])
         assert.deepEqual(names(events, "test:fail"), ["g1", "g2", "child", "parent"])
-        assert.deepEqual(summary.counts, {tests: 4, suites: 0, passed: 0, failed: 0, cancelled: 4, skipped: 0})
+        assert.deepEqual(summary.counts, {tests: 4, suites: 0, passed: 0, failed: 0, cancelled: 4, skipped: 0, todo: 0})
     })
 
     // The same, one level down: a grandchild that passed but is still
@@ -262,7 +262,7 @@ describeSlow(TITLE, () => {
         assert.deepEqual(names(events, "test:start"), ["parent", "child", "grandchild"])
         const results = events.filter(e => e.type === "test:pass" || e.type === "test:fail").map(e => e.data.name)
         assert.deepEqual(results, ["grandchild", "child", "parent"])
-        assert.deepEqual(summary.counts, {tests: 3, suites: 0, passed: 1, failed: 1, cancelled: 1, skipped: 0})
+        assert.deepEqual(summary.counts, {tests: 3, suites: 0, passed: 1, failed: 1, cancelled: 1, skipped: 0, todo: 0})
         assert.equal(events.at(-1)?.type, "test:summary")
     })
 
@@ -330,7 +330,7 @@ describeSlow(TITLE, () => {
         })
         const summary = await local.run()
 
-        assert.deepEqual(summary.counts, {tests: 3, suites: 1, passed: 2, failed: 0, cancelled: 1, skipped: 0})
+        assert.deepEqual(summary.counts, {tests: 3, suites: 1, passed: 2, failed: 0, cancelled: 1, skipped: 0, todo: 0})
     })
 
     // A queued sibling keeps its skip when the parent gives up, and every
@@ -354,7 +354,7 @@ describeSlow(TITLE, () => {
         const summary = await local.run()
 
         assert.equal(ran, true)
-        assert.deepEqual(summary.counts, {tests: 3, suites: 0, passed: 0, failed: 1, cancelled: 2, skipped: 0})
+        assert.deepEqual(summary.counts, {tests: 3, suites: 0, passed: 0, failed: 1, cancelled: 2, skipped: 0, todo: 0})
     })
 
     // A skip/bodyless child decides its own verdict synchronously, but the
@@ -369,7 +369,7 @@ describeSlow(TITLE, () => {
         })
         const summary = await local.run()
 
-        assert.deepEqual(summary.counts, {tests: 2, suites: 0, passed: 0, failed: 0, cancelled: 1, skipped: 1})
+        assert.deepEqual(summary.counts, {tests: 2, suites: 0, passed: 0, failed: 0, cancelled: 1, skipped: 1, todo: 0})
     })
 
     // A skip the timed-out body calls on itself, after the verdict is
@@ -389,7 +389,7 @@ describeSlow(TITLE, () => {
         })
         const summary = await local.run()
 
-        assert.deepEqual(summary.counts, {tests: 2, suites: 0, passed: 0, failed: 0, cancelled: 2, skipped: 0})
+        assert.deepEqual(summary.counts, {tests: 2, suites: 0, passed: 0, failed: 0, cancelled: 2, skipped: 0, todo: 0})
     })
 
     // A running child's own t.skip() decides how its parent's cancellation
@@ -408,7 +408,7 @@ describeSlow(TITLE, () => {
 
         const child = ofType(events, "test:fail").find(e => e.data.name === "child")?.data
         assert.equal(child?.skip, "why")
-        assert.deepEqual(summary.counts, {tests: 2, suites: 0, passed: 0, failed: 0, cancelled: 1, skipped: 1})
+        assert.deepEqual(summary.counts, {tests: 2, suites: 0, passed: 0, failed: 0, cancelled: 1, skipped: 1, todo: 0})
     })
 
     // A late subtest's own t.skip() decides its verdict too, even though
@@ -427,7 +427,7 @@ describeSlow(TITLE, () => {
 
         const late = ofType(events, "test:fail").find(e => e.data.name === "late")?.data
         assert.equal(late?.skip, "why")
-        assert.deepEqual(summary.counts, {tests: 3, suites: 0, passed: 1, failed: 0, cancelled: 1, skipped: 1})
+        assert.deepEqual(summary.counts, {tests: 3, suites: 0, passed: 1, failed: 0, cancelled: 1, skipped: 1, todo: 0})
     })
 
     // Marking every child reported happens before any reporter call, not one
@@ -449,7 +449,7 @@ describeSlow(TITLE, () => {
         const summary = await local.run()
 
         assert.equal(ran, false)
-        assert.deepEqual(summary.counts, {tests: 3, suites: 0, passed: 0, failed: 0, cancelled: 3, skipped: 0})
+        assert.deepEqual(summary.counts, {tests: 3, suites: 0, passed: 0, failed: 0, cancelled: 3, skipped: 0, todo: 0})
     })
 
     it("a parent's timeout cancels the queued subtests, skip kept", async () => {
@@ -475,7 +475,7 @@ describeSlow(TITLE, () => {
         assert.equal(ran, 0)
         const fails = ofType(events, "test:fail").map(e => `${e.data.name}${e.data.skip != null ? " skip=" + String(e.data.skip) : ""}`)
         assert.deepEqual(fails, ["running", "queued skip skip=why", "queued plain", "parent"])
-        assert.deepEqual(summary.counts, {tests: 4, suites: 0, passed: 0, failed: 0, cancelled: 3, skipped: 1})
+        assert.deepEqual(summary.counts, {tests: 4, suites: 0, passed: 0, failed: 0, cancelled: 3, skipped: 1, todo: 0})
     })
 
     // What a late subtest starts and does not await settles before the summary too.
@@ -559,7 +559,7 @@ describeSlow(TITLE, () => {
 
         const late = ofType(events, "test:fail").find(e => e.data.name === "late")?.data
         assert.equal((late?.details.error as {failureType?: string}).failureType, "parentAlreadyFinished")
-        assert.deepEqual(summary.counts, {tests: 3, suites: 0, passed: 1, failed: 1, cancelled: 1, skipped: 0})
+        assert.deepEqual(summary.counts, {tests: 3, suites: 0, passed: 1, failed: 1, cancelled: 1, skipped: 0, todo: 0})
     })
 
     // A skip the body calls before its own timeout cuts it off still decides
@@ -579,7 +579,7 @@ describeSlow(TITLE, () => {
 
         const late = ofType(events, "test:fail").find(e => e.data.name === "late")?.data
         assert.equal(late?.skip, "why")
-        assert.deepEqual(summary.counts, {tests: 3, suites: 0, passed: 1, failed: 0, cancelled: 1, skipped: 1})
+        assert.deepEqual(summary.counts, {tests: 3, suites: 0, passed: 1, failed: 0, cancelled: 1, skipped: 1, todo: 0})
     })
 
     // node:test does not run a skipped late subtest, keeps its skip on the
@@ -600,7 +600,7 @@ describeSlow(TITLE, () => {
         assert.equal(ran, false)
         const late = ofType(events, "test:fail").find(e => e.data.name === "late skip")?.data
         assert.equal(late?.skip, "why")
-        assert.deepEqual(summary.counts, {tests: 3, suites: 0, passed: 1, failed: 0, cancelled: 1, skipped: 1})
+        assert.deepEqual(summary.counts, {tests: 3, suites: 0, passed: 1, failed: 0, cancelled: 1, skipped: 1, todo: 0})
     })
 
     // node:test reports a late subtest after every registered test, numbered

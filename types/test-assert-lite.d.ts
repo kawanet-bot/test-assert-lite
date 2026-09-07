@@ -17,6 +17,9 @@ export declare namespace TAL {
 
     interface TestOptions {
         skip?: boolean | string
+        // A todo runs and is reported, but is counted as todo whatever the
+        // verdict, and its failure does not fail the run. A skip outranks it.
+        todo?: boolean | string
         timeout?: number
     }
 
@@ -28,6 +31,7 @@ export declare namespace TAL {
         readonly name: string
         readonly assert: AssertMethods
         skip(message?: string): void
+        todo(message?: string): void
         diagnostic(message: string): void
 
         // Subtests run immediately, ahead of the parent's remaining body.
@@ -50,6 +54,7 @@ export declare namespace TAL {
 
     interface SuiteAPI extends SuiteBase {
         skip: SuiteBase
+        todo: SuiteBase
     }
 
     // `it` / `test`. The static variants take the same arguments.
@@ -62,6 +67,7 @@ export declare namespace TAL {
 
     interface TestAPI extends TestBase {
         skip: TestBase
+        todo: TestBase
     }
 
     // --- assert ---
@@ -138,11 +144,13 @@ export declare namespace TAL {
 
     // A suite is reported after its children, with `type: "suite"`.
     // `testNumber` counts within the parent, suites and tests together.
+    // A result carries `skip` or `todo`, never both: a skip outranks a todo.
     interface TestPass {
         name: string
         nesting: number
         testNumber: number
         skip?: string | boolean
+        todo?: string | boolean
         details: {
             duration_ms: number
             type: "suite" | "test"
@@ -158,6 +166,7 @@ export declare namespace TAL {
         nesting: number
         testNumber: number
         skip?: string | boolean
+        todo?: string | boolean
         details: {
             duration_ms: number
             type: "suite" | "test"
@@ -179,6 +188,7 @@ export declare namespace TAL {
             skipped: number
             suites: number
             tests: number
+            todo: number
         }
         duration_ms: number
         success: boolean

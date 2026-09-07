@@ -54,7 +54,12 @@ export const createRegistrar = (state: HarnessState): Registrar => {
         return suiteBase(name, {...options, skip: true}, fn)
     }
 
-    const suite: declared.TAL.SuiteAPI = Object.assign(suiteBase, {skip: suiteSkip})
+    const suiteTodo: declared.TAL.SuiteBase = (...args: Args<SuiteFn>) => {
+        const {name, options, fn} = normalize<SuiteFn>(args)
+        return suiteBase(name, {...options, todo: true}, fn)
+    }
+
+    const suite: declared.TAL.SuiteAPI = Object.assign(suiteBase, {skip: suiteSkip, todo: suiteTodo})
 
     const testBase: declared.TAL.TestBase = (...args: Args<TestFn>) => {
         if (fromTestBody()) throw new Error("it() cannot be called from inside a test body; use t.test() instead")
@@ -67,7 +72,12 @@ export const createRegistrar = (state: HarnessState): Registrar => {
         return testBase(name, {...options, skip: true}, fn)
     }
 
-    const test: declared.TAL.TestAPI = Object.assign(testBase, {skip: testSkip})
+    const testTodo: declared.TAL.TestBase = (...args: Args<TestFn>) => {
+        const {name, options, fn} = normalize<TestFn>(args)
+        return testBase(name, {...options, todo: true}, fn)
+    }
+
+    const test: declared.TAL.TestAPI = Object.assign(testBase, {skip: testSkip, todo: testTodo})
 
     // A hook belongs to the suite that declares it. before runs once when
     // that suite starts, after once everything below it has finished,

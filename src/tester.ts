@@ -56,6 +56,11 @@ const skipOf = (options: TestOptions): string | true | undefined => {
     return skip === true || "string" === typeof skip ? skip : undefined
 }
 
+const todoOf = (options: TestOptions): string | true | undefined => {
+    const {todo} = options
+    return todo === true || "string" === typeof todo ? todo : undefined
+}
+
 const timeoutAfter = (ms: number): {promise: Promise<never>, error: TesterError, cancel: () => void} => {
     let timer: ReturnType<typeof setTimeout>
     const error = new TesterError(`test timed out after ${ms}ms`, "testTimeoutFailure")
@@ -101,6 +106,9 @@ export class Test {
     private cancelled = false
     // A skip called from the body outranks the one it was declared with.
     private skipped: string | true | undefined
+    // Declared, called from the body, or inherited: a todo's subtests are
+    // todo as well, as in node:test, though only as a bare mark.
+    private todo: string | true | undefined
     // The verdict a parent handed down, when it gave up on this test.
     private closedWith: Verdict | undefined
 
@@ -121,6 +129,7 @@ export class Test {
         this.parent = parent
         this.nesting = parent == null ? -1 : parent.nesting + 1
         this.testNumber = parent == null ? 0 : parent.children.length + 1
+        this.todo = todoOf(options) ?? (parent?.todo != null ? true : undefined)
     }
 
     get isRoot(): boolean {
@@ -174,6 +183,10 @@ export class Test {
                 // verdict changes, and one already out stays as it is.
                 if (this.settled) return
                 this.skipped = message ?? true
+            },
+            todo: (message) => {
+                if (this.settled) return
+                this.todo = message ?? true
             },
             diagnostic: (message) => {
                 // node:test keeps diagnostics for the report; one arriving
@@ -230,7 +243,7 @@ export class Test {
     // own verdict; a parent that gave up already knows.
     async start(run: Run): Promise<Outcome> {
         this.run = run
-        if (this.closedWith != null) return this.startClosed(this.closedWith)
+        if (this.closedWith != null) return this.startClosed()
         this.started = true
         this.startedAt = performance.now()
 
@@ -252,7 +265,7 @@ export class Test {
     // A test the parent gave up on before it started. A suite still runs
     // its body, since that is what declares the children node:test would
     // already know about; each of them is closed the moment it is declared.
-    private async startClosed(verdict: Verdict): Promise<Outcome> {
+    private async startClosed(): Promise<Outcome> {
         if (this.kind === "suite" && this.skip == null) {
             // The body still takes time, so the clock runs for it.
             this.started = true
@@ -263,7 +276,7 @@ export class Test {
             this.endedAt = performance.now()
         }
         await this.report()
-        return verdict.outcome
+        return this.outcome
     }
 
     // A descendant that settled on its own may still be reporting. That is
@@ -277,10 +290,13 @@ export class Test {
         }
     }
 
+    // As the parent sees it. A todo's failure never counts against its
+    // parent, as in node:test, even under a skip that hides the todo mark; a
+    // skip that failed without a todo behind it still does.
     private get outcome(): Outcome {
-        if (this.skip != null) return this.error != null ? (this.cancelled ? "cancelled" : "failed") : "skipped"
-        if (this.cancelled) return "cancelled"
-        return this.error != null ? "failed" : "passed"
+        if (this.error == null) return this.skip != null ? "skipped" : "passed"
+        if (this.todo != null) return "passed"
+        return this.cancelled ? "cancelled" : "failed"
     }
 
     // Decides the verdict, once, and closes whatever is still open below
@@ -482,27 +498,31 @@ export class Test {
         await this.run.reporter.emit("test:start", {name: this.name, nesting: this.nesting})
     }
 
-    // Counts and emits the result, once. A skip decides the count, as it
-    // does in node:test, though the event still carries the failure.
+    // Counts and emits the result, once. A skip, then a todo, decides the
+    // count ahead of the verdict, as in node:test, though the event still
+    // carries the failure; a todo's failure does not fail the run, whether
+    // or not a skip hides the mark.
     private async report(): Promise<void> {
         if (this.reported || this.isRoot) return
         this.reported = true
         const {counters} = this.run
         const skip = this.skip
+        const todo = skip == null ? this.todo : undefined
         if (this.kind === "suite") counters.suites++
         else {
             counters.tests++
             if (skip != null) counters.skipped++
+            else if (todo != null) counters.todo++
             else if (this.cancelled) counters.cancelled++
             else if (this.error != null) counters.failed++
             else counters.passed++
         }
-        if (this.error != null) this.run.success = false
+        if (this.error != null && this.todo == null) this.run.success = false
 
         await this.announce()
         const base = {
             name: this.name, nesting: this.nesting, testNumber: this.testNumber,
-            ...(skip != null ? {skip} : {}),
+            ...(skip != null ? {skip} : todo != null ? {todo} : {}),
         }
         const duration_ms = this.started ? (this.endedAt || performance.now()) - this.startedAt : 0
         if (this.error != null) {

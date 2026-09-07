@@ -151,6 +151,16 @@ describe(TITLE, () => {
         assert.match(out, /✖ timed \(1\.000ms\)\n {2}test timed out after 20ms/)
     })
 
+    it("marks a todo test with its reason, and a failed todo as a warning", async () => {
+        const out = await render(async (r) => {
+            await r.emit("test:pass", {...pass("todo one"), todo: "later"})
+            await r.emit("test:fail", {...pass("todo two"), todo: true, details: {duration_ms: 1, type: "test", error: new Error("boom")}})
+        })
+
+        assert.match(out, /✔ todo one .* # later/)
+        assert.match(out, /⚠ todo two .* # TODO/)
+    })
+
     it("renders a skipped suite", async () => {
         const out = await render(r => r.emit("test:pass", {...pass("S"), skip: true, details: {duration_ms: 1, type: "suite"}}))
 

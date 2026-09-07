@@ -53,6 +53,16 @@ describe(TITLE, () => {
         assert.match(out, /^ok 1 - skipped one # SKIP$/m)
     })
 
+    it("marks a todo test with a TODO directive", async () => {
+        const out = await render(async (r) => {
+            await r.emit("test:pass", {...pass("todo one"), todo: true})
+            await r.emit("test:fail", {...pass("todo two"), todo: "later", details: {duration_ms: 1, type: "test", error: new Error("boom")}})
+        })
+
+        assert.match(out, /^ok 1 - todo one # TODO$/m)
+        assert.match(out, /^not ok 2 - todo two # TODO later$/m)
+    })
+
     it("marks a skipped test with its reason", async () => {
         const out = await render(r => r.emit("test:pass", pass("skipped one", {skip: "why"})))
 

@@ -258,7 +258,7 @@ describe(TITLE, () => {
         const parent = ofType(events, "test:fail").find(e => e.data.name === "parent")?.data
         assert.equal(parent?.skip, "why")
         assert.equal((parent?.details.error as {failureType?: string}).failureType, "subtestsFailed")
-        assert.deepEqual(summary.counts, {tests: 2, suites: 0, passed: 0, failed: 1, cancelled: 0, skipped: 1})
+        assert.deepEqual(summary.counts, {tests: 2, suites: 0, passed: 0, failed: 1, cancelled: 0, skipped: 1, todo: 0})
         assert.equal(summary.success, false)
     })
 
@@ -286,7 +286,7 @@ describe(TITLE, () => {
         assert.deepEqual(results, ["child@1#1", "parent@0#1", "next@0#2"])
         const child = ofType(events, "test:fail").find(e => e.data.name === "child")?.data
         assert.equal((child?.details.error as {failureType?: string}).failureType, "cancelledByParent")
-        assert.deepEqual(summary.counts, {tests: 3, suites: 0, passed: 1, failed: 1, cancelled: 1, skipped: 0})
+        assert.deepEqual(summary.counts, {tests: 3, suites: 0, passed: 1, failed: 1, cancelled: 1, skipped: 0, todo: 0})
 
         await new Promise(r => setTimeout(r, 40))
         assert.equal(settled, true)
@@ -310,7 +310,7 @@ describe(TITLE, () => {
 
         assert.equal(ran, false)
         assert.deepEqual(names(events, "test:fail"), ["running", "queued", "parent"])
-        assert.deepEqual(summary.counts, {tests: 3, suites: 0, passed: 0, failed: 1, cancelled: 2, skipped: 0})
+        assert.deepEqual(summary.counts, {tests: 3, suites: 0, passed: 0, failed: 1, cancelled: 2, skipped: 0, todo: 0})
     })
 
     // A cancelled child that keeps running is finished as far as the run is
@@ -335,7 +335,104 @@ describe(TITLE, () => {
         assert.equal(grandchild?.nesting, 0)
         assert.equal(grandchild?.testNumber, 3)
         assert.equal((grandchild?.details.error as {failureType?: string}).failureType, "parentAlreadyFinished")
-        assert.deepEqual(summary.counts, {tests: 4, suites: 0, passed: 1, failed: 2, cancelled: 1, skipped: 0})
+        assert.deepEqual(summary.counts, {tests: 4, suites: 0, passed: 1, failed: 2, cancelled: 1, skipped: 0, todo: 0})
+    })
+
+    // node:test runs a todo, reports it, and counts it as todo whatever the
+    // verdict; a failing todo does not fail the run.
+    it("todo option runs the test and counts it as todo", async () => {
+        const local = createTAL()
+        const events = capture(local.reporter)
+        let ran = 0
+        local.it("bare", {todo: true}, () => {
+            ran++
+        })
+        local.it("reason", {todo: "later"}, () => {
+            ran++
+        })
+        local.it("broken", {todo: true}, () => {
+            throw new Error("boom")
+        })
+        const summary = await local.run()
+
+        assert.equal(ran, 2)
+        const results = events.filter(e => e.type === "test:pass" || e.type === "test:fail")
+        assert.deepEqual(results.map(e => `${e.type}:${e.data.name}:${String(e.data.todo)}`), [
+            "test:pass:bare:true", "test:pass:reason:later", "test:fail:broken:true",
+        ])
+        assert.deepEqual(summary.counts, {tests: 3, suites: 0, passed: 0, failed: 0, cancelled: 0, skipped: 0, todo: 3})
+        assert.equal(summary.success, true)
+    })
+
+    it("t.todo() marks the test from the body", async () => {
+        const local = createTAL()
+        const events = capture(local.reporter)
+        local.it("later", (t) => {
+            t.todo("later")
+        })
+        local.it("it.todo", () => undefined)
+        const summary = await local.run()
+
+        const later = ofType(events, "test:pass").find(e => e.data.name === "later")?.data
+        assert.equal(later?.todo, "later")
+        assert.deepEqual(summary.counts, {tests: 2, suites: 0, passed: 1, failed: 0, cancelled: 0, skipped: 0, todo: 1})
+    })
+
+    // A result carries skip or todo, never both, and the count follows the skip.
+    it("a skip outranks a todo", async () => {
+        const local = createTAL()
+        const events = capture(local.reporter)
+        local.it("declared", {skip: true, todo: true}, () => undefined)
+        local.it("called", (t) => {
+            t.todo("t")
+            t.skip("s")
+        })
+        const summary = await local.run()
+
+        const passes = ofType(events, "test:pass").map(e => `${e.data.name}:${String(e.data.skip)}:${String(e.data.todo)}`)
+        assert.deepEqual(passes, ["declared:true:undefined", "called:s:undefined"])
+        assert.deepEqual(summary.counts, {tests: 2, suites: 0, passed: 0, failed: 0, cancelled: 0, skipped: 2, todo: 0})
+    })
+
+    // node:test marks a todo's subtests todo as well, and a todo subtest
+    // that fails does not fail its parent.
+    it("subtests inherit todo, and a failing todo subtest does not fail its parent", async () => {
+        const local = createTAL()
+        const events = capture(local.reporter)
+        local.it("parent", {todo: true}, async (t) => {
+            await t.test("child", () => {
+                throw new Error("boom")
+            })
+        })
+        const summary = await local.run()
+
+        const child = ofType(events, "test:fail").find(e => e.data.name === "child")?.data
+        assert.equal(child?.todo, true)
+        const parent = ofType(events, "test:pass").find(e => e.data.name === "parent")?.data
+        assert.equal(parent?.todo, true)
+        assert.deepEqual(summary.counts, {tests: 2, suites: 0, passed: 0, failed: 0, cancelled: 0, skipped: 0, todo: 2})
+        assert.equal(summary.success, true)
+    })
+
+    // A skip hides the todo mark and takes the count, but the todo behind it
+    // still keeps the failure from the run and the parent, as in node:test.
+    it("a todo that skips and then fails still does not fail the run or its parent", async () => {
+        const local = createTAL()
+        const events = capture(local.reporter)
+        local.it("parent", {todo: true}, async (t) => {
+            await t.test("child", (inner) => {
+                inner.skip("why")
+                throw new Error("boom")
+            })
+        })
+        const summary = await local.run()
+
+        const child = ofType(events, "test:fail").find(e => e.data.name === "child")?.data
+        assert.equal(child?.skip, "why")
+        assert.equal(child?.todo, undefined)
+        assert.equal(names(events, "test:pass").includes("parent"), true)
+        assert.deepEqual(summary.counts, {tests: 2, suites: 0, passed: 0, failed: 0, cancelled: 0, skipped: 1, todo: 1})
+        assert.equal(summary.success, true)
     })
 
     it("subtests are numbered within their parent", async () => {
