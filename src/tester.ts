@@ -376,6 +376,7 @@ export class Test {
         const {harness} = this.run
         const previous = harness.current
         harness.current = this
+        harness.openSuites++
         try {
             const body = (this.fn as SuiteFn | undefined)?.({name: this.name})
             if (body != null) await body
@@ -383,6 +384,7 @@ export class Test {
         } catch (e) {
             return testRunnerError(e, "testCodeFailure")
         } finally {
+            harness.openSuites--
             harness.current = previous
         }
     }
@@ -421,15 +423,19 @@ export class Test {
             return []
         }
 
-        const wasInTestBody = run.harness.inTestBody
-        run.harness.inTestBody = true
+        // Counted until the body settles, not until the verdict: a body that
+        // outlives its timeout is still a body. A synchronous throw becomes a
+        // rejection here, so the count comes down the same way in every case.
+        const {harness} = run
+        harness.openBodies++
+        const body = new Promise<void>((resolve) => resolve((this.fn as TestFn)(this.context())))
+        void body.finally(() => harness.openBodies--).catch(() => undefined)
 
         let error: Error | undefined
         let failedSubtests = 0
         let closed: Test[] = []
         try {
             const {timeout} = this.options
-            const body = Promise.resolve((this.fn as TestFn)(this.context()))
             if (timeout != null && timeout > 0) {
                 const timer = timeoutAfter(timeout)
                 try {
@@ -453,8 +459,6 @@ export class Test {
             }
         } catch (e) {
             error = testRunnerError(e, "testCodeFailure")
-        } finally {
-            run.harness.inTestBody = wasInTestBody
         }
 
         if (this.settled) return closed
