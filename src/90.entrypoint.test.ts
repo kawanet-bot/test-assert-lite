@@ -16,19 +16,33 @@ void runtime
 // module-sync sends this to the .mjs, since require(esm) exists on every
 // version this package declares support for.
 test("require entry", () => {
-    const cjs = require("test-assert-lite")
-    assert.equal(typeof cjs.describe, "function")
-    assert.equal(typeof cjs.run, "function")
-    assert.equal(typeof cjs.strict, "function")
+    const m: typeof declared = require("test-assert-lite")
+    assert.equal(typeof m.after, "function")
+    assert.equal(typeof m.before, "function")
+    assert.equal(typeof m.createTAL, "function")
+    assert.equal(typeof m.describe, "function")
+    assert.equal(typeof m.it, "function")
+    assert.equal(typeof m.reporter, "object")
+    assert.equal(typeof m.run, "function")
+    assert.equal(typeof m.strict, "function")
+    assert.equal(typeof m.suite, "function")
+    assert.equal(typeof m.test, "function")
 })
 
 // The exports map has no "require" condition below module-sync, so reach
 // the minified bundle by its path instead.
 test("minified entry (.min.js)", () => {
-    const cjs = require(path.join(path.dirname(require.resolve("test-assert-lite")), "test-assert-lite.min.js"))
-    assert.equal(typeof cjs.describe, "function")
-    assert.equal(typeof cjs.run, "function")
-    assert.equal(typeof cjs.strict, "function")
+    const m: typeof declared = require(path.join(path.dirname(require.resolve("test-assert-lite")), "test-assert-lite.min.js"))
+    assert.equal(typeof m.after, "function")
+    assert.equal(typeof m.before, "function")
+    assert.equal(typeof m.createTAL, "function")
+    assert.equal(typeof m.describe, "function")
+    assert.equal(typeof m.it, "function")
+    assert.equal(typeof m.reporter, "object")
+    assert.equal(typeof m.run, "function")
+    assert.equal(typeof m.strict, "function")
+    assert.equal(typeof m.suite, "function")
+    assert.equal(typeof m.test, "function")
 })
 
 test("import entry (.mjs)", () => {
