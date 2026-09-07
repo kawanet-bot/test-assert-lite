@@ -7,27 +7,15 @@ type Filter = declared.TAL.ErrorFilter
 // node:assert takes as one, checked below.
 type Block = Promise<unknown> | (() => Promise<unknown>)
 
-const noop = (): void => undefined
-
-// A Promise carries the slot the intrinsic then works on, wherever it was
-// created; anything else throws there before any tag or property of its
-// own could be consulted. That is the brand node:assert asks first, so a
-// genuine Promise is taken even with its catch or then overwritten. The
-// handlers keep the derived promise from rejecting on its own.
-const isPromise = (value: object): boolean => {
-    try {
-        Promise.prototype.then.call(value as Promise<unknown>, noop, noop)
-        return true
-    } catch {
-        return false
-    }
-}
-
-// Otherwise an object carrying both then and catch, as node:assert takes
-// one, but not a function that happens to carry them.
+// What node:assert takes as a promise here: an object carrying both then
+// and catch, so a native Promise from any realm or a thenable library's,
+// but not a function that happens to carry them. Only the shape is asked.
+// The block is the test's own function or promise, not data under test,
+// so a Promise with those methods overwritten is a misuse here, where
+// node's internal brand check would still take it.
 const isThenable = (value: unknown): value is PromiseLike<unknown> =>
-    value != null && "object" === typeof value && (isPromise(value) ||
-        ("function" === typeof (value as {then?: unknown}).then && "function" === typeof (value as {catch?: unknown}).catch))
+    value != null && "object" === typeof value &&
+    "function" === typeof (value as {then?: unknown}).then && "function" === typeof (value as {catch?: unknown}).catch
 
 // Runs the block, or takes the promise as given, and waits for how it
 // settles, in the shape throws.ts judges. A function that throws before
