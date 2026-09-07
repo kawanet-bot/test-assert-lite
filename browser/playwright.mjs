@@ -15,11 +15,12 @@ const loadPlaywright = async () => {
 }
 
 /**
- * Runs the suites at `urls` on `origin`'s console.html in headless Chromium
- * and resolves to what run() resolved to. Page errors are collected and
+ * Runs the suites at `urls` on `origin`'s console.html in headless Chromium,
+ * after the classic `scripts` (a library's IIFE build, say) have run, and
+ * resolves to what run() resolved to. Page errors are collected and
  * thrown together once run() has settled.
  */
-export const runInBrowser = async ({origin, urls}) => {
+export const runInBrowser = async ({origin, scripts = [], urls}) => {
     const {chromium} = await loadPlaywright()
     const browser = await chromium.launch()
     try {
@@ -31,8 +32,13 @@ export const runInBrowser = async ({origin, urls}) => {
         page.on("console", msg => (msg.type() === "error" ? console.error : console.log)(msg.text()))
 
         await page.goto(`${origin}/console.html`)
-        // A url tag resolves once the whole module graph has executed, so
-        // run() below cannot overtake the registration; inline content would.
+        // Classic scripts first, so the globals they leave are in place when
+        // the suites load. A url tag resolves once the script has run, and
+        // for a module once the whole graph has executed, so run() below
+        // cannot overtake the registration; inline content would.
+        for (const url of scripts) {
+            await page.addScriptTag({url})
+        }
         for (const url of urls) {
             await page.addScriptTag({type: "module", url})
         }

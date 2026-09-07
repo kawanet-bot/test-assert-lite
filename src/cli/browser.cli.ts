@@ -13,19 +13,22 @@ import {startServer} from "./server.ts"
 // One suite per run: several entries would each get their own mount, and
 // a module shared between them would load once per mount as a separate
 // instance. Bundle first, as the project's own suites are.
-const USAGE = "Usage: node src/cli/browser.cli.ts [--serve] <file>\n"
+const USAGE = "Usage: node src/cli/browser.cli.ts [--serve] [--script <file>]... <file>\n"
 
 const root = resolve(fileURLToPath(new URL("../..", import.meta.url)))
 
 // parseArgs settles the flag forms (--x=v, -h, --) and rejects a flag this
 // CLI does not know rather than taking it for a file name; its wording on
-// such an error gives way to the usage line.
+// such an error gives way to the usage line. --script names a classic
+// script to run before the suite, such as a library's IIFE build whose
+// global the suite's bridge reads; repeat it in the order the page needs.
 const parse = () => {
     try {
         return parseArgs({
             args: process.argv.slice(2),
             options: {
                 serve: {type: "boolean", default: false},
+                script: {type: "string", multiple: true, default: []},
                 help: {type: "boolean", short: "h", default: false},
             },
             allowPositionals: true,
@@ -50,25 +53,32 @@ if (files.length !== 1) {
 }
 
 // The suite's directory is mounted at /@tal/0/, so a sibling or a nested
-// import resolves beside it while nothing above stays reachable. The name
-// is percent-encoded so the URL matches what the browser sends back for a
-// space, a `#` or a non-ASCII character.
+// import resolves beside it while nothing above stays reachable. Each
+// script is mounted on its own. Names are percent-encoded so the URL
+// matches what the browser sends back for a space, a `#` or a non-ASCII
+// character.
 const file = resolve(files[0] as string)
 const urls = [`/@tal/0/${encodeURIComponent(basename(file))}`]
+const scripts = values.script.map(script => resolve(script))
+const scriptUrls = scripts.map((script, i) => `/@tal/scripts/${i}/${encodeURIComponent(basename(script))}`)
 
 // Document root is htdocs/, with /dist and /exports aliased onto the build
 // output and the subpath bridges, which have to stay where the package
-// puts them. Nothing else is exposed. index.html asks for the mount list
-// and imports each entry itself.
+// puts them. Nothing else is exposed. index.html asks for both lists and
+// loads them itself, scripts first.
 const server = await startServer({
     root: resolve(root, "htdocs"),
     aliases: {"/dist/": resolve(root, "dist"), "/exports/": resolve(root, "exports"), "/@tal/0/": dirname(file)},
-    data: {"/@tal/tests.json": {type: "application/json", body: JSON.stringify(urls)}},
+    files: Object.fromEntries(scriptUrls.map((url, i) => [url, scripts[i] as string])),
+    data: {
+        "/@tal/scripts.json": {type: "application/json", body: JSON.stringify(scriptUrls)},
+        "/@tal/tests.json": {type: "application/json", body: JSON.stringify(urls)},
+    },
 })
 
 const run = async (): Promise<void> => {
     try {
-        const {counts, success} = await runInBrowser({origin: server.origin, urls})
+        const {counts, success} = await runInBrowser({origin: server.origin, scripts: scriptUrls, urls})
         const {failed, tests} = counts
 
         // success rather than the counter: a failure outside a test body,

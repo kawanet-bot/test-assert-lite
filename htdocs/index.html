@@ -29,6 +29,15 @@
 <script type="module">
     import {reporter, run} from "test-assert-lite";
 
+    // Classic scripts first, one at a time, so the globals they leave are
+    // in place before any suite loads.
+    for (const src of await (await fetch("/@tal/scripts.json")).json()) {
+        await new Promise((resolve, reject) => {
+            const script = Object.assign(document.createElement("script"), {src, onload: resolve, onerror: reject});
+            document.head.append(script);
+        });
+    }
+
     // One at a time, so the suites register in command-line order.
     for (const url of await (await fetch("/@tal/tests.json")).json()) {
         await import(url);
