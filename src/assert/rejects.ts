@@ -3,11 +3,12 @@ import {expectError, expectNoError, invalid, type Outcome, readExpectation, read
 
 type Predicate = declared.TAL.AssertPredicate
 type Filter = declared.TAL.ErrorFilter
-type Block = PromiseLike<unknown> | (() => PromiseLike<unknown>)
+// The declared shape is node:assert's; at runtime a promise is what
+// node:assert takes as one, checked below.
+type Block = Promise<unknown> | (() => Promise<unknown>)
 
-// What node:assert takes as a promise here: an object carrying both then
-// and catch, so a native Promise from any realm, but not a function that
-// happens to carry them.
+// An object carrying both then and catch, so a native Promise from any
+// realm, but not a function that happens to carry them.
 const isThenable = (value: unknown): value is PromiseLike<unknown> =>
     value != null && "object" === typeof value &&
     "function" === typeof (value as {then?: unknown}).then && "function" === typeof (value as {catch?: unknown}).catch

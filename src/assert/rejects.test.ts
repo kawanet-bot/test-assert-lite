@@ -86,9 +86,11 @@ describe(TITLE, () => {
         assert.doesNotThrow(() => void TAL.rejects("x" as never).catch(() => undefined))
     })
 
+    // The declared type is node's, a Promise; the runtime takes what node
+    // takes at runtime, an object with then and catch, so this is cast.
     it("rejects takes a thenable with then and catch", async () => {
-        const thenable = (settle: (ok: () => void, fail: (e: unknown) => void) => void): PromiseLike<unknown> =>
-            ({then: settle, catch: () => undefined}) as unknown as PromiseLike<unknown>
+        const thenable = (settle: (ok: () => void, fail: (e: unknown) => void) => void): Promise<unknown> =>
+            ({then: settle, catch: () => undefined}) as unknown as Promise<unknown>
         await assert.doesNotReject(() => TAL.rejects(thenable((_ok, fail) => fail(new Error("later"))), /later/))
         await assert.doesNotReject(() => TAL.doesNotReject(thenable(ok => ok())))
     })
