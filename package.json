@@ -37,6 +37,21 @@
       "types": "./types/test-assert-lite.d.ts",
       "module-sync": "./dist/test-assert-lite.mjs",
       "import": "./dist/test-assert-lite.mjs"
+    },
+    "./test": {
+      "types": "./exports/test.d.mts",
+      "module-sync": "./exports/test.mjs",
+      "import": "./exports/test.mjs"
+    },
+    "./assert": {
+      "types": "./exports/assert.d.mts",
+      "module-sync": "./exports/assert.mjs",
+      "import": "./exports/assert.mjs"
+    },
+    "./assert/strict": {
+      "types": "./exports/assert/strict.d.mts",
+      "module-sync": "./exports/assert/strict.mjs",
+      "import": "./exports/assert/strict.mjs"
     }
   },
   "files": [
@@ -47,6 +62,7 @@
     "dist/package.json",
     "dist/test-assert-lite.cli.mjs",
     "dist/test-assert-lite.min.js",
+    "exports/",
     "htdocs/",
     "dist/test-assert-lite.mjs",
     "types/*.d.ts"

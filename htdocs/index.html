@@ -5,7 +5,7 @@
     <title>test-assert-lite browser test</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <link rel="stylesheet" href="/styles/test-assert-lite.css"/>
-    <!-- The page people open, from `browser/tests.cli.mjs --serve`. It
+    <!-- The page people open, from `src/cli/browser.cli.ts --serve`. It
          imports whatever the CLI mounted, listed at /@tal/tests.json, and shows
          the HTML reporter; console.html is the one the CLI drives itself.
          Same import map as there. -->
@@ -13,8 +13,12 @@
         {
             "imports": {
                 "test-assert-lite": "/dist/test-assert-lite.mjs",
-                "node:test": "/dist/test-assert-lite.mjs",
-                "node:assert": "/dist/test-assert-lite.mjs"
+                "test-assert-lite/test": "/exports/test.mjs",
+                "test-assert-lite/assert": "/exports/assert.mjs",
+                "test-assert-lite/assert/strict": "/exports/assert/strict.mjs",
+                "node:test": "/exports/test.mjs",
+                "node:assert": "/exports/assert.mjs",
+                "node:assert/strict": "/exports/assert/strict.mjs"
             }
         }
     </script>

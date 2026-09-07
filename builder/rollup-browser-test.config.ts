@@ -16,7 +16,15 @@ const rollupConfig: RollupOptions = {
 
     // Left to the import map. Listed by name rather than by pattern so the
     // alias below still sees the relative entry imports first.
-    external: ["test-assert-lite", "node:test", "node:assert"],
+    external: [
+        "test-assert-lite",
+        "test-assert-lite/assert",
+        "test-assert-lite/assert/strict",
+        "test-assert-lite/test",
+        "node:assert",
+        "node:assert/strict",
+        "node:test",
+    ],
 
     output: {
         file: "../browser/tests/bundled.mjs",
