@@ -82,6 +82,7 @@ export interface AssertControl {
 
 export const createAssert = (): AssertControl => {
     const strictOnly = flavour(true)
+    const looseOnly = flavour(false)
 
     const shared = {
         fail: (message?: string | Error): never => {
@@ -109,8 +110,10 @@ export const createAssert = (): AssertControl => {
         })
     }
 
-    // For t.assert. Here ok / ifError are plain checks, not assertion signatures.
-    const methods: declared.TAL.AssertMethods = {...shared, ...strictOnly, ok, ifError}
+    // For t.assert, which in node:test carries the loose equal / deepEqual
+    // like the plain assert. ok / ifError are plain checks here, not
+    // assertion signatures.
+    const methods: declared.TAL.AssertMethods = {...shared, ...looseOnly, ok, ifError}
 
     // The node:assert shape, where the module itself works as ok.
     const callable = (own: ReturnType<typeof flavour>): declared.TAL.Assert => Object.assign(
@@ -121,7 +124,7 @@ export const createAssert = (): AssertControl => {
     )
 
     const strict = callable(strictOnly)
-    const assert = callable(flavour(false))
+    const assert = callable(looseOnly)
     // As in node, `.strict` leads to the strict one from either.
     assert.strict = strict
     strict.strict = strict

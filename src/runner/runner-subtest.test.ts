@@ -155,6 +155,32 @@ describe(TITLE, () => {
         assert.equal((caught as Error & {code?: string}).code, "ERR_ASSERTION")
     })
 
+    // node:test's t.assert is the plain assert, not assert.strict: its
+    // equal / deepEqual compare loosely, and the strict ones go by their
+    // *StrictEqual names.
+    it("t.assert compares loosely under the plain names, strictly under the strict ones", async () => {
+        const local = createTAL()
+        local.reporter.output(() => undefined)
+        const outcome: Record<string, boolean> = {}
+        const attempt = (name: string, fn: () => void): void => {
+            try {
+                fn()
+                outcome[name] = true
+            } catch {
+                outcome[name] = false
+            }
+        }
+        local.it("asserting", (t) => {
+            attempt("equal", () => t.assert.equal(1, "1"))
+            attempt("deepEqual", () => t.assert.deepEqual({a: 1}, {a: "1"}))
+            attempt("strictEqual", () => t.assert.strictEqual(1, "1"))
+            attempt("deepStrictEqual", () => t.assert.deepStrictEqual({a: 1}, {a: "1"}))
+        })
+        await local.run()
+
+        assert.deepEqual(outcome, {equal: true, deepEqual: true, strictEqual: false, deepStrictEqual: false})
+    })
+
     it("the context carries the test name", async () => {
         const local = createTAL()
         local.reporter.output(() => undefined)

@@ -124,7 +124,9 @@ describe(TITLE, () => {
         const seen = capture(local.reporter)
         let same = false
         local.it("check", (t) => {
-            same = t.assert.equal === local.strict.equal
+            // t.assert is the loose set, so its equal is the harness's plain
+            // assert.equal, and its strictEqual the strict one.
+            same = t.assert.equal === local.assert.equal && t.assert.strictEqual === local.strict.equal
         })
         await local.run()
 
