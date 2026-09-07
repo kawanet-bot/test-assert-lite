@@ -13,6 +13,15 @@ const TITLE = "runner/runner-timeout.test.ts"
 // Every test builds its own harness, so the default one stays clean and
 // nothing re-enters when TAL is itself the runner.
 describeSlow(TITLE, () => {
+    // Keeps the run open past a timed out body, as something else still
+    // running does in node:test, so what that body declares meanwhile is
+    // taken. The run does not wait on such a body on its own.
+    const keepOpen = (local: ReturnType<typeof createTAL>): void => {
+        local.it("keep", async () => {
+            await new Promise(r => setTimeout(r, slow(60)))
+        })
+    }
+
     // node:test files a timeout under cancelled, not failed.
     it("timeout option cancels the test", async () => {
         const local = createTAL()
@@ -47,27 +56,25 @@ describeSlow(TITLE, () => {
         assert.equal(summary.counts.failed, 1)
     })
 
-    // node:test reports the timeout at once and, as long as the process is
-    // kept alive, ends the run only when the body has settled. A library
-    // cannot see what keeps a process alive, so the body is given one more
-    // timeout's worth of time, and what it does meanwhile stays in the run.
-    it("run() waits for a timed out body to settle within one more timeout", async () => {
+    // node:test ends its run only when nothing keeps the process alive,
+    // which a library cannot see. The timeout is the verdict, and the run
+    // does not wait on the body: one that never settles cannot hold it open.
+    it("run() does not wait for a timed out body", async () => {
         const local = createTAL()
         local.reporter.output(() => undefined)
         let settled = false
-        local.it("slow", {timeout: slow(30)}, async () => {
+        local.it("slow", {timeout: slow(10)}, async () => {
             await new Promise(r => setTimeout(r, slow(40)))
             settled = true
         })
         const summary = await local.run()
 
-        assert.equal(settled, true)
+        assert.equal(settled, false)
         assert.deepEqual(summary.counts, {tests: 1, suites: 0, passed: 0, failed: 0, cancelled: 1, skipped: 0})
     })
 
-    // Past that, the run ends: a body that never settles cannot hold it
-    // open, and what a body does after the run has ended is dropped.
-    it("run() does not wait for a timed out body beyond that, and drops what it does after", async () => {
+    // What a body does after the run has ended is dropped.
+    it("what a timed out body does after the run has ended is dropped", async () => {
         const local = createTAL()
         const events = capture(local.reporter)
         let settled = false
@@ -117,34 +124,32 @@ describeSlow(TITLE, () => {
                 ran++
             })
         })
+        keepOpen(local)
         const summary = await local.run()
 
         assert.equal(ran, 2)
         const late = ofType(events, "test:fail").filter(e => e.data.name.startsWith("late"))
-        assert.deepEqual(late.map(e => `${e.data.name}@${e.data.nesting}#${e.data.testNumber}`), ["late awaited@0#2", "late unawaited@0#3"])
+        assert.deepEqual(late.map(e => `${e.data.name}@${e.data.nesting}#${e.data.testNumber}`), ["late awaited@0#3", "late unawaited@0#4"])
         assert.equal((late[0]?.data.details.error as {failureType?: string}).failureType, "parentAlreadyFinished")
-        assert.deepEqual(summary.counts, {tests: 3, suites: 0, passed: 0, failed: 2, cancelled: 1, skipped: 0})
+        assert.deepEqual(summary.counts, {tests: 4, suites: 0, passed: 1, failed: 2, cancelled: 1, skipped: 0})
         assert.equal(summary.success, false)
     })
 
     // node:test reports a child still in flight as cancelled the moment its
-    // parent times out, ahead of the parent, and ignores the child's own
-    // verdict when its body settles later.
+    // parent times out, ahead of the parent. The child's body is not
+    // waited for, and its own verdict, when it settles, goes nowhere.
     it("a parent's timeout cancels the subtest still running", async () => {
         const local = createTAL()
         const events = capture(local.reporter)
-        let childSettled = false
-        local.it("parent", {timeout: slow(30)}, async (t) => {
+        local.it("parent", {timeout: slow(10)}, async (t) => {
             void t.test("child", async () => {
                 await new Promise(r => setTimeout(r, slow(40)))
-                childSettled = true
             })
             await new Promise(r => setTimeout(r, slow(50)))
         })
         local.it("next", () => undefined)
         const summary = await local.run()
 
-        assert.equal(childSettled, true)
         const results = events
             .filter(e => e.type === "test:pass" || e.type === "test:fail")
             .map(e => `${e.data.name}@${e.data.nesting}#${e.data.testNumber}`)
@@ -261,26 +266,29 @@ describeSlow(TITLE, () => {
         assert.equal(events.at(-1)?.type, "test:summary")
     })
 
-    // The root's after hooks run once the registered tests are done, not
-    // once a timed out body has settled: teardown must not wait on it. What
-    // that body declares afterwards runs after the teardown.
-    it("root after hooks run before a timed out body is waited for", async () => {
+    // The root's after hooks run once the registered tests are done, and
+    // the run ends there: a timed out body is not waited for, and what it
+    // declares once the run has ended is dropped rather than run.
+    it("root after hooks run without waiting for a timed out body", async () => {
         const local = createTAL()
         local.reporter.output(() => undefined)
         const order: string[] = []
         local.after(() => {
             order.push("after")
         })
-        local.it("slow", {timeout: slow(30)}, async (t) => {
+        local.it("slow", {timeout: slow(10)}, async (t) => {
             await new Promise(r => setTimeout(r, slow(40)))
             order.push("settled")
             await t.test("late", () => {
                 order.push("late")
             })
+            order.push("resumed")
         })
         await local.run()
+        assert.deepEqual(order, ["after"])
 
-        assert.deepEqual(order, ["after", "settled", "late"])
+        await new Promise(r => setTimeout(r, slow(80)))
+        assert.deepEqual(order, ["after", "settled", "resumed"])
     })
 
     // A queued sibling keeps its skip when the parent gives up, and every
@@ -372,11 +380,12 @@ describeSlow(TITLE, () => {
                 t2.skip("why")
             })
         })
+        keepOpen(local)
         const summary = await local.run()
 
         const late = ofType(events, "test:fail").find(e => e.data.name === "late")?.data
         assert.equal(late?.skip, "why")
-        assert.deepEqual(summary.counts, {tests: 2, suites: 0, passed: 0, failed: 0, cancelled: 1, skipped: 1})
+        assert.deepEqual(summary.counts, {tests: 3, suites: 0, passed: 1, failed: 0, cancelled: 1, skipped: 1})
     })
 
     // Marking every child reported happens before any reporter call, not one
@@ -441,10 +450,11 @@ describeSlow(TITLE, () => {
                 })
             })
         })
+        keepOpen(local)
         const summary = await local.run()
 
         assert.equal(settled, true)
-        assert.equal(summary.counts.tests, 3)
+        assert.equal(summary.counts.tests, 4)
     })
 
     // node:test announces a late subtest as an ancestor before running its
@@ -458,9 +468,10 @@ describeSlow(TITLE, () => {
                 await inner.test("grandchild", () => undefined)
             })
         })
+        keepOpen(local)
         await local.run()
 
-        assert.deepEqual(names(events, "test:start"), ["slow", "late", "grandchild"])
+        assert.deepEqual(names(events, "test:start"), ["slow", "keep", "late", "grandchild"])
     })
 
     // A late subtest's own timeout is honored the same way a registered
@@ -482,9 +493,10 @@ describeSlow(TITLE, () => {
             order.push("released")
             await t.test("late2", () => undefined)
         })
+        keepOpen(local)
         await local.run()
 
-        assert.deepEqual(order, ["released", "late body settled"])
+        assert.deepEqual(order, ["released"])
         const grandchild = ofType(events, "test:fail").find(e => e.data.name === "grandchild")?.data
         assert.equal((grandchild?.details.error as {failureType?: string}).failureType, "cancelledByParent")
     })
@@ -500,11 +512,12 @@ describeSlow(TITLE, () => {
                 throw new Error("boom")
             })
         })
+        keepOpen(local)
         const summary = await local.run()
 
         const late = ofType(events, "test:fail").find(e => e.data.name === "late")?.data
         assert.equal((late?.details.error as {failureType?: string}).failureType, "parentAlreadyFinished")
-        assert.deepEqual(summary.counts, {tests: 2, suites: 0, passed: 0, failed: 1, cancelled: 1, skipped: 0})
+        assert.deepEqual(summary.counts, {tests: 3, suites: 0, passed: 1, failed: 1, cancelled: 1, skipped: 0})
     })
 
     // A skip the body calls before its own timeout cuts it off still decides
@@ -519,11 +532,12 @@ describeSlow(TITLE, () => {
                 await new Promise(r => setTimeout(r, slow(100)))
             })
         })
+        keepOpen(local)
         const summary = await local.run()
 
         const late = ofType(events, "test:fail").find(e => e.data.name === "late")?.data
         assert.equal(late?.skip, "why")
-        assert.deepEqual(summary.counts, {tests: 2, suites: 0, passed: 0, failed: 0, cancelled: 1, skipped: 1})
+        assert.deepEqual(summary.counts, {tests: 3, suites: 0, passed: 1, failed: 0, cancelled: 1, skipped: 1})
     })
 
     // node:test does not run a skipped late subtest, keeps its skip on the
@@ -538,12 +552,13 @@ describeSlow(TITLE, () => {
                 ran = true
             })
         })
+        keepOpen(local)
         const summary = await local.run()
 
         assert.equal(ran, false)
         const late = ofType(events, "test:fail").find(e => e.data.name === "late skip")?.data
         assert.equal(late?.skip, "why")
-        assert.deepEqual(summary.counts, {tests: 2, suites: 0, passed: 0, failed: 0, cancelled: 1, skipped: 1})
+        assert.deepEqual(summary.counts, {tests: 3, suites: 0, passed: 1, failed: 0, cancelled: 1, skipped: 1})
     })
 
     // node:test reports a late subtest after every registered test, numbered

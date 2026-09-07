@@ -60,8 +60,6 @@ const runOnce = async (
         reporter: control.reporter,
         assert,
         harness,
-        lingering: new Set(),
-        wake: undefined,
         closed: false,
     }
 
