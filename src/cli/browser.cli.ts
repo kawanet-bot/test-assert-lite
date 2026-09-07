@@ -37,12 +37,13 @@ if (files.length !== 1) {
 const file = resolve(files[0] as string)
 const urls = [`/@tal/0/${encodeURIComponent(basename(file))}`]
 
-// Document root is htdocs/, with /dist aliased onto the build output since
-// dist/ has to stay where the package puts it. Nothing else is exposed.
-// index.html asks for the mount list and imports each entry itself.
+// Document root is htdocs/, with /dist and /exports aliased onto the build
+// output and the subpath bridges, which have to stay where the package
+// puts them. Nothing else is exposed. index.html asks for the mount list
+// and imports each entry itself.
 const server = await startServer({
     root: resolve(root, "htdocs"),
-    aliases: {"/dist/": resolve(root, "dist"), "/@tal/0/": dirname(file)},
+    aliases: {"/dist/": resolve(root, "dist"), "/exports/": resolve(root, "exports"), "/@tal/0/": dirname(file)},
     data: {"/@tal/tests.json": {type: "application/json", body: JSON.stringify(urls)}},
 })
 

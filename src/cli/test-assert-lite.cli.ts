@@ -15,14 +15,15 @@ import {run} from "../index.ts"
 const USAGE = "Usage: test-assert <file...>\n"
 
 // Suites are written against node:test and node:assert, and this package
-// stands in for both: the browser gets that from an import map, Node from
-// a resolve hook registered before any suite loads. Inline as data: so
-// dist/ carries no extra file.
+// stands in for both: an import map in the browser, a resolve hook here.
+// Each builtin maps onto the subpath of the same name by exact match, so
+// a subpath this package lacks still reaches the real one. Inline as data:.
 const HOOK = `let parentURL
+const mapped = new Set(["node:test", "node:assert", "node:assert/strict"])
 export const initialize = (data) => { parentURL = data.parentURL }
 export const resolve = (specifier, context, next) =>
-    specifier === "node:test" || specifier === "node:assert"
-        ? next("test-assert-lite", {...context, parentURL})
+    mapped.has(specifier)
+        ? next("test-assert-lite/" + specifier.slice("node:".length), {...context, parentURL})
         : next(specifier, context)
 `
 
