@@ -32,6 +32,11 @@ const isBigInt = "undefined" !== typeof BigInt ? branded<BigInt>(BigInt.prototyp
 const isMap = branded<Map<unknown, unknown>>(getter(Map.prototype, "size"))
 const isSet = branded<Set<unknown>>(getter(Set.prototype, "size"))
 const isArrayBuffer = branded<ArrayBuffer>(getter(ArrayBuffer.prototype, "byteLength"))
+// Where the global is missing nothing can carry the real slot, so the tag
+// alone is then rightly refused as well.
+const isSharedArrayBuffer = "undefined" !== typeof SharedArrayBuffer
+    ? branded<SharedArrayBuffer>(getter(SharedArrayBuffer.prototype, "byteLength"))
+    : (_v: object): _v is SharedArrayBuffer => false
 const isURL = "undefined" !== typeof URL ? branded<URL>(getter(URL.prototype, "href")) : (_v: object): _v is URL => false
 
 // The tag names the kind cheaply, on both sides at once (they were already
@@ -184,7 +189,7 @@ const isDeepEqual = (a: unknown, b: unknown, memo: Memo): boolean => {
             if (!sameMap(a, b as Map<unknown, unknown>, memo)) return false
         } else if (tag === "[object Set]" && both(isSet, a, b)) {
             if (!sameSet(a, b as Set<unknown>, memo)) return false
-        } else if ((tag === "[object ArrayBuffer]" && both(isArrayBuffer, a, b)) || tag === "[object SharedArrayBuffer]") {
+        } else if ((tag === "[object ArrayBuffer]" && both(isArrayBuffer, a, b)) || (tag === "[object SharedArrayBuffer]" && both(isSharedArrayBuffer, a, b))) {
             if (!sameArrayBuffer(a as ArrayBufferLike, b as ArrayBufferLike)) return false
         } else if (isDataView(a) && isDataView(b)) {
             if (!sameDataView(a, b)) return false

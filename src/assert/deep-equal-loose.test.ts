@@ -185,4 +185,15 @@ describe(TITLE, () => {
         // Two claims with nothing behind them are not equal either.
         assert.throws(() => loose.deepEqual(claim("Date"), claim("Date")), /deep-equal/)
     })
+
+    // A claimed SharedArrayBuffer tag used to reach the byte comparison,
+    // where `new Uint8Array(claim)` reads an empty view and matches an
+    // empty real buffer. Skipped where the global is absent (a browser
+    // that is not cross-origin isolated), same as the strict-side test.
+    it("refuses a SharedArrayBuffer tag without the slot behind it", {skip: "undefined" === typeof SharedArrayBuffer}, () => {
+        const claim = Object.defineProperty({}, Symbol.toStringTag, {value: "SharedArrayBuffer"})
+        assert.throws(() => loose.deepEqual(claim, new SharedArrayBuffer(0)), /deep-equal/)
+        assert.throws(() => loose.deepEqual(new SharedArrayBuffer(0), claim), /deep-equal/)
+        assert.doesNotThrow(() => loose.deepEqual(new SharedArrayBuffer(0), new SharedArrayBuffer(0)))
+    })
 })
