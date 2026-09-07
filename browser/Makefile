@@ -2,6 +2,11 @@
 SHELL := bash
 .SHELLFLAGS := -eo pipefail -c
 
+# Sequential by design: nothing here gains from -j, and `test` leans on
+# install running before the build. This also blocks a -j inherited
+# through MAKEFLAGS.
+.NOTPARALLEL:
+
 PLAYWRIGHT_VERSION := 1.62.1
 
 MJS_DST := ../dist/test-assert-lite.mjs
@@ -11,9 +16,9 @@ BROWSER_TEST_DST := ../browser/tests/bundled.mjs
 # repository-wide builder Makefile. This entry point is for browser CI.
 all: bundled
 
-# The npm step also brings the build tools, so a clean checkout can start
-# straight from `test`, in any order under parallel make.
-bundled: install-playwright
+# Build tools come from the package's own npm install; `serve` must not
+# pull Playwright in, so the bundle does not depend on install-playwright.
+bundled:
 	$(MAKE) -C ../builder $(MJS_DST) $(BROWSER_TEST_DST)
 
 # Keep Playwright out of package.json. CI installs it transiently alongside
@@ -37,13 +42,18 @@ LAUNCHABLE = $(shell cd .. && node -e 'require("playwright").chromium.launch().t
 install-browser: install-playwright
 	cd .. && npx --no-install playwright install --only-shell chromium$(if $(LAUNCHABLE),, --with-deps)
 
-# `install` here keeps a plain `make -C browser test` self-sufficient. It is
-# cheap once Playwright and the browser are present (see LAUNCHABLE).
-test: all install
+# `install` first: its npm step also brings the build tools, so a plain
+# `make -C browser test` works from a clean checkout. It is cheap once
+# Playwright and the browser are present (see LAUNCHABLE).
+test: install all
 	cd .. && node browser/tests.cli.mjs browser/tests/bundled.mjs
+
+# The same bundle for a person: prints the URL and serves until Ctrl-C.
+serve: all
+	cd .. && node browser/tests.cli.mjs --serve browser/tests/bundled.mjs
 
 # Browser bundle cleanup remains owned by builder/Makefile.
 clean:
 	@: # NOP
 
-.PHONY: all bundled install install-playwright install-browser test clean
+.PHONY: all bundled install install-playwright install-browser test serve clean

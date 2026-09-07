@@ -3,34 +3,19 @@
 // served over a loopback HTTP server whose page carries an import map that
 // points all three at the ESM build (see htdocs/console.html).
 
-import {chromium} from "playwright"
-import {readFile} from "node:fs/promises"
-import {createServer} from "node:http"
-import {basename, extname, resolve, sep} from "node:path"
+import {basename, resolve} from "node:path"
 import {fileURLToPath} from "node:url"
+import {startServer} from "../src/cli/server.ts"
 
-const USAGE = "Usage: node tests.cli.mjs <file...>\n"
+const USAGE = "Usage: node tests.cli.mjs [--serve] <file...>\n"
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)))
 
-// Document root is htdocs/, with /dist aliased onto the build output since
-// dist/ has to stay where the package puts it. Nothing else is exposed.
-const roots = {
-    "/": resolve(root, "htdocs"),
-    "/dist/": resolve(root, "dist"),
-}
+const args = process.argv.slice(2)
+const serve = args.includes("--serve")
+const files = args.filter(arg => arg !== "--serve")
 
-const TYPES = {
-    ".css": "text/css",
-    ".html": "text/html",
-    ".js": "text/javascript",
-    ".json": "application/json",
-    ".mjs": "text/javascript",
-}
-
-const files = process.argv.slice(2)
-
-if (files.includes("-h") || files.includes("--help")) {
+if (args.includes("-h") || args.includes("--help")) {
     process.stdout.write(USAGE)
     process.exit(0)
 }
@@ -43,37 +28,33 @@ if (!files.length) {
 // The given files may live anywhere, so each gets a virtual path. The name
 // is percent-encoded up front so the key matches what the browser sends
 // back for a space, a `#` or a non-ASCII character.
-const mounts = new Map(files.map((file, i) => [`/@tests/${i}/${encodeURIComponent(basename(file))}`, resolve(file)]))
+const mounts = Object.fromEntries(files.map((file, i) => [`/@tests/${i}/${encodeURIComponent(basename(file))}`, resolve(file)]))
 
-const locate = (pathname) => {
-    if (mounts.has(pathname)) return mounts.get(pathname)
-    const prefix = pathname.startsWith("/dist/") ? "/dist/" : "/"
-    const base = roots[prefix]
-    const path = resolve(base, pathname.slice(prefix.length))
-    return path.startsWith(base + sep) ? path : null
-}
+// Document root is htdocs/, with /dist aliased onto the build output since
+// dist/ has to stay where the package puts it. Nothing else is exposed.
+// index.html asks for the mount list and imports each entry itself.
+const server = await startServer({
+    root: resolve(root, "htdocs"),
+    aliases: {"/dist/": resolve(root, "dist")},
+    files: mounts,
+    data: {"/@tests.json": {type: "application/json", body: JSON.stringify(Object.keys(mounts))}},
+})
 
-const serve = async (req, res) => {
-    const path = locate(new URL(req.url, "http://127.0.0.1").pathname)
+// Playwright is not a dependency of this package, so it is loaded only on
+// the path that needs it: --serve works without it.
+const loadPlaywright = async () => {
     try {
-        const body = await readFile(path)
-        res.writeHead(200, {"content-type": `${TYPES[extname(path)] ?? "application/octet-stream"}; charset=utf-8`})
-        res.end(body)
-    } catch {
-        res.writeHead(404)
-        res.end()
+        return await import("playwright")
+    } catch (error) {
+        if (error?.code !== "ERR_MODULE_NOT_FOUND") throw error
+        throw new Error("Playwright is not installed; run `make -C browser install` first")
     }
 }
-
-// 127.0.0.1 on both ends: `localhost` may resolve to ::1 in the browser
-// while the server listens on IPv4 only.
-const server = createServer(serve)
-await new Promise(listening => server.listen(0, "127.0.0.1", listening))
-const origin = `http://127.0.0.1:${server.address().port}`
 
 const run = async () => {
     let browser
     try {
+        const {chromium} = await loadPlaywright()
         browser = await chromium.launch()
         const page = await browser.newPage()
         const pageErrors = []
@@ -82,10 +63,10 @@ const run = async () => {
         // output matches what the Node CLI shows.
         page.on("console", msg => (msg.type() === "error" ? console.error : console.log)(msg.text()))
 
-        await page.goto(`${origin}/console.html`)
+        await page.goto(`${server.origin}/console.html`)
         // A url tag resolves once the whole module graph has executed, so
         // run() below cannot overtake the registration; inline content would.
-        for (const url of mounts.keys()) {
+        for (const url of Object.keys(mounts)) {
             await page.addScriptTag({type: "module", url})
         }
 
@@ -110,11 +91,18 @@ const run = async () => {
     } finally {
         await browser?.close()
         server.close()
-        server.closeAllConnections()
     }
 }
 
-run().catch(error => {
-    console.error(error)
-    process.exitCode = 1
-})
+if (serve) {
+    // Hand the page to a person instead of Playwright and stay up until
+    // interrupted. Only the URL goes to stdout, so it can be piped.
+    process.stdout.write(`${server.origin}/\n`)
+    process.stderr.write("Serving the suites; press Ctrl-C to stop.\n")
+    process.once("SIGINT", () => server.close())
+} else {
+    run().catch(error => {
+        console.error(error)
+        process.exitCode = 1
+    })
+}

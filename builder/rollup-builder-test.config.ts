@@ -8,7 +8,9 @@ import {showFiles} from "./show-files.ts"
 // `node:assert`, and this config points those at the package itself, so the
 // bundle exercises the library with the library.
 const rollupConfig: RollupOptions = {
-    input: ["../src/**/*.test.ts"],
+    // src/cli/ tests exercise Node-only code such as the HTTP server, and
+    // this bundle runs under the package's own CLI, so they stay out.
+    input: ["../src/**/*.test.ts", "!../src/cli/*"],
 
     // Only the package name stays external, plus the builtins a suite
     // reaches for directly that are not aliased away. A regular expression
