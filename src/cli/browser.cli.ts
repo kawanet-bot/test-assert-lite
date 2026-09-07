@@ -1,16 +1,17 @@
-// Browser counterpart of src/cli/test-assert-lite.cli.ts. The suites are ES
-// modules importing node:test, node:assert or the package name, so they are
-// served over a loopback HTTP server whose page carries an import map that
-// points all three at the ESM build (see htdocs/console.html).
+// Browser counterpart of test-assert-lite.cli.ts. The suites are ES modules
+// importing node:test, node:assert or the package name, so they are served
+// over a loopback HTTP server whose page carries an import map pointing
+// all three at the ESM build (htdocs/console.html), then run in Chromium
+// through browser/playwright.mjs, the only file that touches Playwright.
 
 import {basename, resolve} from "node:path"
 import {fileURLToPath} from "node:url"
-import {startServer} from "../src/cli/server.ts"
-import {runInBrowser} from "./playwright.mjs"
+import {runInBrowser} from "../../browser/playwright.mjs"
+import {startServer} from "./server.ts"
 
-const USAGE = "Usage: node tests.cli.mjs [--serve] <file...>\n"
+const USAGE = "Usage: node src/cli/browser.cli.ts [--serve] <file...>\n"
 
-const root = resolve(fileURLToPath(new URL("..", import.meta.url)))
+const root = resolve(fileURLToPath(new URL("../..", import.meta.url)))
 
 const args = process.argv.slice(2)
 const serve = args.includes("--serve")
@@ -29,7 +30,7 @@ if (!files.length) {
 // The given files may live anywhere, so each gets a virtual path. The name
 // is percent-encoded up front so the key matches what the browser sends
 // back for a space, a `#` or a non-ASCII character.
-const mounts = Object.fromEntries(files.map((file, i) => [`/@tests/${i}/${encodeURIComponent(basename(file))}`, resolve(file)]))
+const mounts: Record<string, string> = Object.fromEntries(files.map((file, i) => [`/@tests/${i}/${encodeURIComponent(basename(file))}`, resolve(file)]))
 
 // Document root is htdocs/, with /dist aliased onto the build output since
 // dist/ has to stay where the package puts it. Nothing else is exposed.
@@ -41,7 +42,7 @@ const server = await startServer({
     data: {"/@tests.json": {type: "application/json", body: JSON.stringify(Object.keys(mounts))}},
 })
 
-const run = async () => {
+const run = async (): Promise<void> => {
     try {
         const {counts, success} = await runInBrowser({origin: server.origin, urls: Object.keys(mounts)})
         const {failed, tests} = counts
@@ -66,7 +67,7 @@ if (serve) {
     process.stderr.write("Serving the suites; press Ctrl-C to stop.\n")
     process.once("SIGINT", () => server.close())
 } else {
-    run().catch(error => {
+    run().catch((error: unknown) => {
         console.error(error)
         process.exitCode = 1
     })
