@@ -4,7 +4,7 @@
 // all three at the ESM build (htdocs/console.html), then run in Chromium
 // through browser/playwright.mjs, the only file that touches Playwright.
 
-import {basename, resolve} from "node:path"
+import {basename, dirname, resolve} from "node:path"
 import {fileURLToPath} from "node:url"
 import {runInBrowser} from "../../browser/playwright.mjs"
 import {startServer} from "./server.ts"
@@ -27,24 +27,29 @@ if (!files.length) {
     process.exit(1)
 }
 
-// The given files may live anywhere, so each gets a virtual path. The name
-// is percent-encoded up front so the key matches what the browser sends
-// back for a space, a `#` or a non-ASCII character.
-const mounts: Record<string, string> = Object.fromEntries(files.map((file, i) => [`/@tests/${i}/${encodeURIComponent(basename(file))}`, resolve(file)]))
+// Each suite's directory is mounted at /@tests/<n>/, so a sibling or a
+// nested import resolves beside it while nothing above stays reachable.
+// The entry's name is percent-encoded so the URL matches what the
+// browser sends back for a space, a `#` or a non-ASCII character.
+const suites = files.map((file, i) => ({
+    prefix: `/@tests/${i}/`,
+    dir: dirname(resolve(file)),
+    url: `/@tests/${i}/${encodeURIComponent(basename(file))}`,
+}))
+const urls = suites.map(suite => suite.url)
 
 // Document root is htdocs/, with /dist aliased onto the build output since
 // dist/ has to stay where the package puts it. Nothing else is exposed.
 // index.html asks for the mount list and imports each entry itself.
 const server = await startServer({
     root: resolve(root, "htdocs"),
-    aliases: {"/dist/": resolve(root, "dist")},
-    files: mounts,
-    data: {"/@tests.json": {type: "application/json", body: JSON.stringify(Object.keys(mounts))}},
+    aliases: {"/dist/": resolve(root, "dist"), ...Object.fromEntries(suites.map(suite => [suite.prefix, suite.dir]))},
+    data: {"/@tests.json": {type: "application/json", body: JSON.stringify(urls)}},
 })
 
 const run = async (): Promise<void> => {
     try {
-        const {counts, success} = await runInBrowser({origin: server.origin, urls: Object.keys(mounts)})
+        const {counts, success} = await runInBrowser({origin: server.origin, urls})
         const {failed, tests} = counts
 
         // success rather than the counter: a failure outside a test body,
