@@ -56,7 +56,13 @@ export const startApp = async (options: AppOptions): Promise<App> => {
     // an aliased module gets the same under /@tal/aliases/<n>/. A script
     // cannot import, so each is mounted on its own, percent-encoded.
     const urls = [`/@tal/tests/0/${encodeURIComponent(basename(file))}`]
-    const scriptUrls = scripts.map((script, i) => `/@tal/scripts/${i}/${encodeURIComponent(basename(script))}`)
+    const mounts = scripts.map((script, i) => `/@tal/scripts/${i}/${encodeURIComponent(basename(script))}`)
+
+    // The build browsers get is the IIFE, so that is what runs: it goes in
+    // as the first classic script, and the URL the import map and the
+    // bridges lead to serves browser/import.mjs, the ES module face of its
+    // global, in place of the ESM build.
+    const scriptUrls = ["/@tal/dist/test-assert-lite.min.js", ...mounts]
     const aliasDirs = aliases.map((_, i) => `/@tal/aliases/${i}/`)
     const aliasUrls = aliases.map(({file}, i) => `${aliasDirs[i]}${encodeURIComponent(basename(file))}`)
 
@@ -85,7 +91,10 @@ export const startApp = async (options: AppOptions): Promise<App> => {
             "/@tal/tests/0/": dirname(file),
             ...Object.fromEntries(aliasDirs.map((dir, i) => [dir, dirname(aliases[i]?.file as string)])),
         },
-        files: Object.fromEntries(scriptUrls.map((url, i) => [url, scripts[i] as string])),
+        files: {
+            "/@tal/dist/test-assert-lite.mjs": resolve(root, "browser", "import.mjs"),
+            ...Object.fromEntries(mounts.map((url, i) => [url, scripts[i] as string])),
+        },
         data: {
             "/@tal/scripts.json": {type: "application/json", body: JSON.stringify(scriptUrls)},
             "/@tal/tests.json": {type: "application/json", body: JSON.stringify(urls)},
