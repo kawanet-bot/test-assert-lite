@@ -290,13 +290,13 @@ export class Test {
         }
     }
 
-    // As the parent sees it. A todo never counts against its parent, as in
-    // node:test; a skip that failed still does.
+    // As the parent sees it. A todo's failure never counts against its
+    // parent, as in node:test, even under a skip that hides the todo mark; a
+    // skip that failed without a todo behind it still does.
     private get outcome(): Outcome {
-        if (this.skip != null) return this.error != null ? (this.cancelled ? "cancelled" : "failed") : "skipped"
+        if (this.error == null) return this.skip != null ? "skipped" : "passed"
         if (this.todo != null) return "passed"
-        if (this.cancelled) return "cancelled"
-        return this.error != null ? "failed" : "passed"
+        return this.cancelled ? "cancelled" : "failed"
     }
 
     // Decides the verdict, once, and closes whatever is still open below
@@ -500,7 +500,8 @@ export class Test {
 
     // Counts and emits the result, once. A skip, then a todo, decides the
     // count ahead of the verdict, as in node:test, though the event still
-    // carries the failure; a todo's failure does not fail the run.
+    // carries the failure; a todo's failure does not fail the run, whether
+    // or not a skip hides the mark.
     private async report(): Promise<void> {
         if (this.reported || this.isRoot) return
         this.reported = true
@@ -516,7 +517,7 @@ export class Test {
             else if (this.error != null) counters.failed++
             else counters.passed++
         }
-        if (this.error != null && todo == null) this.run.success = false
+        if (this.error != null && this.todo == null) this.run.success = false
 
         await this.announce()
         const base = {

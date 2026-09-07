@@ -414,6 +414,27 @@ describe(TITLE, () => {
         assert.equal(summary.success, true)
     })
 
+    // A skip hides the todo mark and takes the count, but the todo behind it
+    // still keeps the failure from the run and the parent, as in node:test.
+    it("a todo that skips and then fails still does not fail the run or its parent", async () => {
+        const local = createTAL()
+        const events = capture(local.reporter)
+        local.it("parent", {todo: true}, async (t) => {
+            await t.test("child", (inner) => {
+                inner.skip("why")
+                throw new Error("boom")
+            })
+        })
+        const summary = await local.run()
+
+        const child = ofType(events, "test:fail").find(e => e.data.name === "child")?.data
+        assert.equal(child?.skip, "why")
+        assert.equal(child?.todo, undefined)
+        assert.equal(names(events, "test:pass").includes("parent"), true)
+        assert.deepEqual(summary.counts, {tests: 2, suites: 0, passed: 0, failed: 0, cancelled: 0, skipped: 1, todo: 1})
+        assert.equal(summary.success, true)
+    })
+
     it("subtests are numbered within their parent", async () => {
         const local = createTAL()
         const events = capture(local.reporter)
