@@ -1,6 +1,7 @@
 import type * as declared from "test-assert-lite"
 import {$$, errorText} from "../common/stringify.ts"
 import {isSubtestsFailed} from "../common/tester-error.ts"
+import {directive} from "./spec.ts"
 
 type TestEvent = declared.TAL.TestEvent
 type FormatFn = declared.TAL.FormatFn
@@ -9,9 +10,10 @@ const indentClass = (indent: number): string => (indent > 0 ? `tal-i${indent > 5
 
 const resultLine = (data: declared.TAL.TestPass | declared.TAL.TestFail, isPass: boolean, indented: boolean): string => {
     const skipped = data.skip != null
-    const kind = skipped ? "skip" : isPass ? "pass" : "fail"
-    const symbol = skipped ? "﹣" : isPass ? "✔" : "✖"
-    const note = "string" === typeof data.skip ? ` # ${data.skip}` : skipped ? " # SKIP" : ""
+    const todo = !skipped && data.todo != null
+    const kind = skipped ? "skip" : isPass ? "pass" : todo ? "warn" : "fail"
+    const symbol = skipped ? "﹣" : isPass ? "✔" : todo ? "⚠" : "✖"
+    const note = directive(data)
     const indents = indented ? indentClass(indented && data.nesting) : ""
     const ms = data.details.duration_ms.toFixed(3)
     return $$`<div class="tal-r ${indents}"><span class="tal-${kind}">${symbol} ${data.name}</span> <span class="tal-info">(${ms}ms)</span>${note}</div>\n`

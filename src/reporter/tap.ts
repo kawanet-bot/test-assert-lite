@@ -8,15 +8,17 @@ type FormatFn = declared.TAL.FormatFn
 // line, so both need escaping to keep one test point on one line.
 const escapeText = (text: string): string => text.replace(/#/g, "\\#").replace(/\n/g, "\\n")
 
-const skipDirective = (skip: string | boolean | undefined): string => {
-    if (skip == null) return ""
-    return "string" === typeof skip ? ` # SKIP ${escapeText(skip)}` : " # SKIP"
+// A skip outranks a todo: a point carries one directive at most.
+const directive = (data: declared.TAL.TestPass | declared.TAL.TestFail): string => {
+    const mark = data.skip != null ? ["SKIP", data.skip] as const : data.todo != null ? ["TODO", data.todo] as const : undefined
+    if (mark == null) return ""
+    return "string" === typeof mark[1] && mark[1] ? ` # ${mark[0]} ${escapeText(mark[1])}` : ` # ${mark[0]}`
 }
 
 // A skip called from a body that then throws still fails the point (node's
 // own TAP does the same), so the verdict only depends on pass vs fail.
 const resultLine = (data: declared.TAL.TestPass | declared.TAL.TestFail, isPass: boolean, number: number): string =>
-    `${isPass ? "ok" : "not ok"} ${number} - ${escapeText(data.name)}${skipDirective(data.skip)}`
+    `${isPass ? "ok" : "not ok"} ${number} - ${escapeText(data.name)}${directive(data)}`
 
 // Plain "#" comment lines rather than a YAML block: valid TAP that any
 // consumer can skip, without this package taking on a YAML encoder.

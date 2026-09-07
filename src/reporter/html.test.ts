@@ -37,6 +37,19 @@ describe(TITLE, () => {
         assert.match(out, /<div class="tal-r "><span class="tal-skip">﹣ later</)
     })
 
+    it("marks a todo test, and a failed todo as a warning", async () => {
+        const out = await render(async reporter => {
+            await reporter.emit("test:pass", pass("todo one", {todo: "later"}))
+            await reporter.emit("test:fail", {
+                ...pass("todo two"), todo: true,
+                details: {duration_ms: 1, type: "test", error: new Error("boom")},
+            })
+        })
+
+        assert.match(out, /<span class="tal-pass">✔ todo one<\/span> <span class="tal-info">\(1\.000ms\)<\/span> # later/)
+        assert.match(out, /<span class="tal-warn">⚠ todo two<\/span>/)
+    })
+
     it("escapes text and failure details", async () => {
         const out = await render(async reporter => {
             await reporter.emit("test:diagnostic", {message: `<&>"'`, nesting: 0, level: "warn"})

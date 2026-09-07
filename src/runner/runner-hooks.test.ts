@@ -81,7 +81,7 @@ describe(TITLE, () => {
         assert.deepEqual(fails.map(e => e.data.name), ["a", "b", "S"])
         assert.equal((fails[0]?.data.details.error as {failureType?: string}).failureType, "cancelledByParent")
         assert.equal(fails[2]?.data.details.error, setup)
-        assert.deepEqual(summary.counts, {tests: 2, suites: 1, passed: 0, failed: 0, cancelled: 2, skipped: 0})
+        assert.deepEqual(summary.counts, {tests: 2, suites: 1, passed: 0, failed: 0, cancelled: 2, skipped: 0, todo: 0})
         assert.equal(summary.success, false)
     })
 
@@ -135,7 +135,7 @@ describe(TITLE, () => {
         assert.equal(fails[0]?.data.details.error, setup)
         assert.equal((fails[2]?.data.details.error as {failureType?: string}).failureType, "cancelledByParent")
         assert.equal(fails[3]?.data.details.error, setup)
-        assert.deepEqual(summary.counts, {tests: 3, suites: 1, passed: 0, failed: 2, cancelled: 1, skipped: 0})
+        assert.deepEqual(summary.counts, {tests: 3, suites: 1, passed: 0, failed: 2, cancelled: 1, skipped: 0, todo: 0})
     })
 
     // node:test lets this run pass, since the error has no child to land on.
@@ -177,7 +177,7 @@ describe(TITLE, () => {
         const summary = await local.run()
 
         assert.equal(names(events, "test:fail").length, 1)
-        assert.deepEqual(summary.counts, {tests: 1, suites: 0, passed: 1, failed: 0, cancelled: 0, skipped: 0})
+        assert.deepEqual(summary.counts, {tests: 1, suites: 0, passed: 1, failed: 0, cancelled: 0, skipped: 0, todo: 0})
         assert.equal(summary.success, false)
     })
 
@@ -198,7 +198,7 @@ describe(TITLE, () => {
         const skipped = ofType(events, "test:fail").find(e => e.data.name === "skipped")?.data
         assert.equal(skipped?.skip, true)
         assert.equal((skipped?.details.error as {failureType?: string}).failureType, "cancelledByParent")
-        assert.deepEqual(summary.counts, {tests: 2, suites: 1, passed: 0, failed: 0, cancelled: 1, skipped: 1})
+        assert.deepEqual(summary.counts, {tests: 2, suites: 1, passed: 0, failed: 0, cancelled: 1, skipped: 1, todo: 0})
         assert.equal(summary.success, false)
     })
 
@@ -220,7 +220,7 @@ describe(TITLE, () => {
         const fails = ofType(events, "test:fail")
         assert.deepEqual(fails.map(e => `${e.data.name}:${String(e.data.skip)}`), ["skipped:why", "SK:true"])
         assert.equal(fails[1]?.data.details.error, setup)
-        assert.deepEqual(summary.counts, {tests: 1, suites: 1, passed: 0, failed: 0, cancelled: 0, skipped: 1})
+        assert.deepEqual(summary.counts, {tests: 1, suites: 1, passed: 0, failed: 0, cancelled: 0, skipped: 1, todo: 0})
         assert.equal(summary.success, false)
     })
 

@@ -55,7 +55,7 @@ const runOnce = async (
 ): Promise<declared.TAL.TestSummary> => {
     const started = performance.now()
     const run: Run = {
-        counters: {tests: 0, suites: 0, passed: 0, failed: 0, cancelled: 0, skipped: 0},
+        counters: {tests: 0, suites: 0, passed: 0, failed: 0, cancelled: 0, skipped: 0, todo: 0},
         success: true,
         reporter: control.reporter,
         assert,
@@ -79,6 +79,7 @@ const runOnce = async (
         ["fail", run.counters.failed],
         ["cancelled", run.counters.cancelled],
         ["skipped", run.counters.skipped],
+        ["todo", run.counters.todo],
         ["duration_ms", duration_ms],
     ] as [string, number][]) {
         await run.reporter.emit("test:diagnostic", {

@@ -18,9 +18,7 @@ describe(TITLE, () => {
         local.it("b", () => undefined)
         const summary = await local.run()
 
-        assert.equal(summary.counts.tests, 2)
-        assert.equal(summary.counts.passed, 2)
-        assert.equal(summary.counts.failed, 0)
+        assert.deepEqual(summary.counts, {tests: 2, suites: 0, passed: 2, failed: 0, cancelled: 0, skipped: 0, todo: 0})
         assert.equal(summary.success, true)
     })
 
@@ -98,7 +96,7 @@ describe(TITLE, () => {
             .filter(e => e.type === "test:diagnostic")
             .map(e => e.data.message)
         assert.deepEqual(messages, [
-            "tests 1", "suites 0", "pass 1", "fail 0", "cancelled 0", "skipped 0",
+            "tests 1", "suites 0", "pass 1", "fail 0", "cancelled 0", "skipped 0", "todo 0",
             messages.at(-1),
         ])
         assert.ok(String(messages.at(-1)).startsWith("duration_ms "))

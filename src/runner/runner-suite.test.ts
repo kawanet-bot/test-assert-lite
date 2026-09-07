@@ -172,6 +172,28 @@ describe(TITLE, () => {
         assert.deepEqual(results, ["a:test:1", "S:suite:0"])
     })
 
+    // The static forms, and a todo suite whose children inherit the mark:
+    // a failing child is counted as todo and leaves the suite passing.
+    it("describe.todo and it.todo are the static forms of the todo option", async () => {
+        const local = createTAL()
+        const events = capture(local.reporter)
+        local.it.todo("static", () => undefined)
+        local.describe.todo("DS", () => {
+            local.it("ok", () => undefined)
+            local.it("broken", () => {
+                throw new Error("boom")
+            })
+        })
+        const summary = await local.run()
+
+        const results = events.filter(e => e.type === "test:pass" || e.type === "test:fail")
+        assert.deepEqual(results.map(e => `${e.type}:${e.data.name}:${String(e.data.todo)}`), [
+            "test:pass:static:true", "test:pass:ok:true", "test:fail:broken:true", "test:pass:DS:true",
+        ])
+        assert.deepEqual(summary.counts, {tests: 3, suites: 1, passed: 0, failed: 0, cancelled: 0, skipped: 0, todo: 3})
+        assert.equal(summary.success, true)
+    })
+
     it("describe.skip is reported as a skipped suite", async () => {
         const local = createTAL()
         const events = capture(local.reporter)
@@ -225,7 +247,7 @@ describe(TITLE, () => {
 
         const suite = ofType(events, "test:fail").find(e => e.data.name === "S")?.data
         assert.equal((suite?.details.error as {failureType?: string}).failureType, "subtestsFailed")
-        assert.deepEqual(summary.counts, {tests: 1, suites: 1, passed: 0, failed: 0, cancelled: 0, skipped: 1})
+        assert.deepEqual(summary.counts, {tests: 1, suites: 1, passed: 0, failed: 0, cancelled: 0, skipped: 1, todo: 0})
         assert.equal(summary.success, false)
     })
 
