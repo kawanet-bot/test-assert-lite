@@ -4,6 +4,7 @@
 // all three at the ESM build (htdocs/console.html), then run in Chromium
 // through browser/playwright.mjs, the only file that touches Playwright.
 
+import {readFileSync} from "node:fs"
 import {basename, dirname, resolve} from "node:path"
 import {fileURLToPath} from "node:url"
 import {parseArgs} from "node:util"
@@ -13,7 +14,7 @@ import {startServer} from "./server.ts"
 // One suite per run: several entries would each get their own mount, and
 // a module shared between them would load once per mount as a separate
 // instance. Bundle first, as the project's own suites are.
-const USAGE = "Usage: node src/cli/browser.cli.ts [--serve] [--script <file>]... <file>\n"
+const USAGE = "Usage: node src/cli/browser.cli.ts [--serve] [--script <file>]... [--alias <specifier>=<file>]... <file>\n"
 
 const root = resolve(fileURLToPath(new URL("../..", import.meta.url)))
 
@@ -22,6 +23,8 @@ const root = resolve(fileURLToPath(new URL("../..", import.meta.url)))
 // such an error gives way to the usage line. --script names a classic
 // script to run before the suite, such as a library's IIFE build whose
 // global the suite's bridge reads; repeat it in the order the page needs.
+// --alias points a bare specifier the suite imports at an ES module file,
+// as rollup's alias plugin does at build time, through the import map.
 const parse = () => {
     try {
         return parseArgs({
@@ -29,6 +32,7 @@ const parse = () => {
             options: {
                 serve: {type: "boolean", default: false},
                 script: {type: "string", multiple: true, default: []},
+                alias: {type: "string", multiple: true, default: []},
                 help: {type: "boolean", short: "h", default: false},
             },
             allowPositionals: true,
@@ -52,15 +56,39 @@ if (files.length !== 1) {
     process.exit(1)
 }
 
+// Each --alias is `<specifier>=<file>`, split at the first "=".
+const aliases = values.alias.map(entry => {
+    const at = entry.indexOf("=")
+    if (at < 1 || at === entry.length - 1) {
+        process.stderr.write(USAGE)
+        process.exit(1)
+    }
+    return {specifier: entry.slice(0, at), file: resolve(entry.slice(at + 1))}
+})
+
 // The suite's directory is mounted at /@tal/0/, so a sibling or a nested
 // import resolves beside it while nothing above stays reachable. Each
-// script is mounted on its own. Names are percent-encoded so the URL
-// matches what the browser sends back for a space, a `#` or a non-ASCII
-// character.
+// script and each aliased module is mounted on its own. Names are
+// percent-encoded so the URL matches what the browser sends back.
 const file = resolve(files[0] as string)
 const urls = [`/@tal/0/${encodeURIComponent(basename(file))}`]
 const scripts = values.script.map(script => resolve(script))
 const scriptUrls = scripts.map((script, i) => `/@tal/scripts/${i}/${encodeURIComponent(basename(script))}`)
+const aliasUrls = aliases.map(({file}, i) => `/@tal/alias/${i}/${encodeURIComponent(basename(file))}`)
+
+// The pages carry a static import map, and a map can only be inline and
+// cannot change once a module has loaded, so with --alias present the
+// pages are served with the map extended; the rest of the page is served
+// as it is on disk.
+const withAliases = (page: string): string => {
+    const html = readFileSync(resolve(root, "htdocs", page), "utf8")
+    return html.replace(/(<script type="importmap">)([^]*?)(<\/script>)/, (_, open, json, close) => {
+        const map = JSON.parse(json) as {imports: Record<string, string>}
+        for (const [i, {specifier}] of aliases.entries()) map.imports[specifier] = aliasUrls[i] as string
+        return `${open}\n${JSON.stringify(map, null, 4)}\n${close}`
+    })
+}
+const pages = aliases.length ? ["console.html", "index.html"] : []
 
 // Document root is htdocs/, with /dist and /exports aliased onto the build
 // output and the subpath bridges, which have to stay where the package
@@ -69,10 +97,17 @@ const scriptUrls = scripts.map((script, i) => `/@tal/scripts/${i}/${encodeURICom
 const server = await startServer({
     root: resolve(root, "htdocs"),
     aliases: {"/dist/": resolve(root, "dist"), "/exports/": resolve(root, "exports"), "/@tal/0/": dirname(file)},
-    files: Object.fromEntries(scriptUrls.map((url, i) => [url, scripts[i] as string])),
+    files: {
+        ...Object.fromEntries(scriptUrls.map((url, i) => [url, scripts[i] as string])),
+        ...Object.fromEntries(aliasUrls.map((url, i) => [url, aliases[i]?.file as string])),
+    },
     data: {
         "/@tal/scripts.json": {type: "application/json", body: JSON.stringify(scriptUrls)},
         "/@tal/tests.json": {type: "application/json", body: JSON.stringify(urls)},
+        ...Object.fromEntries(pages.flatMap(page => {
+            const body = {type: "text/html", body: withAliases(page)}
+            return page === "index.html" ? [[`/${page}`, body], ["/", body]] : [[`/${page}`, body]]
+        })),
     },
 })
 
