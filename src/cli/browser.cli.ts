@@ -66,16 +66,16 @@ const aliases = values.alias.map(entry => {
     return {specifier: entry.slice(0, at), file: resolve(entry.slice(at + 1))}
 })
 
-// The suite's directory is mounted at /@tal/0/, so a sibling or a nested
-// import resolves beside it while nothing above stays reachable; an aliased
-// module gets the same under /@tal/alias/<n>/, as it may import beside
-// itself too. A script cannot, so each is mounted on its own. Names are
+// The suite's directory is mounted at /@tal/tests/0/, so a sibling or a
+// nested import resolves beside it while nothing above stays reachable; an
+// aliased module gets the same under /@tal/aliases/<n>/, as it may import
+// beside itself too. A script cannot, so each is mounted on its own. Names are
 // percent-encoded so the URL matches what the browser sends back.
 const file = resolve(files[0] as string)
-const urls = [`/@tal/0/${encodeURIComponent(basename(file))}`]
+const urls = [`/@tal/tests/0/${encodeURIComponent(basename(file))}`]
 const scripts = values.script.map(script => resolve(script))
 const scriptUrls = scripts.map((script, i) => `/@tal/scripts/${i}/${encodeURIComponent(basename(script))}`)
-const aliasDirs = aliases.map((_, i) => `/@tal/alias/${i}/`)
+const aliasDirs = aliases.map((_, i) => `/@tal/aliases/${i}/`)
 const aliasUrls = aliases.map(({file}, i) => `${aliasDirs[i]}${encodeURIComponent(basename(file))}`)
 
 // The pages carry a static import map, and a map can only be inline and
@@ -101,7 +101,7 @@ const server = await startServer({
     aliases: {
         "/dist/": resolve(root, "dist"),
         "/exports/": resolve(root, "exports"),
-        "/@tal/0/": dirname(file),
+        "/@tal/tests/0/": dirname(file),
         ...Object.fromEntries(aliasDirs.map((dir, i) => [dir, dirname(aliases[i]?.file as string)])),
     },
     files: Object.fromEntries(scriptUrls.map((url, i) => [url, scripts[i] as string])),
