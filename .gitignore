@@ -3,6 +3,7 @@
 *.mjs
 !browser/import.js
 !browser/playwright.mjs
+!exports/**/*.mjs
 !sample/**/*.mjs
 *.tgz
 *~

@@ -16,7 +16,17 @@ const rollupConfig: RollupOptions = {
     // Left to the CLI's hook, plus the builtins a suite reaches for
     // directly. Listed by name rather than by pattern so the alias below
     // still sees the relative entry imports first.
-    external: ["test-assert-lite", "node:test", "node:assert", "node:module", "node:path"],
+    external: [
+        "test-assert-lite",
+        "test-assert-lite/assert",
+        "test-assert-lite/assert/strict",
+        "test-assert-lite/test",
+        "node:assert",
+        "node:assert/strict",
+        "node:module",
+        "node:path",
+        "node:test",
+    ],
 
     output: {
         file: "./tests/bundled.mjs",
