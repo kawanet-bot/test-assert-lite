@@ -67,14 +67,16 @@ const aliases = values.alias.map(entry => {
 })
 
 // The suite's directory is mounted at /@tal/0/, so a sibling or a nested
-// import resolves beside it while nothing above stays reachable. Each
-// script and each aliased module is mounted on its own. Names are
+// import resolves beside it while nothing above stays reachable; an aliased
+// module gets the same under /@tal/alias/<n>/, as it may import beside
+// itself too. A script cannot, so each is mounted on its own. Names are
 // percent-encoded so the URL matches what the browser sends back.
 const file = resolve(files[0] as string)
 const urls = [`/@tal/0/${encodeURIComponent(basename(file))}`]
 const scripts = values.script.map(script => resolve(script))
 const scriptUrls = scripts.map((script, i) => `/@tal/scripts/${i}/${encodeURIComponent(basename(script))}`)
-const aliasUrls = aliases.map(({file}, i) => `/@tal/alias/${i}/${encodeURIComponent(basename(file))}`)
+const aliasDirs = aliases.map((_, i) => `/@tal/alias/${i}/`)
+const aliasUrls = aliases.map(({file}, i) => `${aliasDirs[i]}${encodeURIComponent(basename(file))}`)
 
 // The pages carry a static import map, and a map can only be inline and
 // cannot change once a module has loaded, so with --alias present the
@@ -96,11 +98,13 @@ const pages = aliases.length ? ["console.html", "index.html"] : []
 // loads them itself, scripts first.
 const server = await startServer({
     root: resolve(root, "htdocs"),
-    aliases: {"/dist/": resolve(root, "dist"), "/exports/": resolve(root, "exports"), "/@tal/0/": dirname(file)},
-    files: {
-        ...Object.fromEntries(scriptUrls.map((url, i) => [url, scripts[i] as string])),
-        ...Object.fromEntries(aliasUrls.map((url, i) => [url, aliases[i]?.file as string])),
+    aliases: {
+        "/dist/": resolve(root, "dist"),
+        "/exports/": resolve(root, "exports"),
+        "/@tal/0/": dirname(file),
+        ...Object.fromEntries(aliasDirs.map((dir, i) => [dir, dirname(aliases[i]?.file as string)])),
     },
+    files: Object.fromEntries(scriptUrls.map((url, i) => [url, scripts[i] as string])),
     data: {
         "/@tal/scripts.json": {type: "application/json", body: JSON.stringify(scriptUrls)},
         "/@tal/tests.json": {type: "application/json", body: JSON.stringify(urls)},
