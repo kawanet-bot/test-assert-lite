@@ -48,7 +48,7 @@ CLI_MAX_BYTES := 2000
 # Shared by both test bundles, which inline the same suites while the
 # package itself stays external. Development-only output, never published,
 # so this only guards against gross growth and can stay generous.
-TEST_MAX_BYTES := 200000
+TEST_MAX_BYTES := 250000
 
 ALL := $(MJS_DST) $(MINJS_DST) $(CLI_DST) $(BUILDER_TEST_DST)
 
