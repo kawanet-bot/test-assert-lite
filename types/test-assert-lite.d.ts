@@ -97,6 +97,12 @@ export declare namespace TAL {
         throws(block: () => unknown, expected: AssertPredicate | undefined, message?: string | Error): void
         doesNotThrow(block: () => unknown, message?: string): void
         doesNotThrow(block: () => unknown, expected: ErrorFilter | undefined, message?: string | Error): void
+        // The same pair for a promise, or an async function returning one:
+        // judged once it settles, and a misuse rejects rather than throws.
+        rejects(block: PromiseLike<unknown> | (() => PromiseLike<unknown>), message?: string): Promise<void>
+        rejects(block: PromiseLike<unknown> | (() => PromiseLike<unknown>), expected: AssertPredicate | undefined, message?: string | Error): Promise<void>
+        doesNotReject(block: PromiseLike<unknown> | (() => PromiseLike<unknown>), message?: string): Promise<void>
+        doesNotReject(block: PromiseLike<unknown> | (() => PromiseLike<unknown>), expected: ErrorFilter | undefined, message?: string | Error): Promise<void>
         match(value: string, regExp: RegExp, message?: string | Error): void
         doesNotMatch(value: string, regExp: RegExp, message?: string | Error): void
     }

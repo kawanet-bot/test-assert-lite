@@ -1,6 +1,7 @@
 import type * as declared from "test-assert-lite"
 import {AssertionError} from "./assert/assertion-error.ts"
 import {deepEqualPair, looseSame} from "./assert/deep-equal.ts"
+import {doesNotReject, rejects} from "./assert/rejects.ts"
 import {doesNotThrow, throws} from "./assert/throws.ts"
 import {isError} from "./common/is-error.ts"
 import {stringify} from "./common/stringify.ts"
@@ -98,6 +99,8 @@ export const createAssert = (): AssertControl => {
         notDeepStrictEqual: strictOnly.notDeepEqual,
         throws,
         doesNotThrow,
+        rejects,
+        doesNotReject,
         match,
         doesNotMatch,
     }
