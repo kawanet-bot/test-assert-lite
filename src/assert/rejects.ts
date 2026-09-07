@@ -7,11 +7,15 @@ type Filter = declared.TAL.ErrorFilter
 // node:assert takes as one, checked below.
 type Block = Promise<unknown> | (() => Promise<unknown>)
 
-// An object carrying both then and catch, so a native Promise from any
-// realm, but not a function that happens to carry them.
+// A Promise itself first - a same-realm one through instanceof, one from
+// another realm through its tag - as node:assert asks its brand first, so
+// a genuine Promise is taken even with its catch or then overwritten.
+// Otherwise an object carrying both then and catch, but not a function
+// that happens to carry them.
+const isPromise = (value: object): boolean => value instanceof Promise || "[object Promise]" === Object.prototype.toString.call(value)
 const isThenable = (value: unknown): value is PromiseLike<unknown> =>
-    value != null && "object" === typeof value &&
-    "function" === typeof (value as {then?: unknown}).then && "function" === typeof (value as {catch?: unknown}).catch
+    value != null && "object" === typeof value && (isPromise(value) ||
+        ("function" === typeof (value as {then?: unknown}).then && "function" === typeof (value as {catch?: unknown}).catch))
 
 // Runs the block, or takes the promise as given, and waits for how it
 // settles, in the shape throws.ts judges. A function that throws before

@@ -95,6 +95,19 @@ describe(TITLE, () => {
         await assert.doesNotReject(() => TAL.doesNotReject(thenable(ok => ok())))
     })
 
+    // A genuine Promise is taken on its own account, as node:assert asks the
+    // brand before the shape: one whose catch or then was overwritten is
+    // still awaited and judged, and its rejection never goes unhandled.
+    it("takes a genuine Promise even with its catch or then overwritten", async () => {
+        const without = (promise: Promise<unknown>, name: "catch" | "then"): Promise<unknown> =>
+            Object.defineProperty(promise, name, {value: undefined})
+        await assert.doesNotReject(() => TAL.rejects(without(Promise.reject(new Error("x")), "catch"), /x/))
+        await assert.doesNotReject(() => TAL.rejects(without(Promise.reject(new Error("x")), "then"), /x/))
+        await assert.rejects(() => TAL.rejects(without(Promise.resolve(1), "catch")), /expected to reject/)
+        await assert.doesNotReject(() => TAL.doesNotReject(without(Promise.resolve(1), "catch")))
+        await assert.rejects(() => TAL.doesNotReject(without(Promise.reject(new Error("x")), "catch")), /expected not to reject/)
+    })
+
     // A function that throws before it returns a promise has not rejected;
     // node:assert lets that error through untouched, and so does this.
     it("rejects lets a synchronous throw through as it is", async () => {
