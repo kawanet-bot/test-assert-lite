@@ -73,6 +73,10 @@ const isDeepEqual = (a: unknown, b: unknown, memo: Memo): boolean => {
     const other = b as Record<string, unknown>
     if (tag !== toTag(b)) return false
 
+    // The tag itself can be claimed through an own Symbol.toStringTag, and
+    // "Array" is the one worth guarding: Array.isArray() sees through it.
+    if (tag === "[object Array]" && Array.isArray(a) !== Array.isArray(b)) return false
+
     // Stamped before recursing into anything below - including an Error's
     // cause chain - so a cycle reached through any path is still caught.
     // A revisit on either side alone is a cycle the other side lacks, so

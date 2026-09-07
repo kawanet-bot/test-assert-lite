@@ -89,6 +89,26 @@ describe(TITLE, () => {
         assert.throws(() => TAL.deepEqual(fakeArray, [1]), /deep-equal/)
     })
 
+    // The tag check above reads Object.prototype.toString, which an own
+    // Symbol.toStringTag can dictate; for "Array" the real answer comes
+    // from Array.isArray, which no property can fake. A Proxy of an array
+    // still answers true there, so it keeps comparing like the array.
+    it("is not fooled by an own Symbol.toStringTag claiming to be an Array", () => {
+        const fakeArray: unknown[] = Object.create(Array.prototype)
+        fakeArray[0] = 1
+        Object.defineProperty(fakeArray, "length", {value: 1, enumerable: false})
+        Object.defineProperty(fakeArray, Symbol.toStringTag, {value: "Array"})
+        assert.equal(Object.prototype.toString.call(fakeArray), "[object Array]")
+        assert.throws(() => TAL.deepEqual(fakeArray, [1]), /deep-equal/)
+        assert.throws(() => TAL.deepEqual([1], fakeArray), /deep-equal/)
+
+        const disguised = Object.setPrototypeOf(/a/, Array.prototype) as unknown as unknown[]
+        Object.defineProperty(disguised, Symbol.toStringTag, {value: "Array"})
+        assert.throws(() => TAL.deepEqual([], disguised), /deep-equal/)
+
+        assert.doesNotThrow(() => TAL.deepEqual(new Proxy([1, 2], {}), [1, 2]))
+    })
+
     // .length is not enumerable, so a manually stretched array needs its
     // own check alongside the own-key comparison.
     it("checks array length even when no extra index became enumerable", () => {
