@@ -6,6 +6,7 @@
 import {basename, resolve} from "node:path"
 import {fileURLToPath} from "node:url"
 import {startServer} from "../src/cli/server.ts"
+import {runInBrowser} from "./playwright.mjs"
 
 const USAGE = "Usage: node tests.cli.mjs [--serve] <file...>\n"
 
@@ -40,46 +41,11 @@ const server = await startServer({
     data: {"/@tests.json": {type: "application/json", body: JSON.stringify(Object.keys(mounts))}},
 })
 
-// Playwright is not a dependency of this package, so it is loaded only on
-// the path that needs it: --serve works without it.
-const loadPlaywright = async () => {
-    try {
-        return await import("playwright")
-    } catch (error) {
-        if (error?.code !== "ERR_MODULE_NOT_FOUND") throw error
-        throw new Error("Playwright is not installed; run `make -C browser install` first")
-    }
-}
-
 const run = async () => {
-    let browser
     try {
-        const {chromium} = await loadPlaywright()
-        browser = await chromium.launch()
-        const page = await browser.newPage()
-        const pageErrors = []
-        page.on("pageerror", error => pageErrors.push(error))
-        // The default reporter writes to the page console; relay it so the
-        // output matches what the Node CLI shows.
-        page.on("console", msg => (msg.type() === "error" ? console.error : console.log)(msg.text()))
-
-        await page.goto(`${server.origin}/console.html`)
-        // A url tag resolves once the whole module graph has executed, so
-        // run() below cannot overtake the registration; inline content would.
-        for (const url of Object.keys(mounts)) {
-            await page.addScriptTag({type: "module", url})
-        }
-
-        // The suites register into the module instance behind the import
-        // map, so run() must come from that same instance. evaluate()
-        // resolves to what run() resolved to: no polling and no timeout, a
-        // hanging test hangs, the same as in node --test.
-        const {counts, success} = await page.evaluate(() => import("test-assert-lite").then(m => m.run()))
+        const {counts, success} = await runInBrowser({origin: server.origin, urls: Object.keys(mounts)})
         const {failed, tests} = counts
 
-        if (pageErrors.length) {
-            throw new AggregateError(pageErrors, "Browser page errors occurred")
-        }
         // success rather than the counter: a failure outside a test body,
         // such as a hook that threw, never reaches failed.
         if (!success) {
@@ -89,7 +55,6 @@ const run = async () => {
             throw new Error("Ran no tests")
         }
     } finally {
-        await browser?.close()
         server.close()
     }
 }

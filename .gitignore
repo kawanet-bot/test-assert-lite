@@ -2,6 +2,7 @@
 *.js
 *.mjs
 !browser/import.js
+!browser/playwright.mjs
 !browser/tests.cli.mjs
 !sample/*.mjs
 *.tgz
