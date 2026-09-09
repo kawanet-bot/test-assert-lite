@@ -63,6 +63,7 @@ export const runInWebDriver = async ({origin, endpoint, session}: WebDriverRunOp
         throw new Error(`No WebDriver server at ${endpoint}: \`safaridriver -p 4444\` or \`chromedriver --port=4444\``, {cause: error})
     }
     const base = `/session/${created.sessionId}`
+    let failure: unknown
     try {
         await call(endpoint, "POST", `${base}/url`, JSON.stringify({url: `${origin}/webdriver.html`}))
 
@@ -76,7 +77,15 @@ export const runInWebDriver = async ({origin, endpoint, session}: WebDriverRunOp
             if (errors.length) throw new AggregateError(errors.map(error => new Error(error)), "Browser page errors occurred")
             return summary as TAL.TestSummary
         }
+    } catch (error) {
+        failure = error
+        throw error
     } finally {
-        await call(endpoint, "DELETE", base)
+        // A session gone with its browser rejects this too: the error in
+        // flight says why, so this one is reported beside it, not in its place.
+        await call(endpoint, "DELETE", base).catch(error => {
+            if (failure == null) throw error
+            console.error(error)
+        })
     }
 }
