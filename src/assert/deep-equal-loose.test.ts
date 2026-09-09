@@ -1,13 +1,13 @@
 import {strict as assert} from "node:assert"
 import {describe, it} from "node:test"
-import {deepEqualPair} from "./deep-equal.ts"
+import {createTAL} from "./../index.ts"
 
 const TITLE = "assert/deep-equal-loose.test.ts"
 
-// The loose pair straight from the factory; what the public `assert`
-// hands out is built from the same call.
-const loose = deepEqualPair(false)
-const strict = deepEqualPair(true)
+// The loose pair is what `assert` hands out, the strict one `strict`.
+const local = createTAL()
+const loose = local.assert
+const strict = local.strict
 
 describe(TITLE, () => {
     it("compares primitives with ==, keeping NaN equal to itself", () => {
