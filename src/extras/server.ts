@@ -19,6 +19,8 @@ export interface ServerOptions {
     data?: Record<string, {type: string, body: string}>
     /** Address to listen on; 127.0.0.1 by default. */
     host?: string
+    /** Gets one line per response, in morgan's tiny format; none without it. */
+    log?: (line: string) => void
 }
 
 export interface Server {
@@ -77,13 +79,14 @@ const realWithin = async ({base, path}: Located): Promise<string> => {
     return real
 }
 
-const respond = async (options: ServerOptions, req: IncomingMessage, res: ServerResponse): Promise<void> => {
+// Resolves to the body's length in bytes, for the log line.
+const respond = async (options: ServerOptions, req: IncomingMessage, res: ServerResponse): Promise<number> => {
     const {pathname} = new URL(req.url ?? "/", "http://127.0.0.1")
     const data = options.data?.[pathname]
     if (data != null) {
         res.writeHead(200, {"content-type": `${data.type}; charset=utf-8`})
         res.end(data.body)
-        return
+        return Buffer.byteLength(data.body)
     }
     const found = locate(options, pathname)
     // Only the kinds a test page is made of are served; anything else on
@@ -92,18 +95,25 @@ const respond = async (options: ServerOptions, req: IncomingMessage, res: Server
     if (found != null && type == null) {
         res.writeHead(403)
         res.end()
-        return
+        return 0
     }
     try {
         if (found == null) throw new Error("outside")
         const body = await readFile(await realWithin(found))
         res.writeHead(200, {"content-type": `${type}; charset=utf-8`})
         res.end(body)
+        return body.length
     } catch {
         res.writeHead(404)
         res.end()
+        return 0
     }
 }
+
+// The access log line: method, URL, status, body length and the time to
+// respond, as morgan's tiny format has them, a "-" for anything missing.
+const tiny = (req: IncomingMessage, res: ServerResponse, length: number, ms: number): string =>
+    [req.method, req.url, res.statusCode, length, null, ms.toFixed(3), "ms"].map(v => v || "-").join(" ")
 
 // 127.0.0.1 rather than localhost on both ends: a browser may resolve
 // localhost to ::1 while this listens on IPv4 only. Port 0 picks a free one.
@@ -114,11 +124,16 @@ export const startServer = async (options: ServerOptions): Promise<Server> => {
     const named = host === "0.0.0.0" || host === "::" ? "127.0.0.1" : host.includes(":") ? `[${host}]` : host
     // A malformed request target throws inside respond(); caught so a
     // client cannot crash the server, only draw a 400 for its own request.
+    // Every response, that one included, then goes to the log.
     const server = createServer((req, res) => {
-        respond(options, req, res).catch(() => {
-            if (!res.headersSent) res.writeHead(400)
-            res.end()
-        })
+        const started = performance.now()
+        respond(options, req, res)
+            .catch(() => {
+                if (!res.headersSent) res.writeHead(400)
+                res.end()
+                return 0
+            })
+            .then(length => options.log?.(tiny(req, res, length, performance.now() - started)))
     })
     await new Promise<void>(listening => server.listen(0, host, listening))
     const address = server.address()

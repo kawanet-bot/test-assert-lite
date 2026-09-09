@@ -22,6 +22,7 @@ const get = (origin: string, path: string): Promise<{status: number, type: strin
 describe("cli/server", () => {
     let dir: string
     let server: Server
+    const lines: string[] = []
 
     before(async () => {
         dir = await mkdtemp(join(tmpdir(), "tal-server-"))
@@ -45,6 +46,7 @@ describe("cli/server", () => {
             aliases: {"/dist/": join(dir, "dist")},
             files: {"/@tal/tests/0/my%20suite.mjs": join(dir, "elsewhere", "suite.mjs")},
             data: {"/@tal/tests.json": {type: "application/json", body: '["/@tal/tests/0/my%20suite.mjs"]'}},
+            log: line => lines.push(line),
         })
     })
 
@@ -119,5 +121,17 @@ describe("cli/server", () => {
 
     it("answers 404 for a missing file", async () => {
         assert.equal((await get(server.origin, "/missing.html")).status, 404)
+    })
+
+    it("logs one line per response, in morgan's tiny format", async () => {
+        const from = lines.length
+        await get(server.origin, "/dist/lib.mjs")
+        await get(server.origin, "/missing.html")
+        await get(server.origin, "/dist/legacy.cjs")
+        assert.deepEqual(lines.slice(from).map(line => line.replace(/ \d+\.\d{3} ms$/, " N ms")), [
+            "GET /dist/lib.mjs 200 20 - N ms",
+            "GET /missing.html 404 - - N ms",
+            "GET /dist/legacy.cjs 403 - - N ms",
+        ])
     })
 })
