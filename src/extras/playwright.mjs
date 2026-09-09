@@ -1,6 +1,6 @@
 // Playwright adapter for the browser test CLI: the one file that imports
 // playwright, which is not a dependency of this package. The TypeScript
-// beside it reaches runInBrowser() through the hand-written .d.mts, so
+// beside it reaches runInPlaywright() through the hand-written .d.mts, so
 // this file is plain JavaScript on purpose.
 
 // Loaded on the call, not at import time, so the module itself can be
@@ -20,7 +20,7 @@ const loadPlaywright = async (name) => {
  * (a library's IIFE build, say) have run, and resolves to what run()
  * resolved to. Page errors are collected and thrown once run() has settled.
  */
-export const runInBrowser = async ({origin, scripts = [], urls, browser: name = "chromium"}) => {
+export const runInPlaywright = async ({origin, scripts = [], urls, browser: name = "chromium"}) => {
     const playwright = await loadPlaywright(name)
     const browser = await playwright[name].launch()
     try {

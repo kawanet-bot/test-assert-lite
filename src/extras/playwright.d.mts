@@ -18,4 +18,4 @@ export interface BrowserRunOptions {
  * Runs the suites in a headless browser and resolves to what run() resolved
  * to. Rejects when Playwright is missing or the page reported errors.
  */
-export function runInBrowser(options: BrowserRunOptions): Promise<TAL.TestSummary>
+export function runInPlaywright(options: BrowserRunOptions): Promise<TAL.TestSummary>

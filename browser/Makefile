@@ -58,6 +58,17 @@ test-firefox:
 test-webkit:
 	cd .. && node bin/cli.mjs --playwright webkit browser/tests/bundled.mjs
 
+# Off CI, the driver being started by hand; each WEBDRIVER_* set here goes
+# to the CLI option of the same name. safaridriver on a Mac, then chromedriver:
+#   WEBDRIVER_HOST=192.168.0.2 make test-webdriver
+#   WEBDRIVER_ENDPOINT=http://127.0.0.1:9515 WEBDRIVER_SESSION=session/chrome-headless.json make test-webdriver
+test-webdriver: all
+	cd .. && node bin/cli.mjs --webdriver \
+		$(if $(WEBDRIVER_ENDPOINT),--endpoint $(WEBDRIVER_ENDPOINT)) \
+		$(if $(WEBDRIVER_SESSION),--webdriver-session $(abspath $(WEBDRIVER_SESSION))) \
+		$(if $(WEBDRIVER_HOST),--host $(WEBDRIVER_HOST)) \
+		browser/tests/bundled.mjs
+
 # `install` first: its npm step also brings the build tools, so a plain
 # `make -C browser test` works from a clean checkout. It is cheap once
 # Playwright and the browser are present (see LAUNCHABLE).
@@ -74,4 +85,4 @@ serve: all
 clean:
 	@: # NOP
 
-.PHONY: all bundled install install-playwright install-chromium install-all test test-chromium test-firefox test-webkit test-playwright serve clean
+.PHONY: all bundled install install-playwright install-chromium install-all test test-chromium test-firefox test-webkit test-playwright test-webdriver serve clean

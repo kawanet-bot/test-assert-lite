@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>test-assert-lite browser test</title>
+    <!-- The page the CLI's --webdriver mode drives. A WebDriver server has
+         no console relay, so the spec reporter's output goes three ways: an
+         array the CLI reads back through the page, the <pre> below for a
+         person watching the browser, the console for the developer tools.
+         The CLI serves it with the import map the suites need added at the
+         end of the head. console.html is the page Playwright drives and
+         index.html the one people open. -->
+</head>
+<body>
+<pre id="output"></pre>
+<script type="module">
+    // What the CLI reads back: the reporter's output as it comes, and the
+    // errors outside a test body, an uncaught one or a suite that failed to
+    // load, which it reports once run() is over as Playwright's pageerror
+    // would. testErrors, set last, says it is over.
+    const lines = window.testLines = [];
+    const errors = [];
+    addEventListener("error", event => errors.push(event.error ?? event.message));
+    addEventListener("unhandledrejection", event => errors.push(event.reason));
+    const output = document.querySelector("#output");
+
+    try {
+        // Classic scripts first, one at a time, so the globals they leave
+        // are in place before any module loads: the library itself is one
+        // of them, and what "test-assert-lite" resolves to reads its global.
+        for (const src of await (await fetch("/@tal/scripts.json")).json()) {
+            await new Promise((resolve, reject) => {
+                const onerror = () => reject(new Error(`Failed to load ${src}`));
+                document.head.append(Object.assign(document.createElement("script"), {src, onload: resolve, onerror}));
+            });
+        }
+
+        const {reporter, run} = await import("test-assert-lite");
+
+        // One at a time, so the suites register in command-line order.
+        for (const url of await (await fetch("/@tal/tests.json")).json()) {
+            await import(url);
+        }
+
+        // The spec reporter, the default, stays without colours in a browser.
+        reporter.output(text => {
+            lines.push(text);
+            output.append(text);
+            console.log(text.replace(/\n$/, ""));
+        });
+        window.testSummary = await run();
+    } catch (error) {
+        errors.push(error);
+    }
+    window.testErrors = errors.map(error => String(error?.stack ?? error));
+</script>
+</body>
+</html>

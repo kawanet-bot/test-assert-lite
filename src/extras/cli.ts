@@ -1,13 +1,16 @@
 // The command line as a function. By default the suites run in this Node
 // process; --playwright runs them in one of Playwright's headless browsers,
-// and --serve hands the same page to a person. Directory search and glob
+// --webdriver in whatever browser a WebDriver server drives, and --serve
+// hands the same page to a person. Directory search and glob
 // expansion are left to the shell: only explicit file names are accepted.
 
+import {readFileSync} from "node:fs"
 import {resolve} from "node:path"
 import {parseArgs} from "node:util"
 import {startApp} from "./app.ts"
 import {runInNode} from "./node.ts"
-import {runInBrowser} from "./playwright.mjs"
+import {runInPlaywright} from "./playwright.mjs"
+import {runInWebDriver} from "./webdriver.ts"
 
 export interface CLIOptions {
     /** The arguments as the executable gets them: process.argv.slice(2). */
@@ -20,6 +23,9 @@ const USAGE = `Usage: test-assert [options] <file...>
   --alias <specifier>=<file>  ES module a bare specifier resolves to (browser modes, repeatable)
   --script <file>             classic script to run first (browser modes, repeatable)
   --playwright <browser>      run the suite through Playwright: chromium, firefox or webkit
+  --webdriver                 run the suite through a WebDriver server: safaridriver, chromedriver
+  --webdriver-session <file>  JSON sent as the body of POST /session (default: no capabilities)
+  --endpoint <url>            the WebDriver server (default: http://127.0.0.1:4444)
 `
 
 const BROWSERS = ["chromium", "firefox", "webkit"] as const
@@ -44,6 +50,9 @@ const parse = (args: string[]) => {
                 alias: {type: "string", multiple: true, default: []},
                 script: {type: "string", multiple: true, default: []},
                 playwright: {type: "string"},
+                webdriver: {type: "boolean", default: false},
+                "webdriver-session": {type: "string"},
+                endpoint: {type: "string"},
                 help: {type: "boolean", short: "h", default: false},
             },
             allowPositionals: true,
@@ -64,12 +73,17 @@ const main = async (args: string[]): Promise<number> => {
     // A browser run takes one suite: several entries would each get their
     // own mount, and a module shared between them would load once per
     // mount as a separate instance. Bundle first, as this package's are.
-    const {playwright} = values
+    const {playwright, webdriver} = values
     if (playwright != null && !isBrowser(playwright)) throw new UsageError(`--playwright takes chromium, firefox or webkit: ${playwright}`)
-    const browser = playwright != null || values.serve
-    if (playwright != null && values.serve) throw new UsageError("--playwright and --serve are exclusive")
+    const browser = playwright != null || webdriver || values.serve
+    if ((playwright != null ? 1 : 0) + (webdriver ? 1 : 0) + (values.serve ? 1 : 0) > 1) {
+        throw new UsageError("--playwright, --webdriver and --serve are exclusive")
+    }
     if (!browser && (values.script.length || values.alias.length || values.host != null)) {
-        throw new UsageError("--host, --alias and --script apply to --playwright and --serve only")
+        throw new UsageError("--host, --alias and --script apply to --playwright, --webdriver and --serve only")
+    }
+    if (!webdriver && (values["webdriver-session"] != null || values.endpoint != null)) {
+        throw new UsageError("--webdriver-session and --endpoint apply to --webdriver only")
     }
     if (browser ? files.length !== 1 : !files.length) throw new UsageError()
 
@@ -107,7 +121,16 @@ const main = async (args: string[]): Promise<number> => {
     }
 
     try {
-        const {counts, success} = await runInBrowser({...app, browser: playwright as Browser})
+        const {counts, success} = webdriver
+            ? await runInWebDriver({
+                origin: app.origin,
+                session: values["webdriver-session"] == null ? undefined : readFileSync(values["webdriver-session"], "utf8"),
+                endpoint: values.endpoint ?? "http://127.0.0.1:4444",
+            })
+            : await runInPlaywright({
+                ...app,
+                browser: playwright as Browser,
+            })
 
         // success rather than the counter: a failure outside a test body,
         // such as a hook that threw, never reaches failed.

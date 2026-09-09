@@ -65,6 +65,7 @@
     "browser/import.js",
     "browser/import.mjs",
     "browser/package.json",
+    "browser/session/",
     "dist/package.json",
     "dist/test-assert-lite.min.js",
     "exports/",
