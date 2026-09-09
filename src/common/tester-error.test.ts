@@ -1,0 +1,76 @@
+import {strict as assert} from "node:assert"
+import {describe, it} from "node:test"
+import {errorText, TesterError} from "./tester-error.ts"
+
+const TITLE = "common/tester-error.test.ts"
+
+// A stack in the shape Safari and Firefox produce: frames only, no
+// "name: message" line above them.
+const framesOnly = (error: Error): Error => Object.assign(error, {stack: "fn@http://host/suite.mjs:12:3\n@http://host/suite.mjs:40:1"})
+
+describe(TITLE, () => {
+    // V8 already opens with that line; the other engines get it added.
+    it("opens with name and message whatever the engine's own stack looks like", () => {
+        const error = new Error("boom")
+        const text = errorText(error)
+        assert.match(text, /^Error: boom\n/)
+        assert.ok(text.endsWith(error.stack!.replace(/^Error: boom\n/, "")), "the frames follow unchanged")
+    })
+
+    it("puts name and message above a stack that lists frames only", () => {
+        const text = errorText(framesOnly(new RangeError("boom")))
+        assert.equal(text, "RangeError: boom\nfn@http://host/suite.mjs:12:3\n@http://host/suite.mjs:40:1")
+    })
+
+    // The frame's function name is not a header, however it starts.
+    it("is not fooled by a first frame whose function name starts with the error's name", () => {
+        const error = Object.assign(new Error("boom"), {stack: "ErrorHandler@http://host/suite.mjs:12:3\n@http://host/suite.mjs:40:1"})
+        assert.equal(errorText(error), "Error: boom\nErrorHandler@http://host/suite.mjs:12:3\n@http://host/suite.mjs:40:1")
+        // A multi-line message spans the header, as V8 writes it.
+        const v8 = "Error: l1\nl2\n    at fn (http://host/suite.mjs:12:3)"
+        assert.equal(errorText(Object.assign(new Error("l1\nl2"), {stack: v8})), v8)
+    })
+
+    // V8 writes the name alone then, with no colon.
+    it("uses the name alone when the message is empty", () => {
+        assert.equal(errorText(framesOnly(new Error())), "Error\nfn@http://host/suite.mjs:12:3\n@http://host/suite.mjs:40:1")
+        assert.equal(errorText(Object.assign(new Error(), {stack: "Error\n    at fn (http://host/suite.mjs:12:3)"})), "Error\n    at fn (http://host/suite.mjs:12:3)")
+        assert.equal(errorText(Object.assign(new Error(), {stack: undefined})), "Error")
+    })
+
+    // The frames are read by their shape, so a message that happens to be
+    // a function's name does not pass for a header.
+    it("adds the header to a frames-only stack whatever the message says", () => {
+        assert.equal(errorText(Object.assign(new Error("fn"), {stack: "fn@http://host/suite.mjs:12:3"})), "Error: fn\nfn@http://host/suite.mjs:12:3")
+    })
+
+    // Node writes the code into the line, as AssertionError [ERR_ASSERTION].
+    it("keeps a V8 header that carries more than name and message", () => {
+        const v8 = "AssertionError [ERR_ASSERTION]: 1 == 2\n    at fn (http://host/suite.mjs:12:3)"
+        assert.equal(errorText(Object.assign(new Error("1 == 2"), {name: "AssertionError", stack: v8})), v8)
+    })
+
+    // The header is what Error.prototype.toString gives, as V8 writes it.
+    it("writes the message alone when the name is empty", () => {
+        const nameless = (stack: string): Error => Object.assign(new Error("boom"), {name: "", stack})
+        assert.equal(errorText(nameless("boom\n    at fn (http://host/suite.mjs:12:3)")), "boom\n    at fn (http://host/suite.mjs:12:3)")
+        assert.equal(errorText(nameless("fn@http://host/suite.mjs:12:3")), "boom\nfn@http://host/suite.mjs:12:3")
+        const blank = Object.assign(new Error(""), {name: "", stack: "fn@http://host/suite.mjs:12:3"})
+        assert.equal(errorText(blank), "fn@http://host/suite.mjs:12:3")
+    })
+
+    it("falls back to name and message without a stack", () => {
+        assert.equal(errorText(Object.assign(new TypeError("boom"), {stack: undefined})), "TypeError: boom")
+    })
+
+    it("reads through a TesterError to its Error cause, and to the message otherwise", () => {
+        const cause = framesOnly(new Error("inner"))
+        assert.match(errorText(new TesterError("outer", "testCodeFailure", cause)), /^Error: inner\nfn@/)
+        assert.equal(errorText(new TesterError("thrown a string", "testCodeFailure", "thrown a string")), "thrown a string")
+    })
+
+    it("stringifies a value that is not an Error", () => {
+        assert.equal(errorText(42), "42")
+        assert.equal(errorText(undefined), "undefined")
+    })
+})
