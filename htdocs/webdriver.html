@@ -7,9 +7,9 @@
          no console relay, so the spec reporter's output goes three ways: an
          array the CLI reads back through the page, the <pre> below for a
          person watching the browser, the console for the developer tools.
-         The CLI serves it with the import map the suites need added at the
-         end of the head. console.html is the page Playwright drives and
-         index.html the one people open. -->
+         The CLI serves it with the import map and the classic scripts added
+         at the end of the head. console.html is the page Playwright drives
+         and index.html the one people open. -->
 </head>
 <body>
 <pre id="output"></pre>
@@ -25,16 +25,9 @@
     const output = document.querySelector("#output");
 
     try {
-        // Classic scripts first, one at a time, so the globals they leave
-        // are in place before any module loads: the library itself is one
-        // of them, and what "test-assert-lite" resolves to reads its global.
-        for (const src of await (await fetch("/@tal/scripts.json")).json()) {
-            await new Promise((resolve, reject) => {
-                const onerror = () => reject(new Error(`Failed to load ${src}`));
-                document.head.append(Object.assign(document.createElement("script"), {src, onload: resolve, onerror}));
-            });
-        }
-
+        // The classic scripts came in the head, the library itself among them,
+        // so the globals they leave are in place before this module runs, and
+        // what "test-assert-lite" resolves to reads its global.
         const {reporter, run} = await import("test-assert-lite");
 
         // One at a time, so the suites register in command-line order.

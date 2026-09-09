@@ -8,23 +8,17 @@
     <!-- The page people open, from the CLI's --serve mode. It
          imports whatever the CLI mounted, listed at /@tal/tests.json, and shows
          the HTML reporter; console.html is the one the CLI drives itself.
-         The CLI serves this page with the import map added at the end of
-         the head. -->
+         The CLI serves this page with the import map and the classic
+         scripts, the library's own build first, added at the end of the
+         head. -->
 </head>
 <body>
 <h1>test-assert-lite browser test</h1>
 <div id="output"></div>
 <script type="module">
-    // Classic scripts first, one at a time, so the globals they leave are
-    // in place before any module loads: the library itself is one of them,
-    // and what "test-assert-lite" resolves to reads its global.
-    for (const src of await (await fetch("/@tal/scripts.json")).json()) {
-        await new Promise((resolve, reject) => {
-            const script = Object.assign(document.createElement("script"), {src, onload: resolve, onerror: reject});
-            document.head.append(script);
-        });
-    }
-
+    // The classic scripts came in the head, the library itself among them,
+    // so the globals they leave are in place before this module runs, and
+    // what "test-assert-lite" resolves to reads its global.
     const {reporter, run} = await import("test-assert-lite");
 
     // One at a time, so the suites register in command-line order.

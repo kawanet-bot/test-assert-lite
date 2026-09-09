@@ -23,8 +23,6 @@ export interface AppOptions {
 export interface App {
     /** Origin of the server, such as http://127.0.0.1:12345 */
     origin: string
-    /** Classic script URLs on that origin, in the order to run them. */
-    scripts: string[]
     /** Suite URLs on that origin, in the order to load them. */
     urls: string[]
     /** Stops the server. */
@@ -69,23 +67,25 @@ export const startApp = async (options: AppOptions): Promise<App> => {
     const aliasDirs = aliases.map((_, i) => `/@tal/aliases/${i}/`)
     const aliasUrls = aliases.map(({file}, i) => `${aliasDirs[i]}${encodeURIComponent(basename(file))}`)
 
-    // A map has to be inline and in place before the first module loads,
-    // so it goes in at the end of each page's head, past any mention of
-    // that tag in a comment.
+    // The map has to be inline and in place before the first module loads,
+    // and classic script tags run in order as the head is parsed, ahead of
+    // any module script: so both go in at the end of each page's head,
+    // past any mention of those tags in a comment.
     const imports: Record<string, string> = {...IMPORTS}
     for (const [i, {specifier}] of aliases.entries()) imports[specifier] = aliasUrls[i] as string
     const importmap = `<script type="importmap">\n${JSON.stringify({imports}, null, 4)}\n</script>\n`
-    const withImportmap = (page: string): string => {
+    const tags = scriptUrls.map(url => `<script src="${url}"></script>\n`).join("")
+    const withHead = (page: string): string => {
         const html = readFileSync(resolve(root, "htdocs", page), "utf8")
         const at = html.lastIndexOf("</head>")
-        return html.slice(0, at) + importmap + html.slice(at)
+        return html.slice(0, at) + importmap + tags + html.slice(at)
     }
     const pages = ["console.html", "index.html", "webdriver.html"]
 
     // Document root is htdocs/; everything else the CLI provides sits under
     // /@tal/, the build output and the subpath bridges included, as those
     // have to stay where the package puts them. Nothing else is exposed.
-    // index.html asks for both lists and loads them itself, scripts first.
+    // The pages ask for the suite list and load it themselves.
     // Every request on stderr, apart from the reporter's stdout: a 404 for
     // a mistyped --script or --alias shows up here.
     const server = await startServer({
@@ -103,14 +103,13 @@ export const startApp = async (options: AppOptions): Promise<App> => {
             ...Object.fromEntries(mounts.map((url, i) => [url, scripts[i] as string])),
         },
         data: {
-            "/@tal/scripts.json": {type: "application/json", body: JSON.stringify(scriptUrls)},
             "/@tal/tests.json": {type: "application/json", body: JSON.stringify(urls)},
             ...Object.fromEntries(pages.flatMap(page => {
-                const body = {type: "text/html", body: withImportmap(page)}
+                const body = {type: "text/html", body: withHead(page)}
                 return page === "index.html" ? [[`/${page}`, body], ["/", body]] : [[`/${page}`, body]]
             })),
         },
     })
 
-    return {origin: server.origin, scripts: scriptUrls, urls, close: () => server.close()}
+    return {origin: server.origin, urls, close: () => server.close()}
 }
