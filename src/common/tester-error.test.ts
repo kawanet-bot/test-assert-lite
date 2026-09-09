@@ -36,7 +36,7 @@ describe(TITLE, () => {
 
     it("keeps the code Node writes after the name", async () => {
         const out = await output(withStack(new Error("1 == 2"), "AssertionError [ERR_ASSERTION]: 1 == 2\n    at fn (http://host/suite.mjs:12:3)"))
-        assert.equal(count(out, "1 == 2"), 1)
+        assert.equal(count(out, "AssertionError [ERR_ASSERTION]: 1 == 2"), 1)
     })
 
     it("keeps a name alone when the message is empty", async () => {
