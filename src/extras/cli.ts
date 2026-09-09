@@ -9,7 +9,7 @@ import {resolve} from "node:path"
 import {parseArgs} from "node:util"
 import {startApp} from "./app.ts"
 import {runInNode} from "./node.ts"
-import {runInBrowser} from "./playwright.mjs"
+import {runInPlaywright} from "./playwright.mjs"
 import {runInWebDriver} from "./webdriver.ts"
 
 export interface CLIOptions {
@@ -127,7 +127,10 @@ const main = async (args: string[]): Promise<number> => {
                 session: values["webdriver-session"] == null ? undefined : readFileSync(values["webdriver-session"], "utf8"),
                 endpoint: values.endpoint ?? "http://127.0.0.1:4444",
             })
-            : await runInBrowser({...app, browser: playwright as Browser})
+            : await runInPlaywright({
+                ...app,
+                browser: playwright as Browser,
+            })
 
         // success rather than the counter: a failure outside a test body,
         // such as a hook that threw, never reaches failed.
