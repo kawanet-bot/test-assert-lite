@@ -31,13 +31,20 @@ describe(TITLE, () => {
         assert.equal(errorText(Object.assign(new Error("l1\nl2"), {stack: v8})), v8)
     })
 
-    it("uses the name alone when the message is empty", () => {
-        assert.equal(errorText(framesOnly(new Error())), "Error\nfn@http://host/suite.mjs:12:3\n@http://host/suite.mjs:40:1")
+    // With no message there is nothing the frames lack.
+    it("adds nothing when the message is empty", () => {
+        assert.equal(errorText(framesOnly(new Error())), "fn@http://host/suite.mjs:12:3\n@http://host/suite.mjs:40:1")
         assert.equal(errorText(Object.assign(new Error(), {stack: undefined})), "Error")
     })
 
+    // Node writes the code into the line, as AssertionError [ERR_ASSERTION].
+    it("keeps a V8 header that carries more than name and message", () => {
+        const v8 = "AssertionError [ERR_ASSERTION]: 1 == 2\n    at fn (http://host/suite.mjs:12:3)"
+        assert.equal(errorText(Object.assign(new Error("1 == 2"), {name: "AssertionError", stack: v8})), v8)
+    })
+
     // The header is what Error.prototype.toString gives, as V8 writes it.
-    it("writes the message alone when the name is empty, and adds nothing when both are", () => {
+    it("writes the message alone when the name is empty", () => {
         const nameless = (stack: string): Error => Object.assign(new Error("boom"), {name: "", stack})
         assert.equal(errorText(nameless("boom\n    at fn (http://host/suite.mjs:12:3)")), "boom\n    at fn (http://host/suite.mjs:12:3)")
         assert.equal(errorText(nameless("fn@http://host/suite.mjs:12:3")), "boom\nfn@http://host/suite.mjs:12:3")
