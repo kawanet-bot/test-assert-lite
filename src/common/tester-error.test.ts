@@ -36,6 +36,15 @@ describe(TITLE, () => {
         assert.equal(errorText(Object.assign(new Error(), {stack: undefined})), "Error")
     })
 
+    // The header is what Error.prototype.toString gives, as V8 writes it.
+    it("writes the message alone when the name is empty, and adds nothing when both are", () => {
+        const nameless = (stack: string): Error => Object.assign(new Error("boom"), {name: "", stack})
+        assert.equal(errorText(nameless("boom\n    at fn (http://host/suite.mjs:12:3)")), "boom\n    at fn (http://host/suite.mjs:12:3)")
+        assert.equal(errorText(nameless("fn@http://host/suite.mjs:12:3")), "boom\nfn@http://host/suite.mjs:12:3")
+        const blank = Object.assign(new Error(""), {name: "", stack: "fn@http://host/suite.mjs:12:3"})
+        assert.equal(errorText(blank), "fn@http://host/suite.mjs:12:3")
+    })
+
     it("falls back to name and message without a stack", () => {
         assert.equal(errorText(Object.assign(new TypeError("boom"), {stack: undefined})), "TypeError: boom")
     })

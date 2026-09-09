@@ -33,15 +33,16 @@ export const isTesterError = (error: unknown): error is TesterError => (isError(
 
 export const isSubtestsFailed = (error: unknown): boolean => isTesterError(error) && error.failureType === "subtestsFailed"
 
-// V8 opens stack with "name: message"; JavaScriptCore and SpiderMonkey
-// list the frames only, so the message has to be put back on top. The
-// whole line is matched: a frames-only stack can open with a function
-// whose name merely starts with the error's, such as ErrorHandler@.
+// V8 opens stack with the line Error.prototype.toString gives (name and
+// message, either alone when the other is empty); JavaScriptCore and
+// SpiderMonkey list the frames only, so that line is put back on top. The
+// whole line is matched: a frame's function name can start with the error's.
 const describeError = (error: Error): string => {
-    const head = error.message ? `${error.name}: ${error.message}` : error.name
+    const head = Error.prototype.toString.call(error)
     const {stack} = error
     if (stack == null) return head
-    return stack === head || stack.startsWith(`${head}\n`) ? stack : `${head}\n${stack}`
+    if (!head || stack === head || stack.startsWith(`${head}\n`)) return stack
+    return `${head}\n${stack}`
 }
 
 // node:test wraps failures in ERR_TEST_FAILURE, while TAL only wraps values
