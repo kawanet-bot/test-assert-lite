@@ -33,6 +33,15 @@ export const isTesterError = (error: unknown): error is TesterError => (isError(
 
 export const isSubtestsFailed = (error: unknown): boolean => isTesterError(error) && error.failureType === "subtestsFailed"
 
+// V8 opens stack with "name: message"; JavaScriptCore and SpiderMonkey
+// list the frames only, so the message has to be put back on top.
+const describeError = (error: Error): string => {
+    const head = error.message ? `${error.name}: ${error.message}` : error.name
+    const {stack} = error
+    if (stack == null) return head
+    return stack.startsWith(error.name) ? stack : `${head}\n${stack}`
+}
+
 // node:test wraps failures in ERR_TEST_FAILURE, while TAL only wraps values
 // that are not already Errors. Both reporters should expose the same cause.
 export const errorText = (error: unknown): string => {
@@ -41,8 +50,7 @@ export const errorText = (error: unknown): string => {
         const {cause} = error
         inner = isError(cause) ? cause : error.message
     }
-    if (isError(inner)) return inner.stack ?? `${inner.name}: ${inner.message}`
-    return String(inner)
+    return isError(inner) ? describeError(inner) : String(inner)
 }
 
 // The two verdicts a parent hands down, worded as node:test words them.
