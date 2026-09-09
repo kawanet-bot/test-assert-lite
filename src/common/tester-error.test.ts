@@ -1,22 +1,14 @@
 import {strict as assert} from "node:assert"
 import {describe, it} from "node:test"
-import {createTAL} from "./../index.ts"
+import {createTAL, reporter} from "./../index.ts"
+import {formatEvents} from "./../test-utils/format.ts"
 
 const TITLE = "common/tester-error.test.ts"
 
 // What the spec reporter prints for a test that failed with `error`.
-const output = async (error: unknown): Promise<string> => {
-    const local = createTAL()
-    const lines: string[] = []
-    local.reporter.format(local.reporter.spec({colors: false}))
-    local.reporter.output(text => {
-        lines.push(text)
-    })
-    // Typed as an Error, though a runner may hand over any thrown value.
-    await local.reporter.emit("test:fail", {name: "bad", nesting: 0, testNumber: 1, details: {duration_ms: 1, type: "test", error: error as Error}})
-    await local.run()
-    return lines.join("")
-}
+// Typed as an Error, though a runner may hand over any thrown value.
+const output = (error: unknown): Promise<string> => formatEvents(reporter.spec({colors: false}), emit =>
+    emit("test:fail", {name: "bad", nesting: 0, testNumber: 1, details: {duration_ms: 1, type: "test", error: error as Error}}))
 
 const withStack = (error: Error, stack: string | undefined): Error => Object.assign(error, {stack})
 

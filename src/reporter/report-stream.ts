@@ -39,7 +39,7 @@ export class ReportStream {
             this.wake = null
             wake?.()
         })
-        // Public emit() is normally awaited, but TestContext.diagnostic() is
+        // emit() is normally awaited, but TestContext.diagnostic() is
         // deliberately synchronous. Mark every rejection handled here while
         // preserving it for awaiters and close().
         void promise.catch(() => undefined)

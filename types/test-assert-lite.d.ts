@@ -227,7 +227,6 @@ export declare namespace TAL {
     }
 
     interface Reporter {
-        emit(type: string, data: TestEvent["data"]): Promise<void>
         format(fn: FormatFn): void
         output(fn: OutputFn): void
         spec(options?: SpecOptions): FormatFn

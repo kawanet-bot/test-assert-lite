@@ -1,5 +1,6 @@
 import type * as declared from "test-assert-lite"
 import {TesterError, cancelledByParent, parentAlreadyFinished, testRunnerError} from "./common/tester-error.ts"
+import type {ReporterControl} from "./reporter.ts"
 import type {HarnessState} from "./suite.ts"
 
 type TestOptions = declared.TAL.TestOptions
@@ -25,7 +26,7 @@ interface Verdict {
 export interface Run {
     counters: Counters
     success: boolean
-    reporter: declared.TAL.Reporter
+    reporter: Pick<ReporterControl, "emit">
     // t.assert uses the harness's assert, so once it takes options, what a
     // body sees stays consistent within one run().
     assert: declared.TAL.AssertMethods

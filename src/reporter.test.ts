@@ -14,33 +14,6 @@ const caught = async (promise: Promise<unknown>): Promise<unknown> => {
 }
 
 describe(TITLE, () => {
-    const pass = () => ({
-        name: "standalone", nesting: 0, testNumber: 1,
-        details: {duration_ms: 0, type: "test" as const},
-    })
-
-    it("rejects the active emit when its formatter throws", async () => {
-        const local = createTAL()
-        const failure = new Error("standalone formatter failed")
-        local.reporter.format(async function* (source) {
-            for await (const _event of source) throw failure
-        })
-
-        assert.equal(await caught(local.reporter.emit("test:pass", pass())), failure)
-    })
-
-    it("rejects the active emit when its output fails", async () => {
-        const local = createTAL()
-        const failure = new Error("standalone output failed")
-        local.reporter.format(async function* (source) {
-            for await (const _event of source) yield "output"
-        })
-        local.reporter.output(() => {
-            throw failure
-        })
-
-        assert.equal(await caught(local.reporter.emit("test:pass", pass())), failure)
-    })
 
     it("rejects run() when the formatter throws", async () => {
         const local = createTAL()
@@ -175,86 +148,6 @@ describe(TITLE, () => {
         await local.run()
 
         assert.equal(output.join(""), "first\nsecond\n")
-    })
-
-    it("snapshots the latest settings when run() begins", async () => {
-        const local = createTAL()
-        const oldOutput: string[] = []
-        const newOutput: string[] = []
-        local.reporter.format(async function* (source) {
-            for await (const event of source) {
-                if (event.type === "test:pass") yield `old:${event.data.name}`
-            }
-        })
-        local.reporter.output(text => {
-            oldOutput.push(text)
-        })
-        await local.reporter.emit("test:pass", {
-            name: "standalone", nesting: 0, testNumber: 1,
-            details: {duration_ms: 0, type: "test"},
-        })
-
-        local.reporter.format(async function* (source) {
-            for await (const event of source) {
-                if (event.type === "test:pass") yield `new:${event.data.name}`
-            }
-        })
-        local.reporter.output(text => {
-            newOutput.push(text)
-        })
-        local.it("inside run", () => undefined)
-        await local.run()
-
-        assert.equal(oldOutput.join(""), "old:standalone")
-        assert.equal(newOutput.join(""), "new:inside run")
-    })
-
-    it("applies output changes to later standalone events", async () => {
-        const local = createTAL()
-        const firstOutput: string[] = []
-        const secondOutput: string[] = []
-        local.reporter.format(async function* (source) {
-            for await (const event of source) {
-                if (event.type === "test:pass") yield event.data.name
-            }
-        })
-        local.reporter.output(text => {
-            firstOutput.push(text)
-        })
-        await local.reporter.emit("test:pass", {
-            name: "first", nesting: 0, testNumber: 1,
-            details: {duration_ms: 0, type: "test"},
-        })
-
-        local.reporter.output(text => {
-            secondOutput.push(text)
-        })
-        await local.reporter.emit("test:pass", {
-            name: "second", nesting: 0, testNumber: 2,
-            details: {duration_ms: 0, type: "test"},
-        })
-
-        assert.equal(firstOutput.join(""), "first")
-        assert.equal(secondOutput.join(""), "second")
-    })
-
-    it("does not carry a failed standalone session into run()", async () => {
-        const local = createTAL()
-        const failure = new Error("standalone failed")
-        local.reporter.output(() => {
-            throw failure
-        })
-        assert.equal(await caught(local.reporter.emit("test:pass", {
-            name: "standalone", nesting: 0, testNumber: 1,
-            details: {duration_ms: 0, type: "test"},
-        })), failure)
-
-        local.reporter.output(() => undefined)
-        local.it("inside run", () => undefined)
-        const summary = await local.run()
-
-        assert.equal(summary.counts.tests, 1)
-        assert.equal(summary.counts.passed, 1)
     })
 
     it("applies configuration changed during a run to the next run", async () => {
