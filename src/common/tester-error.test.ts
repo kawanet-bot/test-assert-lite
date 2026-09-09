@@ -22,6 +22,15 @@ describe(TITLE, () => {
         assert.equal(text, "RangeError: boom\nfn@http://host/suite.mjs:12:3\n@http://host/suite.mjs:40:1")
     })
 
+    // The frame's function name is not a header, however it starts.
+    it("is not fooled by a first frame whose function name starts with the error's name", () => {
+        const error = Object.assign(new Error("boom"), {stack: "ErrorHandler@http://host/suite.mjs:12:3\n@http://host/suite.mjs:40:1"})
+        assert.equal(errorText(error), "Error: boom\nErrorHandler@http://host/suite.mjs:12:3\n@http://host/suite.mjs:40:1")
+        // A multi-line message spans the header, as V8 writes it.
+        const v8 = "Error: l1\nl2\n    at fn (http://host/suite.mjs:12:3)"
+        assert.equal(errorText(Object.assign(new Error("l1\nl2"), {stack: v8})), v8)
+    })
+
     it("uses the name alone when the message is empty", () => {
         assert.equal(errorText(framesOnly(new Error())), "Error\nfn@http://host/suite.mjs:12:3\n@http://host/suite.mjs:40:1")
         assert.equal(errorText(Object.assign(new Error(), {stack: undefined})), "Error")
