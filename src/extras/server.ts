@@ -17,6 +17,8 @@ export interface ServerOptions {
     files?: Record<string, string>
     /** Exact URL path to a response built in memory, checked first. */
     data?: Record<string, {type: string, body: string}>
+    /** Address to listen on; 127.0.0.1 by default. */
+    host?: string
 }
 
 export interface Server {
@@ -105,13 +107,24 @@ const respond = async (options: ServerOptions, req: IncomingMessage, res: Server
 
 // 127.0.0.1 rather than localhost on both ends: a browser may resolve
 // localhost to ::1 while this listens on IPv4 only. Port 0 picks a free one.
+// A wildcard address listens on every interface but names none, so the
+// origin falls back to the loopback one; an IPv6 literal needs brackets.
 export const startServer = async (options: ServerOptions): Promise<Server> => {
-    const server = createServer((req, res) => respond(options, req, res))
-    await new Promise<void>(listening => server.listen(0, "127.0.0.1", listening))
+    const host = options.host || "127.0.0.1"
+    const named = host === "0.0.0.0" || host === "::" ? "127.0.0.1" : host.includes(":") ? `[${host}]` : host
+    // A malformed request target throws inside respond(); caught so a
+    // client cannot crash the server, only draw a 400 for its own request.
+    const server = createServer((req, res) => {
+        respond(options, req, res).catch(() => {
+            if (!res.headersSent) res.writeHead(400)
+            res.end()
+        })
+    })
+    await new Promise<void>(listening => server.listen(0, host, listening))
     const address = server.address()
     const port = (typeof address === "object" && address != null) ? address.port : 0
     return {
-        origin: `http://127.0.0.1:${port}`,
+        origin: `http://${named}:${port}`,
         close: () => {
             server.close()
             server.closeAllConnections()

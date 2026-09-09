@@ -16,6 +16,8 @@ export interface AppOptions {
     scripts?: string[]
     /** Bare specifiers and the ES module files they resolve to. */
     aliases?: {specifier: string, file: string}[]
+    /** Address the server listens on; 127.0.0.1 by default. */
+    host?: string
 }
 
 export interface App {
@@ -50,7 +52,7 @@ const IMPORTS = {
  * Starts serving the suite and resolves once the server listens.
  */
 export const startApp = async (options: AppOptions): Promise<App> => {
-    const {file, scripts = [], aliases = []} = options
+    const {file, scripts = [], aliases = [], host} = options
 
     // The suite's directory is mounted at /@tal/tests/0/, so a sibling or a
     // nested import resolves beside it while nothing above stays reachable;
@@ -85,6 +87,7 @@ export const startApp = async (options: AppOptions): Promise<App> => {
     // have to stay where the package puts them. Nothing else is exposed.
     // index.html asks for both lists and loads them itself, scripts first.
     const server = await startServer({
+        host,
         root: resolve(root, "htdocs"),
         aliases: {
             "/@tal/dist/": resolve(root, "dist"),

@@ -25,7 +25,7 @@ bundled:
 
 # Keep Playwright out of package.json. CI installs it transiently alongside
 # the project's build dependencies, then downloads only the headless shell.
-install: install-browser
+install: install-chromium
 
 # npm's own up-to-date check is the slow part of a repeat run. Comparing the
 # installed version is near-free and also catches a PLAYWRIGHT_VERSION bump.
@@ -41,14 +41,30 @@ install-playwright:
 # Deferred (=): only evaluated when this recipe actually runs.
 LAUNCHABLE = $(shell cd .. && node -e 'require("playwright").chromium.launch().then(b=>b.close()).catch(()=>process.exit(1))' 2>/dev/null && echo YES)
 
-install-browser: install-playwright
+install-chromium: install-playwright
 	cd .. && npx --no-install playwright install --only-shell chromium$(if $(LAUNCHABLE),, --with-deps)
+
+# All three browsers, for a deliberate full run rather than every `test`:
+# no launch probe, the apt-get step is accepted as part of its cost.
+install-all: install-playwright
+	cd .. && npx --no-install playwright install --only-shell chromium firefox webkit --with-deps
+
+test-chromium:
+	cd .. && node bin/cli.mjs --playwright chromium browser/tests/bundled.mjs
+
+test-firefox:
+	cd .. && node bin/cli.mjs --playwright firefox browser/tests/bundled.mjs
+
+test-webkit:
+	cd .. && node bin/cli.mjs --playwright webkit browser/tests/bundled.mjs
 
 # `install` first: its npm step also brings the build tools, so a plain
 # `make -C browser test` works from a clean checkout. It is cheap once
 # Playwright and the browser are present (see LAUNCHABLE).
-test: install all
-	cd .. && node bin/cli.mjs --chromium browser/tests/bundled.mjs
+test: install all test-chromium
+
+# Every Playwright browser, on the same bundle. Run by `npm run test-max`.
+test-playwright: install-all all test-chromium test-firefox test-webkit
 
 # The same bundle for a person: prints the URL and serves until Ctrl-C.
 serve: all
@@ -58,4 +74,4 @@ serve: all
 clean:
 	@: # NOP
 
-.PHONY: all bundled install install-playwright install-browser test serve clean
+.PHONY: all bundled install install-playwright install-chromium install-all test test-chromium test-firefox test-webkit test-playwright serve clean

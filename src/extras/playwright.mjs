@@ -5,12 +5,12 @@
 
 // Loaded on the call, not at import time, so the module itself can be
 // imported without Playwright and a missing package fails with a hint.
-const loadPlaywright = async () => {
+const loadPlaywright = async (name) => {
     try {
         return await import("playwright")
     } catch (error) {
         if (error?.code !== "ERR_MODULE_NOT_FOUND") throw error
-        throw new Error("Playwright is not installed: `npm install playwright` and `npx playwright install chromium`")
+        throw new Error(`Playwright is not installed: \`npm install -D playwright && npx playwright install ${name}\``)
     }
 }
 
@@ -21,7 +21,7 @@ const loadPlaywright = async () => {
  * resolved to. Page errors are collected and thrown once run() has settled.
  */
 export const runInBrowser = async ({origin, scripts = [], urls, browser: name = "chromium"}) => {
-    const playwright = await loadPlaywright()
+    const playwright = await loadPlaywright(name)
     const browser = await playwright[name].launch()
     try {
         const page = await browser.newPage()
