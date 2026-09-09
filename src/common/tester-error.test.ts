@@ -126,7 +126,10 @@ describe(TITLE, () => {
         assert.match(lines.join(""), /thrown a string/)
     })
 
+    // Neither is an Error, so String() alone decides this - the same on
+    // every engine, unlike the stack-based cases above.
     it("prints a value that is not an Error as it is", async () => {
-        assert.match(await output(42), /42/)
+        assert.match(await output(42), /^ {2}42$/m)
+        assert.match(await output(undefined), /^ {2}undefined$/m)
     })
 })
