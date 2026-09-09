@@ -19,7 +19,7 @@ export const createRun = (
         let failed = false
         let failure: unknown
         try {
-            await control.begin()
+            control.begin()
             result = await runOnce(harness, control, assert)
         } catch (error) {
             failed = true
@@ -57,7 +57,7 @@ const runOnce = async (
     const run: Run = {
         counters: {tests: 0, suites: 0, passed: 0, failed: 0, cancelled: 0, skipped: 0, todo: 0},
         success: true,
-        reporter: control.reporter,
+        emit: control.emit,
         assert,
         harness,
         closed: false,
@@ -82,11 +82,11 @@ const runOnce = async (
         ["todo", run.counters.todo],
         ["duration_ms", duration_ms],
     ] as [string, number][]) {
-        await run.reporter.emit("test:diagnostic", {
+        await run.emit("test:diagnostic", {
             message: `${label} ${value}`, nesting: 0, level: "info",
         })
     }
 
-    await run.reporter.emit("test:summary", summary)
+    await run.emit("test:summary", summary)
     return summary
 }

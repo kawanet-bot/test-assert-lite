@@ -13,35 +13,25 @@ const defaultOutput: OutputFn = (text) => {
     console.log(text.replace(/\n$/, ""))
 }
 
-// Closing a per-run ReportStream is an internal step driven by run(), so it comes
-// back on a separate handle rather than on the public Reporter.
+// What run() drives: events go in through emit(), between begin() and
+// close(). The public Reporter carries the settings only, as node:test
+// gives a test no way to send an event of its own either.
 export interface ReporterControl {
     reporter: declared.TAL.Reporter
-    begin: () => Promise<void>
+    emit: (type: string, data: TestEvent["data"]) => Promise<void>
+    begin: () => void
     close: () => Promise<void>
 }
 
 export const createReporter = (): ReporterControl => {
     let format: FormatFn = spec()
     let output: OutputFn = defaultOutput
-    let stream: ReportStream | null = null
-
-    // Standalone events follow the latest output setting. A run replaces
-    // this ReportStream with one that holds its startup snapshot directly.
-    const current = (): ReportStream => stream ??= new ReportStream(format, text => output(text))
-    const close = async (): Promise<void> => {
-        const active = stream
-        if (active == null) return
-        try {
-            await active.close()
-        } finally {
-            if (stream === active) stream = null
-        }
-    }
+    // Each run gets a fresh ReportStream holding the settings as they were
+    // when it began. This first one only stands in until then.
+    let stream = new ReportStream(format, output)
 
     return {
         reporter: {
-            emit: (type, data) => current().emit({type, data} as TestEvent),
             // Configuration belongs to the TAL instance. Each run creates a
             // fresh ReportStream and formatter consumer from these retained values.
             format: (fn) => {
@@ -54,18 +44,10 @@ export const createReporter = (): ReporterControl => {
             tap,
             html,
         },
-        // A standalone emit() may have opened a ReportStream with older settings.
-        // Finish it before snapshotting the current configuration for run().
-        begin: async () => {
-            // Its own emit() already owns any failure. A new run starts a
-            // separate session and must not inherit that previous error.
-            try {
-                await close()
-            } catch {
-                // discarded standalone session
-            }
+        emit: (type, data) => stream.emit({type, data} as TestEvent),
+        begin: () => {
             stream = new ReportStream(format, output)
         },
-        close,
+        close: () => stream.close(),
     }
 }

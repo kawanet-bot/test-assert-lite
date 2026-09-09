@@ -97,9 +97,9 @@ export const spec = (options?: declared.TAL.SpecOptions): FormatFn => {
                 continue
             }
 
-            // emit() accepts any type, so check for a result event rather
-            // than assuming one. An unknown type is dropped, as it is in
-            // node:test's spec.
+            // Under node --test the source carries more types than these,
+            // so check for a result event rather than assuming one. An
+            // unknown type is dropped, as it is in node:test's spec.
             const isPass = event.type === "test:pass"
             const isFail = event.type === "test:fail"
             if (!isPass && !isFail) continue

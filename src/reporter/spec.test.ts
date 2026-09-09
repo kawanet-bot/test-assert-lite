@@ -1,23 +1,14 @@
 import {strict as assert} from "node:assert"
 import {describe, it} from "node:test"
-import {createTAL} from "../index.ts"
+import {createTAL, reporter} from "../index.ts"
+import type {Emit} from "../test-utils/format.ts"
+import {formatEvents} from "../test-utils/format.ts"
 
 const TITLE = "spec.test.ts"
 
 // Scaffolding to drive spec() on its own, collecting what it writes.
-const render = async (
-    emit: (reporter: ReturnType<typeof createTAL>["reporter"]) => Promise<void>,
-): Promise<string> => {
-    const local = createTAL()
-    const lines: string[] = []
-    local.reporter.format(local.reporter.spec({colors: false}))
-    local.reporter.output(text => {
-        lines.push(text)
-    })
-    await emit(local.reporter)
-    await local.run()
-    return lines.join("")
-}
+const render = (send: (emit: Emit) => Promise<void>): Promise<string> =>
+    formatEvents(reporter.spec({colors: false}), send)
 
 const pass = (name: string, extra: object = {}) => ({
     name, nesting: 0, testNumber: 1,
@@ -41,7 +32,7 @@ describe(TITLE, () => {
             local.reporter.output(text => {
                 lines.push(text)
             })
-            await local.reporter.emit("test:pass", pass("colored"))
+            local.it("colored", () => undefined)
             await local.run()
 
             assert.match(lines.join(""), /\u001b\[32m/)
@@ -62,20 +53,20 @@ describe(TITLE, () => {
         local.reporter.output(text => {
             lines.push(text)
         })
-        await local.reporter.emit("test:pass", pass("plain"))
+        local.it("plain", () => undefined)
         await local.run()
 
         assert.equal(lines.join("").includes("\u001b["), false)
     })
 
     it("renders a passing test", async () => {
-        const out = await render(r => r.emit("test:pass", pass("ok one")))
+        const out = await render(emit => emit("test:pass", pass("ok one")))
 
         assert.match(out, /✔ ok one \(1\.000ms\)/)
     })
 
     it("renders a failing test and repeats it at the end", async () => {
-        const out = await render(r => r.emit("test:fail", {
+        const out = await render(emit => emit("test:fail", {
             ...pass("bad one"),
             details: {duration_ms: 2, type: "test", error: new Error("boom")},
         }))
@@ -86,23 +77,23 @@ describe(TITLE, () => {
     })
 
     it("marks a skipped test with its reason", async () => {
-        const out = await render(r => r.emit("test:pass", pass("skipped one", {skip: "why"})))
+        const out = await render(emit => emit("test:pass", pass("skipped one", {skip: "why"})))
 
         assert.match(out, /﹣ skipped one .* # why/)
     })
 
     it("turns test:start into a suite heading", async () => {
-        const out = await render(async r => {
-            await r.emit("test:start", {name: "S", nesting: 0})
-            await r.emit("test:start", {name: "child", nesting: 1})
-            await r.emit("test:pass", {...pass("child"), nesting: 1})
+        const out = await render(async emit => {
+            await emit("test:start", {name: "S", nesting: 0})
+            await emit("test:start", {name: "child", nesting: 1})
+            await emit("test:pass", {...pass("child"), nesting: 1})
         })
 
         assert.match(out, /▶ S\n {2}✔ child/)
     })
 
     it("renders a diagnostic with its level", async () => {
-        const out = await render(r => r.emit("test:diagnostic", {
+        const out = await render(emit => emit("test:diagnostic", {
             message: "hello", nesting: 0, level: "info",
         }))
 
@@ -112,9 +103,9 @@ describe(TITLE, () => {
     // emit() accepts any type, and an unknown one used to reach the branch
     // that reads details, where it crashed.
     it("ignores an event type it does not know", async () => {
-        const out = await render(async r => {
-            await r.emit("my:custom:event", {hello: "world"} as never)
-            await r.emit("test:pass", pass("still rendered"))
+        const out = await render(async emit => {
+            await emit("my:custom:event", {hello: "world"} as never)
+            await emit("test:pass", pass("still rendered"))
         })
 
         assert.match(out, /✔ still rendered/)
@@ -124,9 +115,9 @@ describe(TITLE, () => {
     // node:test's spec leaves out a suite that failed only through its children.
     it("keeps a suite failed by its children out of the failing list", async () => {
         const subtestsFailed = Object.assign(new Error("1 subtest failed"), {code: "ERR_TEST_FAILURE", failureType: "subtestsFailed"})
-        const out = await render(async r => {
-            await r.emit("test:fail", {...pass("bad"), nesting: 1, details: {duration_ms: 1, type: "test", error: new Error("boom")}})
-            await r.emit("test:fail", {...pass("S"), details: {duration_ms: 2, type: "suite", error: subtestsFailed}})
+        const out = await render(async emit => {
+            await emit("test:fail", {...pass("bad"), nesting: 1, details: {duration_ms: 1, type: "test", error: new Error("boom")}})
+            await emit("test:fail", {...pass("S"), details: {duration_ms: 2, type: "suite", error: subtestsFailed}})
         })
 
         assert.match(out, /✖ S \(2\.000ms\)/)
@@ -141,9 +132,9 @@ describe(TITLE, () => {
             new Error(cause instanceof Error ? cause.message : String(cause)),
             {code: "ERR_TEST_FAILURE", failureType: "testCodeFailure", cause},
         )
-        const out = await render(async r => {
-            await r.emit("test:fail", {...pass("wrapped"), details: {duration_ms: 1, type: "test", error: wrap(new TypeError("inner"))}})
-            await r.emit("test:fail", {...pass("timed"), details: {duration_ms: 1, type: "test", error: wrap("test timed out after 20ms")}})
+        const out = await render(async emit => {
+            await emit("test:fail", {...pass("wrapped"), details: {duration_ms: 1, type: "test", error: wrap(new TypeError("inner"))}})
+            await emit("test:fail", {...pass("timed"), details: {duration_ms: 1, type: "test", error: wrap("test timed out after 20ms")}})
         })
 
         assert.match(out, /TypeError: inner/)
@@ -152,9 +143,9 @@ describe(TITLE, () => {
     })
 
     it("marks a todo test with its reason, and a failed todo as a warning", async () => {
-        const out = await render(async (r) => {
-            await r.emit("test:pass", {...pass("todo one"), todo: "later"})
-            await r.emit("test:fail", {...pass("todo two"), todo: true, details: {duration_ms: 1, type: "test", error: new Error("boom")}})
+        const out = await render(async emit => {
+            await emit("test:pass", {...pass("todo one"), todo: "later"})
+            await emit("test:fail", {...pass("todo two"), todo: true, details: {duration_ms: 1, type: "test", error: new Error("boom")}})
         })
 
         assert.match(out, /✔ todo one .* # later/)
@@ -166,33 +157,20 @@ describe(TITLE, () => {
     it("lists the failures once, after the run's summary, not per file", async () => {
         const summary = {counts: {tests: 1, suites: 0, passed: 0, failed: 1, cancelled: 0, skipped: 0, todo: 0}, duration_ms: 1, success: false}
         const perFile = {...summary, file: "a.test.mjs"}
-        const out = await render(async (r) => {
-            await r.emit("test:fail", {...pass("first"), details: {duration_ms: 1, type: "test", error: new Error("one")}})
-            await r.emit("test:summary", perFile)
-            await r.emit("test:fail", {...pass("second"), details: {duration_ms: 1, type: "test", error: new Error("two")}})
-            await r.emit("test:summary", perFile)
+        const out = await render(async emit => {
+            await emit("test:fail", {...pass("first"), details: {duration_ms: 1, type: "test", error: new Error("one")}})
+            await emit("test:summary", perFile)
+            await emit("test:fail", {...pass("second"), details: {duration_ms: 1, type: "test", error: new Error("two")}})
+            await emit("test:summary", perFile)
         })
 
         assert.equal(out.split("failing tests:").length - 1, 1)
         assert.match(out, /failing tests:\n\n✖ first \(1\.000ms\)\n {2}Error: one[\s\S]*\n\n✖ second \(1\.000ms\)\n {2}Error: two/)
     })
 
-    // A caller driving the reporter itself ends with the run's summary and
-    // has no way to close the stream, so the list must come out there.
-    it("lists the failures at the run's summary for a standalone emitter", async () => {
-        const summary = {counts: {tests: 1, suites: 0, passed: 0, failed: 1, cancelled: 0, skipped: 0, todo: 0}, duration_ms: 1, success: false}
-        const out = await render(async (r) => {
-            await r.emit("test:fail", {...pass("bad"), details: {duration_ms: 1, type: "test", error: new Error("boom")}})
-            await r.emit("test:summary", summary)
-            await r.emit("test:pass", pass("after"))
-        })
-
-        assert.ok(out.indexOf("failing tests:") < out.indexOf("✔ after"))
-        assert.equal(out.split("failing tests:").length - 1, 1)
-    })
 
     it("renders a skipped suite", async () => {
-        const out = await render(r => r.emit("test:pass", {...pass("S"), skip: true, details: {duration_ms: 1, type: "suite"}}))
+        const out = await render(emit => emit("test:pass", {...pass("S"), skip: true, details: {duration_ms: 1, type: "suite"}}))
 
         assert.match(out, /﹣ S \(1\.000ms\) # SKIP/)
     })
@@ -222,7 +200,7 @@ describe(TITLE, () => {
     // node:test's spec repeats the result line in the list, so a failure
     // that carries a skip keeps its skip symbol and note there too.
     it("lists a skipped failure with the skip symbol", async () => {
-        const out = await render(r => r.emit("test:fail", {
+        const out = await render(emit => emit("test:fail", {
             ...pass("skipped then failed"), skip: "why",
             details: {duration_ms: 1, type: "test", error: new Error("boom")},
         }))

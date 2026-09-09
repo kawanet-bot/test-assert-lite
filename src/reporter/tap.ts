@@ -46,9 +46,9 @@ export const tap = (): FormatFn => async function* (source: AsyncIterable<TestEv
             continue
         }
 
-        // emit() accepts any type, so check for a result event rather than
-        // assuming one. test:summary and an unknown type both fall through
-        // and are dropped, as node:test's own reporters drop unknown ones.
+        // Under node --test the source carries more types than these, so
+        // check for a result event rather than assuming one. test:summary and
+        // an unknown type both fall through and are dropped, as node's are.
         const isPass = event.type === "test:pass"
         const isFail = event.type === "test:fail"
         if (!isPass && !isFail) continue
