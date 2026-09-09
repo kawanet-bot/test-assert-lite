@@ -112,7 +112,14 @@ const respond = async (options: ServerOptions, req: IncomingMessage, res: Server
 export const startServer = async (options: ServerOptions): Promise<Server> => {
     const host = options.host || "127.0.0.1"
     const named = host === "0.0.0.0" || host === "::" ? "127.0.0.1" : host.includes(":") ? `[${host}]` : host
-    const server = createServer((req, res) => respond(options, req, res))
+    // A malformed request target throws inside respond(); caught so a
+    // client cannot crash the server, only draw a 400 for its own request.
+    const server = createServer((req, res) => {
+        respond(options, req, res).catch(() => {
+            if (!res.headersSent) res.writeHead(400)
+            res.end()
+        })
+    })
     await new Promise<void>(listening => server.listen(0, host, listening))
     const address = server.address()
     const port = (typeof address === "object" && address != null) ? address.port : 0

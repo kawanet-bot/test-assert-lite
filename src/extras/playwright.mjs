@@ -10,7 +10,7 @@ const loadPlaywright = async (name) => {
         return await import("playwright")
     } catch (error) {
         if (error?.code !== "ERR_MODULE_NOT_FOUND") throw error
-        throw new Error(`Playwright is not installed: \`npm install playwright\` and \`npx playwright install ${name}\``)
+        throw new Error(`Playwright is not installed: \`npm install -D playwright && npx playwright install ${name}\``)
     }
 }
 
