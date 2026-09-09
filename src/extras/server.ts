@@ -17,6 +17,8 @@ export interface ServerOptions {
     files?: Record<string, string>
     /** Exact URL path to a response built in memory, checked first. */
     data?: Record<string, {type: string, body: string}>
+    /** Exact URL path a POST's body is handed to as text; answered with 204. */
+    post?: Record<string, (body: string) => void>
     /** Address to listen on; 127.0.0.1 by default. */
     host?: string
     /** Gets one line per response, in morgan's tiny format; none without it. */
@@ -79,9 +81,25 @@ const realWithin = async ({base, path}: Located): Promise<string> => {
     return real
 }
 
+const text = (req: IncomingMessage): Promise<string> => new Promise((resolve, reject) => {
+    let body = ""
+    req.setEncoding("utf8")
+    req.on("data", chunk => (body += chunk))
+    req.on("end", () => resolve(body))
+    req.on("error", reject)
+})
+
 // Resolves to the body's length in bytes, for the log line.
 const respond = async (options: ServerOptions, req: IncomingMessage, res: ServerResponse): Promise<number> => {
     const {pathname} = new URL(req.url ?? "/", "http://127.0.0.1")
+    // A POST is for its handler alone: never a file, and nothing to send back.
+    if (req.method === "POST") {
+        const handler = options.post?.[pathname]
+        if (handler != null) handler(await text(req))
+        res.writeHead(handler != null ? 204 : 404)
+        res.end()
+        return 0
+    }
     const data = options.data?.[pathname]
     if (data != null) {
         res.writeHead(200, {"content-type": `${data.type}; charset=utf-8`})

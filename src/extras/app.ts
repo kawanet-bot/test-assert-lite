@@ -92,6 +92,9 @@ export const startApp = async (options: AppOptions): Promise<App> => {
         host,
         root: resolve(root, "htdocs"),
         log: line => process.stderr.write(`${line}\n`),
+        // A line the page wants seen goes to stderr beside the log: the way
+        // to the terminal for a suite or a page, apart from the reporter.
+        post: {"/@tal/console": body => process.stderr.write(`${body.replace(/\n$/, "")}\n`)},
         aliases: {
             "/@tal/dist/": resolve(root, "dist"),
             "/@tal/exports/": resolve(root, "exports"),

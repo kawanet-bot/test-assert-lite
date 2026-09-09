@@ -23,6 +23,7 @@ describe("cli/server", () => {
     let dir: string
     let server: Server
     const lines: string[] = []
+    const posted: string[] = []
 
     before(async () => {
         dir = await mkdtemp(join(tmpdir(), "tal-server-"))
@@ -47,6 +48,7 @@ describe("cli/server", () => {
             files: {"/@tal/tests/0/my%20suite.mjs": join(dir, "elsewhere", "suite.mjs")},
             data: {"/@tal/tests.json": {type: "application/json", body: '["/@tal/tests/0/my%20suite.mjs"]'}},
             log: line => lines.push(line),
+            post: {"/@tal/console": body => posted.push(body)},
         })
     })
 
@@ -121,6 +123,21 @@ describe("cli/server", () => {
 
     it("answers 404 for a missing file", async () => {
         assert.equal((await get(server.origin, "/missing.html")).status, 404)
+    })
+
+    it("hands a POST's body to its handler, and answers 404 elsewhere", async () => {
+        const post = (path: string, body: string) => new Promise<number>((resolve, reject) => {
+            const {hostname, port} = new URL(server.origin)
+            request({hostname, port, path, method: "POST"}, res => {
+                res.resume()
+                res.on("end", () => resolve(res.statusCode ?? 0))
+            }).on("error", reject).end(body)
+        })
+        assert.equal(await post("/@tal/console", "hello from the page\n"), 204)
+        assert.deepEqual(posted, ["hello from the page\n"])
+        assert.equal(await post("/dist/lib.mjs", "x"), 404)
+        // A GET on it is refused as any path without a served extension is.
+        assert.equal((await get(server.origin, "/@tal/console")).status, 403)
     })
 
     it("logs one line per response, in morgan's tiny format", async () => {
