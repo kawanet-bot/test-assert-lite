@@ -110,7 +110,7 @@ const respond = async (options: ServerOptions, req: IncomingMessage, res: Server
 // A wildcard address listens on every interface but names none, so the
 // origin falls back to the loopback one; an IPv6 literal needs brackets.
 export const startServer = async (options: ServerOptions): Promise<Server> => {
-    const host = options.host ?? "127.0.0.1"
+    const host = options.host || "127.0.0.1"
     const named = host === "0.0.0.0" || host === "::" ? "127.0.0.1" : host.includes(":") ? `[${host}]` : host
     const server = createServer((req, res) => respond(options, req, res))
     await new Promise<void>(listening => server.listen(0, host, listening))
