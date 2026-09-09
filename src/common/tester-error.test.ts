@@ -31,10 +31,17 @@ describe(TITLE, () => {
         assert.equal(errorText(Object.assign(new Error("l1\nl2"), {stack: v8})), v8)
     })
 
-    // With no message there is nothing the frames lack.
-    it("adds nothing when the message is empty", () => {
-        assert.equal(errorText(framesOnly(new Error())), "fn@http://host/suite.mjs:12:3\n@http://host/suite.mjs:40:1")
+    // V8 writes the name alone then, with no colon.
+    it("uses the name alone when the message is empty", () => {
+        assert.equal(errorText(framesOnly(new Error())), "Error\nfn@http://host/suite.mjs:12:3\n@http://host/suite.mjs:40:1")
+        assert.equal(errorText(Object.assign(new Error(), {stack: "Error\n    at fn (http://host/suite.mjs:12:3)"})), "Error\n    at fn (http://host/suite.mjs:12:3)")
         assert.equal(errorText(Object.assign(new Error(), {stack: undefined})), "Error")
+    })
+
+    // The frames are read by their shape, so a message that happens to be
+    // a function's name does not pass for a header.
+    it("adds the header to a frames-only stack whatever the message says", () => {
+        assert.equal(errorText(Object.assign(new Error("fn"), {stack: "fn@http://host/suite.mjs:12:3"})), "Error: fn\nfn@http://host/suite.mjs:12:3")
     })
 
     // Node writes the code into the line, as AssertionError [ERR_ASSERTION].
