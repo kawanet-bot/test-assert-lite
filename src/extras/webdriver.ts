@@ -20,24 +20,23 @@ interface Reply {
 }
 
 // Runs in the page, called until it reports the end: what the reporter
-// wrote since `from`, and once run() is over, the errors and the summary.
-// Each call returns within 10 seconds, under the driver's script timeout of
-// 30, so a long suite is polled rather than waited for in one call.
+// wrote from index `from` on, and once run() is over, the errors and the
+// summary. Each call returns within 10 seconds, under the driver's script
+// timeout of 30, so a long suite is polled rather than waited for in one call.
 const POLL = `
 const [from, done] = arguments
-const output = document.querySelector("#output")
 const started = Date.now()
 const tick = () => {
-    const text = output.textContent.slice(from)
+    const lines = window.testLines.slice(from)
     const errors = window.testErrors
-    if (errors != null || text || Date.now() - started > 10000) done({text, errors, summary: window.testSummary})
+    if (errors != null || lines.length || Date.now() - started > 10000) done({lines, errors, summary: window.testSummary})
     else setTimeout(tick, 100)
 }
 tick()
 `
 
 interface Polled {
-    text: string
+    lines: string[]
     errors?: string[] | null
     summary?: TAL.TestSummary | null
 }
@@ -70,9 +69,9 @@ export const runInWebDriver = async ({origin, endpoint, session}: WebDriverRunOp
         // Relayed as it comes, so the output reads as the Node CLI's does.
         let from = 0
         for (;;) {
-            const {text, errors, summary} = await call(endpoint, "POST", `${base}/execute/async`, JSON.stringify({script: POLL, args: [from]})) as unknown as Polled
-            process.stdout.write(text)
-            from += text.length
+            const {lines, errors, summary} = await call(endpoint, "POST", `${base}/execute/async`, JSON.stringify({script: POLL, args: [from]})) as unknown as Polled
+            for (const line of lines) process.stdout.write(line)
+            from += lines.length
             if (errors == null) continue
             if (errors.length) throw new AggregateError(errors.map(error => new Error(error)), "Browser page errors occurred")
             return summary as TAL.TestSummary
