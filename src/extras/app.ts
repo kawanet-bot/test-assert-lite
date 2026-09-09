@@ -80,7 +80,7 @@ export const startApp = async (options: AppOptions): Promise<App> => {
         const at = html.lastIndexOf("</head>")
         return html.slice(0, at) + importmap + html.slice(at)
     }
-    const pages = ["console.html", "index.html"]
+    const pages = ["console.html", "index.html", "webdriver.html"]
 
     // Document root is htdocs/; everything else the CLI provides sits under
     // /@tal/, the build output and the subpath bridges included, as those
