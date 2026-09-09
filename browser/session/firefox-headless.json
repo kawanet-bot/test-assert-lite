@@ -1,0 +1,9 @@
+{
+    "capabilities": {
+        "alwaysMatch": {
+            "moz:firefoxOptions": {
+                "args": ["-headless"]
+            }
+        }
+    }
+}

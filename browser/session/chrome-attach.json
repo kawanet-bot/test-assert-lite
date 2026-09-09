@@ -1,0 +1,9 @@
+{
+    "capabilities": {
+        "alwaysMatch": {
+            "goog:chromeOptions": {
+                "debuggerAddress": "127.0.0.1:9222"
+            }
+        }
+    }
+}
