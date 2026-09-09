@@ -79,6 +79,11 @@ describe(TITLE, () => {
         assert.doesNotMatch(out, /\n\s*\n\s*fn@/)
     })
 
+    it("prepends the bare name above frames only when the message is empty", async () => {
+        const out = await output(withStack(new Error(), "fn@http://host/suite.mjs:12:3"))
+        assert.match(out, /Error\n\s*fn@/)
+    })
+
     it("keeps a message over several lines", async () => {
         const out = await output(withStack(new Error("l1\nl2"), "Error: l1\nl2\n    at fn (http://host/suite.mjs:12:3)"))
         assert.equal(count(out, "Error: l1"), 1)
