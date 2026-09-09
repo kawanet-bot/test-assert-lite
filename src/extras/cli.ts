@@ -1,5 +1,5 @@
 // The command line as a function. By default the suites run in this Node
-// process; --chromium runs them in headless Chromium through Playwright,
+// process; --playwright runs them in one of Playwright's headless browsers,
 // and --serve hands the same page to a person. Directory search and glob
 // expansion are left to the shell: only explicit file names are accepted.
 
@@ -15,11 +15,16 @@ export interface CLIOptions {
 }
 
 const USAGE = `Usage: test-assert [options] <file...>
-  --chromium                  run the suite in headless Chromium through Playwright
   --serve                     serve the suite for a browser and print the URL
-  --script <file>             classic script to run first (browser modes, repeatable)
+  --host <address>            address the suite is served on (browser modes, default: 127.0.0.1)
   --alias <specifier>=<file>  ES module a bare specifier resolves to (browser modes, repeatable)
+  --script <file>             classic script to run first (browser modes, repeatable)
+  --playwright <browser>      run the suite through Playwright: chromium, firefox or webkit
 `
+
+const BROWSERS = ["chromium", "firefox", "webkit"] as const
+type Browser = typeof BROWSERS[number]
+const isBrowser = (name: string): name is Browser => (BROWSERS as readonly string[]).includes(name)
 
 // Wrong arguments end in the usage text and exit code 1, after the reason
 // when there is one to give.
@@ -34,10 +39,11 @@ const parse = (args: string[]) => {
         return parseArgs({
             args,
             options: {
-                chromium: {type: "boolean", default: false},
                 serve: {type: "boolean", default: false},
-                script: {type: "string", multiple: true, default: []},
+                host: {type: "string"},
                 alias: {type: "string", multiple: true, default: []},
+                script: {type: "string", multiple: true, default: []},
+                playwright: {type: "string"},
                 help: {type: "boolean", short: "h", default: false},
             },
             allowPositionals: true,
@@ -58,9 +64,13 @@ const main = async (args: string[]): Promise<number> => {
     // A browser run takes one suite: several entries would each get their
     // own mount, and a module shared between them would load once per
     // mount as a separate instance. Bundle first, as this package's are.
-    const browser = values.chromium || values.serve
-    if (values.chromium && values.serve) throw new UsageError("--chromium and --serve are exclusive")
-    if (!browser && (values.script.length || values.alias.length)) throw new UsageError("--script and --alias apply to --chromium and --serve only")
+    const {playwright} = values
+    if (playwright != null && !isBrowser(playwright)) throw new UsageError(`--playwright takes chromium, firefox or webkit: ${playwright}`)
+    const browser = playwright != null || values.serve
+    if (playwright != null && values.serve) throw new UsageError("--playwright and --serve are exclusive")
+    if (!browser && (values.script.length || values.alias.length || values.host != null)) {
+        throw new UsageError("--host, --alias and --script apply to --playwright and --serve only")
+    }
     if (browser ? files.length !== 1 : !files.length) throw new UsageError()
 
     if (!browser) {
@@ -83,6 +93,7 @@ const main = async (args: string[]): Promise<number> => {
         file: resolve(files[0] as string),
         scripts: values.script.map(script => resolve(script)),
         aliases,
+        host: values.host,
     })
 
     if (values.serve) {
@@ -96,7 +107,7 @@ const main = async (args: string[]): Promise<number> => {
     }
 
     try {
-        const {counts, success} = await runInBrowser({...app, browser: "chromium"})
+        const {counts, success} = await runInBrowser({...app, browser: playwright as Browser})
 
         // success rather than the counter: a failure outside a test body,
         // such as a hook that threw, never reaches failed.
