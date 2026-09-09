@@ -26,7 +26,7 @@ interface Verdict {
 export interface Run {
     counters: Counters
     success: boolean
-    reporter: Pick<ReporterControl, "emit">
+    emit: ReporterControl["emit"]
     // t.assert uses the harness's assert, so once it takes options, what a
     // body sees stays consistent within one run().
     assert: declared.TAL.AssertMethods
@@ -193,7 +193,7 @@ export class Test {
                 // node:test keeps diagnostics for the report; one arriving
                 // after the report has no place to go.
                 if (this.settled) return
-                void this.run.reporter.emit("test:diagnostic", {message, nesting: this.nesting, level: "info"})
+                void this.run.emit("test:diagnostic", {message, nesting: this.nesting, level: "info"})
             },
             test: (...args: Args<TestFn>) => this.subtest(args),
         }
@@ -371,7 +371,7 @@ export class Test {
                 ...(afterError != null ? [["root after hook", afterError]] : []),
             ] as [string, Error][]
             for (const [name, hookError] of orphaned) {
-                await this.run.reporter.emit("test:fail", {
+                await this.run.emit("test:fail", {
                     name, nesting: 0, testNumber: 0,
                     details: {duration_ms: 0, type: "suite", error: hookError},
                 })
@@ -496,7 +496,7 @@ export class Test {
         this.announced = true
         if (this.parent != null) await this.parent.announce()
         if (this.nesting < 0) return
-        await this.run.reporter.emit("test:start", {name: this.name, nesting: this.nesting})
+        await this.run.emit("test:start", {name: this.name, nesting: this.nesting})
     }
 
     // Counts and emits the result, once. A skip, then a todo, decides the
@@ -527,9 +527,9 @@ export class Test {
         }
         const duration_ms = this.started ? (this.endedAt || performance.now()) - this.startedAt : 0
         if (this.error != null) {
-            await this.run.reporter.emit("test:fail", {...base, details: {duration_ms, type: this.kind, error: this.error}})
+            await this.run.emit("test:fail", {...base, details: {duration_ms, type: this.kind, error: this.error}})
         } else {
-            await this.run.reporter.emit("test:pass", {...base, details: {duration_ms, type: this.kind}})
+            await this.run.emit("test:pass", {...base, details: {duration_ms, type: this.kind}})
         }
     }
 }
