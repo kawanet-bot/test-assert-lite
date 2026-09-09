@@ -22,6 +22,25 @@ const withStack = (error: Error, stack: string | undefined): Error => Object.ass
 
 const count = (text: string, line: string): number => text.split(line).length - 1
 
+// Runs a real test that throws `value`, and returns what the spec
+// reporter prints. The one path a thrown non-Error value actually
+// reaches: details.error is typed as Error, so testRunnerError() always
+// wraps it before any reporter sees it - errorText() is never handed a
+// raw 42 directly, only through this route.
+const thrown = async (value: unknown): Promise<string> => {
+    const local = createTAL()
+    const lines: string[] = []
+    local.reporter.format(local.reporter.spec({colors: false}))
+    local.reporter.output(text => {
+        lines.push(text)
+    })
+    local.it("bad", () => {
+        throw value
+    })
+    await local.run()
+    return lines.join("")
+}
+
 describe(TITLE, () => {
     it("opens with name and message, once", async () => {
         const out = await output(new Error("boom"))
@@ -97,39 +116,20 @@ describe(TITLE, () => {
     // A thrown array is read through stringify(), not the default join
     // String() gives: the one shape that tells the two apart.
     it("prints a thrown non-Error value through stringify", async () => {
-        const local = createTAL()
-        const lines: string[] = []
-        local.reporter.format(local.reporter.spec({colors: false}))
-        local.reporter.output(text => {
-            lines.push(text)
-        })
-        local.it("throws an array", () => {
-            throw [1, 2, 3]
-        })
-        await local.run()
-        assert.match(lines.join(""), /\[1,2,3\]/)
-        assert.doesNotMatch(lines.join(""), /TesterError/)
+        const out = await thrown([1, 2, 3])
+        assert.match(out, /\[1,2,3\]/)
+        assert.doesNotMatch(out, /TesterError/)
     })
 
     // TAL wraps a thrown value that is not an Error, keeping it as the message.
     it("prints a thrown string as it is", async () => {
-        const local = createTAL()
-        const lines: string[] = []
-        local.reporter.format(local.reporter.spec({colors: false}))
-        local.reporter.output(text => {
-            lines.push(text)
-        })
-        local.it("throws a string", () => {
-            throw "thrown a string"
-        })
-        await local.run()
-        assert.match(lines.join(""), /thrown a string/)
+        assert.match(await thrown("thrown a string"), /thrown a string/)
     })
 
     // Neither is an Error, so String() alone decides this - the same on
     // every engine, unlike the stack-based cases above.
-    it("prints a value that is not an Error as it is", async () => {
-        assert.match(await output(42), /^ {2}42$/m)
-        assert.match(await output(undefined), /^ {2}undefined$/m)
+    it("prints a thrown primitive as it is", async () => {
+        assert.match(await thrown(42), /^ {2}42$/m)
+        assert.match(await thrown(undefined), /^ {2}undefined$/m)
     })
 })
