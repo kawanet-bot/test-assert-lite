@@ -121,7 +121,7 @@ const main = async (args: string[]): Promise<number> => {
     }
 
     try {
-        const {counts, success} = webdriver
+        const {success} = webdriver
             ? await runInWebDriver({
                 origin: app.origin,
                 session: values["webdriver-session"] == null ? undefined : readFileSync(values["webdriver-session"], "utf8"),
@@ -132,11 +132,9 @@ const main = async (args: string[]): Promise<number> => {
                 browser: playwright as Browser,
             })
 
-        // success rather than the counter: a failure outside a test body,
-        // such as a hook that threw, never reaches failed.
-        if (!success) throw new Error(`Reported ${counts.failed} failed test(s)`)
-        if (!counts.tests) throw new Error("Ran no tests")
-        return 0
+        // The exit code alone, as in Node mode and node --test: the summary
+        // on stdout already says what failed, and no tests is not a failure.
+        return success ? 0 : 1
     } finally {
         app.close()
     }
