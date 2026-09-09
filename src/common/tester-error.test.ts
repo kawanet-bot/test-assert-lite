@@ -44,6 +44,22 @@ describe(TITLE, () => {
         assert.equal(count(out, "Error\n"), 1)
     })
 
+    it("keeps a header with no frames after it", async () => {
+        const out = await output(withStack(new Error(), "Error"))
+        assert.equal(count(out, "Error"), 1)
+    })
+
+    it("writes the message alone when the name is empty", async () => {
+        const out = await output(withStack(Object.assign(new Error("boom"), {name: ""}), "fn@http://host/suite.mjs:12:3"))
+        assert.match(out, /boom/)
+        assert.doesNotMatch(out, /: boom/)
+    })
+
+    it("adds nothing when the name and message are both empty", async () => {
+        const out = await output(withStack(Object.assign(new Error(""), {name: ""}), "fn@http://host/suite.mjs:12:3"))
+        assert.doesNotMatch(out, /\n\s*\n\s*fn@/)
+    })
+
     it("keeps a message over several lines", async () => {
         const out = await output(withStack(new Error("l1\nl2"), "Error: l1\nl2\n    at fn (http://host/suite.mjs:12:3)"))
         assert.equal(count(out, "Error: l1"), 1)
@@ -76,6 +92,23 @@ describe(TITLE, () => {
         const out = await output(Object.assign(new Error("outer"), {code: "ERR_TEST_FAILURE", cause}))
         assert.match(out, /Error: inner/)
         assert.doesNotMatch(out, /outer/)
+    })
+
+    // A thrown array is read through stringify(), not the default join
+    // String() gives: the one shape that tells the two apart.
+    it("prints a thrown non-Error value through stringify", async () => {
+        const local = createTAL()
+        const lines: string[] = []
+        local.reporter.format(local.reporter.spec({colors: false}))
+        local.reporter.output(text => {
+            lines.push(text)
+        })
+        local.it("throws an array", () => {
+            throw [1, 2, 3]
+        })
+        await local.run()
+        assert.match(lines.join(""), /\[1,2,3\]/)
+        assert.doesNotMatch(lines.join(""), /TesterError/)
     })
 
     // TAL wraps a thrown value that is not an Error, keeping it as the message.
