@@ -86,9 +86,12 @@ export const startApp = async (options: AppOptions): Promise<App> => {
     // /@tal/, the build output and the subpath bridges included, as those
     // have to stay where the package puts them. Nothing else is exposed.
     // index.html asks for both lists and loads them itself, scripts first.
+    // Every request on stderr, apart from the reporter's stdout: a 404 for
+    // a mistyped --script or --alias shows up here.
     const server = await startServer({
         host,
         root: resolve(root, "htdocs"),
+        log: line => process.stderr.write(`${line}\n`),
         aliases: {
             "/@tal/dist/": resolve(root, "dist"),
             "/@tal/exports/": resolve(root, "exports"),
