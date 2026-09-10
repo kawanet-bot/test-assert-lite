@@ -60,22 +60,22 @@
     }
   },
   "files": [
-    "LICENSE",
-    "README.md",
+    "bin/cli.mjs",
     "browser/import.js",
     "browser/import.mjs",
+    "browser/index.html",
     "browser/package.json",
+    "browser/run.html",
     "browser/session/",
     "dist/package.json",
+    "dist/test-assert-lite.extras.mjs",
     "dist/test-assert-lite.min.js",
+    "dist/test-assert-lite.mjs",
     "exports/",
     "htdocs/",
-    "dist/test-assert-lite.mjs",
-    "types/*.d.ts",
-    "bin/cli.mjs",
-    "dist/test-assert-lite.extras.mjs",
-    "browser/run.html",
-    "browser/index.html"
+    "LICENSE",
+    "README.md",
+    "types/*.d.ts"
   ],
   "homepage": "https://github.com/kawanet/test-assert-lite#readme",
   "keywords": [
