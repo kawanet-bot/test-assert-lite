@@ -15,41 +15,20 @@ const loadPlaywright = async (name) => {
 }
 
 /**
- * Runs the suites at `urls` on `origin`'s console.html in a headless
- * `browser` (chromium unless told otherwise) and resolves to what run()
- * resolved to. Page errors are collected and thrown once run() has settled.
+ * Runs the suites on `origin`'s run.html in a headless `browser` (chromium
+ * unless told otherwise) and resolves to the verdict the page sends back.
+ * Playwright only opens the page: from there the page reports on its own.
  */
-export const runInPlaywright = async ({origin, urls, browser: name = "chromium"}) => {
+export const runInPlaywright = async ({origin, done, browser: name = "chromium"}) => {
     const playwright = await loadPlaywright(name)
     const browser = await playwright[name].launch()
     try {
+        // A browser that goes away fails the run at once, ahead of the
+        // silence bound the page's own word would otherwise run into.
+        const gone = new Promise((_, reject) => browser.on("disconnected", () => reject(new Error("The browser closed before the page reported its end"))))
         const page = await browser.newPage()
-        const pageErrors = []
-        page.on("pageerror", error => pageErrors.push(error))
-        // The default reporter writes to the page console; relay it so the
-        // output matches what the Node CLI shows.
-        page.on("console", msg => (msg.type() === "error" ? console.error : console.log)(msg.text()))
-
-        await page.goto(`${origin}/console.html`)
-        // The classic scripts came in the page's head, so the globals they
-        // leave are in place when the suites load. A module tag resolves
-        // once the whole graph has executed, so run() below cannot overtake
-        // the registration; inline content would.
-        for (const url of urls) {
-            await page.addScriptTag({type: "module", url})
-        }
-
-        // The suites register into the module instance behind the import
-        // map, so run() must come from that same instance. evaluate()
-        // resolves to what run() resolved to: no polling and no timeout, a
-        // hanging test hangs, the same as in node --test. The name is passed
-        // in so a bundler never takes this page-side import for its own.
-        const summary = await page.evaluate(name => import(name).then(m => m.run()), "test-assert-lite")
-
-        if (pageErrors.length) {
-            throw new AggregateError(pageErrors, "Browser page errors occurred")
-        }
-        return summary
+        await page.goto(`${origin}/run.html`)
+        return await Promise.race([done, gone])
     } finally {
         await browser.close()
     }

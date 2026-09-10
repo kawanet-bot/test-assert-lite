@@ -3,12 +3,12 @@
 <head>
     <meta charset="utf-8"/>
     <title>test-assert-lite browser test</title>
-    <!-- The page the CLI's --webdriver mode drives. It reports back over
-         HTTP through the client the import map leads to: begin, the two
-         streams, and the verdict at the end; the <pre> below is for a
-         person watching the browser. The CLI serves it with the import map
-         and the classic scripts added at the end of the head. console.html
-         is the page Playwright drives and index.html the one people open. -->
+    <!-- The page the CLI drives, through Playwright or a WebDriver server
+         alike: it reports back over HTTP through the client the import map
+         leads to, begin, the two streams and the verdict at the end, and
+         the <pre> below is for a person watching the browser. The CLI
+         serves it with the import map and the classic scripts added at the
+         end of the head. index.html is the page people open. -->
 </head>
 <body>
 <pre id="output"></pre>
