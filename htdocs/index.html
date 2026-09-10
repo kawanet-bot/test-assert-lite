@@ -5,27 +5,21 @@
     <title>test-assert-lite browser test</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <link rel="stylesheet" href="/styles/test-assert-lite.css"/>
-    <!-- The page people open, from the CLI's --serve mode. It
-         imports whatever the CLI mounted, listed at /@tal/tests.json, and shows
-         the HTML reporter; browser/run.html, served under each run's URL, is
-         the one the CLI drives itself.
-         The CLI serves this page with the import map and the classic
-         scripts, the library's own build first, added at the end of the
+    <!-- The page people open, from the CLI's --serve mode. It shows the
+         HTML reporter for whatever the CLI mounted; browser/run.html, served
+         under each run's URL, is the one the CLI drives itself. The CLI
+         serves this page with the import map, the classic scripts, the
+         library's own build first, and the suites added at the end of the
          head. -->
 </head>
 <body>
 <h1>test-assert-lite browser test</h1>
 <div id="output"></div>
 <script type="module">
-    // The classic scripts came in the head, the library itself among them,
-    // so the globals they leave are in place before this module runs, and
-    // what "test-assert-lite" resolves to reads its global.
+    // The suites came in the head, put there by the CLI, so they are
+    // registered by now: only the reporter is this page's own, set before
+    // run() reads it.
     const {reporter, run} = await import("test-assert-lite");
-
-    // One at a time, so the suites register in command-line order.
-    for (const url of await (await fetch("/@tal/tests.json")).json()) {
-        await import(url);
-    }
 
     reporter.format(reporter.html());
     reporter.output(text => document.querySelector("#output")?.insertAdjacentHTML("beforeend", text));

@@ -7,8 +7,16 @@
          alike. It is served under the run's own URL and reports back there
          over HTTP: begin, the two streams and the verdict at the end; the
          <pre> below is for a person watching the browser. The CLI serves it
-         with the import map and the classic scripts added at the end of
-         the head. index.html, at the root, is the page people open. -->
+         with the import map, the classic scripts and the suites added at
+         the end of the head. index.html, at the root, is the page people
+         open. -->
+    <script>
+        // Ahead of everything the CLI puts into the page, so what fails to
+        // load or throws before the module below runs is kept for it.
+        window.testErrors = [];
+        addEventListener("error", event => window.testErrors.push(event), true);
+        addEventListener("unhandledrejection", event => window.testErrors.push(event));
+    </script>
 </head>
 <body>
 <pre id="output"></pre>
@@ -19,33 +27,42 @@
     const {begin, stdout, stderr, end} = reporter.client(new URL("./", import.meta.url));
     begin();
 
-    // An error outside a test body, an uncaught one or a suite that failed
-    // to load, is shown as it happens and fails the run at the end.
-    let uncaught = 0;
-    addEventListener("error", event => { uncaught++; stderr(`${event.error?.stack ?? event.message}\n`); });
-    addEventListener("unhandledrejection", event => { uncaught++; stderr(`${event.reason?.stack ?? event.reason}\n`); });
+    // Whatever the head kept, shown once and counted; the array stays a
+    // queue for what arrives during the run.
+    let failed = false;
+    const flush = () => {
+        while (window.testErrors.length > 0) {
+            const event = window.testErrors.shift();
+            stderr(`${event.error || event.reason || event}\n`);
+            failed = true;
+        }
+    };
 
     // The console goes to the CLI's streams the way Node's does.
     for (const level of ["log", "info", "debug"]) console[level] = (...args) => stdout(`${args.join(" ")}\n`);
     for (const level of ["warn", "error"]) console[level] = (...args) => stderr(`${args.join(" ")}\n`);
 
+    // The spec reporter, the default, stays without colours in a browser.
     const output = document.querySelector("#output");
-    try {
-        // One at a time, so the suites register in command-line order.
-        for (const url of await (await fetch("/@tal/tests.json")).json()) {
-            await import(url);
-        }
+    reporter.output(text => {
+        output.append(text);
+        stdout(text);
+    });
 
-        // The spec reporter, the default, stays without colours in a browser.
-        reporter.output(text => {
-            output.append(text);
-            stdout(text);
-        });
-        const summary = await run();
-        await end(summary.success && uncaught === 0);
-    } catch (error) {
-        stderr(`${error?.stack ?? error}\n`);
+    // An error before the run, a suite or a script that did not load or
+    // threw, means the run does not start, as under node --test.
+    flush();
+    if (failed) {
         await end(false);
+    } else {
+        try {
+            const summary = await run();
+            flush();
+            await end(summary.success && !failed);
+        } catch (error) {
+            stderr(`${error || "Error"}\n`);
+            await end(false);
+        }
     }
 </script>
 </body>

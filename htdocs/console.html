@@ -3,11 +3,13 @@
 <head>
     <meta charset="utf-8"/>
     <title>test-assert-lite browser test</title>
-    <!-- The smallest page a suite runs on: nothing of its own, only what the
-         CLI puts into the head, the import map and the classic scripts. It
-         stays this way on purpose. browser/run.html, served under each run's
-         URL, is the page the CLI drives; index.html is the one people open. -->
+    <!-- The smallest page a suite runs on: the CLI puts the import map, the
+         classic scripts and the suites into the head, and the one line
+         below runs them, reporting to the console. It stays this way on
+         purpose. browser/run.html, served under each run's URL, is the page
+         the CLI drives; index.html is the one people open. -->
 </head>
 <body>
+<script type="module">import("test-assert-lite").then(m => m.run())</script>
 </body>
 </html>

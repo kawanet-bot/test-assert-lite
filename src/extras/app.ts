@@ -26,8 +26,6 @@ export interface App {
     origin: string
     /** URL of the page a browser is sent to, under the run's own path. */
     page: string
-    /** Suite URLs on that origin, in the order to load them. */
-    urls: string[]
     /** The verdict the page reports at its end; rejects if it never begins. */
     done: Promise<boolean>
     /** Stops the server. */
@@ -88,14 +86,16 @@ export const startApp = async (options: AppOptions): Promise<App> => {
     // network can write into the CLI's streams or hand in the verdict.
     const run = `/@tal/run/${runId()}/`
 
-    // The map has to be inline and in place before the first module loads,
-    // and classic script tags run in order as the head is parsed, ahead of
-    // any module script: so both go in at the end of each page's head,
+    // The map has to be inline and in place before the first module loads;
+    // classic script tags run in order as the head is parsed, and module
+    // tags in order once it is, ahead of the page's own module in the body
+    // that calls run(). So all three go in at the end of each page's head,
     // past any mention of those tags in a comment.
     const imports: Record<string, string> = {...IMPORTS}
     for (const [i, {specifier}] of aliases.entries()) imports[specifier] = aliasUrls[i] as string
     const importmap = `<script type="importmap">\n${JSON.stringify({imports}, null, 4)}\n</script>\n`
     const tags = scriptUrls.map(url => `<script src="${url}"></script>\n`).join("")
+        + urls.map(url => `<script type="module" src="${url}"></script>\n`).join("")
     const withHead = (path: string): string => {
         const html = readFileSync(resolve(root, path), "utf8")
         const at = html.lastIndexOf("</head>")
@@ -135,7 +135,6 @@ export const startApp = async (options: AppOptions): Promise<App> => {
     // Document root is htdocs/; everything else the CLI provides sits under
     // /@tal/, the build output and the subpath bridges included, as those
     // have to stay where the package puts them. Nothing else is exposed.
-    // The pages ask for the suite list and load it themselves.
     // Every request on stderr, apart from the reporter's stdout: a 404 for
     // a mistyped --script or --alias shows up here.
     const server = await startServer({
@@ -166,7 +165,6 @@ export const startApp = async (options: AppOptions): Promise<App> => {
             ...Object.fromEntries(mounts.map((url, i) => [url, scripts[i] as string])),
         },
         data: {
-            "/@tal/tests.json": {type: "application/json", body: JSON.stringify(urls)},
             ...Object.fromEntries(pages.flatMap(page => {
                 const body = html(`htdocs/${page}`)
                 return page === "index.html" ? [[`/${page}`, body], ["/", body]] : [[`/${page}`, body]]
@@ -179,7 +177,6 @@ export const startApp = async (options: AppOptions): Promise<App> => {
     return {
         origin: server.origin,
         page: `${server.origin}${run}run.html`,
-        urls,
         done,
         close: () => {
             if (timer != null) clearTimeout(timer)
