@@ -7,7 +7,8 @@
 import {readFileSync} from "node:fs"
 import {resolve} from "node:path"
 import {parseArgs} from "node:util"
-import {startApp} from "./app.ts"
+import {createApp} from "../server/app.ts"
+import {serve} from "../server/serve.ts"
 import {runInNode} from "./node.ts"
 import {runInPlaywright} from "./playwright.mjs"
 import {runInWebDriver} from "./webdriver.ts"
@@ -103,33 +104,45 @@ const main = async (args: string[]): Promise<number> => {
         if (at < 1 || at === entry.length - 1) throw new UsageError(`--alias takes <specifier>=<file>: ${entry}`)
         return {specifier: entry.slice(0, at), file: resolve(entry.slice(at + 1))}
     })
-    const app = await startApp({
+    // The application is the middleware, the server runs it; every request
+    // goes to stderr, apart from the reporter's stdout, so a 404 for a
+    // mistyped --script or --alias shows up there.
+    const app = createApp({
         file: resolve(files[0] as string),
         scripts: values.script.map(script => resolve(script)),
         aliases,
-        host: values.host,
     })
+    const server = await serve({
+        handler: app.handler,
+        host: values.host,
+        log: line => process.stderr.write(`${line}\n`),
+    })
+    const page = `${server.origin}${app.page}`
+    const close = (): void => {
+        app.close()
+        server.close()
+    }
 
     if (values.serve) {
         // Only the URL goes to stdout, so it can be piped. The server keeps
         // the process alive until an interrupt, which resolves this.
-        process.stdout.write(`${app.origin}/\n`)
+        process.stdout.write(`${server.origin}/\n`)
         process.stderr.write("Serving the suite; press Ctrl-C to stop.\n")
         await new Promise<void>(stop => process.once("SIGINT", () => stop()))
-        app.close()
+        close()
         return 0
     }
 
     try {
         const success = webdriver
             ? await runInWebDriver({
-                page: app.page,
+                page,
                 done: app.done,
                 session: values["webdriver-session"] == null ? undefined : readFileSync(values["webdriver-session"], "utf8"),
                 endpoint: values.endpoint ?? "http://127.0.0.1:4444",
             })
             : await runInPlaywright({
-                page: app.page,
+                page,
                 done: app.done,
                 browser: playwright as Browser,
             })
@@ -138,7 +151,7 @@ const main = async (args: string[]): Promise<number> => {
         // on stdout already says what failed, and no tests is not a failure.
         return success ? 0 : 1
     } finally {
-        app.close()
+        close()
     }
 }
 

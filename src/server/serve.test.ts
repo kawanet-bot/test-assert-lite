@@ -1,0 +1,206 @@
+import {strict as assert} from "node:assert"
+import {mkdir, mkdtemp, rm, symlink, writeFile} from "node:fs/promises"
+import {request} from "node:http"
+import {connect} from "node:net"
+import {tmpdir} from "node:os"
+import {join} from "node:path"
+import {after, before, describe, it} from "node:test"
+import {compose} from "./middleware.ts"
+import type {Server} from "./serve.ts"
+import {serve} from "./serve.ts"
+import {serveStatic} from "./static.ts"
+
+interface Reply {
+    status: number
+    type: string
+    length: string
+    allow: string
+    body: string
+}
+
+// Raw request: fetch() and the URL parser fold ".." away before sending,
+// so the traversal cases below need the path to go out verbatim.
+const call = (origin: string, path: string, method = "GET", body?: string, encoding: BufferEncoding = "utf8"): Promise<Reply> => new Promise((resolve, reject) => {
+    const {hostname, port} = new URL(origin)
+    request({hostname, port, path, method}, res => {
+        let body = ""
+        res.setEncoding(encoding)
+        res.on("data", chunk => (body += chunk))
+        res.on("end", () => resolve({
+            status: res.statusCode ?? 0,
+            type: String(res.headers["content-type"] ?? ""),
+            length: String(res.headers["content-length"] ?? ""),
+            allow: String(res.headers["allow"] ?? ""),
+            body,
+        }))
+    }).on("error", reject).end(body)
+})
+
+const get = (origin: string, path: string): Promise<Reply> => call(origin, path)
+
+describe("server/serve", () => {
+    let dir: string
+    let server: Server
+    const lines: string[] = []
+    const posted: string[] = []
+
+    before(async () => {
+        dir = await mkdtemp(join(tmpdir(), "tal-server-"))
+        await mkdir(join(dir, "htdocs"))
+        await mkdir(join(dir, "dist"))
+        await mkdir(join(dir, "elsewhere"))
+        await writeFile(join(dir, "htdocs", "page.html"), "<p>page</p>")
+        await writeFile(join(dir, "htdocs", "icon.svg"), "<svg/>")
+        // Bytes no text encoding would keep, as a favicon or an image has them.
+        await writeFile(join(dir, "htdocs", "favicon.ico"), Buffer.from([0, 0, 1, 0, 255, 254, 128, 10, 13]))
+        await writeFile(join(dir, "htdocs", "pic.png"), Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
+        await writeFile(join(dir, "htdocs", "pic.jpg"), Buffer.from([255, 216, 255, 224]))
+        await writeFile(join(dir, "dist", "lib.mjs"), "export const lib = 1")
+        await writeFile(join(dir, "dist", "my lib.mjs"), "export const lib = 2")
+        await mkdir(join(dir, "dist", "nested"))
+        await writeFile(join(dir, "dist", "nested", "deep.mjs"), "export const deep = 1")
+        await writeFile(join(dir, "dist", "legacy.cjs"), "module.exports = {}")
+        await writeFile(join(dir, "dist", "source.ts"), "export const source: number = 1")
+        await writeFile(join(dir, "dist", "data.json"), "{}")
+        await symlink("..", join(dir, "dist", "up"))
+        await symlink("lib.mjs", join(dir, "dist", "alias.mjs"))
+        await writeFile(join(dir, "elsewhere", "suite.mjs"), "export const suite = 1")
+        await writeFile(join(dir, "secret.json"), "{}")
+        server = await serve({
+            handler: compose([
+                async (c, next) => {
+                    if (c.req.method !== "POST" || c.req.path !== "/@tal/run/1/stdout") return next()
+                    posted.push(await c.req.text())
+                    return c.body(null, 204)
+                },
+                async (c, next) => (c.req.path === "/boom" ? Promise.reject(new Error("boom")) : next()),
+                serveStatic({path: "/dist/", root: join(dir, "dist")}),
+                serveStatic({path: "/@tal/tests/0/my suite.mjs", root: join(dir, "elsewhere", "suite.mjs")}),
+                serveStatic({path: "/", root: join(dir, "htdocs")}),
+            ]),
+            log: line => lines.push(line),
+        })
+    })
+
+    after(async () => {
+        server.close()
+        await rm(dir, {recursive: true, force: true})
+    })
+
+    it("listens on a loopback port", () => {
+        assert.match(server.origin, /^http:\/\/127\.0\.0\.1:\d+$/)
+    })
+
+    it("serves the document root with a content type and length", async () => {
+        const res = await get(server.origin, "/page.html")
+        assert.equal(res.status, 200)
+        assert.equal(res.type, "text/html; charset=utf-8")
+        assert.equal(res.length, "11")
+        assert.equal(res.body, "<p>page</p>")
+        assert.equal((await get(server.origin, "/icon.svg")).type, "image/svg+xml")
+        assert.equal((await get(server.origin, "/dist/data.json")).type, "application/json; charset=utf-8")
+    })
+
+    it("serves a binary file as it is, with its type alone and no charset", async () => {
+        const ico = await call(server.origin, "/favicon.ico", "GET", undefined, "binary")
+        assert.equal(ico.status, 200)
+        assert.equal(ico.type, "image/x-icon")
+        assert.equal(ico.length, "9")
+        assert.deepEqual([...Buffer.from(ico.body, "binary")], [0, 0, 1, 0, 255, 254, 128, 10, 13])
+        assert.equal((await get(server.origin, "/pic.png")).type, "image/png")
+        assert.equal((await get(server.origin, "/pic.jpg")).type, "image/jpeg")
+    })
+
+    it("serves a directory mount before the root, nested paths and a percent-encoded name", async () => {
+        const res = await get(server.origin, "/dist/lib.mjs")
+        assert.equal(res.status, 200)
+        assert.equal(res.type, "text/javascript; charset=utf-8")
+        assert.equal((await get(server.origin, "/dist/nested/deep.mjs")).status, 200)
+        assert.equal((await get(server.origin, "/dist/my%20lib.mjs")).body, "export const lib = 2")
+    })
+
+    it("serves a mounted file by its decoded path, and nothing beside it", async () => {
+        assert.equal((await get(server.origin, "/@tal/tests/0/my%20suite.mjs")).status, 200)
+        assert.equal((await get(server.origin, "/@tal/tests/0/suite.mjs")).status, 404)
+    })
+
+    it("answers 404 for a missing file, a directory and a path without a kind", async () => {
+        assert.equal((await get(server.origin, "/missing.html")).status, 404)
+        assert.equal((await get(server.origin, "/dist/")).status, 404)
+        assert.equal((await get(server.origin, "/dist/nested")).status, 404)
+        assert.equal((await get(server.origin, "/dist/missing")).status, 404)
+    })
+
+    it("refuses a kind it does not serve with 403, when the file is there", async () => {
+        assert.equal((await get(server.origin, "/dist/legacy.cjs")).status, 403)
+        assert.equal((await get(server.origin, "/dist/source.ts")).status, 403)
+        assert.equal((await get(server.origin, "/dist/missing.ts")).status, 404)
+    })
+
+    it("refuses to leave the root or a mount", async () => {
+        assert.equal((await get(server.origin, "/../secret.json")).status, 404)
+        assert.equal((await get(server.origin, "/dist/../secret.json")).status, 404)
+        assert.equal((await get(server.origin, "/dist/%2e%2e/secret.json")).status, 404)
+        assert.equal((await get(server.origin, "/secret.json")).status, 404)
+    })
+
+    it("follows a symlink inside the directory but not one leading out", async () => {
+        assert.equal((await get(server.origin, "/dist/alias.mjs")).status, 200)
+        assert.equal((await get(server.origin, "/dist/up/secret.json")).status, 404)
+    })
+
+    it("refuses a malformed escape", async () => {
+        assert.equal((await get(server.origin, "/dist/%zz.mjs")).status, 404)
+    })
+
+    it("answers a HEAD with the headers alone, and any other method with 405", async () => {
+        const head = await call(server.origin, "/dist/lib.mjs", "HEAD")
+        assert.equal(head.status, 200)
+        assert.equal(head.length, "20")
+        assert.equal(head.body, "")
+        const put = await call(server.origin, "/dist/lib.mjs", "PUT", "x")
+        assert.equal(put.status, 405)
+        assert.equal(put.allow, "GET, HEAD")
+        assert.equal((await call(server.origin, "/dist/legacy.cjs", "DELETE")).status, 405)
+        assert.equal((await call(server.origin, "/dist/missing.mjs", "DELETE")).status, 404)
+    })
+
+    it("hands a POST's body to its middleware, and answers 404 elsewhere", async () => {
+        assert.equal((await call(server.origin, "/@tal/run/1/stdout", "POST", "hello from the page\n")).status, 204)
+        assert.deepEqual(posted, ["hello from the page\n"])
+        assert.equal((await call(server.origin, "/@tal/run/1/nothing", "POST", "x")).status, 404)
+        assert.equal((await get(server.origin, "/@tal/run/1/stdout")).status, 404)
+    })
+
+    it("answers 500 when the chain throws, and logs the error", async () => {
+        const from = lines.length
+        assert.equal((await get(server.origin, "/boom")).status, 500)
+        assert.match(lines[from] ?? "", /^Error: boom\n/)
+        assert.match(lines[from + 1] ?? "", /^GET \/boom 500 - - /)
+    })
+
+    it("answers 400 to a target that is not a path", async () => {
+        const {hostname, port} = new URL(server.origin)
+        const status = await new Promise<string>((resolve, reject) => {
+            const socket = connect(Number(port), hostname, () => socket.write("GET * HTTP/1.1\r\nHost: x\r\n\r\n"))
+            socket.once("data", data => {
+                resolve(String(data).split(" ")[1] ?? "")
+                socket.destroy()
+            })
+            socket.on("error", reject)
+        })
+        assert.equal(status, "400")
+    })
+
+    it("logs one line per response, in morgan's tiny format", async () => {
+        const from = lines.length
+        await get(server.origin, "/dist/lib.mjs")
+        await get(server.origin, "/missing.html")
+        await get(server.origin, "/dist/legacy.cjs")
+        assert.deepEqual(lines.slice(from).map(line => line.replace(/ \d+\.\d{3} ms$/, " N ms")), [
+            "GET /dist/lib.mjs 200 20 - N ms",
+            "GET /missing.html 404 - - N ms",
+            "GET /dist/legacy.cjs 403 - - N ms",
+        ])
+    })
+})
