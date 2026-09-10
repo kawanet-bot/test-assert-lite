@@ -1,7 +1,7 @@
-// The client as a page gets it: the built one, bound to this file's own
-// URL, which the CLI serves under the run's id. The page imports this by
-// the package name through the import map and never sees that id.
+// The client as a page gets it: reporter.client() bound to this file's
+// own URL, which the CLI serves under the run's id. The page imports this
+// by the package name through the import map and never sees that id.
 
-import {connect as bind} from "/@tal/dist/test-assert-lite.client.mjs"
+import {reporter} from "test-assert-lite"
 
-export const connect = () => bind(new URL("./", import.meta.url))
+export const connect = () => reporter.client(new URL("./", import.meta.url))

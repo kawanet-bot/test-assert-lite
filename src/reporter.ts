@@ -1,4 +1,5 @@
 import type * as declared from "test-assert-lite"
+import {client} from "./reporter/client.ts"
 import {html} from "./reporter/html.ts"
 import {ReportStream} from "./reporter/report-stream.ts"
 import {spec} from "./reporter/spec.ts"
@@ -43,6 +44,7 @@ export const createReporter = (): ReporterControl => {
             spec,
             tap,
             html,
+            client,
         },
         emit: (type, data) => stream.emit({type, data} as TestEvent),
         begin: () => {

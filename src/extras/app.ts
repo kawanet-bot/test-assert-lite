@@ -3,7 +3,7 @@
 // and hands all of that to server.ts. The CLI turns arguments into
 // AppOptions; anything else could do the same.
 
-import {randomUUID} from "node:crypto"
+import {randomInt} from "node:crypto"
 import {readFileSync} from "node:fs"
 import {basename, dirname, resolve} from "node:path"
 import {fileURLToPath} from "node:url"
@@ -31,6 +31,10 @@ export interface App {
     /** Stops the server. */
     close(): void
 }
+
+// Nine base-36 characters, 46 bits: plenty for a run's lifetime, and short
+// enough to read in the access log.
+const runId = (): string => randomInt(0, 36 ** 9).toString(36).padStart(9, "0")
 
 // How long the page may stay silent. Before it has begun, the browser
 // could not reach the server, most likely; after that, a quiet page says
@@ -81,7 +85,7 @@ export const startApp = async (options: AppOptions): Promise<App> => {
     // imports by the package name is served there and takes the run's id
     // from its own URL, so nothing else on the network can write into the
     // CLI's streams or hand in the verdict.
-    const run = `/@tal/run/${randomUUID()}/`
+    const run = `/@tal/run/${runId()}/`
 
     // The map has to be inline and in place before the first module loads,
     // and classic script tags run in order as the head is parsed, ahead of
