@@ -3,7 +3,7 @@ import {describe, it} from "node:test"
 import {createTAL} from "./../index.ts"
 import {capture, names, ofType} from "./../test-utils/capture.ts"
 
-const TITLE = "runner/runner-hooks.test.ts"
+const TITLE = "runner/hooks.test.ts"
 
 // before and after: their scope, and how a failing hook or suite body is
 // charged and cancels what it covers.

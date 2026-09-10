@@ -1,8 +1,7 @@
 import type * as declared from "test-assert-lite"
 import {createAssert} from "./assert.ts"
 import {createReporter} from "./reporter.ts"
-import {createRun} from "./runner.ts"
-import {createHarnessState, createRegistrar} from "./suite.ts"
+import {createHarnessState, createRegistrar, createRun} from "./runner.ts"
 
 // Binds everything the package exposes to one tree. The pieces meet here
 // because suite.ts reaching for runner.ts would close a cycle.

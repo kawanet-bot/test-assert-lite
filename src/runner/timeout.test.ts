@@ -4,7 +4,7 @@ import {createTAL} from "./../index.ts"
 import {capture, names, ofType} from "./../test-utils/capture.ts"
 import {describeSlow, slow} from "./../test-utils/slow.ts"
 
-const TITLE = "runner/runner-timeout.test.ts"
+const TITLE = "runner/timeout.test.ts"
 
 // Timeouts and everything that happens after one: cancelling the subtests
 // in flight, what a body may still do, and when the run ends. Every case
