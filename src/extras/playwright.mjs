@@ -26,6 +26,9 @@ export const runInPlaywright = async ({origin, done, browser: name = "chromium"}
         // A browser that goes away fails the run at once, ahead of the
         // silence bound the page's own word would otherwise run into.
         const gone = new Promise((_, reject) => browser.on("disconnected", () => reject(new Error("The browser closed before the page reported its end"))))
+        // Handled here as well: close() below fires this too when something
+        // else failed first, and that must not add an unhandled rejection.
+        void gone.catch(() => undefined)
         const page = await browser.newPage()
         await page.goto(`${origin}/run.html`)
         return await Promise.race([done, gone])
