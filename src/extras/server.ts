@@ -93,9 +93,10 @@ const text = (req: IncomingMessage): Promise<string> => new Promise((resolve, re
     req.on("error", reject)
 })
 
-const charset = (type?: string) => {
+const addCharset = (type?: string) => {
     if (!type) return "application/octet-stream"
-    if (type.startsWith("text/") || type.endsWith("/json")) type += "; charset=utf-8"
+    if (/charset=/i.test(type)) return type
+    if (/^text\/|[/+]json$/i.test(type)) type += "; charset=utf-8"
     return type
 }
 
@@ -112,7 +113,7 @@ const respond = async (options: ServerOptions, req: IncomingMessage, res: Server
     }
     const data = options.data?.[pathname]
     if (data != null) {
-        res.writeHead(200, {"content-type": charset(data.type)})
+        res.writeHead(200, {"content-type": addCharset(data.type)})
         res.end(data.body)
         return Buffer.byteLength(data.body)
     }
@@ -128,7 +129,7 @@ const respond = async (options: ServerOptions, req: IncomingMessage, res: Server
     try {
         if (found == null) throw new Error("outside")
         const body = await readFile(await realWithin(found))
-        res.writeHead(200, {"content-type": charset(type)})
+        res.writeHead(200, {"content-type": addCharset(type)})
         res.end(body)
         return body.length
     } catch {
