@@ -20,7 +20,9 @@ export interface CLIOptions {
 
 const USAGE = `Usage: test-assert [options] <file...>
   --serve                     serve the suite for a browser and print the URL; the page reloads on a change
-  --host <address>            address the suite is served on (browser modes, default: 127.0.0.1)
+  --host <address>            address the server listens on (browser modes, default: 127.0.0.1)
+  --port <number>             port the server listens on (browser modes, default: a free one)
+  --origin <url>              what the browser reaches the server as, http(s)://host[:port] (browser modes, default: from --host)
   --alias <specifier>=<file>  ES module a bare specifier resolves to (browser modes, repeatable)
   --script <file>             classic script to run first (browser modes, repeatable)
   --playwright <browser>      run the suite through Playwright: chromium, firefox or webkit
@@ -38,6 +40,26 @@ const isBrowser = (name: string): name is Browser => (BROWSERS as readonly strin
 class UsageError extends Error {
 }
 
+// A port is a whole number a socket can take; an origin is a URL that is
+// nothing but scheme, host and port, as a browser names a server.
+const portOf = (value: string): number => {
+    const port = Number(value)
+    if (!Number.isInteger(port) || port < 0 || port > 65535) throw new UsageError(`--port takes a number from 0 to 65535: ${value}`)
+    return port
+}
+
+const originOf = (value: string): string => {
+    const error = new UsageError(`--origin takes http(s)://host[:port]: ${value}`)
+    let url: URL
+    try {
+        url = new URL(value)
+    } catch {
+        throw error
+    }
+    if (!/^https?:$/.test(url.protocol) || url.pathname !== "/" || url.search || url.hash || url.username || url.password) throw error
+    return url.origin
+}
+
 // parseArgs settles the flag forms (--x=v, -h, --) and rejects a flag this
 // CLI does not know rather than taking it for a file name; its wording on
 // such an error gives way to the usage text.
@@ -48,6 +70,8 @@ const parse = (args: string[]) => {
             options: {
                 serve: {type: "boolean", default: false},
                 host: {type: "string"},
+                port: {type: "string"},
+                origin: {type: "string"},
                 alias: {type: "string", multiple: true, default: []},
                 script: {type: "string", multiple: true, default: []},
                 playwright: {type: "string"},
@@ -80,8 +104,8 @@ const main = async (args: string[]): Promise<number> => {
     if ((playwright != null ? 1 : 0) + (webdriver ? 1 : 0) + (values.serve ? 1 : 0) > 1) {
         throw new UsageError("--playwright, --webdriver and --serve are exclusive")
     }
-    if (!browser && (values.script.length || values.alias.length || values.host != null)) {
-        throw new UsageError("--host, --alias and --script apply to --playwright, --webdriver and --serve only")
+    if (!browser && (values.script.length || values.alias.length || values.host != null || values.port != null || values.origin != null)) {
+        throw new UsageError("--host, --port, --origin, --alias and --script apply to --playwright, --webdriver and --serve only")
     }
     if (!webdriver && (values["webdriver-session"] != null || values.endpoint != null)) {
         throw new UsageError("--webdriver-session and --endpoint apply to --webdriver only")
@@ -113,10 +137,17 @@ const main = async (args: string[]): Promise<number> => {
         aliases,
         watch: values.serve,
     })
+    // A server that cannot listen, its port taken say, is an error to show;
+    // the application, with its watch, must not keep the process up for it.
     const server = await serve({
         handler: app.handler,
         host: values.host,
+        port: values.port == null ? undefined : portOf(values.port),
+        origin: values.origin == null ? undefined : originOf(values.origin),
         log: line => process.stderr.write(`${line}\n`),
+    }).catch((error: unknown) => {
+        app.close()
+        throw error
     })
     const page = `${server.origin}${app.page}`
     const close = (): void => {

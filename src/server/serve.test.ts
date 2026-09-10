@@ -1,7 +1,7 @@
 import {strict as assert} from "node:assert"
 import {mkdir, mkdtemp, rm, symlink, writeFile} from "node:fs/promises"
 import {request} from "node:http"
-import {connect} from "node:net"
+import {connect, createServer as listen} from "node:net"
 import {tmpdir} from "node:os"
 import {join} from "node:path"
 import {after, before, describe, it} from "node:test"
@@ -21,7 +21,7 @@ interface Reply {
 // Raw request: fetch() and the URL parser fold ".." away before sending,
 // so the traversal cases below need the path to go out verbatim.
 const call = (origin: string, path: string, method = "GET", body?: string, encoding: BufferEncoding = "utf8"): Promise<Reply> => new Promise((resolve, reject) => {
-    const {hostname, port} = new URL(origin)
+    const {hostname, port} = hostOf(origin)
     request({hostname, port, path, method}, res => {
         let body = ""
         res.setEncoding(encoding)
@@ -36,7 +36,33 @@ const call = (origin: string, path: string, method = "GET", body?: string, encod
     }).on("error", reject).end(body)
 })
 
+// An IPv6 literal comes out of a URL in brackets, which a socket does not take.
+const hostOf = (origin: string): {hostname: string, port: number} => {
+    const {hostname, port} = new URL(origin)
+    return {hostname: hostname.replace(/^\[|\]$/g, ""), port: Number(port)}
+}
+
 const get = (origin: string, path: string): Promise<Reply> => call(origin, path)
+
+// A request written by hand, for what node:http would not send: no Host
+// header, a Host that is no host, a target that is not a path.
+const raw = (origin: string, lines: string): Promise<{status: string, body: string}> => new Promise((resolve, reject) => {
+    const {hostname, port} = hostOf(origin)
+    let data = ""
+    const socket = connect(port, hostname, () => socket.write(lines))
+    socket.on("data", chunk => (data += chunk))
+    socket.on("end", () => resolve({status: data.split(" ")[1] ?? "", body: data.slice(data.indexOf("\r\n\r\n") + 4)}))
+    socket.on("error", reject)
+})
+
+// A port nobody listens on right now, for the tests that pick one.
+const freePort = (): Promise<number> => new Promise(resolve => {
+    const probe = listen().listen(0, "127.0.0.1", () => {
+        const address = probe.address()
+        const port = typeof address === "object" && address != null ? address.port : 0
+        probe.close(() => resolve(port))
+    })
+})
 
 describe("server/serve", () => {
     let dir: string
@@ -75,6 +101,7 @@ describe("server/serve", () => {
                     return c.body(null, 204)
                 },
                 async (c, next) => (c.req.path === "/boom" ? Promise.reject(new Error("boom")) : next()),
+                async (c, next) => (c.req.path === "/url" ? c.body(c.req.url) : next()),
                 async (c, next) => (c.req.path === "/broken"
                     ? c.body(new ReadableStream({start: controller => controller.error(new Error("broken body"))}))
                     : next()),
@@ -209,17 +236,51 @@ describe("server/serve", () => {
         assert.match(lines[from + 1] ?? "", /^GET \/broken 500 - - /)
     })
 
-    it("answers 400 to a target that is not a path", async () => {
-        const {hostname, port} = new URL(server.origin)
-        const status = await new Promise<string>((resolve, reject) => {
-            const socket = connect(Number(port), hostname, () => socket.write("GET * HTTP/1.1\r\nHost: x\r\n\r\n"))
-            socket.once("data", data => {
-                resolve(String(data).split(" ")[1] ?? "")
-                socket.destroy()
-            })
-            socket.on("error", reject)
-        })
-        assert.equal(status, "400")
+    it("answers 400 to a target that is not a path, or a Host that is no host", async () => {
+        assert.equal((await raw(server.origin, "GET * HTTP/1.0\r\nHost: x\r\n\r\n")).status, "400")
+        assert.equal((await raw(server.origin, "GET /url HTTP/1.0\r\nHost: no host\r\n\r\n")).status, "400")
+    })
+
+    it("takes the request's URL from its Host header, and from the address listened on without one", async () => {
+        assert.equal((await get(server.origin, "/url")).body, `${server.origin}/url`)
+        assert.equal((await raw(server.origin, "GET /url HTTP/1.0\r\nHost: example.test:8080\r\n\r\n")).body, "http://example.test:8080/url")
+        assert.equal((await raw(server.origin, "GET /url HTTP/1.0\r\n\r\n")).body, `${server.origin}/url`)
+    })
+
+    it("listens on the port asked for, and refuses one already taken", async () => {
+        const port = await freePort()
+        const fixed = await serve({handler: async c => c.body("fixed"), port})
+        try {
+            assert.equal(fixed.origin, `http://127.0.0.1:${port}`)
+            assert.equal((await get(fixed.origin, "/")).body, "fixed")
+            await assert.rejects(serve({handler: async c => c.body(""), port}), /EADDRINUSE/)
+        } finally {
+            fixed.close()
+        }
+    })
+
+    it("names itself by the origin given, while the requests keep their own URL", async () => {
+        const port = await freePort()
+        const named = await serve({handler: async c => c.body(c.req.url), port, origin: "https://tal.example"})
+        try {
+            assert.equal(named.origin, "https://tal.example")
+            assert.equal((await get(`http://127.0.0.1:${port}`, "/x")).body, `http://127.0.0.1:${port}/x`)
+        } finally {
+            named.close()
+        }
+    })
+
+    it("names the loopback of the family for a wildcard address", async () => {
+        const v4 = await serve({handler: async c => c.body("4"), host: "0.0.0.0"})
+        const v6 = await serve({handler: async c => c.body("6"), host: "::"})
+        try {
+            assert.match(v4.origin, /^http:\/\/127\.0\.0\.1:\d+$/)
+            assert.match(v6.origin, /^http:\/\/\[::1\]:\d+$/)
+            assert.equal((await get(v6.origin, "/")).body, "6")
+        } finally {
+            v4.close()
+            v6.close()
+        }
     })
 
     it("logs one line per response, in morgan's tiny format", async () => {

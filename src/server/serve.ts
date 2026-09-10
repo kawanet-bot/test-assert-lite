@@ -14,21 +14,27 @@ export interface ServeOptions {
     handler: MiddlewareHandler
     /** Address to listen on; 127.0.0.1 by default. */
     host?: string
+    /** Port to listen on; a free one by default. */
+    port?: number
+    /** What a browser reaches the server as, scheme://host[:port], when not the address listened on. */
+    origin?: string
     /** Gets one line per response, in morgan's tiny format, and any error; none without it. */
     log?: (line: string) => void
 }
 
 export interface Server {
+    /** Where a browser reaches the server: the origin given, or else the address listened on. */
     origin: string
 
     close(): void
 }
 
-// The Request a Node request stands for, the body read in first: what
-// comes in is the page's few lines of text, so nothing is lost by not
-// streaming. A target that is not a path, "*" say, makes no URL; a doubled
-// slash or a bad escape goes onto the origin as it came, for the chain.
-const toRequest = async (req: IncomingMessage, origin: string): Promise<Request> => {
+// The Request a Node request stands for, its URL from the Host header as
+// the client sent it, the address listened on where there is none; the
+// body read in first, as what comes in is the page's few lines of text.
+// A target that is not a path, "*" say, or a Host that is no host, makes
+// no URL; a doubled slash or a bad escape goes on as it came, for the chain.
+const toRequest = async (req: IncomingMessage, bound: string): Promise<Request> => {
     const url = req.url ?? ""
     if (!url.startsWith("/")) throw new Error(`Not a path: ${url}`)
     const headers = new Headers()
@@ -36,7 +42,7 @@ const toRequest = async (req: IncomingMessage, origin: string): Promise<Request>
     const chunks: Uint8Array[] = []
     for await (const chunk of req) chunks.push(chunk as Uint8Array)
     const body = req.method === "GET" || req.method === "HEAD" ? null : new Uint8Array(Buffer.concat(chunks))
-    return new Request(origin + url, {method: req.method, headers, body})
+    return new Request(`http://${req.headers.host ?? bound}${url}`, {method: req.method, headers, body})
 }
 
 // What goes back out, once nothing can fail any more.
@@ -54,12 +60,12 @@ const tiny = (req: IncomingMessage, status: number, length: number, ms: number):
 // 127.0.0.1 rather than localhost on both ends: a browser may resolve
 // localhost to ::1 while this listens on IPv4 only. Port 0 picks a free one.
 // A wildcard address listens on every interface but names none, so the
-// origin falls back to the loopback one; an IPv6 literal needs brackets.
+// loopback of its family stands in; an IPv6 literal needs brackets.
 export const serve = async ({handler, log, ...options}: ServeOptions): Promise<Server> => {
     // An empty --host= is the default too, not the unspecified address.
     const host = options.host || "127.0.0.1"
-    const named = host === "0.0.0.0" || host === "::" ? "127.0.0.1" : host.includes(":") ? `[${host}]` : host
-    let origin = ""
+    const named = host === "0.0.0.0" ? "127.0.0.1" : host === "::" ? "[::1]" : host.includes(":") ? `[${host}]` : host
+    let bound = ""
 
     // The answer as bytes, read in here: a Response body can fail on the
     // way in as the chain can throw, and either is a 500 with the error in
@@ -68,7 +74,7 @@ export const serve = async ({handler, log, ...options}: ServeOptions): Promise<S
     const respond = async (req: IncomingMessage): Promise<Answer> => {
         let c: Context | null = null
         try {
-            c = createContext(await toRequest(req, origin))
+            c = createContext(await toRequest(req, bound))
             const res = await handler(c, async () => undefined)
             if (res != null && !c.finalized) c.res = res
             const response = c.finalized ? c.res : await c.notFound()
@@ -87,12 +93,19 @@ export const serve = async ({handler, log, ...options}: ServeOptions): Promise<S
             log?.(tiny(req, status, body.length, performance.now() - started))
         })
     })
-    await new Promise<void>(listening => server.listen(0, host, listening))
+    // A port already taken is an error to the caller, not to the process.
+    await new Promise<void>((listening, refused) => {
+        server.once("error", refused)
+        server.listen(options.port ?? 0, host, () => {
+            server.off("error", refused)
+            listening()
+        })
+    })
     const address = server.address()
     const port = (typeof address === "object" && address != null) ? address.port : 0
-    origin = `http://${named}:${port}`
+    bound = `${named}:${port}`
     return {
-        origin,
+        origin: options.origin ?? `http://${bound}`,
         close: () => {
             server.close()
             server.closeAllConnections()
