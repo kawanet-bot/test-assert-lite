@@ -52,11 +52,11 @@ const IMPORTS = {
 }
 
 // A file mounted by name: the URL a page refers to it by, percent-encoded,
-// and that URL as it arrives in a request path, decoded the way Hono does.
-const mount = (dir: string, file: string): {url: string, path: string} => {
-    const url = dir + encodeURIComponent(basename(file))
-    return {url, path: decodeURI(url)}
-}
+// and the path a request for it arrives as, decoded back to the name.
+const mount = (dir: string, file: string): {url: string, path: string} => ({
+    url: dir + encodeURIComponent(basename(file)),
+    path: dir + basename(file),
+})
 
 const isRead = (method: string): boolean => method === "GET" || method === "HEAD"
 

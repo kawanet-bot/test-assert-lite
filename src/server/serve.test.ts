@@ -57,6 +57,7 @@ describe("server/serve", () => {
         await writeFile(join(dir, "htdocs", "pic.jpg"), Buffer.from([255, 216, 255, 224]))
         await writeFile(join(dir, "dist", "lib.mjs"), "export const lib = 1")
         await writeFile(join(dir, "dist", "my lib.mjs"), "export const lib = 2")
+        for (const name of ["a#b.mjs", "a+b.mjs", "a%b.mjs", "a%20b.mjs"]) await writeFile(join(dir, "dist", name), `export const name = ${JSON.stringify(name)}`)
         await mkdir(join(dir, "dist", "nested"))
         await writeFile(join(dir, "dist", "nested", "deep.mjs"), "export const deep = 1")
         await writeFile(join(dir, "dist", "legacy.cjs"), "module.exports = {}")
@@ -117,6 +118,25 @@ describe("server/serve", () => {
         assert.equal(res.type, "text/javascript; charset=utf-8")
         assert.equal((await get(server.origin, "/dist/nested/deep.mjs")).status, 200)
         assert.equal((await get(server.origin, "/dist/my%20lib.mjs")).body, "export const lib = 2")
+    })
+
+    it("finds a file whose name has a reserved character or a percent sign, by its encoded URL", async () => {
+        for (const name of ["a#b.mjs", "a+b.mjs", "a%b.mjs", "a%20b.mjs"]) {
+            const res = await get(server.origin, `/dist/${encodeURIComponent(name)}`)
+            assert.equal(res.status, 200, name)
+            assert.equal(res.body, `export const name = ${JSON.stringify(name)}`)
+        }
+        assert.equal((await get(server.origin, "/dist/a%20b.mjs")).status, 404)
+    })
+
+    it("listens on the loopback address for an empty host as for none", async () => {
+        const other = await serve({handler: async c => c.body("x"), host: ""})
+        try {
+            assert.match(other.origin, /^http:\/\/127\.0\.0\.1:\d+$/)
+            assert.equal((await get(other.origin, "/")).body, "x")
+        } finally {
+            other.close()
+        }
     })
 
     it("serves a mounted file by its decoded path, and nothing beside it", async () => {

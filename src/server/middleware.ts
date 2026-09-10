@@ -10,13 +10,13 @@ export type Next = () => Promise<void>
 /** Answers with a Response, or leaves it to the rest of the chain with next(). */
 export type MiddlewareHandler = (c: Context, next: Next) => Promise<Response | void>
 
-/** The request as the middleware sees it: Hono's HonoRequest, in the parts used here. */
+/** The request as the middleware sees it: the parts of Hono's HonoRequest used here, under a name of its own as it is not that type. */
 export interface HonyRequest {
     /** The web-standard Request. */
     raw: Request
     method: string
     url: string
-    /** The path alone, decoded as Hono decodes it: a reserved character stays encoded. */
+    /** The path alone, percent-decoded in full, so a file's name arrives as it is on disk. */
     path: string
 
     header(name: string): string | undefined
@@ -45,10 +45,13 @@ export interface Context {
     notFound(): Response | Promise<Response>
 }
 
-// A malformed escape leaves the path as it came, to match nothing.
+// Decoded once and in full, unlike Hono, which leaves a reserved character
+// such as "#" or "+" encoded: the pages refer to a file by its encoded name,
+// and this is where that name has to come back as it is on disk. A malformed
+// escape leaves the path as it came, to match nothing.
 const decodePath = (pathname: string): string => {
     try {
-        return decodeURI(pathname)
+        return decodeURIComponent(pathname)
     } catch {
         return pathname
     }

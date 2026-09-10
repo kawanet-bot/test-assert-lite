@@ -7,11 +7,12 @@ const context = (url = "http://127.0.0.1/"): Context => createContext(new Reques
 
 describe("server/middleware", () => {
     describe("Context", () => {
-        it("takes the path from the URL, decoded as Hono decodes it", () => {
-            const c = context("http://127.0.0.1/a%20b%2Fc?q=1")
+        it("takes the path from the URL, decoded once and in full", () => {
+            const c = context("http://127.0.0.1/a%20b%23c%2Bd?q=1")
             assert.equal(c.req.method, "GET")
-            assert.equal(c.req.url, "http://127.0.0.1/a%20b%2Fc?q=1")
-            assert.equal(c.req.path, "/a b%2Fc")
+            assert.equal(c.req.url, "http://127.0.0.1/a%20b%23c%2Bd?q=1")
+            assert.equal(c.req.path, "/a b#c+d")
+            assert.equal(context("http://127.0.0.1/a%2520b").req.path, "/a%20b")
             assert.equal(context("http://127.0.0.1/%zz").req.path, "/%zz")
         })
 

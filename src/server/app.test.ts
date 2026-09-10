@@ -31,11 +31,12 @@ describe("server/app", () => {
         await writeFile(join(dir, "tests", "my suite.mjs"), "export const suite = 1")
         await writeFile(join(dir, "tests", "nested", "dep.mjs"), "export const dep = 1")
         await writeFile(join(dir, "tests", "setup.js"), "globalThis.setup = 1")
+        await writeFile(join(dir, "tests", "set+up#2.js"), "globalThis.setup = 2")
         await writeFile(join(dir, "lib", "mod.mjs"), "export const mod = 1")
         await writeFile(join(dir, "secret.json"), "{}")
         app = createApp({
             file: join(dir, "tests", "my suite.mjs"),
-            scripts: [join(dir, "tests", "setup.js")],
+            scripts: [join(dir, "tests", "setup.js"), join(dir, "tests", "set+up#2.js")],
             aliases: [{specifier: "mod", file: join(dir, "lib", "mod.mjs")}],
             stdout: text => stdout.push(text),
         })
@@ -61,8 +62,9 @@ describe("server/app", () => {
         const map = at('<script type="importmap">')
         const iife = at('<script src="/@tal/dist/test-assert-lite.min.js"></script>')
         const script = at('<script src="/@tal/scripts/0/setup.js"></script>')
+        const second = at('<script src="/@tal/scripts/1/set%2Bup%232.js"></script>')
         const suite = at('<script type="module" src="/@tal/tests/0/my%20suite.mjs"></script>')
-        assert.ok(map < iife && iife < script && script < suite)
+        assert.ok(map < iife && iife < script && script < second && second < suite)
         const {imports} = JSON.parse(head.slice(head.indexOf("{", map), head.indexOf("</script>", map)))
         assert.equal(imports["node:test"], "/@tal/exports/test.mjs")
         assert.equal(imports["test-assert-lite"], "/@tal/dist/test-assert-lite.mjs")
@@ -84,6 +86,7 @@ describe("server/app", () => {
         assert.equal((await get(url("/@tal/tests/0/my%20suite.mjs"))).body, "export const suite = 1")
         assert.equal((await get(url("/@tal/tests/0/nested/dep.mjs"))).status, 200)
         assert.equal((await get(url("/@tal/scripts/0/setup.js"))).body, "globalThis.setup = 1")
+        assert.equal((await get(url("/@tal/scripts/1/set%2Bup%232.js"))).body, "globalThis.setup = 2")
         assert.equal((await get(url("/@tal/scripts/0/my%20suite.mjs"))).status, 404)
         assert.equal((await get(url("/@tal/aliases/0/mod.mjs"))).status, 200)
         assert.equal((await get(url("/@tal/aliases/0/secret.json"))).status, 404)

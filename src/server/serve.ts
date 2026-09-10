@@ -10,7 +10,7 @@ import type {Context, MiddlewareHandler} from "./middleware.ts"
 import {createContext} from "./middleware.ts"
 
 export interface ServeOptions {
-    /** The chain every request goes to; what it leaves unanswered is a 404. */
+    /** The chain every request goes to, a Response returned or set on the context; unanswered is a 404. */
     handler: MiddlewareHandler
     /** Address to listen on; 127.0.0.1 by default. */
     host?: string
@@ -48,7 +48,9 @@ const tiny = (req: IncomingMessage, status: number, length: number, ms: number):
 // localhost to ::1 while this listens on IPv4 only. Port 0 picks a free one.
 // A wildcard address listens on every interface but names none, so the
 // origin falls back to the loopback one; an IPv6 literal needs brackets.
-export const serve = async ({handler, host = "127.0.0.1", log}: ServeOptions): Promise<Server> => {
+export const serve = async ({handler, log, ...options}: ServeOptions): Promise<Server> => {
+    // An empty --host= is the default too, not the unspecified address.
+    const host = options.host || "127.0.0.1"
     const named = host === "0.0.0.0" || host === "::" ? "127.0.0.1" : host.includes(":") ? `[${host}]` : host
     let origin = ""
 
@@ -59,7 +61,8 @@ export const serve = async ({handler, host = "127.0.0.1", log}: ServeOptions): P
         let c: Context | null = null
         try {
             c = createContext(await toRequest(req, origin))
-            await handler(c, async () => undefined)
+            const res = await handler(c, async () => undefined)
+            if (res != null && !c.finalized) c.res = res
             return c.finalized ? c.res : await c.notFound()
         } catch (error) {
             log?.(error instanceof Error ? error.stack ?? error.message : String(error))
