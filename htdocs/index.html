@@ -23,7 +23,7 @@
 
     reporter.format(reporter.html());
     reporter.output(text => document.querySelector("#output")?.insertAdjacentHTML("beforeend", text));
-    window.testSummary = await run();
+    await run().catch(console.error);
 </script>
 </body>
 </html>
