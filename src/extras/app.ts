@@ -101,10 +101,10 @@ export const startApp = async (options: AppOptions): Promise<App> => {
         const at = html.lastIndexOf("</head>")
         return html.slice(0, at) + importmap + tags + html.slice(at)
     }
-    // The pages people open sit at the root; the one the CLI drives lives
-    // beside the CLI's other browser files and is only served under the run.
-    const pages = ["console.html", "index.html"]
+    // Both pages live beside the CLI's other browser files: the one people
+    // open is served at the root, the one the CLI drives under the run only.
     const html = (path: string) => ({type: "text/html", body: withHead(path)})
+    const index = html("browser/index.html")
 
     // The verdict: true from the page's end alone passes, anything else
     // fails, and nothing more is taken once it is in. Every word from the
@@ -132,9 +132,10 @@ export const startApp = async (options: AppOptions): Promise<App> => {
         if (!ended) write(body)
     }
 
-    // Document root is htdocs/; everything else the CLI provides sits under
-    // /@tal/, the build output and the subpath bridges included, as those
-    // have to stay where the package puts them. Nothing else is exposed.
+    // Document root is htdocs/, the files served as they are; everything
+    // else the CLI provides sits under /@tal/, the build output and the
+    // subpath bridges included, as those have to stay where the package
+    // puts them. Nothing else is exposed.
     // Every request on stderr, apart from the reporter's stdout: a 404 for
     // a mistyped --script or --alias shows up here.
     const server = await startServer({
@@ -165,10 +166,8 @@ export const startApp = async (options: AppOptions): Promise<App> => {
             ...Object.fromEntries(mounts.map((url, i) => [url, scripts[i] as string])),
         },
         data: {
-            ...Object.fromEntries(pages.flatMap(page => {
-                const body = html(`htdocs/${page}`)
-                return page === "index.html" ? [[`/${page}`, body], ["/", body]] : [[`/${page}`, body]]
-            })),
+            "/": index,
+            "/index.html": index,
             [`${run}run.html`]: html("browser/run.html"),
         },
     })
