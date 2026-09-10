@@ -19,7 +19,7 @@ export interface CLIOptions {
 }
 
 const USAGE = `Usage: test-assert [options] <file...>
-  --serve                     serve the suite for a browser and print the URL
+  --serve                     serve the suite for a browser and print the URL; the page reloads on a change
   --host <address>            address the suite is served on (browser modes, default: 127.0.0.1)
   --alias <specifier>=<file>  ES module a bare specifier resolves to (browser modes, repeatable)
   --script <file>             classic script to run first (browser modes, repeatable)
@@ -111,6 +111,7 @@ const main = async (args: string[]): Promise<number> => {
         file: resolve(files[0] as string),
         scripts: values.script.map(script => resolve(script)),
         aliases,
+        watch: values.serve,
     })
     const server = await serve({
         handler: app.handler,

@@ -41,9 +41,9 @@ MJS_MAX_BYTES := 100000
 MINJS_MAX_BYTES := 35000
 
 # The extras bundle externalizes the library, Node builtins and Playwright
-# (see rollup-extras.config.ts) but carries the loopback server and the
-# browser application, so the cap is set well above what those come to.
-EXTRAS_MAX_BYTES := 40000
+# (see rollup-extras.config.ts) but carries the loopback server, the watch
+# and the browser application, so the cap sits a third above what those come to.
+EXTRAS_MAX_BYTES := 50000
 
 # Shared by both test bundles, which inline the same suites while the
 # package itself stays external. Development-only output, never published,

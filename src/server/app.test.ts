@@ -115,6 +115,43 @@ describe("server/app", () => {
         assert.equal(await app.done, true)
     })
 
+    it("asks about changes from the page people open alone, and only with watch on", async () => {
+        assert.equal((await get(url("/"))).body.includes("/@tal/watch?after="), false)
+        assert.equal((await get(url("/@tal/watch?after=0"))).status, 404)
+        const watching = createApp({file: join(dir, "tests", "my suite.mjs"), watch: true, stdout: () => undefined})
+        const running = await serve({handler: watching.handler})
+        try {
+            const index = (await get(running.origin + "/")).body
+            assert.ok(index.includes("/@tal/watch?after=${after}"))
+            assert.ok(index.includes("})(0)\n</script>\n</head>"))
+            assert.equal((await get(running.origin + watching.page)).body.includes("/@tal/watch"), false)
+            const pending = get(running.origin + "/@tal/watch?after=0")
+            await writeFile(join(dir, "tests", "my suite.mjs"), "export const suite = 2")
+            assert.equal((await pending).status, 200)
+            assert.ok((await get(running.origin + "/")).body.includes("})(1)\n</script>"))
+        } finally {
+            watching.close()
+            running.close()
+        }
+    })
+
+    it("serves without the reload, and says so once, where it cannot watch", async () => {
+        const lines: string[] = []
+        const blind = createApp({file: join(dir, "missing", "suite.mjs"), watch: true, stdout: () => undefined, stderr: text => lines.push(text)})
+        const running = await serve({handler: blind.handler})
+        try {
+            assert.equal(lines.length, 1)
+            assert.match(lines[0] ?? "", /^watch is off: ENOENT/)
+            const index = await get(running.origin + "/")
+            assert.equal(index.status, 200)
+            assert.equal(index.body.includes("/@tal/watch"), false)
+            assert.equal((await get(running.origin + "/@tal/watch?after=0")).status, 404)
+        } finally {
+            blind.close()
+            running.close()
+        }
+    })
+
     it("fails the verdict on anything but true", async () => {
         const other = createApp({file: join(dir, "tests", "my suite.mjs"), stdout: () => undefined})
         const running = await serve({handler: other.handler})
