@@ -4,18 +4,19 @@
     <meta charset="utf-8"/>
     <title>test-assert-lite browser test</title>
     <!-- The page the CLI drives, through Playwright or a WebDriver server
-         alike: it reports back over HTTP through the client the import map
-         leads to, begin, the two streams and the verdict at the end, and
-         the <pre> below is for a person watching the browser. The CLI
-         serves it with the import map and the classic scripts added at the
-         end of the head. index.html is the page people open. -->
+         alike. It is served under the run's own URL and reports back there
+         over HTTP: begin, the two streams and the verdict at the end; the
+         <pre> below is for a person watching the browser. The CLI serves it
+         with the import map and the classic scripts added at the end of
+         the head. index.html, at the root, is the page people open. -->
 </head>
 <body>
 <pre id="output"></pre>
 <script type="module">
-    import {connect} from "test-assert-lite/client";
-
-    const {begin, stdout, stderr, end} = connect();
+    // The run's URL is this page's own directory, and the library's client
+    // reports to it: nothing else on the network knows that URL.
+    const {reporter, run} = await import("test-assert-lite");
+    const {begin, stdout, stderr, end} = reporter.client(new URL("./", import.meta.url));
     begin();
 
     // An error outside a test body, an uncaught one or a suite that failed
@@ -30,11 +31,6 @@
 
     const output = document.querySelector("#output");
     try {
-        // The classic scripts came in the head, the library itself among them,
-        // so the globals they leave are in place before this module runs, and
-        // what "test-assert-lite" resolves to reads its global.
-        const {reporter, run} = await import("test-assert-lite");
-
         // One at a time, so the suites register in command-line order.
         for (const url of await (await fetch("/@tal/tests.json")).json()) {
             await import(url);

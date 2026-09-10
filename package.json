@@ -74,7 +74,7 @@
     "types/*.d.ts",
     "bin/cli.mjs",
     "dist/test-assert-lite.extras.mjs",
-    "browser/client.mjs"
+    "browser/run.html"
   ],
   "homepage": "https://github.com/kawanet/test-assert-lite#readme",
   "keywords": [

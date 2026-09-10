@@ -4,8 +4,8 @@
 // is all it takes, so no optional dependency is kept out of tsc here.
 
 export interface WebDriverRunOptions {
-    /** Origin of the server that carries htdocs/ and the mounted suites. */
-    origin: string
+    /** URL of the page to open, under the run's own path on the CLI's server. */
+    page: string
     /** The verdict the page reports back to that server. */
     done: Promise<boolean>
     /** The WebDriver server, such as http://127.0.0.1:4444 */
@@ -27,12 +27,12 @@ const call = async (endpoint: string, method: string, path: string, body?: strin
 }
 
 /**
- * Runs the suites on `origin`'s run.html in the browser the WebDriver
+ * Runs the suites on `page` in the browser the WebDriver
  * server at `endpoint` drives, and resolves to the verdict the page sends
  * back. The driver only opens the page: from there the page reports on its
  * own, so no command waits on the run and no script timeout is in play.
  */
-export const runInWebDriver = async ({origin, done, endpoint, session}: WebDriverRunOptions): Promise<boolean> => {
+export const runInWebDriver = async ({page, done, endpoint, session}: WebDriverRunOptions): Promise<boolean> => {
     let created: Reply["value"]
     try {
         created = await call(endpoint, "POST", "/session", session ?? JSON.stringify({capabilities: {}}))
@@ -44,7 +44,7 @@ export const runInWebDriver = async ({origin, done, endpoint, session}: WebDrive
     const base = `/session/${created.sessionId}`
     let failure: unknown
     try {
-        await call(endpoint, "POST", `${base}/url`, JSON.stringify({url: `${origin}/run.html`}))
+        await call(endpoint, "POST", `${base}/url`, JSON.stringify({url: page}))
         return await done
     } catch (error) {
         failure = error
