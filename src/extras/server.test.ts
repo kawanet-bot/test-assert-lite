@@ -48,7 +48,7 @@ describe("cli/server", () => {
             files: {"/@tal/tests/0/my%20suite.mjs": join(dir, "elsewhere", "suite.mjs")},
             data: {"/@tal/tests.json": {type: "application/json", body: '["/@tal/tests/0/my%20suite.mjs"]'}},
             log: line => lines.push(line),
-            post: {"/@tal/console": body => posted.push(body)},
+            post: {"/@tal/run/1/stdout": body => posted.push(body)},
         })
     })
 
@@ -133,11 +133,11 @@ describe("cli/server", () => {
                 res.on("end", () => resolve(res.statusCode ?? 0))
             }).on("error", reject).end(body)
         })
-        assert.equal(await post("/@tal/console", "hello from the page\n"), 204)
+        assert.equal(await post("/@tal/run/1/stdout", "hello from the page\n"), 204)
         assert.deepEqual(posted, ["hello from the page\n"])
         assert.equal(await post("/dist/lib.mjs", "x"), 404)
         // A GET on it is refused as any path without a served extension is.
-        assert.equal((await get(server.origin, "/@tal/console")).status, 403)
+        assert.equal((await get(server.origin, "/@tal/run/1/stdout")).status, 403)
     })
 
     it("logs one line per response, in morgan's tiny format", async () => {

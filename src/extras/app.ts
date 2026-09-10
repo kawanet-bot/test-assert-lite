@@ -3,6 +3,7 @@
 // and hands all of that to server.ts. The CLI turns arguments into
 // AppOptions; anything else could do the same.
 
+import {randomUUID} from "node:crypto"
 import {readFileSync} from "node:fs"
 import {basename, dirname, resolve} from "node:path"
 import {fileURLToPath} from "node:url"
@@ -25,9 +26,18 @@ export interface App {
     origin: string
     /** Suite URLs on that origin, in the order to load them. */
     urls: string[]
+    /** The verdict the page reports at its end; rejects if it never begins. */
+    done: Promise<boolean>
     /** Stops the server. */
     close(): void
 }
+
+// How long the page may stay silent. Before it has begun, the browser
+// could not reach the server, most likely; after that, a quiet page says
+// so every ten seconds, so silence this long means the browser, its tab
+// or the session is gone. A hung test is not silence, and waits as it would
+// under node --test.
+const SILENCE_MS = 30_000
 
 // The package root holds dist/, exports/, htdocs/ and the IIFE's shim;
 // they are served from there whatever the suite's location.
@@ -67,11 +77,17 @@ export const startApp = async (options: AppOptions): Promise<App> => {
     const aliasDirs = aliases.map((_, i) => `/@tal/aliases/${i}/`)
     const aliasUrls = aliases.map(({file}, i) => `${aliasDirs[i]}${encodeURIComponent(basename(file))}`)
 
+    // The page reports back under a URL only this run knows: the client it
+    // imports by the package name is served there and takes the run's id
+    // from its own URL, so nothing else on the network can write into the
+    // CLI's streams or hand in the verdict.
+    const run = `/@tal/run/${randomUUID()}/`
+
     // The map has to be inline and in place before the first module loads,
     // and classic script tags run in order as the head is parsed, ahead of
     // any module script: so both go in at the end of each page's head,
     // past any mention of those tags in a comment.
-    const imports: Record<string, string> = {...IMPORTS}
+    const imports: Record<string, string> = {...IMPORTS, "test-assert-lite/client": `${run}client.mjs`}
     for (const [i, {specifier}] of aliases.entries()) imports[specifier] = aliasUrls[i] as string
     const importmap = `<script type="importmap">\n${JSON.stringify({imports}, null, 4)}\n</script>\n`
     const tags = scriptUrls.map(url => `<script src="${url}"></script>\n`).join("")
@@ -81,6 +97,32 @@ export const startApp = async (options: AppOptions): Promise<App> => {
         return html.slice(0, at) + importmap + tags + html.slice(at)
     }
     const pages = ["console.html", "index.html", "webdriver.html"]
+
+    // The verdict: true from the page's end alone passes, anything else
+    // fails, and nothing more is taken once it is in. Every word from the
+    // page restarts the silence bound; a run nobody awaits, --serve, lapses.
+    let begun = false
+    let ended = false
+    let settle: (success: boolean) => void = () => undefined
+    let lapse: (error: Error) => void = () => undefined
+    const done = new Promise<boolean>((resolve, reject) => {
+        settle = resolve
+        lapse = reject
+    })
+    void done.catch(() => undefined)
+    let timer: ReturnType<typeof setTimeout> | null = null
+    const heard = (): void => {
+        if (timer != null) clearTimeout(timer)
+        if (ended) return
+        timer = setTimeout(() => lapse(new Error(begun
+            ? "No word from the page for 30 seconds: the browser, its tab or the session is gone"
+            : `The page never reported in: is ${server.origin} reachable from the browser?`)), SILENCE_MS)
+        timer.unref()
+    }
+    const stream = (write: (text: string) => void) => (body: string) => {
+        heard()
+        if (!ended) write(body)
+    }
 
     // Document root is htdocs/; everything else the CLI provides sits under
     // /@tal/, the build output and the subpath bridges included, as those
@@ -92,9 +134,19 @@ export const startApp = async (options: AppOptions): Promise<App> => {
         host,
         root: resolve(root, "htdocs"),
         log: line => process.stderr.write(`${line}\n`),
-        // A line the page wants seen goes to stderr beside the log: the way
-        // to the terminal for a suite or a page, apart from the reporter.
-        post: {"/@tal/console": body => process.stderr.write(`${body.replace(/\n$/, "")}\n`)},
+        post: {
+            [`${run}begin`]: () => {
+                begun = true
+                heard()
+            },
+            [`${run}stdout`]: stream(text => process.stdout.write(text)),
+            [`${run}stderr`]: stream(text => process.stderr.write(text)),
+            [`${run}end`]: body => {
+                ended = true
+                heard()
+                settle(body === "true")
+            },
+        },
         aliases: {
             "/@tal/dist/": resolve(root, "dist"),
             "/@tal/exports/": resolve(root, "exports"),
@@ -103,6 +155,7 @@ export const startApp = async (options: AppOptions): Promise<App> => {
         },
         files: {
             "/@tal/dist/test-assert-lite.mjs": resolve(root, "browser", "import.mjs"),
+            [`${run}client.mjs`]: resolve(root, "browser", "client.mjs"),
             ...Object.fromEntries(mounts.map((url, i) => [url, scripts[i] as string])),
         },
         data: {
@@ -114,5 +167,14 @@ export const startApp = async (options: AppOptions): Promise<App> => {
         },
     })
 
-    return {origin: server.origin, urls, close: () => server.close()}
+    heard()
+    return {
+        origin: server.origin,
+        urls,
+        done,
+        close: () => {
+            if (timer != null) clearTimeout(timer)
+            server.close()
+        },
+    }
 }

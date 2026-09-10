@@ -3,27 +3,32 @@
 <head>
     <meta charset="utf-8"/>
     <title>test-assert-lite browser test</title>
-    <!-- The page the CLI's --webdriver mode drives. A WebDriver server has
-         no console relay, so the spec reporter's output goes three ways: an
-         array the CLI reads back through the page, the <pre> below for a
-         person watching the browser, the console for the developer tools.
-         The CLI serves it with the import map and the classic scripts added
-         at the end of the head. console.html is the page Playwright drives
-         and index.html the one people open. -->
+    <!-- The page the CLI's --webdriver mode drives. It reports back over
+         HTTP through the client the import map leads to: begin, the two
+         streams, and the verdict at the end; the <pre> below is for a
+         person watching the browser. The CLI serves it with the import map
+         and the classic scripts added at the end of the head. console.html
+         is the page Playwright drives and index.html the one people open. -->
 </head>
 <body>
 <pre id="output"></pre>
 <script type="module">
-    // What the CLI reads back: the reporter's output as it comes, and the
-    // errors outside a test body, an uncaught one or a suite that failed to
-    // load, which it reports once run() is over as Playwright's pageerror
-    // would. testErrors, set last, says it is over.
-    const lines = window.testLines = [];
-    const errors = [];
-    addEventListener("error", event => errors.push(event.error ?? event.message));
-    addEventListener("unhandledrejection", event => errors.push(event.reason));
-    const output = document.querySelector("#output");
+    import {connect} from "test-assert-lite/client";
 
+    const {begin, stdout, stderr, end} = connect();
+    begin();
+
+    // An error outside a test body, an uncaught one or a suite that failed
+    // to load, is shown as it happens and fails the run at the end.
+    let uncaught = 0;
+    addEventListener("error", event => { uncaught++; stderr(`${event.error?.stack ?? event.message}\n`); });
+    addEventListener("unhandledrejection", event => { uncaught++; stderr(`${event.reason?.stack ?? event.reason}\n`); });
+
+    // The console goes to the CLI's streams the way Node's does.
+    for (const level of ["log", "info", "debug"]) console[level] = (...args) => stdout(`${args.join(" ")}\n`);
+    for (const level of ["warn", "error"]) console[level] = (...args) => stderr(`${args.join(" ")}\n`);
+
+    const output = document.querySelector("#output");
     try {
         // The classic scripts came in the head, the library itself among them,
         // so the globals they leave are in place before this module runs, and
@@ -37,15 +42,15 @@
 
         // The spec reporter, the default, stays without colours in a browser.
         reporter.output(text => {
-            lines.push(text);
             output.append(text);
-            console.log(text.replace(/\n$/, ""));
+            stdout(text);
         });
-        window.testSummary = await run();
+        const summary = await run();
+        await end(summary.success && uncaught === 0);
     } catch (error) {
-        errors.push(error);
+        stderr(`${error?.stack ?? error}\n`);
+        await end(false);
     }
-    window.testErrors = errors.map(error => String(error?.stack ?? error));
 </script>
 </body>
 </html>
