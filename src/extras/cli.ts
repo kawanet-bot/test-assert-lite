@@ -19,8 +19,7 @@ export interface CLIOptions {
 }
 
 const USAGE = `Usage: test-assert [options] <file...>
-  --serve                     serve the suite for a browser and print the URL
-  --watch                     reload the page when the suite, a --script or an --alias changes (--serve only)
+  --serve                     serve the suite for a browser and print the URL; the page reloads on a change
   --host <address>            address the suite is served on (browser modes, default: 127.0.0.1)
   --alias <specifier>=<file>  ES module a bare specifier resolves to (browser modes, repeatable)
   --script <file>             classic script to run first (browser modes, repeatable)
@@ -48,7 +47,6 @@ const parse = (args: string[]) => {
             args,
             options: {
                 serve: {type: "boolean", default: false},
-                watch: {type: "boolean", default: false},
                 host: {type: "string"},
                 alias: {type: "string", multiple: true, default: []},
                 script: {type: "string", multiple: true, default: []},
@@ -88,7 +86,6 @@ const main = async (args: string[]): Promise<number> => {
     if (!webdriver && (values["webdriver-session"] != null || values.endpoint != null)) {
         throw new UsageError("--webdriver-session and --endpoint apply to --webdriver only")
     }
-    if (values.watch && !values.serve) throw new UsageError("--watch applies to --serve only")
     if (browser ? files.length !== 1 : !files.length) throw new UsageError()
 
     if (!browser) {
@@ -114,7 +111,7 @@ const main = async (args: string[]): Promise<number> => {
         file: resolve(files[0] as string),
         scripts: values.script.map(script => resolve(script)),
         aliases,
-        watch: values.watch,
+        watch: values.serve,
     })
     const server = await serve({
         handler: app.handler,

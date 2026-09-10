@@ -13,6 +13,7 @@ import {createChannel} from "./channel.ts"
 import type {MiddlewareHandler} from "./middleware.ts"
 import {compose} from "./middleware.ts"
 import {serveStatic} from "./static.ts"
+import type {Watcher} from "./watch.ts"
 import {createWatcher} from "./watch.ts"
 
 export interface AppOptions extends ChannelOptions {
@@ -22,7 +23,7 @@ export interface AppOptions extends ChannelOptions {
     scripts?: string[]
     /** Bare specifiers and the ES module files they resolve to. */
     aliases?: {specifier: string, file: string}[]
-    /** Reloads the page people open when the suite, a script or an alias changes. */
+    /** Reloads the page people open when the suite, a script or an alias changes; off where it cannot watch. */
     watch?: boolean
 }
 
@@ -84,9 +85,20 @@ const asks = (after: number): string => `<script>
  * of the verdict the page at `page` reports back through it.
  */
 export const createApp = (options: AppOptions): App => {
-    const {file, scripts = [], aliases = []} = options
+    const {file, scripts = [], aliases = [], stderr = text => process.stderr.write(text)} = options
     const channel = createChannel(options)
-    const watcher = options.watch ? createWatcher([file, ...scripts, ...aliases.map(alias => alias.file)]) : null
+
+    // Watching is a convenience of --serve, not what it is for: where the
+    // file system refuses, the inotify limit reached say, the page is
+    // served all the same, without the reload, and stderr says why once.
+    let watcher: Watcher | null = null
+    if (options.watch) {
+        try {
+            watcher = createWatcher([file, ...scripts, ...aliases.map(alias => alias.file)])
+        } catch (error) {
+            stderr(`watch is off: ${error instanceof Error ? error.message : String(error)}\n`)
+        }
+    }
 
     // The suite's directory is mounted at /@tal/tests/0/, so a sibling or a
     // nested import resolves beside it while nothing above stays reachable;
