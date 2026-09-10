@@ -239,6 +239,11 @@ describe("server/serve", () => {
     it("answers 400 to a target that is not a path, or a Host that is no host", async () => {
         assert.equal((await raw(server.origin, "GET * HTTP/1.0\r\nHost: x\r\n\r\n")).status, "400")
         assert.equal((await raw(server.origin, "GET /url HTTP/1.0\r\nHost: no host\r\n\r\n")).status, "400")
+        // A Host with more than a host in it would make a URL, and another path.
+        for (const host of ["example.test?x=", "example.test/foo", "u@example.test", "example.test#f", "[::1"]) {
+            assert.equal((await raw(server.origin, `GET /url HTTP/1.0\r\nHost: ${host}\r\n\r\n`)).status, "400", host)
+        }
+        assert.equal((await raw(server.origin, "GET /url HTTP/1.0\r\nHost: [::1]:3000\r\n\r\n")).body, "http://[::1]:3000/url")
     })
 
     it("takes the request's URL from its Host header, and from the address listened on without one", async () => {

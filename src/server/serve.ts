@@ -29,6 +29,11 @@ export interface Server {
     close(): void
 }
 
+// A Host header is an authority, a host and maybe a port, and nothing a
+// URL would read as more: a path, a query or a user in it would move the
+// target elsewhere rather than draw the 400 a Host that is no host does.
+const AUTHORITY = /^(?:\[[0-9a-f:.]+\]|[^\[\]:/?#@\s]+)(?::\d+)?$/i
+
 // The Request a Node request stands for, its URL from the Host header as
 // the client sent it, the address listened on where there is none; the
 // body read in first, as what comes in is the page's few lines of text.
@@ -37,12 +42,14 @@ export interface Server {
 const toRequest = async (req: IncomingMessage, bound: string): Promise<Request> => {
     const url = req.url ?? ""
     if (!url.startsWith("/")) throw new Error(`Not a path: ${url}`)
+    const host = req.headers.host ?? bound
+    if (!AUTHORITY.test(host)) throw new Error(`Not a host: ${host}`)
     const headers = new Headers()
     for (let i = 0; i < req.rawHeaders.length; i += 2) headers.append(req.rawHeaders[i] as string, req.rawHeaders[i + 1] as string)
     const chunks: Uint8Array[] = []
     for await (const chunk of req) chunks.push(chunk as Uint8Array)
     const body = req.method === "GET" || req.method === "HEAD" ? null : new Uint8Array(Buffer.concat(chunks))
-    return new Request(`http://${req.headers.host ?? bound}${url}`, {method: req.method, headers, body})
+    return new Request(`http://${host}${url}`, {method: req.method, headers, body})
 }
 
 // What goes back out, once nothing can fail any more.
