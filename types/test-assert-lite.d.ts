@@ -232,6 +232,23 @@ export declare namespace TAL {
         spec(options?: SpecOptions): FormatFn
         tap(): FormatFn
         html(): FormatFn
+        /**
+         * The page's side of the channel to the CLI at `base`, the run's URL
+         * ending in "/". Sending never rejects: the page can do nothing
+         * about a CLI that went away.
+         */
+        client(base: string | URL): Client
+    }
+
+    interface Client {
+        /** Tells the CLI the page is up; it waits for this with a timeout. */
+        begin(): Promise<void>
+        /** Text for the CLI's stdout, buffered. */
+        stdout(text: string): void
+        /** Text for the CLI's stderr, buffered. */
+        stderr(text: string): void
+        /** The verdict, sent once the buffers have drained; true alone passes. */
+        end(success: boolean): Promise<void>
     }
 
     // --- harness ---

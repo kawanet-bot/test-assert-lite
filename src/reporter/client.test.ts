@@ -2,7 +2,7 @@ import {strict as assert} from "node:assert"
 import type {Server} from "node:http"
 import {createServer} from "node:http"
 import {after, before, describe, it} from "node:test"
-import {connect} from "./client.ts"
+import {client as connect} from "./client.ts"
 
 // What the CLI would see: each request's path and body, in arrival order.
 const seen: {path: string, body: string}[] = []

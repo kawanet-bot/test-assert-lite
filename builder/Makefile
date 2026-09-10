@@ -11,17 +11,15 @@ SHELL := bash
 # with the test files filtered back out. Sources are nested, so this walks
 # the tree. src/test-utils/ holds helpers only the suites use, and src/extras/
 # is a separate build target below, so neither counts as library input.
-SRC := $(shell find ../src -name '*.ts' -not -name '*.test.ts' -not -path '*/test-utils/*' -not -path '*/extras/*' -not -path '*/client/*')
+SRC := $(shell find ../src -name '*.ts' -not -name '*.test.ts' -not -path '*/test-utils/*' -not -path '*/extras/*')
 TEST_SRC := $(shell find ../src -name '*.test.ts') $(wildcard ../src/test-utils/*.ts)
 EXTRAS_SRC := $(wildcard ../src/extras/*.ts) ../src/extras/playwright.mjs
-CLIENT_SRC := $(wildcard ../src/client/*.ts)
 TYPES := $(wildcard ../types/*.d.ts)
 BUILDER_SRC := $(wildcard ./*.ts)
 
 MJS_DST := ../dist/test-assert-lite.mjs
 MINJS_DST := ../dist/test-assert-lite.min.js
 EXTRAS_DST := ../dist/test-assert-lite.extras.mjs
-CLIENT_DST := ../dist/test-assert-lite.client.mjs
 PKG_DST := ../dist/package.json
 BROWSER_TEST_DST := ../browser/tests/bundled.mjs
 BUILDER_TEST_DST := ./tests/bundled.mjs
@@ -29,7 +27,6 @@ BUILDER_TEST_DST := ./tests/bundled.mjs
 MJS_CONFIG := ./rollup-mjs.config.ts
 MINJS_CONFIG := ./rollup-minjs.config.ts
 EXTRAS_CONFIG := ./rollup-extras.config.ts
-CLIENT_CONFIG := ./rollup-client.config.ts
 BROWSER_TEST_CONFIG := ./rollup-browser-test.config.ts
 BUILDER_TEST_CONFIG := ./rollup-builder-test.config.ts
 
@@ -48,15 +45,12 @@ MINJS_MAX_BYTES := 35000
 # browser application, so the cap is set well above what those come to.
 EXTRAS_MAX_BYTES := 40000
 
-# The page's client for the run channel: a few dozen lines on fetch().
-CLIENT_MAX_BYTES := 5000
-
 # Shared by both test bundles, which inline the same suites while the
 # package itself stays external. Development-only output, never published,
 # so this only guards against gross growth and can stay generous.
 TEST_MAX_BYTES := 300000
 
-ALL := $(MJS_DST) $(MINJS_DST) $(EXTRAS_DST) $(CLIENT_DST) $(BUILDER_TEST_DST)
+ALL := $(MJS_DST) $(MINJS_DST) $(EXTRAS_DST) $(BUILDER_TEST_DST)
 
 # Build/test paths require Node's native TypeScript type-strip (default on
 # Node 22.18+). Older runtimes report BUILDABLE=NO and skip the build.
@@ -95,15 +89,6 @@ $(EXTRAS_DST): $(EXTRAS_CONFIG) $(EXTRAS_SRC) $(BUILDER_SRC) $(MJS_DST)
 	../node_modules/.bin/rollup -c $<
 	@ls -l $@
 	@test "$$(wc -c < $@)" -le $(EXTRAS_MAX_BYTES) || { echo "ERROR: $@ exceeds $(EXTRAS_MAX_BYTES) byte cap" >&2; exit 1; }
-	@echo ""
-
-# The client a CLI-driven page reports back through, served from dist/
-# under the run's URL by way of the hand-written browser/client.mjs.
-$(CLIENT_DST): $(CLIENT_CONFIG) $(CLIENT_SRC) $(BUILDER_SRC)
-	@mkdir -p $(dir $@)
-	../node_modules/.bin/rollup -c $<
-	@ls -l $@
-	@test "$$(wc -c < $@)" -le $(CLIENT_MAX_BYTES) || { echo "ERROR: $@ exceeds $(CLIENT_MAX_BYTES) byte cap" >&2; exit 1; }
 	@echo ""
 
 # The browser build. dist/package.json marks dist/ as CommonJS so Node can

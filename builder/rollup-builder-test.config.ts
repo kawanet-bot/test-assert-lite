@@ -11,7 +11,7 @@ import {showFiles} from "./show-files.ts"
 const rollupConfig: RollupOptions = {
     // src/extras/ tests exercise Node-only code such as the HTTP server, and
     // this bundle runs under the package's own CLI, so they stay out.
-    input: ["../src/**/*.test.ts", "!../src/extras/*", "!../src/client/*"],
+    input: ["../src/**/*.test.ts", "!../src/extras/*", "!../src/reporter/client.test.ts"],
 
     // Left to the CLI's hook, plus the builtins a suite reaches for
     // directly. Listed by name rather than by pattern so the alias below
