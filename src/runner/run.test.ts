@@ -1,7 +1,7 @@
 import {strict as assert} from "node:assert"
 import {describe, it} from "node:test"
 import {createTAL} from "./../index.ts"
-import {capture} from "./../test-utils/capture.ts"
+import {capture, names, ofType} from "./../test-utils/capture.ts"
 
 const TITLE = "runner/run.test.ts"
 
@@ -143,5 +143,39 @@ describe(TITLE, () => {
         assert.match(String(secondError), /already running/)
         assert.equal(executions, 1)
         assert.equal(summary.counts.tests, 1)
+    })
+
+    it("an anonymous test falls back to the function name", async () => {
+        const local = createTAL()
+        const events = capture(local.reporter)
+        local.it(function namedFn() {
+            // With no name the function name is used, as in node:test.
+        })
+        local.it(() => undefined)
+        await local.run()
+
+        assert.deepEqual(names(events, "test:pass"), ["namedFn", "<anonymous>"])
+    })
+
+    // An Error is reported as thrown so its own fields stay reachable;
+    // anything else is wrapped so that details.error is always an Error.
+    it("a thrown Error passes through and a thrown value is wrapped", async () => {
+        const local = createTAL()
+        const events = capture(local.reporter)
+        const thrown = new RangeError("as is")
+        local.it("error", () => {
+            throw thrown
+        })
+        local.it("string", () => {
+            throw "just text"
+        })
+        await local.run()
+
+        const [first, second] = ofType(events, "test:fail").map(e => e.data.details.error as Error & {cause?: unknown, failureType?: string})
+        assert.equal(first, thrown)
+        assert.equal(second?.name, "TesterError")
+        assert.equal(second?.failureType, "testCodeFailure")
+        assert.equal(second?.message, "just text")
+        assert.equal(second?.cause, "just text")
     })
 })
