@@ -15,11 +15,11 @@ const loadPlaywright = async (name) => {
 }
 
 /**
- * Runs the suites on `origin`'s run.html in a headless `browser` (chromium
+ * Runs the suites on `page` in a headless `browser` (chromium
  * unless told otherwise) and resolves to the verdict the page sends back.
  * Playwright only opens the page: from there the page reports on its own.
  */
-export const runInPlaywright = async ({origin, done, browser: name = "chromium"}) => {
+export const runInPlaywright = async ({page: url, done, browser: name = "chromium"}) => {
     const playwright = await loadPlaywright(name)
     const browser = await playwright[name].launch()
     try {
@@ -30,7 +30,7 @@ export const runInPlaywright = async ({origin, done, browser: name = "chromium"}
         // else failed first, and that must not add an unhandled rejection.
         void gone.catch(() => undefined)
         const page = await browser.newPage()
-        await page.goto(`${origin}/run.html`)
+        await page.goto(url)
         return await Promise.race([done, gone])
     } finally {
         await browser.close()

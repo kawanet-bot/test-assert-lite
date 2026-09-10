@@ -123,13 +123,13 @@ const main = async (args: string[]): Promise<number> => {
     try {
         const success = webdriver
             ? await runInWebDriver({
-                origin: app.origin,
+                page: app.page,
                 done: app.done,
                 session: values["webdriver-session"] == null ? undefined : readFileSync(values["webdriver-session"], "utf8"),
                 endpoint: values.endpoint ?? "http://127.0.0.1:4444",
             })
             : await runInPlaywright({
-                origin: app.origin,
+                page: app.page,
                 done: app.done,
                 browser: playwright as Browser,
             })

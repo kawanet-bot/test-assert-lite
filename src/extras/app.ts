@@ -24,6 +24,8 @@ export interface AppOptions {
 export interface App {
     /** Origin of the server, such as http://127.0.0.1:12345 */
     origin: string
+    /** URL of the page a browser is sent to, under the run's own path. */
+    page: string
     /** Suite URLs on that origin, in the order to load them. */
     urls: string[]
     /** The verdict the page reports at its end; rejects if it never begins. */
@@ -81,26 +83,28 @@ export const startApp = async (options: AppOptions): Promise<App> => {
     const aliasDirs = aliases.map((_, i) => `/@tal/aliases/${i}/`)
     const aliasUrls = aliases.map(({file}, i) => `${aliasDirs[i]}${encodeURIComponent(basename(file))}`)
 
-    // The page reports back under a URL only this run knows: the client it
-    // imports by the package name is served there and takes the run's id
-    // from its own URL, so nothing else on the network can write into the
-    // CLI's streams or hand in the verdict.
+    // The page the CLI drives is served under a URL only this run knows and
+    // reports back there, taking the URL from its own: nothing else on the
+    // network can write into the CLI's streams or hand in the verdict.
     const run = `/@tal/run/${runId()}/`
 
     // The map has to be inline and in place before the first module loads,
     // and classic script tags run in order as the head is parsed, ahead of
     // any module script: so both go in at the end of each page's head,
     // past any mention of those tags in a comment.
-    const imports: Record<string, string> = {...IMPORTS, "test-assert-lite/client": `${run}client.mjs`}
+    const imports: Record<string, string> = {...IMPORTS}
     for (const [i, {specifier}] of aliases.entries()) imports[specifier] = aliasUrls[i] as string
     const importmap = `<script type="importmap">\n${JSON.stringify({imports}, null, 4)}\n</script>\n`
     const tags = scriptUrls.map(url => `<script src="${url}"></script>\n`).join("")
-    const withHead = (page: string): string => {
-        const html = readFileSync(resolve(root, "htdocs", page), "utf8")
+    const withHead = (path: string): string => {
+        const html = readFileSync(resolve(root, path), "utf8")
         const at = html.lastIndexOf("</head>")
         return html.slice(0, at) + importmap + tags + html.slice(at)
     }
-    const pages = ["console.html", "index.html", "run.html"]
+    // The pages people open sit at the root; the one the CLI drives lives
+    // beside the CLI's other browser files and is only served under the run.
+    const pages = ["console.html", "index.html"]
+    const html = (path: string) => ({type: "text/html", body: withHead(path)})
 
     // The verdict: true from the page's end alone passes, anything else
     // fails, and nothing more is taken once it is in. Every word from the
@@ -159,21 +163,22 @@ export const startApp = async (options: AppOptions): Promise<App> => {
         },
         files: {
             "/@tal/dist/test-assert-lite.mjs": resolve(root, "browser", "import.mjs"),
-            [`${run}client.mjs`]: resolve(root, "browser", "client.mjs"),
             ...Object.fromEntries(mounts.map((url, i) => [url, scripts[i] as string])),
         },
         data: {
             "/@tal/tests.json": {type: "application/json", body: JSON.stringify(urls)},
             ...Object.fromEntries(pages.flatMap(page => {
-                const body = {type: "text/html", body: withHead(page)}
+                const body = html(`htdocs/${page}`)
                 return page === "index.html" ? [[`/${page}`, body], ["/", body]] : [[`/${page}`, body]]
             })),
+            [`${run}run.html`]: html("browser/run.html"),
         },
     })
 
     heard()
     return {
         origin: server.origin,
+        page: `${server.origin}${run}run.html`,
         urls,
         done,
         close: () => {

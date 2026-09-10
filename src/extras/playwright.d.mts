@@ -2,8 +2,8 @@
 // with types while Playwright's own types stay out of this package.
 
 export interface BrowserRunOptions {
-    /** Origin of the server that carries htdocs/ and the mounted suites. */
-    origin: string
+    /** URL of the page to open, under the run's own path on the CLI's server. */
+    page: string
     /** The verdict the page reports back to that server. */
     done: Promise<boolean>
     /** Which of Playwright's browsers to launch; chromium by default. */
