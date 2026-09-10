@@ -96,7 +96,7 @@ export const startApp = async (options: AppOptions): Promise<App> => {
         const at = html.lastIndexOf("</head>")
         return html.slice(0, at) + importmap + tags + html.slice(at)
     }
-    const pages = ["console.html", "index.html", "webdriver.html"]
+    const pages = ["console.html", "index.html", "run.html"]
 
     // The verdict: true from the page's end alone passes, anything else
     // fails, and nothing more is taken once it is in. Every word from the

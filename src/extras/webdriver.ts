@@ -27,7 +27,7 @@ const call = async (endpoint: string, method: string, path: string, body?: strin
 }
 
 /**
- * Runs the suites on `origin`'s webdriver.html in the browser the WebDriver
+ * Runs the suites on `origin`'s run.html in the browser the WebDriver
  * server at `endpoint` drives, and resolves to the verdict the page sends
  * back. The driver only opens the page: from there the page reports on its
  * own, so no command waits on the run and no script timeout is in play.
@@ -44,7 +44,7 @@ export const runInWebDriver = async ({origin, done, endpoint, session}: WebDrive
     const base = `/session/${created.sessionId}`
     let failure: unknown
     try {
-        await call(endpoint, "POST", `${base}/url`, JSON.stringify({url: `${origin}/webdriver.html`}))
+        await call(endpoint, "POST", `${base}/url`, JSON.stringify({url: `${origin}/run.html`}))
         return await done
     } catch (error) {
         failure = error

@@ -20,10 +20,12 @@ type Stream = "stdout" | "stderr"
 // one request, while a person watching still sees it as it comes.
 const FLUSH_MS = 50
 
-// A quiet page says so at this rate, on stderr: the CLI takes any word
-// within its own, longer bound as proof the page is alive, and a person
-// watching sees a long test is still going rather than hung.
+// A quiet page says so every ten seconds, on stderr: the CLI takes any
+// word within its own, longer bound as proof the page is alive, and a
+// person watching sees a long test is still going rather than hung. The
+// check runs each second, so the line lands on time rather than a beat late.
 const QUIET_MS = 10_000
+const TICK_MS = 1_000
 
 /**
  * Connects to the CLI at `base`, the run's URL ending in "/". Sending
@@ -71,7 +73,7 @@ export const connect = (base: string | URL): Client => {
     return {
         begin: () => {
             started = last = Date.now()
-            alive ??= setInterval(tick, QUIET_MS)
+            alive ??= setInterval(tick, TICK_MS)
             return post("begin", "")
         },
         stdout: text => write("stdout", text),
