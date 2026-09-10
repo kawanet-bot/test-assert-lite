@@ -75,6 +75,9 @@ describe("server/serve", () => {
                     return c.body(null, 204)
                 },
                 async (c, next) => (c.req.path === "/boom" ? Promise.reject(new Error("boom")) : next()),
+                async (c, next) => (c.req.path === "/broken"
+                    ? c.body(new ReadableStream({start: controller => controller.error(new Error("broken body"))}))
+                    : next()),
                 serveStatic({path: "/dist/", root: join(dir, "dist")}),
                 serveStatic({path: "/@tal/tests/0/my suite.mjs", root: join(dir, "elsewhere", "suite.mjs")}),
                 serveStatic({path: "/", root: join(dir, "htdocs")}),
@@ -197,6 +200,13 @@ describe("server/serve", () => {
         assert.equal((await get(server.origin, "/boom")).status, 500)
         assert.match(lines[from] ?? "", /^Error: boom\n/)
         assert.match(lines[from + 1] ?? "", /^GET \/boom 500 - - /)
+    })
+
+    it("answers 500 when the Response's body fails to be read, rather than hanging", async () => {
+        const from = lines.length
+        assert.equal((await get(server.origin, "/broken")).status, 500)
+        assert.match(lines[from] ?? "", /^Error: broken body\n/)
+        assert.match(lines[from + 1] ?? "", /^GET \/broken 500 - - /)
     })
 
     it("answers 400 to a target that is not a path", async () => {

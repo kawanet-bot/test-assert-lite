@@ -39,6 +39,13 @@ const toRequest = async (req: IncomingMessage, origin: string): Promise<Request>
     return new Request(origin + url, {method: req.method, headers, body})
 }
 
+// What goes back out, once nothing can fail any more.
+interface Answer {
+    status: number
+    headers: Record<string, string>
+    body: Buffer
+}
+
 // The access log line: method, URL, status, body length and the time to
 // respond, as morgan's tiny format has them, a "-" for anything missing.
 const tiny = (req: IncomingMessage, status: number, length: number, ms: number): string =>
@@ -54,29 +61,30 @@ export const serve = async ({handler, log, ...options}: ServeOptions): Promise<S
     const named = host === "0.0.0.0" || host === "::" ? "127.0.0.1" : host.includes(":") ? `[${host}]` : host
     let origin = ""
 
-    // A request the chain throws on is a 500, the error going to the log
-    // ahead of its line; one that is not even a URL is a 400. Either way
-    // the client draws an answer for its own request and nothing more.
-    const respond = async (req: IncomingMessage): Promise<Response> => {
+    // The answer as bytes, read in here: a Response body can fail on the
+    // way in as the chain can throw, and either is a 500 with the error in
+    // the log ahead of its line. A target that is not even a URL is a 400.
+    // The client draws an answer for its own request either way.
+    const respond = async (req: IncomingMessage): Promise<Answer> => {
         let c: Context | null = null
         try {
             c = createContext(await toRequest(req, origin))
             const res = await handler(c, async () => undefined)
             if (res != null && !c.finalized) c.res = res
-            return c.finalized ? c.res : await c.notFound()
+            const response = c.finalized ? c.res : await c.notFound()
+            return {status: response.status, headers: Object.fromEntries(response.headers), body: Buffer.from(await response.arrayBuffer())}
         } catch (error) {
             log?.(error instanceof Error ? error.stack ?? error.message : String(error))
-            return new Response(null, {status: c == null ? 400 : 500})
+            return {status: c == null ? 400 : 500, headers: {}, body: Buffer.alloc(0)}
         }
     }
 
     const server = createServer((req, res) => {
         const started = performance.now()
-        void respond(req).then(async response => {
-            const body = Buffer.from(await response.arrayBuffer())
-            res.writeHead(response.status, {...Object.fromEntries(response.headers), "content-length": String(body.length)})
+        void respond(req).then(({status, headers, body}) => {
+            res.writeHead(status, {...headers, "content-length": String(body.length)})
             res.end(body)
-            log?.(tiny(req, response.status, body.length, performance.now() - started))
+            log?.(tiny(req, status, body.length, performance.now() - started))
         })
     })
     await new Promise<void>(listening => server.listen(0, host, listening))
