@@ -4,6 +4,7 @@
 // counts the changes, so a change between the page's build and its first
 // ask is not lost, and a wait that runs out is a 204 to ask again on.
 
+import type {FSWatcher} from "node:fs"
 import {watch} from "node:fs"
 import {basename, dirname} from "node:path"
 import type {MiddlewareHandler} from "./middleware.ts"
@@ -45,15 +46,26 @@ export const createWatcher = (files: string[], wait = WAIT_MS): Watcher => {
         const dir = dirname(file)
         names.set(dir, (names.get(dir) ?? new Set()).add(basename(file)))
     }
-    const watchers = [...names].map(([dir, wanted]) => watch(dir, (_, name) => {
-        if (name == null || !wanted.has(String(name))) return
-        if (quiet != null) clearTimeout(quiet)
-        quiet = setTimeout(() => {
-            quiet = null
-            version++
-            release()
-        }, QUIET_MS)
-    }))
+    // One at a time, so that a directory that cannot be watched, a missing
+    // one say, leaves none of the earlier ones open to keep the process up.
+    // An event without a name, which Node does not promise, counts as one.
+    const watchers: FSWatcher[] = []
+    try {
+        for (const [dir, wanted] of names) {
+            watchers.push(watch(dir, (_, name) => {
+                if (name != null && !wanted.has(String(name))) return
+                if (quiet != null) clearTimeout(quiet)
+                quiet = setTimeout(() => {
+                    quiet = null
+                    version++
+                    release()
+                }, QUIET_MS)
+            }))
+        }
+    } catch (error) {
+        for (const watcher of watchers) watcher.close()
+        throw error
+    }
 
     // Resolves once past `after`, or false once the wait runs out.
     const changed = (after: number): Promise<boolean> => new Promise(resolve => {

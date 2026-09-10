@@ -74,6 +74,17 @@ describe("server/watch", () => {
         assert.equal((await ask(watcher, 3, "POST")).status, 405)
     })
 
+    it("leaves no watcher open when a later directory cannot be watched", async () => {
+        // A closed watcher leaves the process's active resources a beat later.
+        const open = async (): Promise<number> => {
+            await sleep(50)
+            return process.getActiveResourcesInfo().filter(name => name === "FSEventWrap").length
+        }
+        const before = await open()
+        assert.throws(() => createWatcher([file, join(dir, "missing", "setup.js")]), /ENOENT/)
+        assert.equal(await open(), before)
+    })
+
     it("releases a pending ask with 204 when closed", async () => {
         const closing = createWatcher([file], 10_000)
         const pending = ask(closing, closing.version)
