@@ -1,42 +1,43 @@
 import {strict as assert} from "node:assert"
-import type {Server} from "node:http"
-import {createServer} from "node:http"
 import {after, before, describe, it} from "node:test"
-import {client as connect} from "./client.ts"
+import {reporter} from "../index.ts"
 
-// What the CLI would see: each request's path and body, in arrival order.
+const TITLE = "client.test.ts"
+
+// The CLI's side without a network: fetch() is all the client sends with,
+// so a stand-in takes what goes to the run below and keeps each request's
+// path and body in arrival order, and refuses what goes to the run that
+// is gone. Anything else goes on to the real fetch(): in a browser, the
+// page's own client reports this very run through the same function.
+const RUN = "http://127.0.0.1:1/@tal/run/abc/"
+const GONE = "http://127.0.0.1:1/@tal/run/gone/"
 const seen: {path: string, body: string}[] = []
-let server: Server
-let base: string
+const real = globalThis.fetch
+
+const stub: typeof fetch = (input, init) => {
+    const url = String(input)
+    if (url.startsWith(GONE)) return Promise.reject(new TypeError("fetch failed"))
+    if (!url.startsWith(RUN)) return real.call(globalThis, input, init)
+    seen.push({path: new URL(url).pathname, body: String(init?.body ?? "")})
+    return Promise.resolve(new Response(null, {status: 204}))
+}
+
+const connect = reporter.client
 
 const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms))
 
-describe("client", () => {
-    before(async () => {
-        server = createServer((req, res) => {
-            let body = ""
-            req.setEncoding("utf8")
-            req.on("data", chunk => (body += chunk))
-            req.on("end", () => {
-                seen.push({path: req.url ?? "", body})
-                res.writeHead(204)
-                res.end()
-            })
-        })
-        await new Promise<void>(listening => server.listen(0, "127.0.0.1", listening))
-        const address = server.address()
-        const port = typeof address === "object" && address != null ? address.port : 0
-        base = `http://127.0.0.1:${port}/@tal/run/abc/`
+describe(TITLE, () => {
+    before(() => {
+        globalThis.fetch = stub
     })
 
     after(() => {
-        server.close()
-        server.closeAllConnections()
+        globalThis.fetch = real
     })
 
     it("posts begin first, then the streams, then end, in order", async () => {
         seen.length = 0
-        const client = connect(base)
+        const client = connect(RUN)
         await client.begin()
         client.stdout("one\n")
         client.stderr("warned\n")
@@ -55,7 +56,7 @@ describe("client", () => {
 
     it("gathers a burst of lines into one request per stream", async () => {
         seen.length = 0
-        const client = connect(base)
+        const client = connect(RUN)
         for (let i = 0; i < 100; i++) client.stdout(`line ${i}\n`)
         await client.end(false)
         assert.deepEqual(seen.map(({path}) => path), ["/@tal/run/abc/stdout", "/@tal/run/abc/end"])
@@ -65,7 +66,7 @@ describe("client", () => {
 
     it("flushes on its own while the run goes on", async () => {
         seen.length = 0
-        const client = connect(base)
+        const client = connect(RUN)
         client.stdout("early\n")
         await sleep(200)
         assert.deepEqual(seen.map(({path, body}) => `${path} ${JSON.stringify(body)}`), ['/@tal/run/abc/stdout "early\\n"'])
@@ -77,14 +78,14 @@ describe("client", () => {
 
     it("sends anything but true as a failure", async () => {
         seen.length = 0
-        const client = connect(base)
+        const client = connect(RUN)
         await client.end("yes" as unknown as boolean)
         assert.equal(seen[0]?.body, "false")
     })
 
     it("keeps stderr in lines: an Error by its text, a newline where one lacks", async () => {
         seen.length = 0
-        const client = connect(base)
+        const client = connect(RUN)
         client.stderr("bare")
         client.stderr("ended\n")
         client.stderr(new TypeError("typed"))
@@ -96,8 +97,16 @@ describe("client", () => {
         assert.equal(seen[0]?.body.endsWith("\n"), true)
     })
 
-    it("does not reject when nothing listens", async () => {
-        const client = connect("http://127.0.0.1:9/@tal/run/none/")
+    it("takes a URL for the base as well as a string", async () => {
+        seen.length = 0
+        const client = connect(new URL(RUN))
+        await client.begin()
+        await client.end(true)
+        assert.deepEqual(seen.map(({path}) => path), ["/@tal/run/abc/begin", "/@tal/run/abc/end"])
+    })
+
+    it("does not reject when a request fails", async () => {
+        const client = connect(GONE)
         await client.begin()
         client.stdout("lost\n")
         await client.end(true)
