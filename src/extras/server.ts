@@ -33,7 +33,7 @@ export interface Server {
 
 const TYPES: Record<string, string> = {
     ".css": "text/css",
-    ".html": "text/html; charset=UTF-8",
+    ".html": "text/html",
     ".ico": "image/ico",
     ".jpg": "image/jpeg",
     ".js": "text/javascript",
