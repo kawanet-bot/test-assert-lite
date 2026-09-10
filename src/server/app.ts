@@ -13,6 +13,7 @@ import {createChannel} from "./channel.ts"
 import type {MiddlewareHandler} from "./middleware.ts"
 import {compose} from "./middleware.ts"
 import {serveStatic} from "./static.ts"
+import {createWatcher} from "./watch.ts"
 
 export interface AppOptions extends ChannelOptions {
     /** The suite, as an absolute path. Its directory is mounted. */
@@ -21,6 +22,8 @@ export interface AppOptions extends ChannelOptions {
     scripts?: string[]
     /** Bare specifiers and the ES module files they resolve to. */
     aliases?: {specifier: string, file: string}[]
+    /** Reloads the page people open when the suite, a script or an alias changes. */
+    watch?: boolean
 }
 
 export interface App {
@@ -60,6 +63,22 @@ const mount = (dir: string, file: string): {url: string, path: string} => ({
 
 const isRead = (method: string): boolean => method === "GET" || method === "HEAD"
 
+// What --watch puts into the page people open: it asks after the version
+// it was built with and reloads on an answer. A 204, the wait run out,
+// means ask again at once; anything else, the server gone say, a second
+// later, then two, then three, so a page left behind does not hammer.
+const asks = (after: number): string => `<script>
+(async after => {
+    for (let wait = 1; ; wait++) {
+        const res = await fetch(\`/@tal/watch?after=\${after}\`).catch(() => null)
+        if (res?.status === 200) return location.reload()
+        if (res?.status === 204) wait = 0
+        await new Promise(next => setTimeout(next, wait * 1000))
+    }
+})(${after})
+</script>
+`
+
 /**
  * Builds the application for the suite: its middleware, and the promise
  * of the verdict the page at `page` reports back through it.
@@ -67,6 +86,7 @@ const isRead = (method: string): boolean => method === "GET" || method === "HEAD
 export const createApp = (options: AppOptions): App => {
     const {file, scripts = [], aliases = []} = options
     const channel = createChannel(options)
+    const watcher = options.watch ? createWatcher([file, ...scripts, ...aliases.map(alias => alias.file)]) : null
 
     // The suite's directory is mounted at /@tal/tests/0/, so a sibling or a
     // nested import resolves beside it while nothing above stays reachable;
@@ -93,20 +113,22 @@ export const createApp = (options: AppOptions): App => {
     const importmap = `<script type="importmap">\n${JSON.stringify({imports}, null, 4)}\n</script>\n`
     const tags = scriptUrls.map(url => `<script src="${url}"></script>\n`).join("")
         + `<script type="module" src="${suite.url}"></script>\n`
-    const withHead = (path: string): string => {
+    const withHead = (path: string, extra = ""): string => {
         const html = readFileSync(resolve(root, path), "utf8")
         const at = html.lastIndexOf("</head>")
-        return html.slice(0, at) + importmap + tags + html.slice(at)
+        return html.slice(0, at) + importmap + tags + extra + html.slice(at)
     }
 
     // Both pages live beside the CLI's other browser files and are built
     // as asked for: the one people open at the root, the one the CLI
-    // drives under the run only.
+    // drives under the run only. Only the former asks about changes.
+    const INDEX = "browser/index.html"
     const pages: Record<string, string> = {
-        "/": "browser/index.html",
-        "/index.html": "browser/index.html",
+        "/": INDEX,
+        "/index.html": INDEX,
         [`${channel.path}run.html`]: "browser/run.html",
     }
+    const build = (page: string): string => withHead(page, watcher != null && page === INDEX ? asks(watcher.version) : "")
 
     // Document root is htdocs/, the files served as they are; everything
     // else the CLI provides sits under /@tal/, the build output and the
@@ -114,10 +136,11 @@ export const createApp = (options: AppOptions): App => {
     // puts them. Nothing else is exposed.
     const handler = compose([
         channel.handler,
+        ...(watcher == null ? [] : [watcher.handler]),
         async (c, next) => {
             const page = pages[c.req.path]
             if (page == null) return next()
-            return isRead(c.req.method) ? c.html(withHead(page)) : c.body(null, 405, {allow: "GET, HEAD"})
+            return isRead(c.req.method) ? c.html(build(page)) : c.body(null, 405, {allow: "GET, HEAD"})
         },
         serveStatic({path: "/@tal/dist/test-assert-lite.mjs", root: resolve(root, "browser", "import.mjs")}),
         ...mounts.map(({path}, i) => serveStatic({path, root: scripts[i] as string})),
@@ -132,6 +155,9 @@ export const createApp = (options: AppOptions): App => {
         handler,
         page: `${channel.path}run.html`,
         done: channel.done,
-        close: channel.close,
+        close: () => {
+            channel.close()
+            watcher?.close()
+        },
     }
 }
