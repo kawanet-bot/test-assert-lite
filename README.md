@@ -20,3 +20,35 @@ The browser modes take one suite, bundled, and accept `--alias <specifier>=<file
 ```
 
 The browser fetches the suite from this machine, so a driver on another one, Safari on a Mac reached over an SSH tunnel say, takes `--host` with an address that machine can reach.
+
+## Sample run
+
+`sample/demo.mjs` is a small suite written against `node:test`: two suites under one, six tests, the last failing on purpose. It has no imports of its own, so the browser modes take it as it is, no bundling needed. `test-assert sample/demo.mjs` prints this, with a stack trace under the failure that is left out here; `node --test sample/demo.mjs` prints the same tree and the same counts.
+
+```
+▶ query string helpers
+  ▶ parseQuery() on a search string
+    ✔ reads a single pair (0.216ms)
+    ✔ decodes percent-encoded values (0.062ms)
+    ✔ returns an empty object for no query (0.021ms)
+  ✔ parseQuery() on a search string (0.873ms)
+  ▶ buildQuery() from an object
+    ✔ round-trips through parseQuery() (0.041ms)
+    ✔ appends to a URL (0.035ms)
+    ✖ encodes a space as %20 (0.078ms)
+  ✖ buildQuery() from an object (0.346ms)
+✖ query string helpers (1.306ms)
+ℹ tests 6
+ℹ suites 3
+ℹ pass 5
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1.8057529999999957
+
+✖ failing tests:
+
+✖ encodes a space as %20 (0.078ms)
+  AssertionError: expected "q=black%20cat", got "q=black+cat"
+```
