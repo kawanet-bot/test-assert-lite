@@ -4,6 +4,7 @@
 // Node's fetch() is all it uses, so it runs anywhere with a base to reach.
 
 import type * as declared from "test-assert-lite"
+import {errorText} from "../common/tester-error.ts"
 
 type Client = declared.TAL.Client
 type Stream = "stdout" | "stderr"
@@ -51,6 +52,13 @@ export const client = (base: string | URL): Client => {
         return inflight
     }
 
+    // stderr holds lines, as node keeps a test's stderr in lines: an Error
+    // becomes its text, and a line that lacks its newline gets one.
+    const line = (item: string | Error): string => {
+        const text = errorText(item)
+        return text.endsWith("\n") ? text : `${text}\n`
+    }
+
     const write = (stream: Stream, text: string): void => {
         buffers[stream] += text
         last = Date.now()
@@ -69,7 +77,7 @@ export const client = (base: string | URL): Client => {
             return post("begin", "")
         },
         stdout: text => write("stdout", text),
-        stderr: text => write("stderr", text),
+        stderr: item => write("stderr", line(item)),
         end: async success => {
             if (alive != null) clearInterval(alive)
             alive = null

@@ -82,6 +82,20 @@ describe("client", () => {
         assert.equal(seen[0]?.body, "false")
     })
 
+    it("keeps stderr in lines: an Error by its text, a newline where one lacks", async () => {
+        seen.length = 0
+        const client = connect(base)
+        client.stderr("bare")
+        client.stderr("ended\n")
+        client.stderr(new TypeError("typed"))
+        await client.end(true)
+        const lines = (seen[0]?.body ?? "").split("\n")
+        assert.equal(lines[0], "bare")
+        assert.equal(lines[1], "ended")
+        assert.match(lines[2] ?? "", /^TypeError: typed/)
+        assert.equal(seen[0]?.body.endsWith("\n"), true)
+    })
+
     it("does not reject when nothing listens", async () => {
         const client = connect("http://127.0.0.1:9/@tal/run/none/")
         await client.begin()

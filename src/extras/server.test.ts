@@ -46,7 +46,7 @@ describe("cli/server", () => {
             root: join(dir, "htdocs"),
             aliases: {"/dist/": join(dir, "dist")},
             files: {"/@tal/tests/0/my%20suite.mjs": join(dir, "elsewhere", "suite.mjs")},
-            data: {"/@tal/tests.json": {type: "application/json", body: '["/@tal/tests/0/my%20suite.mjs"]'}},
+            data: {"/@tal/data.json": {type: "application/json", body: '["/@tal/tests/0/my%20suite.mjs"]'}},
             log: line => lines.push(line),
             post: {"/@tal/run/1/stdout": body => posted.push(body)},
         })
@@ -75,7 +75,7 @@ describe("cli/server", () => {
     })
 
     it("serves an in-memory response", async () => {
-        const res = await get(server.origin, "/@tal/tests.json")
+        const res = await get(server.origin, "/@tal/data.json")
         assert.equal(res.status, 200)
         assert.equal(res.type, "application/json; charset=utf-8")
         assert.deepEqual(JSON.parse(res.body), ["/@tal/tests/0/my%20suite.mjs"])

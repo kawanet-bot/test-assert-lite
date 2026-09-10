@@ -7,8 +7,28 @@
          alike. It is served under the run's own URL and reports back there
          over HTTP: begin, the two streams and the verdict at the end; the
          <pre> below is for a person watching the browser. The CLI serves it
-         with the import map and the classic scripts added at the end of
-         the head. index.html, at the root, is the page people open. -->
+         with the import map, the classic scripts and the suites added at
+         the end of the head. index.html, at the root, is the page people
+         open. -->
+    <script>
+        // Ahead of everything the CLI puts into the page: the console and
+        // the errors go into a queue until the module below has the client,
+        // which then takes over these two functions.
+        (() => {
+            const stdout = [];
+            const stderr = [];
+            const tal = window["@tal"] = {
+                stdout: text => stdout.push(text),
+                stderr: item => stderr.push(item),
+                pending: {stdout, stderr},
+                failed: false,
+            };
+            for (const level of ["log", "info", "debug"]) console[level] = (...args) => tal.stdout(`${args.join(" ")}\n`);
+            for (const level of ["warn", "error"]) console[level] = (...args) => tal.stderr(args.join(" "));
+            addEventListener("error", event => { tal.failed = true; tal.stderr(event.error || event.reason || String(event)); }, true);
+            addEventListener("unhandledrejection", event => { tal.failed = true; tal.stderr(event.reason || String(event)); });
+        })();
+    </script>
 </head>
 <body>
 <pre id="output"></pre>
@@ -19,33 +39,33 @@
     const {begin, stdout, stderr, end} = reporter.client(new URL("./", import.meta.url));
     begin();
 
-    // An error outside a test body, an uncaught one or a suite that failed
-    // to load, is shown as it happens and fails the run at the end.
-    let uncaught = 0;
-    addEventListener("error", event => { uncaught++; stderr(`${event.error?.stack ?? event.message}\n`); });
-    addEventListener("unhandledrejection", event => { uncaught++; stderr(`${event.reason?.stack ?? event.reason}\n`); });
+    // What the head kept goes first, and from here on the console and the
+    // errors reach the client directly.
+    const tal = window["@tal"];
+    for (const text of tal.pending.stdout) stdout(text);
+    for (const item of tal.pending.stderr) stderr(item);
+    tal.stdout = stdout;
+    tal.stderr = stderr;
 
-    // The console goes to the CLI's streams the way Node's does.
-    for (const level of ["log", "info", "debug"]) console[level] = (...args) => stdout(`${args.join(" ")}\n`);
-    for (const level of ["warn", "error"]) console[level] = (...args) => stderr(`${args.join(" ")}\n`);
-
+    // The spec reporter, the default, stays without colours in a browser.
     const output = document.querySelector("#output");
-    try {
-        // One at a time, so the suites register in command-line order.
-        for (const url of await (await fetch("/@tal/tests.json")).json()) {
-            await import(url);
-        }
+    reporter.output(text => {
+        output.append(text);
+        stdout(text);
+    });
 
-        // The spec reporter, the default, stays without colours in a browser.
-        reporter.output(text => {
-            output.append(text);
-            stdout(text);
-        });
-        const summary = await run();
-        await end(summary.success && uncaught === 0);
-    } catch (error) {
-        stderr(`${error?.stack ?? error}\n`);
+    // An error before the run, a suite or a script that did not load or
+    // threw, means the run does not start, as under node --test.
+    if (tal.failed) {
         await end(false);
+    } else {
+        try {
+            const summary = await run();
+            await end(summary.success && !tal.failed);
+        } catch (error) {
+            stderr(error || "Error");
+            await end(false);
+        }
     }
 </script>
 </body>

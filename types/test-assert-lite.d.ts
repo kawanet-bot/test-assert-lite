@@ -245,8 +245,8 @@ export declare namespace TAL {
         begin(): Promise<void>
         /** Text for the CLI's stdout, buffered. */
         stdout(text: string): void
-        /** Text for the CLI's stderr, buffered. */
-        stderr(text: string): void
+        /** A line for the CLI's stderr, buffered: an Error by its text, and a newline added when the line lacks one. */
+        stderr(item: string | Error): void
         /** The verdict, sent once the buffers have drained; true alone passes. */
         end(success: boolean): Promise<void>
     }
