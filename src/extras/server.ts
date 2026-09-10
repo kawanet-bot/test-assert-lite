@@ -33,10 +33,14 @@ export interface Server {
 
 const TYPES: Record<string, string> = {
     ".css": "text/css",
-    ".html": "text/html",
+    ".html": "text/html; charset=UTF-8",
+    ".ico": "image/ico",
+    ".jpg": "image/jpeg",
     ".js": "text/javascript",
     ".json": "application/json",
     ".mjs": "text/javascript",
+    ".png": "image/png",
+    ".svg": "image/svg+xml",
 }
 
 // A candidate file and the directory it must stay in; `base` is null for
