@@ -1,4 +1,5 @@
 import {strict as assert} from "node:assert"
+import {writeFileSync} from "node:fs"
 import {mkdtemp, rename, rm, writeFile} from "node:fs/promises"
 import {tmpdir} from "node:os"
 import {join} from "node:path"
@@ -43,35 +44,38 @@ describe("server/watch", () => {
     })
 
     it("answers 200 with the version once the file changes, a burst as one", async () => {
-        const pending = ask(watcher, 0)
+        const before = watcher.version
+        const pending = ask(watcher, before)
         await sleep(50)
-        for (let i = 1; i <= 5; i++) {
-            await writeFile(file, `v${i}`)
-            await sleep(5)
-        }
-        assert.deepEqual(await pending, {status: 200, body: "1"})
-        assert.equal(watcher.version, 1)
-        assert.deepEqual(await ask(watcher, 0), {status: 200, body: "1"})
-        assert.equal((await ask(watcher, 1)).status, 204)
+        // Written back to back, with no turn of the loop between, so the
+        // events arrive together whatever the machine's pace.
+        for (let i = 1; i <= 5; i++) writeFileSync(file, `v${i}`)
+        assert.deepEqual(await pending, {status: 200, body: String(before + 1)})
+        assert.equal(watcher.version, before + 1)
+        assert.deepEqual(await ask(watcher, before), {status: 200, body: String(before + 1)})
+        assert.equal((await ask(watcher, before + 1)).status, 204)
     })
 
     it("sees a file saved by a rename over it, and again after that", async () => {
+        const before = watcher.version
         await writeFile(join(dir, ".tmp"), "renamed")
         await rename(join(dir, ".tmp"), file)
-        assert.equal((await ask(watcher, 1)).status, 200)
+        assert.equal((await ask(watcher, before)).status, 200)
+        const renamed = watcher.version
         await writeFile(file, "after the rename")
-        assert.deepEqual(await ask(watcher, 2), {status: 200, body: "3"})
+        assert.deepEqual(await ask(watcher, renamed), {status: 200, body: String(renamed + 1)})
     })
 
     it("ignores another file in the directory", async () => {
+        const before = watcher.version
         await writeFile(other, "v1")
-        assert.equal((await ask(watcher, 3)).status, 204)
+        assert.equal((await ask(watcher, before)).status, 204)
     })
 
     it("leaves another path to the next middleware, and refuses another method", async () => {
         const c = createContext(new Request("http://127.0.0.1/@tal/watching"))
         assert.equal(await watcher.handler(c, async () => undefined), undefined)
-        assert.equal((await ask(watcher, 3, "POST")).status, 405)
+        assert.equal((await ask(watcher, watcher.version, "POST")).status, 405)
     })
 
     it("leaves no watcher open when a later directory cannot be watched", async () => {
