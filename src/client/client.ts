@@ -20,6 +20,11 @@ type Stream = "stdout" | "stderr"
 // one request, while a person watching still sees it as it comes.
 const FLUSH_MS = 50
 
+// A quiet page says so at this rate, on stderr: the CLI takes any word
+// within its own, longer bound as proof the page is alive, and a person
+// watching sees a long test is still going rather than hung.
+const QUIET_MS = 10_000
+
 /**
  * Connects to the CLI at `base`, the run's URL ending in "/". Sending
  * never rejects: the page can do nothing about a CLI that went away.
@@ -27,6 +32,9 @@ const FLUSH_MS = 50
 export const connect = (base: string | URL): Client => {
     const buffers: Record<Stream, string> = {stdout: "", stderr: ""}
     let timer: ReturnType<typeof setTimeout> | null = null
+    let alive: ReturnType<typeof setInterval> | null = null
+    let started = 0
+    let last = 0
     // Every request follows the one before, so each stream stays in order.
     let inflight: Promise<void> = Promise.resolve()
 
@@ -51,14 +59,26 @@ export const connect = (base: string | URL): Client => {
 
     const write = (stream: Stream, text: string): void => {
         buffers[stream] += text
+        last = Date.now()
         timer ??= setTimeout(flush, FLUSH_MS)
     }
 
+    const tick = (): void => {
+        if (Date.now() - last < QUIET_MS) return
+        write("stderr", `⏳ ${Math.round((Date.now() - started) / 1000)}s\n`)
+    }
+
     return {
-        begin: () => post("begin", ""),
+        begin: () => {
+            started = last = Date.now()
+            alive ??= setInterval(tick, QUIET_MS)
+            return post("begin", "")
+        },
         stdout: text => write("stdout", text),
         stderr: text => write("stderr", text),
         end: async success => {
+            if (alive != null) clearInterval(alive)
+            alive = null
             await flush()
             await post("end", JSON.stringify(success === true))
         },
