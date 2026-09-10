@@ -34,7 +34,7 @@ export interface Server {
 const TYPES: Record<string, string> = {
     ".css": "text/css",
     ".html": "text/html",
-    ".ico": "image/ico",
+    ".ico": "image/x-icon",
     ".jpg": "image/jpeg",
     ".js": "text/javascript",
     ".json": "application/json",
