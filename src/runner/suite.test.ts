@@ -3,7 +3,7 @@ import {describe, it} from "node:test"
 import {createTAL} from "./../index.ts"
 import {capture, names, ofType} from "./../test-utils/capture.ts"
 
-const TITLE = "runner/runner-suite.test.ts"
+const TITLE = "runner/suite.test.ts"
 
 // describe and it: declaration order, nesting, numbering, and how a suite
 // carries the verdict of its children.

@@ -3,7 +3,7 @@ import {describe, it} from "node:test"
 import {createTAL} from "./../index.ts"
 import {capture} from "./../test-utils/capture.ts"
 
-const TITLE = "runner/runner-run.test.ts"
+const TITLE = "runner/run.test.ts"
 
 // run() as a whole: what it counts, in what order it runs and reports, and
 // how one harness behaves across calls.

@@ -3,7 +3,7 @@ import {describe, it} from "node:test"
 import {createTAL} from "./../index.ts"
 import {capture, names, ofType} from "./../test-utils/capture.ts"
 
-const TITLE = "runner/runner-subtest.test.ts"
+const TITLE = "runner/subtest.test.ts"
 
 // The test context: t.test(), t.skip(), t.diagnostic(), t.assert, and how a
 // subtest's verdict reaches its parent.

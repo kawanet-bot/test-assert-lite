@@ -1,6 +1,7 @@
 import type * as declared from "test-assert-lite"
-import type {Args} from "./tester.ts"
-import {Test, nameOf, normalize} from "./tester.ts"
+import type {Args} from "./declare.ts"
+import {nameOf, normalize} from "./declare.ts"
+import {Test} from "./tester.ts"
 
 type TestFn = declared.TAL.TestFn
 type SuiteFn = declared.TAL.SuiteFn

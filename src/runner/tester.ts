@@ -1,6 +1,8 @@
 import type * as declared from "test-assert-lite"
-import {TesterError, cancelledByParent, parentAlreadyFinished, testRunnerError} from "./common/tester-error.ts"
-import type {ReporterControl} from "./reporter.ts"
+import {TesterError, cancelledByParent, parentAlreadyFinished, testRunnerError} from "../common/tester-error.ts"
+import type {ReporterControl} from "../reporter.ts"
+import type {Args} from "./declare.ts"
+import {nameOf, normalize, skipOf, todoOf} from "./declare.ts"
 import type {HarnessState} from "./suite.ts"
 
 type TestOptions = declared.TAL.TestOptions
@@ -34,32 +36,6 @@ export interface Run {
     // Set once the root has nothing left to run. A body that outlived its
     // verdict is not waited for; what it does after this is dropped.
     closed: boolean
-}
-
-export type Args<F> = [name?: string | TestOptions | F, options?: TestOptions | F, fn?: F]
-
-// Falls back to the function name, then to <anonymous>, as node:test does.
-export const nameOf = (name: string | undefined, fn: Function | undefined): string =>
-    name || fn?.name || "<anonymous>"
-
-export const normalize = <F>(args: Args<F>): {name: string | undefined, options: TestOptions, fn: F | undefined} => {
-    const [a, b, c] = args
-    if ("string" === typeof a) {
-        if ("function" === typeof b) return {name: a, options: {}, fn: b as F}
-        return {name: a, options: (b as TestOptions) ?? {}, fn: c}
-    }
-    if ("function" === typeof a) return {name: undefined, options: {}, fn: a as F}
-    return {name: undefined, options: (a as TestOptions) ?? {}, fn: (b as F) ?? c}
-}
-
-const skipOf = (options: TestOptions): string | true | undefined => {
-    const {skip} = options
-    return skip === true || "string" === typeof skip ? skip : undefined
-}
-
-const todoOf = (options: TestOptions): string | true | undefined => {
-    const {todo} = options
-    return todo === true || "string" === typeof todo ? todo : undefined
 }
 
 const timeoutAfter = (ms: number): {promise: Promise<never>, error: TesterError, cancel: () => void} => {
