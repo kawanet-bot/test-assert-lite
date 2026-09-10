@@ -1,10 +1,10 @@
 import {strict as assert} from "node:assert"
+import {mkdtemp, rm, writeFile} from "node:fs/promises"
 import {createServer} from "node:net"
-import {describe, it} from "node:test"
-import {fileURLToPath} from "node:url"
+import {tmpdir} from "node:os"
+import {join} from "node:path"
+import {after, before, describe, it} from "node:test"
 import {CLI} from "./cli.ts"
-
-const suite = fileURLToPath(new URL("../../browser/tests/bundled.mjs", import.meta.url))
 
 // What --serve leaves behind once it has failed: a watch still open would
 // keep the process up. A closed one leaves the count a beat later.
@@ -14,6 +14,20 @@ const watching = async (): Promise<number> => {
 }
 
 describe("extras/cli", () => {
+    // A suite of its own, so that --serve has a file to watch whatever was built.
+    let dir: string
+    let suite: string
+
+    before(async () => {
+        dir = await mkdtemp(join(tmpdir(), "tal-cli-"))
+        suite = join(dir, "suite.mjs")
+        await writeFile(suite, "export const suite = 1")
+    })
+
+    after(async () => {
+        await rm(dir, {recursive: true, force: true})
+    })
+
     it("leaves no watch behind on a --port it cannot take, though --serve would watch", async () => {
         const before = await watching()
         assert.equal(await CLI({args: ["--serve", "--port", "invalid", suite]}), 1)
