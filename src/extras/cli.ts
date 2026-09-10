@@ -121,16 +121,17 @@ const main = async (args: string[]): Promise<number> => {
     }
 
     try {
-        const {success} = webdriver
+        const success = webdriver
             ? await runInWebDriver({
                 origin: app.origin,
+                done: app.done,
                 session: values["webdriver-session"] == null ? undefined : readFileSync(values["webdriver-session"], "utf8"),
                 endpoint: values.endpoint ?? "http://127.0.0.1:4444",
             })
-            : await runInPlaywright({
+            : (await runInPlaywright({
                 ...app,
                 browser: playwright as Browser,
-            })
+            })).success
 
         // The exit code alone, as in Node mode and node --test: the summary
         // on stdout already says what failed, and no tests is not a failure.
