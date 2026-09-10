@@ -57,6 +57,11 @@
       "types": "./exports/assert/strict.d.mts",
       "module-sync": "./exports/assert/strict.mjs",
       "import": "./exports/assert/strict.mjs"
+    },
+    "./client": {
+      "types": "./types/client.d.ts",
+      "module-sync": "./dist/test-assert-lite.client.mjs",
+      "import": "./dist/test-assert-lite.client.mjs"
     }
   },
   "files": [
@@ -73,7 +78,9 @@
     "dist/test-assert-lite.mjs",
     "types/*.d.ts",
     "bin/cli.mjs",
-    "dist/test-assert-lite.extras.mjs"
+    "dist/test-assert-lite.extras.mjs",
+    "browser/client.mjs",
+    "dist/test-assert-lite.client.mjs"
   ],
   "homepage": "https://github.com/kawanet/test-assert-lite#readme",
   "keywords": [
