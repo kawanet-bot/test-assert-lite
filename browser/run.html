@@ -33,14 +33,14 @@
     const flush = () => {
         while (window.testErrors.length > 0) {
             const event = window.testErrors.shift();
-            stderr(`${event.error || event.reason || event}\n`);
+            stderr(event.error || event.reason || String(event));
             failed = true;
         }
     };
 
     // The console goes to the CLI's streams the way Node's does.
     for (const level of ["log", "info", "debug"]) console[level] = (...args) => stdout(`${args.join(" ")}\n`);
-    for (const level of ["warn", "error"]) console[level] = (...args) => stderr(`${args.join(" ")}\n`);
+    for (const level of ["warn", "error"]) console[level] = (...args) => stderr(args.join(" "));
 
     // The spec reporter, the default, stays without colours in a browser.
     const output = document.querySelector("#output");
@@ -60,7 +60,7 @@
             flush();
             await end(summary.success && !failed);
         } catch (error) {
-            stderr(`${error || "Error"}\n`);
+            stderr(error || "Error");
             await end(false);
         }
     }
