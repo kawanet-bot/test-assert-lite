@@ -34,9 +34,13 @@ export interface Server {
 const TYPES: Record<string, string> = {
     ".css": "text/css",
     ".html": "text/html",
+    ".ico": "image/x-icon",
+    ".jpg": "image/jpeg",
     ".js": "text/javascript",
     ".json": "application/json",
     ".mjs": "text/javascript",
+    ".png": "image/png",
+    ".svg": "image/svg+xml",
 }
 
 // A candidate file and the directory it must stay in; `base` is null for
@@ -89,6 +93,13 @@ const text = (req: IncomingMessage): Promise<string> => new Promise((resolve, re
     req.on("error", reject)
 })
 
+const addCharset = (type?: string) => {
+    if (!type) return "application/octet-stream"
+    if (/charset=/i.test(type)) return type
+    if (/^text\/|[/+]json$/i.test(type)) type += "; charset=utf-8"
+    return type
+}
+
 // Resolves to the body's length in bytes, for the log line.
 const respond = async (options: ServerOptions, req: IncomingMessage, res: ServerResponse): Promise<number> => {
     const {pathname} = new URL(req.url ?? "/", "http://127.0.0.1")
@@ -102,7 +113,7 @@ const respond = async (options: ServerOptions, req: IncomingMessage, res: Server
     }
     const data = options.data?.[pathname]
     if (data != null) {
-        res.writeHead(200, {"content-type": `${data.type}; charset=utf-8`})
+        res.writeHead(200, {"content-type": addCharset(data.type)})
         res.end(data.body)
         return Buffer.byteLength(data.body)
     }
@@ -118,7 +129,7 @@ const respond = async (options: ServerOptions, req: IncomingMessage, res: Server
     try {
         if (found == null) throw new Error("outside")
         const body = await readFile(await realWithin(found))
-        res.writeHead(200, {"content-type": `${type}; charset=utf-8`})
+        res.writeHead(200, {"content-type": addCharset(type)})
         res.end(body)
         return body.length
     } catch {
