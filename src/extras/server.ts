@@ -93,6 +93,12 @@ const text = (req: IncomingMessage): Promise<string> => new Promise((resolve, re
     req.on("error", reject)
 })
 
+const charset = (type?: string) => {
+    if (!type) return "application/octet-stream"
+    if (type.startsWith("text/") || type.endsWith("/json")) type += "; charset=utf-8"
+    return type
+}
+
 // Resolves to the body's length in bytes, for the log line.
 const respond = async (options: ServerOptions, req: IncomingMessage, res: ServerResponse): Promise<number> => {
     const {pathname} = new URL(req.url ?? "/", "http://127.0.0.1")
@@ -106,7 +112,7 @@ const respond = async (options: ServerOptions, req: IncomingMessage, res: Server
     }
     const data = options.data?.[pathname]
     if (data != null) {
-        res.writeHead(200, {"content-type": `${data.type}; charset=utf-8`})
+        res.writeHead(200, {"content-type": charset(data.type)})
         res.end(data.body)
         return Buffer.byteLength(data.body)
     }
@@ -122,7 +128,7 @@ const respond = async (options: ServerOptions, req: IncomingMessage, res: Server
     try {
         if (found == null) throw new Error("outside")
         const body = await readFile(await realWithin(found))
-        res.writeHead(200, {"content-type": `${type}; charset=utf-8`})
+        res.writeHead(200, {"content-type": charset(type)})
         res.end(body)
         return body.length
     } catch {
