@@ -2,7 +2,7 @@ import type * as declared from "test-assert-lite"
 import type {ReporterControl} from "../reporter.ts"
 import type {HarnessState} from "./suite.ts"
 import {resetHarnessState} from "./suite.ts"
-import type {Run} from "./test.ts"
+import type {Run} from "./tester.ts"
 
 export const createRun = (
     harness: HarnessState,
