@@ -128,6 +128,12 @@ const main = async (args: string[]): Promise<number> => {
         if (at < 1 || at === entry.length - 1) throw new UsageError(`--alias takes <specifier>=<file>: ${entry}`)
         return {specifier: entry.slice(0, at), file: resolve(entry.slice(at + 1))}
     })
+    // Every argument is read before the application exists: once it does,
+    // its watch keeps the process up until close(), so nothing may throw
+    // past it but the server, which is caught below.
+    const port = values.port == null ? undefined : portOf(values.port)
+    const origin = values.origin == null ? undefined : originOf(values.origin)
+
     // The application is the middleware, the server runs it; every request
     // goes to stderr, apart from the reporter's stdout, so a 404 for a
     // mistyped --script or --alias shows up there.
@@ -142,8 +148,8 @@ const main = async (args: string[]): Promise<number> => {
     const server = await serve({
         handler: app.handler,
         host: values.host,
-        port: values.port == null ? undefined : portOf(values.port),
-        origin: values.origin == null ? undefined : originOf(values.origin),
+        port,
+        origin,
         log: line => process.stderr.write(`${line}\n`),
     }).catch((error: unknown) => {
         app.close()
