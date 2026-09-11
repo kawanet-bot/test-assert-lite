@@ -8,6 +8,7 @@
 import {readFileSync} from "node:fs"
 import {createApp} from "../server/app.ts"
 import {serve} from "../server/serve.ts"
+import {VERSION} from "../version.ts"
 import {runInNode} from "./node.ts"
 import type {Options} from "./options.ts"
 import {USAGE, UsageError, readOptions} from "./options.ts"
@@ -22,6 +23,10 @@ export interface CLIOptions {
 const run = async (options: Options): Promise<number> => {
     if (options.mode === "help") {
         process.stdout.write(USAGE)
+        return 0
+    }
+    if (options.mode === "version") {
+        process.stdout.write(`test-assert-lite ${VERSION}\n`)
         return 0
     }
 

@@ -1,5 +1,6 @@
 import type * as declared from "test-assert-lite"
 import type {ReporterControl} from "../reporter.ts"
+import {VERSION} from "../version.ts"
 import type {HarnessState} from "./suite.ts"
 import {resetHarnessState} from "./suite.ts"
 import type {Run} from "./tester.ts"
@@ -72,6 +73,9 @@ const runOnce = async (
         success: run.success,
     }
 
+    // node:test's summary, then what node:test never says: which package
+    // ran the suites, and where, as the browser or Node names itself.
+    const userAgent = globalThis.navigator?.userAgent
     for (const [label, value] of [
         ["tests", run.counters.tests],
         ["suites", run.counters.suites],
@@ -81,7 +85,9 @@ const runOnce = async (
         ["skipped", run.counters.skipped],
         ["todo", run.counters.todo],
         ["duration_ms", duration_ms],
-    ] as [string, number][]) {
+        ["test-assert-lite", VERSION],
+        ...(userAgent == null ? [] : [["user-agent", userAgent]]),
+    ] as [string, number | string][]) {
         await run.emit("test:diagnostic", {
             message: `${label} ${value}`, nesting: 0, level: "info",
         })

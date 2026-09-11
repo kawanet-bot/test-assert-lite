@@ -1,3 +1,4 @@
+import json from "@rollup/plugin-json"
 import alias from "@rollup/plugin-alias"
 import multiEntry from "@rollup/plugin-multi-entry"
 import sucrase from "@rollup/plugin-sucrase"
@@ -38,6 +39,8 @@ const rollupConfig: RollupOptions = {
     treeshake: false,
 
     plugins: [
+        json(),
+
         // The suites reach the subject by relative path so they run on the
         // sources directly under `node --test`. Only the entry is matched,
         // whatever directory the suite sits in: anything else stays inlined,

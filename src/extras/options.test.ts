@@ -88,6 +88,12 @@ describe("extras/options", () => {
             assert.deepEqual(readOptions(["--help", "--serve", "--webdriver"]), {mode: "help"})
         })
 
+        it("reads --version and -v, after --help", () => {
+            assert.deepEqual(readOptions(["--version"]), {mode: "version"})
+            assert.deepEqual(readOptions(["-v", "--serve", "suite.mjs"]), {mode: "version"})
+            assert.deepEqual(readOptions(["-v", "-h"]), {mode: "help"})
+        })
+
         it("reads Node mode as the default, the files resolved in order", () => {
             assert.deepEqual(readOptions(["a.test.ts", "b.test.ts"]), {mode: "node", suites: [resolve("a.test.ts"), resolve("b.test.ts")], aliases: []})
         })
