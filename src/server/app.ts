@@ -42,7 +42,7 @@ export interface App {
     close(): void
 }
 
-// The package root holds dist/, exports/, htdocs/ and the IIFE's shim;
+// The package root holds dist/, esm/, exports/, htdocs/ and the IIFE's shim;
 // they are served from there whatever the suite's location.
 const root = fileURLToPath(packageRoot())
 
@@ -50,7 +50,7 @@ const root = fileURLToPath(packageRoot())
 // builtin maps onto the subpath of the same name, and the subpaths resolve
 // too. An alias adds its specifier on top.
 const IMPORTS = {
-    "test-assert-lite": "/@tal/dist/test-assert-lite.mjs",
+    "test-assert-lite": "/@tal/esm/test-assert-lite.mjs",
     "test-assert-lite/test": "/@tal/exports/test.mjs",
     "test-assert-lite/assert": "/@tal/exports/assert.mjs",
     "test-assert-lite/assert/strict": "/@tal/exports/assert/strict.mjs",
@@ -119,7 +119,7 @@ export const createApp = (options: AppOptions): App => {
         channel.handler,
         ...(watcher == null ? [] : [watcher.handler]),
         scoped(compose([head, serveStatic({path: `${channel.path}run.html`, root: resolve(root, "browser", "run.html")})])),
-        serveStatic({path: "/@tal/dist/test-assert-lite.mjs", root: resolve(root, "exports", "global.mjs")}),
+        serveStatic({path: "/@tal/esm/test-assert-lite.mjs", root: resolve(root, "exports", "global.mjs")}),
         serveStatic({path: "/@tal/dist/", root: resolve(root, "dist")}),
         serveStatic({path: "/@tal/exports/", root: resolve(root, "exports")}),
         ...served.dirs.map(dir => serveStatic(dir)),

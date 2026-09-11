@@ -2,7 +2,7 @@
 // from the one library instance with `test` as the default. `run` stays on
 // the root, since node:test's run() is a file runner, a different thing
 // under the same name.
-import {after, before, describe, it, suite, test} from "../dist/test-assert-lite.mjs"
+import {after, before, describe, it, suite, test} from "../esm/test-assert-lite.mjs"
 
 export default test
 export {after, before, describe, it, suite, test}

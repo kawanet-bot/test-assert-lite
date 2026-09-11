@@ -78,7 +78,7 @@ describe("server/app", () => {
         assert.ok(map < iife && iife < script && script < second && second < suite && suite < other)
         const {imports} = JSON.parse(head.slice(head.indexOf("{", map), head.indexOf("</script>", map)))
         assert.equal(imports["node:test"], "/@tal/exports/test.mjs")
-        assert.equal(imports["test-assert-lite"], "/@tal/dist/test-assert-lite.mjs")
+        assert.equal(imports["test-assert-lite"], "/@tal/esm/test-assert-lite.mjs")
         assert.equal(imports["mod"], `${lib}mod.mjs`)
         assert.equal(imports["dep"], `${tests}nested/dep.mjs`)
         assert.equal((await get(url("/index.html"))).body, res.body)
@@ -108,7 +108,8 @@ describe("server/app", () => {
 
     it("serves the package's build, bridges and document root, the ESM build as the IIFE's shim", async () => {
         assert.equal((await get(url("/@tal/dist/test-assert-lite.min.js"))).status, 200)
-        assert.match((await get(url("/@tal/dist/test-assert-lite.mjs"))).body, /globalThis\.TAL/)
+        assert.match((await get(url("/@tal/esm/test-assert-lite.mjs"))).body, /globalThis\.TAL/)
+        assert.equal((await get(url("/@tal/esm/test-assert-lite.extras.mjs"))).status, 404)
         assert.equal((await get(url("/@tal/exports/test.mjs"))).status, 200)
         assert.equal((await get(url("/@tal/exports/assert/strict.mjs"))).status, 200)
         assert.equal((await get(url("/styles/test-assert-lite.css"))).type, "text/css; charset=utf-8")

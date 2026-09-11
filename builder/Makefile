@@ -17,9 +17,9 @@ EXTRAS_SRC := $(wildcard ../src/extras/*.ts) ../src/extras/playwright.mjs $(wild
 TYPES := $(wildcard ../types/*.d.ts)
 BUILDER_SRC := $(wildcard ./*.ts)
 
-MJS_DST := ../dist/test-assert-lite.mjs
+MJS_DST := ../esm/test-assert-lite.mjs
 MINJS_DST := ../dist/test-assert-lite.min.js
-EXTRAS_DST := ../dist/test-assert-lite.extras.mjs
+EXTRAS_DST := ../esm/test-assert-lite.extras.mjs
 PKG_DST := ../dist/package.json
 BROWSER_TEST_DST := ../browser/tests/bundled.mjs
 BUILDER_TEST_DST := ./tests/bundled.mjs
@@ -92,7 +92,9 @@ $(EXTRAS_DST): $(EXTRAS_CONFIG) $(EXTRAS_SRC) $(BUILDER_SRC) $(MJS_DST)
 	@echo ""
 
 # The browser build. dist/package.json marks dist/ as CommonJS so Node can
-# read the .min.js IIFE as a script despite the package being ESM.
+# read the .min.js IIFE as a script despite the package being ESM; the ES
+# module builds live in esm/, outside that scope, where the package's own
+# name resolves to them.
 $(MINJS_DST): $(MINJS_CONFIG) $(SRC) $(BUILDER_SRC) $(PKG_DST)
 	@mkdir -p $(dir $@)
 	../node_modules/.bin/rollup -c $<
