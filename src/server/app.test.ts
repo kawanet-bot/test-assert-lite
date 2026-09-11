@@ -46,7 +46,7 @@ describe("server/app", () => {
         app = createApp({
             suites: [join(dir, "tests", "my suite.mjs"), join(dir, "tests", "second.mjs")],
             scripts: [join(dir, "tests", "setup.js"), join(dir, "tests", "set+up#2.js")],
-            aliases: [{specifier: "mod", file: join(dir, "lib", "mod.mjs")}, {specifier: "dep", file: join(dir, "tests", "nested", "dep.mjs")}],
+            imports: [{specifier: "mod", file: join(dir, "lib", "mod.mjs")}, {specifier: "dep", file: join(dir, "tests", "nested", "dep.mjs")}, {specifier: "cdn", url: "https://cdn.example/lib.js"}, {specifier: "mine", url: "/mine.js"}, {specifier: "mod", file: join(dir, "lib", "mod.mjs")}],
             stdout: text => stdout.push(text),
         })
         server = await serve({handler: app.handler})
@@ -81,6 +81,8 @@ describe("server/app", () => {
         assert.equal(imports["test-assert-lite"], "/@tal/esm/test-assert-lite.mjs")
         assert.equal(imports["mod"], `${lib}mod.mjs`)
         assert.equal(imports["dep"], `${tests}nested/dep.mjs`)
+        assert.equal(imports["cdn"], "https://cdn.example/lib.js")
+        assert.equal(imports["mine"], "/mine.js")
         assert.equal((await get(url("/index.html"))).body, res.body)
     })
 

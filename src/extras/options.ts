@@ -3,17 +3,20 @@
 // value has to take. Anything wrong is a UsageError from here, before the
 // caller has opened a server or a watch on the strength of it.
 
+import {readFileSync} from "node:fs"
 import {resolve} from "node:path"
+import {fileURLToPath, pathToFileURL} from "node:url"
 import {parseArgs} from "node:util"
 import {createFiles} from "../server/files.ts"
 
 export const USAGE = `Usage: test-assert [options] <file...>
   -v, --version               print this package's version
+  --alias <specifier>=<file>  ES module a specifier resolves to, a node: builtin too (repeatable)
+  --import-map <file>         JSON import map: a relative address is a file beside it, / and http(s):// go to the page as they are
   --serve                     serve the suite for a browser and print the URL; the page reloads on a change
   --host <address>            address the server listens on (browser modes, default: 127.0.0.1)
   --port <number>             port the server listens on (browser modes, default: a free one)
   --origin <url>              what the browser reaches the server as, http(s)://host[:port] (browser modes, default: from --host)
-  --alias <specifier>=<file>  ES module a specifier resolves to, a node: builtin too (repeatable)
   --script <file>             classic script to run first (browser modes, repeatable)
   --mount <dir|url>           what the root serves instead of htdocs: a directory, or an origin to proxy (browser modes)
   --webdriver                 run the suite through a WebDriver server: safaridriver, chromedriver
@@ -36,6 +39,9 @@ export interface Alias {
     file: string
 }
 
+/** What a specifier resolves to: a file served by the CLI, or a URL the page takes as it is. */
+export type Import = Alias | {specifier: string, url: string}
+
 // What the three browser modes share: the suites, what the page is made
 // of, and where the server sits. --serve with --mount may go without a
 // suite: the mounted pages carry the library then, and whatever they run.
@@ -44,7 +50,8 @@ export interface BrowserOptions {
     suites: string[]
     /** Classic scripts to run first, absolute, in order. */
     scripts: string[]
-    aliases: Alias[]
+    /** From --import-map then --alias, a later entry over an earlier one of the same specifier. */
+    imports: Import[]
     /** What the root serves in place of htdocs: an absolute directory, or an http(s) URL ending in "/". */
     mount?: string
     host?: string
@@ -55,7 +62,7 @@ export interface BrowserOptions {
 export type Options =
     | {mode: "help"}
     | {mode: "version"}
-    | {mode: "node", suites: string[], aliases: Alias[]}
+    | {mode: "node", suites: string[], imports: Alias[]}
     | BrowserOptions & {mode: "serve"}
     | BrowserOptions & {mode: "playwright", browser: Browser}
     | BrowserOptions & {mode: "webdriver", session?: string, endpoint: string}
@@ -103,6 +110,43 @@ export const mountOf = (value: string): string => {
     return url.href.endsWith("/") ? url.href : `${url.href}/`
 }
 
+// An import map file, read as a page would up to what the CLI can do:
+// "imports" alone, bare keys, addresses resolved against the file. A
+// relative address is a file the CLI serves; "/" and absolute URLs are
+// the page's. Prefix entries, "/" at the end, are refused, not mismatched.
+export const importMapOf = (file: string): Import[] => {
+    const path = resolve(file)
+    const refuse = (reason: string): never => {
+        throw new UsageError(`--import-map ${file}: ${reason}`)
+    }
+    let map: unknown
+    try {
+        map = JSON.parse(readFileSync(path, "utf8"))
+    } catch (error) {
+        return refuse(error instanceof Error ? error.message : String(error))
+    }
+    if (typeof map !== "object" || map == null || Array.isArray(map)) return refuse("not an object")
+    for (const key of Object.keys(map)) if (key !== "imports") return refuse(`only "imports" is supported: "${key}"`)
+    const {imports = {}} = map as {imports?: unknown}
+    if (typeof imports !== "object" || imports == null || Array.isArray(imports)) return refuse('"imports" is not an object')
+
+    const base = pathToFileURL(path)
+    return Object.entries(imports).map(([specifier, address]) => {
+        if (typeof address !== "string") return refuse(`"${specifier}": not a string`)
+        if (/^(\.\.?\/|\/)/.test(specifier) || specifier.endsWith("/") || address.endsWith("/")) return refuse(`"${specifier}": prefix and URL-like keys are not supported`)
+        if (/^\.\.?\//.test(address)) return {specifier, file: fileURLToPath(new URL(address, base))}
+        if (address.startsWith("/") || URL.canParse(address)) return {specifier, url: address}
+        return refuse(`"${specifier}": an address starts with ./, ../, / or a scheme: ${address}`)
+    })
+}
+
+/**
+ * What the suites' specifiers resolve to, the import map's entries first
+ * and each --alias after, so the command line has the last word.
+ */
+export const importsOf = (mapFile: string | undefined, aliases: string[]): Import[] =>
+    [...(mapFile == null ? [] : importMapOf(mapFile)), ...aliases.map(aliasOf)]
+
 export const browserOf = (name: string): Browser => {
     if (!(BROWSERS as readonly string[]).includes(name)) throw new UsageError(`--playwright takes chromium, firefox or webkit: ${name}`)
     return name as Browser
@@ -121,6 +165,7 @@ const parse = (args: string[]) => {
                 port: {type: "string"},
                 origin: {type: "string"},
                 alias: {type: "string", multiple: true, default: []},
+                "import-map": {type: "string"},
                 script: {type: "string", multiple: true, default: []},
                 mount: {type: "string"},
                 playwright: {type: "string"},
@@ -168,12 +213,18 @@ export const readOptions = (args: string[]): Options => {
         // so refuse the extensions that can only be CommonJS up front.
         const commonjs = files.filter(file => /\.c[jt]s$/.test(file))
         if (commonjs.length) throw new UsageError(`CommonJS suites are not supported: ${commonjs.join(", ")}`)
-        return {mode: "node", suites: files.map(file => resolve(file)), aliases: values.alias.map(aliasOf)}
+        // The hook resolves to files; an address the page would fetch has
+        // nowhere to go here.
+        const imports = importsOf(values["import-map"], values.alias)
+        const urls = imports.filter(entry => "url" in entry)
+        if (urls.length) throw new UsageError(`--import-map addresses starting with / or a scheme apply to --playwright, --webdriver and --serve only: ${urls.map(entry => `"${entry.specifier}"`).join(", ")}`)
+        return {mode: "node", suites: files.map(file => resolve(file)), imports: imports.filter((entry): entry is Alias => "file" in entry)}
     }
 
     const suites = files.map(file => resolve(file))
     const scripts = values.script.map(script => resolve(script))
-    const aliases = values.alias.map(aliasOf)
+    const imports = importsOf(values["import-map"], values.alias)
+    const aliases = imports.filter((entry): entry is Alias => "file" in entry)
 
     // The suites are served from one directory, so a module they share is
     // one URL and loads once, as under Node; from two, it would load once
@@ -186,7 +237,7 @@ export const readOptions = (args: string[]): Options => {
     const shared: BrowserOptions = {
         suites: suites,
         scripts,
-        aliases,
+        imports,
         mount: values.mount == null ? undefined : mountOf(values.mount),
         host: values.host,
         port: values.port == null ? undefined : portOf(values.port),

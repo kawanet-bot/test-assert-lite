@@ -20,10 +20,23 @@ test-assert --playwright chromium browser/tests/bundled.mjs  # in headless Chrom
 
 - Prints this package's version and exits.
 
+### --alias <specifier>=<file>
+
+- ES module a specifier resolves to, `--alias lodash=node_modules/lodash-es/lodash.js` say. Repeatable, in every mode.
+- A `node:` builtin can be named, `--alias node:crypto=sha256.mjs` say, so the same suite runs on the same module in Node and in a browser.
+- In the browser modes a mistyped file shows up as a 404 in the access log on stderr.
+
+### --import-map <file>
+
+- A JSON import map, for the specifiers too many to give as `--alias`. Its `imports` come first, each `--alias` after, so the command line has the last word.
+- A relative address, `./vendor/x.js` say, is resolved against the file and served as an `--alias` file is. An address starting with `/`, or a URL, goes into the page's map as it is, for the root to serve or a CDN; neither is taken in Node mode.
+- `imports` only, with bare specifiers as keys: `scopes`, `integrity` and prefix entries ending in `/` are refused for now rather than mismatched.
+- The file is read once; `--serve` watches the files it names, not the map itself.
+
 ### --serve
 
 - Serves the suite for a browser, prints the URL to open, and keeps serving until Ctrl-C.
-- The page reloads when the suite, a `--script` or an `--alias` changes.
+- The page reloads when the suite, a `--script` or an imported file changes.
 - With `--mount`, the suite may be left out.
 
 ### --host <address>
@@ -40,12 +53,6 @@ test-assert --playwright chromium browser/tests/bundled.mjs  # in headless Chrom
 
 - What the browser reaches the server as, `http(s)://host[:port]`. Default: the address listened on, `127.0.0.1` for a wildcard such as `0.0.0.0`.
 - For a tunnel or a proxy in between: it is what the runners open and what `--serve` prints.
-
-### --alias <specifier>=<file>
-
-- ES module a specifier resolves to, `--alias lodash=node_modules/lodash-es/lodash.js` say. Repeatable, in every mode.
-- A `node:` builtin can be named, `--alias node:crypto=sha256.mjs` say, so the same suite runs on the same module in Node and in a browser.
-- In the browser modes a mistyped file shows up as a 404 in the access log on stderr.
 
 ### --script <file>
 
