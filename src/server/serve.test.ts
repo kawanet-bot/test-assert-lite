@@ -212,6 +212,23 @@ describe("server/serve", () => {
         assert.equal((await get(server.origin, "/dist/%zz.mjs")).status, 404)
     })
 
+    it("writes every Set-Cookie a Response carries as a line of its own", async () => {
+        const cookies = await serve({
+            handler: async () => {
+                const headers = new Headers({"content-type": "text/plain"})
+                headers.append("set-cookie", "a=1; Path=/")
+                headers.append("set-cookie", "b=2; Path=/; Expires=Wed, 21 Oct 2026 07:28:00 GMT")
+                return new Response("in", {headers})
+            },
+        })
+        try {
+            const res = await fetch(cookies.origin + "/")
+            assert.deepEqual(res.headers.getSetCookie(), ["a=1; Path=/", "b=2; Path=/; Expires=Wed, 21 Oct 2026 07:28:00 GMT"])
+        } finally {
+            cookies.close()
+        }
+    })
+
     it("answers a HEAD with the headers alone, and any other method with 405", async () => {
         const head = await call(server.origin, "/dist/lib.mjs", "HEAD")
         assert.equal(head.status, 200)

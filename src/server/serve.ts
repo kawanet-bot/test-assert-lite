@@ -55,7 +55,7 @@ const toRequest = async (req: IncomingMessage, bound: string): Promise<Request> 
 // What goes back out, once nothing can fail any more.
 interface Answer {
     status: number
-    headers: Record<string, string>
+    headers: Record<string, string | string[]>
     body: Buffer
 }
 
@@ -85,7 +85,11 @@ export const serve = async ({handler, log, ...options}: ServeOptions): Promise<S
             const res = await handler(c, async () => undefined)
             if (res != null && !c.finalized) c.res = res
             const response = c.finalized ? c.res : await c.notFound()
-            return {status: response.status, headers: Object.fromEntries(response.headers), body: Buffer.from(await response.arrayBuffer())}
+            // A record holds one value per name; Set-Cookie may come several times.
+            const headers: Record<string, string | string[]> = Object.fromEntries(response.headers)
+            const cookies = response.headers.getSetCookie()
+            if (cookies.length) headers["set-cookie"] = cookies
+            return {status: response.status, headers, body: Buffer.from(await response.arrayBuffer())}
         } catch (error) {
             log?.(error instanceof Error ? error.stack ?? error.message : String(error))
             return {status: c == null ? 400 : 500, headers: {}, body: Buffer.alloc(0)}

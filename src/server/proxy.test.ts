@@ -28,6 +28,7 @@ describe("server/proxy", () => {
                 seen.push({method: req.method ?? "", url: req.url ?? "", headers: req.headers, body})
                 if (req.url === "/site/gone") return res.writeHead(404, {"content-type": "text/plain"}).end("no such page")
                 if (req.url === "/site/away") return res.writeHead(302, {location: "/site/"}).end()
+                if (req.url === "/site/login") return res.writeHead(200, {"set-cookie": ["session=abc; Path=/", "csrf=xyz; Path=/; Expires=Wed, 21 Oct 2026 07:28:00 GMT"]}).end("in")
                 if (req.url === "/site/zipped") return res.writeHead(200, {"content-type": "text/html", "content-encoding": "gzip"}).end(gzipSync("<head></head>unzipped"))
                 res.writeHead(200, {"content-type": "text/html; charset=utf-8", "x-upstream": "yes", connection: "close"}).end(`<head></head>${body}`)
             })
@@ -62,6 +63,16 @@ describe("server/proxy", () => {
         assert.equal(got?.headers["x-mine"], "kept")
         assert.equal(got?.headers["content-type"], "text/plain")
         assert.equal(got?.headers.host, new URL(base).host)
+    })
+
+    it("keeps every Set-Cookie the upstream sends", async () => {
+        const res = await through("/app/login")
+        assert.deepEqual(res.headers.getSetCookie(), ["session=abc; Path=/", "csrf=xyz; Path=/; Expires=Wed, 21 Oct 2026 07:28:00 GMT"])
+    })
+
+    it("asks the upstream for the path as it came, escapes and all", async () => {
+        await through("/app/asset%23name.js?v=%3F")
+        assert.equal(seen.at(-1)?.url, "/site/asset%23name.js?v=%3F")
     })
 
     it("passes a 404 and a redirect on as they are", async () => {

@@ -17,10 +17,12 @@ export interface ProxyOptions {
 // so the encoding and the length go with them; host comes from the URL.
 const DROP = ["connection", "keep-alive", "proxy-connection", "te", "trailer", "transfer-encoding", "upgrade", "content-encoding", "content-length", "host"]
 
-const strip = (headers: Headers): Record<string, string> => {
+// As a Headers, not a record: a record has one value per name, and an
+// upstream may set several cookies.
+const strip = (headers: Headers): Headers => {
     const out = new Headers(headers)
     for (const name of DROP) out.delete(name)
-    return Object.fromEntries(out)
+    return out
 }
 
 /**
@@ -31,7 +33,10 @@ const strip = (headers: Headers): Record<string, string> => {
 export const proxy = ({path: at, upstream}: ProxyOptions): MiddlewareHandler => async (c, next) => {
     if (c.finalized || !c.req.path.startsWith(at)) return next()
     const {method} = c.req
-    const target = new URL(c.req.path.slice(at.length) + new URL(c.req.url).search, upstream)
+    // From the URL as it came, still escaped: the decoded path is for
+    // matching files, and a "#" or a "?" decoded in it would change the target.
+    const {pathname, search} = new URL(c.req.url)
+    const target = new URL(pathname.slice(at.length) + search, upstream)
     let res: Response
     try {
         res = await fetch(target, {
@@ -45,5 +50,5 @@ export const proxy = ({path: at, upstream}: ProxyOptions): MiddlewareHandler => 
     } catch {
         return c.body(null, 502)
     }
-    return c.body(res.body, res.status, strip(res.headers))
+    return new Response(res.body, {status: res.status, headers: strip(res.headers)})
 }
