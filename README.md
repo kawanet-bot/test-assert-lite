@@ -236,6 +236,8 @@ The two builtins stay in the bundle as written. The CLI maps them, in Node and i
 
 ```js
 // rollup.config.mjs
+import multiEntry from "@rollup/plugin-multi-entry"
+
 export default {
     input: "test/*.test.mjs",
     external: [
@@ -246,6 +248,7 @@ export default {
         file: "htdocs/scripts/bundled-tests.mjs",
         format: "esm",
     },
+    plugins: [multiEntry()],
     treeshake: false,
 }
 ```
