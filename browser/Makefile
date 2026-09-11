@@ -9,9 +9,9 @@ SHELL := bash
 
 PLAYWRIGHT_VERSION := 1.62.1
 
-MJS_DST := ../dist/test-assert-lite.mjs
+MJS_DST := ../esm/test-assert-lite.mjs
 MINJS_DST := ../dist/test-assert-lite.min.js
-EXTRAS_DST := ../dist/test-assert-lite.extras.mjs
+EXTRAS_DST := ../esm/test-assert-lite.extras.mjs
 BROWSER_TEST_DST := ../browser/tests/bundled.mjs
 
 # The bundle rule, its size check, and its dependencies belong to the

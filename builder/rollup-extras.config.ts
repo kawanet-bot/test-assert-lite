@@ -6,16 +6,12 @@ const rollupConfig: RollupOptions = {
     input: "../src/extras/extras.ts",
 
     // Every bare import stays external, the package's own name among
-    // them; that one is rewritten below.
+    // them: from esm/ it resolves through the package's exports.
     external: [/^[^.\/]/],
 
     output: {
-        file: "../dist/test-assert-lite.extras.mjs",
+        file: "../esm/test-assert-lite.extras.mjs",
         format: "esm",
-        // A bare self-reference from inside dist/ hits dist/package.json's
-        // commonjs marker first and fails (no "exports" there), so the
-        // bundle reads the library shipped beside it by relative path.
-        paths: (id) => (id === "test-assert-lite" ? "./test-assert-lite.mjs" : id),
     },
 
     plugins: [

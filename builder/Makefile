@@ -17,9 +17,9 @@ EXTRAS_SRC := $(wildcard ../src/extras/*.ts) ../src/extras/playwright.mjs $(wild
 TYPES := $(wildcard ../types/*.d.ts)
 BUILDER_SRC := $(wildcard ./*.ts)
 
-MJS_DST := ../dist/test-assert-lite.mjs
+MJS_DST := ../esm/test-assert-lite.mjs
 MINJS_DST := ../dist/test-assert-lite.min.js
-EXTRAS_DST := ../dist/test-assert-lite.extras.mjs
+EXTRAS_DST := ../esm/test-assert-lite.extras.mjs
 PKG_DST := ../dist/package.json
 BROWSER_TEST_DST := ../browser/tests/bundled.mjs
 BUILDER_TEST_DST := ./tests/bundled.mjs
@@ -80,10 +80,9 @@ $(MJS_DST): $(MJS_CONFIG) $(SRC) $(BUILDER_SRC)
 	@test "$$(wc -c < $@)" -le $(MJS_MAX_BYTES) || { echo "ERROR: $@ exceeds $(MJS_MAX_BYTES) byte cap" >&2; exit 1; }
 	@echo ""
 
-# The extras (the CLI as a function), built alongside the library bundle
-# they resolve at runtime through a plain relative import rather than
-# package self-reference (see rollup-extras.config.ts for why). The
-# executable bin/cli.mjs is hand-written and reaches this by subpath.
+# The extras (the CLI as a function) import the library by the package's
+# own name, which resolves from esm/ but not from under dist/package.json.
+# The executable bin/cli.mjs is hand-written and reaches this by subpath.
 $(EXTRAS_DST): $(EXTRAS_CONFIG) $(EXTRAS_SRC) $(BUILDER_SRC) $(MJS_DST)
 	@mkdir -p $(dir $@)
 	../node_modules/.bin/rollup -c $<

@@ -35,13 +35,13 @@
   "exports": {
     ".": {
       "types": "./types/test-assert-lite.d.ts",
-      "module-sync": "./dist/test-assert-lite.mjs",
-      "import": "./dist/test-assert-lite.mjs"
+      "module-sync": "./esm/test-assert-lite.mjs",
+      "import": "./esm/test-assert-lite.mjs"
     },
     "./extras": {
       "types": "./types/extras.d.ts",
-      "module-sync": "./dist/test-assert-lite.extras.mjs",
-      "import": "./dist/test-assert-lite.extras.mjs"
+      "module-sync": "./esm/test-assert-lite.extras.mjs",
+      "import": "./esm/test-assert-lite.extras.mjs"
     },
     "./test": {
       "types": "./exports/test.d.mts",
@@ -64,9 +64,9 @@
     "browser/run.html",
     "browser/session/",
     "dist/package.json",
-    "dist/test-assert-lite.extras.mjs",
     "dist/test-assert-lite.min.js",
-    "dist/test-assert-lite.mjs",
+    "esm/test-assert-lite.extras.mjs",
+    "esm/test-assert-lite.mjs",
     "exports/",
     "htdocs/",
     "LICENSE",

@@ -42,7 +42,7 @@ export interface App {
     close(): void
 }
 
-// The package root holds dist/, exports/, htdocs/ and the IIFE's shim;
+// The package root holds dist/, esm/, exports/, htdocs/ and the IIFE's shim;
 // they are served from there whatever the suite's location.
 const root = fileURLToPath(packageRoot())
 
@@ -50,7 +50,7 @@ const root = fileURLToPath(packageRoot())
 // builtin maps onto the subpath of the same name, and the subpaths resolve
 // too. An alias adds its specifier on top.
 const IMPORTS = {
-    "test-assert-lite": "/@tal/dist/test-assert-lite.mjs",
+    "test-assert-lite": "/@tal/esm/test-assert-lite.mjs",
     "test-assert-lite/test": "/@tal/exports/test.mjs",
     "test-assert-lite/assert": "/@tal/exports/assert.mjs",
     "test-assert-lite/assert/strict": "/@tal/exports/assert/strict.mjs",
@@ -103,15 +103,10 @@ export const createApp = (options: AppOptions): App => {
         + suites.map(suite => `<script type="module" src="${served.urlOf(suite)}"></script>\n`).join("")
     const head = withHead(importmap + tags)
 
-    // The root serves htdocs/, or what --mount names in its place, a
-    // directory or an upstream to proxy: whichever it is, its HTML gets the
-    // head above and, with watch on, the ask that reloads it. The page the
-    // CLI drives lives beside the CLI's other browser files and is served
-    // under the run alone, with the head but no ask. Each is a chain of
-    // its own, so the head reaches what that chain serves and nothing
-    // served after it. Everything else the CLI provides sits under /@tal/,
-    // the build output and the subpath bridges included, as those have to
-    // stay where the package puts them; nothing there is touched.
+    // Two pages get the head: the root's HTML, with the reload ask under
+    // watch, and the run's page, without it. Each is a scoped chain so the
+    // head touches nothing served after it, /@tal/ least of all: the build
+    // and the bridges have to stay as the package ships them.
     const atRoot = mounted == null
         ? serveStatic({path: "/", root: resolve(root, "htdocs")})
         : /^https?:\/\//i.test(mounted) ? proxy({path: "/", upstream: mounted}) : serveStatic({path: "/", root: mounted})
@@ -119,7 +114,7 @@ export const createApp = (options: AppOptions): App => {
         channel.handler,
         ...(watcher == null ? [] : [watcher.handler]),
         scoped(compose([head, serveStatic({path: `${channel.path}run.html`, root: resolve(root, "browser", "run.html")})])),
-        serveStatic({path: "/@tal/dist/test-assert-lite.mjs", root: resolve(root, "exports", "global.mjs")}),
+        serveStatic({path: "/@tal/esm/test-assert-lite.mjs", root: resolve(root, "exports", "global.mjs")}),
         serveStatic({path: "/@tal/dist/", root: resolve(root, "dist")}),
         serveStatic({path: "/@tal/exports/", root: resolve(root, "exports")}),
         ...served.dirs.map(dir => serveStatic(dir)),
