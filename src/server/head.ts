@@ -6,8 +6,9 @@ import type {MiddlewareHandler} from "./middleware.ts"
 
 // A page that carries an import map of its own: browsers differ on a
 // second one, so none is added. A regexp is enough to see one; the HTML
-// is not parsed.
-const IMPORT_MAP = /<script[^>]*\stype\s*=\s*["']?importmap\b/i
+// is not parsed. The type is the whole value: importmap-shim and the
+// like are not maps to a browser.
+const IMPORT_MAP = /<script\b[^>]*\stype\s*=\s*(?:['"]\s*importmap\s*['"]|importmap(?=[\s>]))/i
 
 /** Whether the HTML has an import map of its own. */
 export const hasImportMap = (html: string): boolean => IMPORT_MAP.test(html)
