@@ -3,8 +3,9 @@
 // value has to take. Anything wrong is a UsageError from here, before the
 // caller has opened a server or a watch on the strength of it.
 
-import {dirname, resolve} from "node:path"
+import {resolve} from "node:path"
 import {parseArgs} from "node:util"
+import {createFiles} from "../server/files.ts"
 
 export const USAGE = `Usage: test-assert [options] <file...>
   --serve                     serve the suite for a browser and print the URL; the page reloads on a change
@@ -38,7 +39,7 @@ export interface Alias {
 // of, and where the server sits. --serve with --mount may go without a
 // suite: the mounted pages carry the library then, and whatever they run.
 export interface BrowserOptions {
-    /** The suites, absolute, all in one directory; none only under --serve with --mount. */
+    /** The suites, absolute, all served from one directory; none only under --serve with --mount. */
     files: string[]
     /** Classic scripts to run first, absolute, in order. */
     scripts: string[]
@@ -166,18 +167,22 @@ export const readOptions = (args: string[]): Options => {
         return {mode: "node", files: files.map(file => resolve(file))}
     }
 
-    // A browser run's suites share one mount, so a module they share loads
-    // once, as under Node; suites from two directories would need two
-    // mounts, and a module shared across them would load once per mount.
     const suites = files.map(file => resolve(file))
-    if (new Set(suites.map(file => dirname(file))).size > 1) {
-        throw new UsageError(`--playwright, --webdriver and --serve take suites from one directory: ${files.join(", ")}`)
+    const scripts = values.script.map(script => resolve(script))
+    const aliases = values.alias.map(aliasOf)
+
+    // The suites are served from one directory, so a module they share is
+    // one URL and loads once, as under Node; from two, it would load once
+    // per directory. One under another counts as served from the latter.
+    const served = createFiles([...suites, ...scripts, ...aliases.map(alias => alias.file)])
+    if (new Set(suites.map(file => served.dirOf(file))).size > 1) {
+        throw new UsageError("--playwright, --webdriver and --serve take the suites from one directory")
     }
 
     const shared: BrowserOptions = {
         files: suites,
-        scripts: values.script.map(script => resolve(script)),
-        aliases: values.alias.map(aliasOf),
+        scripts,
+        aliases,
         mount: values.mount == null ? undefined : mountOf(values.mount),
         host: values.host,
         port: values.port == null ? undefined : portOf(values.port),
