@@ -88,6 +88,7 @@ describe("extras/options", () => {
                 file: resolve("suite.mjs"),
                 scripts: [],
                 aliases: [],
+                mount: undefined,
                 host: undefined,
                 port: undefined,
                 origin: undefined,

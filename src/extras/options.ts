@@ -13,6 +13,7 @@ export const USAGE = `Usage: test-assert [options] <file...>
   --origin <url>              what the browser reaches the server as, http(s)://host[:port] (browser modes, default: from --host)
   --alias <specifier>=<file>  ES module a bare specifier resolves to (browser modes, repeatable)
   --script <file>             classic script to run first (browser modes, repeatable)
+  --mount <dir|url>           what the root serves instead of htdocs: a directory, or an origin to proxy (browser modes)
   --playwright <browser>      run the suite through Playwright: chromium, firefox or webkit
   --webdriver                 run the suite through a WebDriver server: safaridriver, chromedriver
   --webdriver-session <file>  JSON sent as the body of POST /session (default: no capabilities)
@@ -41,6 +42,8 @@ export interface BrowserOptions {
     /** Classic scripts to run first, absolute, in order. */
     scripts: string[]
     aliases: Alias[]
+    /** What the root serves in place of htdocs: an absolute directory, or an http(s) URL ending in "/". */
+    mount?: string
     host?: string
     port?: number
     origin?: string
@@ -81,6 +84,21 @@ export const aliasOf = (entry: string): Alias => {
     return {specifier: entry.slice(0, at), file: resolve(entry.slice(at + 1))}
 }
 
+// A mount is a directory, resolved, or an http(s) URL to proxy, taken
+// as given up to its path and made to end in "/" so a request's path
+// joins onto it.
+export const mountOf = (value: string): string => {
+    if (!/^https?:\/\//i.test(value)) return resolve(value)
+    let url: URL
+    try {
+        url = new URL(value)
+    } catch {
+        throw new UsageError(`--mount takes a directory or http(s)://host[:port][/path]: ${value}`)
+    }
+    if (url.search || url.hash || url.username || url.password) throw new UsageError(`--mount takes a directory or http(s)://host[:port][/path]: ${value}`)
+    return url.href.endsWith("/") ? url.href : `${url.href}/`
+}
+
 export const browserOf = (name: string): Browser => {
     if (!(BROWSERS as readonly string[]).includes(name)) throw new UsageError(`--playwright takes chromium, firefox or webkit: ${name}`)
     return name as Browser
@@ -100,6 +118,7 @@ const parse = (args: string[]) => {
                 origin: {type: "string"},
                 alias: {type: "string", multiple: true, default: []},
                 script: {type: "string", multiple: true, default: []},
+                mount: {type: "string"},
                 playwright: {type: "string"},
                 webdriver: {type: "boolean", default: false},
                 "webdriver-session": {type: "string"},
@@ -131,8 +150,8 @@ export const readOptions = (args: string[]): Options => {
     if ((browser != null ? 1 : 0) + (webdriver ? 1 : 0) + (serve ? 1 : 0) > 1) {
         throw new UsageError("--playwright, --webdriver and --serve are exclusive")
     }
-    if (!browsing && (values.script.length || values.alias.length || values.host != null || values.port != null || values.origin != null)) {
-        throw new UsageError("--host, --port, --origin, --alias and --script apply to --playwright, --webdriver and --serve only")
+    if (!browsing && (values.script.length || values.alias.length || values.mount != null || values.host != null || values.port != null || values.origin != null)) {
+        throw new UsageError("--host, --port, --origin, --alias, --script and --mount apply to --playwright, --webdriver and --serve only")
     }
     if (!webdriver && (values["webdriver-session"] != null || values.endpoint != null)) {
         throw new UsageError("--webdriver-session and --endpoint apply to --webdriver only")
@@ -152,6 +171,7 @@ export const readOptions = (args: string[]): Options => {
         file: resolve(files[0] as string),
         scripts: values.script.map(script => resolve(script)),
         aliases: values.alias.map(aliasOf),
+        mount: values.mount == null ? undefined : mountOf(values.mount),
         host: values.host,
         port: values.port == null ? undefined : portOf(values.port),
         origin: values.origin == null ? undefined : originOf(values.origin),

@@ -1,5 +1,6 @@
 import {strict as assert} from "node:assert"
 import {mkdir, mkdtemp, rm, writeFile} from "node:fs/promises"
+import {createServer} from "node:http"
 import {tmpdir} from "node:os"
 import {join} from "node:path"
 import {after, before, describe, it} from "node:test"
@@ -149,6 +150,48 @@ describe("server/app", () => {
         } finally {
             blind.close()
             running.close()
+        }
+    })
+
+    it("serves a mounted directory at the root in place of htdocs, its HTML with the head", async () => {
+        await mkdir(join(dir, "site"))
+        await writeFile(join(dir, "site", "index.html"), "<html><head></head><body>mine</body></html>")
+        const mounted = createApp({file: join(dir, "tests", "my suite.mjs"), mount: join(dir, "site"), stdout: () => undefined})
+        const running = await serve({handler: mounted.handler})
+        try {
+            const index = await get(running.origin + "/")
+            assert.equal(index.status, 200)
+            assert.ok(index.body.includes("mine"))
+            assert.ok(index.body.includes('<script type="importmap">'))
+            assert.equal((await get(running.origin + "/styles/test-assert-lite.css")).status, 404)
+            assert.equal((await get(running.origin + mounted.page)).status, 200)
+        } finally {
+            mounted.close()
+            running.close()
+        }
+    })
+
+    it("proxies a mounted URL at the root, its HTML with the head", async () => {
+        const upstream = createServer((req, res) => {
+            if (req.url === "/app/") return res.writeHead(200, {"content-type": "text/html"}).end("<html><head></head><body>theirs</body></html>")
+            res.writeHead(404).end()
+        })
+        await new Promise<void>(listening => upstream.listen(0, "127.0.0.1", listening))
+        const address = upstream.address()
+        const port = typeof address === "object" && address != null ? address.port : 0
+        const mounted = createApp({file: join(dir, "tests", "my suite.mjs"), mount: `http://127.0.0.1:${port}/app/`, stdout: () => undefined})
+        const running = await serve({handler: mounted.handler})
+        try {
+            const index = await get(running.origin + "/")
+            assert.equal(index.status, 200)
+            assert.ok(index.body.includes("theirs"))
+            assert.ok(index.body.includes('<script type="importmap">'))
+            assert.equal((await get(running.origin + "/elsewhere")).status, 404)
+            assert.equal((await get(running.origin + "/@tal/dist/test-assert-lite.min.js")).status, 200)
+        } finally {
+            mounted.close()
+            running.close()
+            upstream.close()
         }
     })
 

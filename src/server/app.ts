@@ -12,6 +12,7 @@ import {createChannel} from "./channel.ts"
 import {withHead} from "./head.ts"
 import type {MiddlewareHandler} from "./middleware.ts"
 import {compose, scoped} from "./middleware.ts"
+import {proxy} from "./proxy.ts"
 import {serveStatic} from "./static.ts"
 import type {Watcher} from "./watch.ts"
 import {createWatcher} from "./watch.ts"
@@ -23,6 +24,8 @@ export interface AppOptions extends ChannelOptions {
     scripts?: string[]
     /** Bare specifiers and the ES module files they resolve to. */
     aliases?: {specifier: string, file: string}[]
+    /** What the root serves in place of htdocs: an absolute directory, or an http(s) URL ending in "/" to proxy. */
+    mount?: string
     /** Reloads the page people open when the suite, a script or an alias changes; off where it cannot watch. */
     watch?: boolean
 }
@@ -67,7 +70,7 @@ const mount = (dir: string, file: string): {url: string, path: string} => ({
  * of the verdict the page at `page` reports back through it.
  */
 export const createApp = (options: AppOptions): App => {
-    const {file, scripts = [], aliases = [], stderr = text => process.stderr.write(text)} = options
+    const {file, scripts = [], aliases = [], mount: mounted, stderr = text => process.stderr.write(text)} = options
     const channel = createChannel(options)
 
     // Watching is a convenience of --serve, not what it is for: where the
@@ -109,14 +112,18 @@ export const createApp = (options: AppOptions): App => {
         + `<script type="module" src="${suite.url}"></script>\n`
     const head = withHead(importmap + tags)
 
-    // Document root is htdocs/, whose HTML gets the head above and, with
-    // watch on, the ask that reloads it; the page the CLI drives lives
-    // beside the CLI's other browser files and is served under the run
-    // alone, with the head but no ask. Each is a chain of its own, so the
-    // head reaches what that chain serves and nothing served after it.
-    // Everything else the CLI provides sits under /@tal/, the build output
-    // and the subpath bridges included, as those have to stay where the
-    // package puts them; nothing there is touched. Nothing else is exposed.
+    // The root serves htdocs/, or what --mount names in its place, a
+    // directory or an upstream to proxy: whichever it is, its HTML gets the
+    // head above and, with watch on, the ask that reloads it. The page the
+    // CLI drives lives beside the CLI's other browser files and is served
+    // under the run alone, with the head but no ask. Each is a chain of
+    // its own, so the head reaches what that chain serves and nothing
+    // served after it. Everything else the CLI provides sits under /@tal/,
+    // the build output and the subpath bridges included, as those have to
+    // stay where the package puts them; nothing there is touched.
+    const atRoot = mounted == null
+        ? serveStatic({path: "/", root: resolve(root, "htdocs")})
+        : /^https?:\/\//i.test(mounted) ? proxy({path: "/", upstream: mounted}) : serveStatic({path: "/", root: mounted})
     const handler = compose([
         channel.handler,
         ...(watcher == null ? [] : [watcher.handler]),
@@ -127,7 +134,7 @@ export const createApp = (options: AppOptions): App => {
         serveStatic({path: "/@tal/exports/", root: resolve(root, "exports")}),
         serveStatic({path: "/@tal/tests/0/", root: dirname(file)}),
         ...aliasDirs.map((dir, i) => serveStatic({path: dir, root: dirname(aliases[i]?.file as string)})),
-        scoped(compose([...(watcher == null ? [] : [watcher.inject]), head, serveStatic({path: "/", root: resolve(root, "htdocs")})])),
+        scoped(compose([...(watcher == null ? [] : [watcher.inject]), head, atRoot])),
     ])
 
     return {
