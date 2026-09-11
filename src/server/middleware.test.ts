@@ -1,7 +1,7 @@
 import {strict as assert} from "node:assert"
 import {describe, it} from "node:test"
-import type {Context} from "./middleware.ts"
-import {compose, createContext} from "./middleware.ts"
+import type {Context, MiddlewareHandler} from "./middleware.ts"
+import {compose, createContext, scoped} from "./middleware.ts"
 
 const context = (url = "http://127.0.0.1/"): Context => createContext(new Request(url))
 
@@ -35,6 +35,32 @@ describe("server/middleware", () => {
             assert.equal(c.req.header("X-Run"), "1")
             assert.equal(c.req.header("x-none"), undefined)
             assert.equal(await c.req.text(), "text")
+        })
+    })
+
+    describe("scoped", () => {
+        const stamp = (mark: string): MiddlewareHandler => async (c, next) => {
+            await next()
+            if (!c.finalized) return
+            c.res = c.body(`${await c.res.text()}${mark}`, c.res.status)
+        }
+
+        it("keeps a wrapper inside to what its own chain answers", async () => {
+            const c = createContext(new Request("http://127.0.0.1/x"))
+            await compose([
+                scoped(compose([stamp("[inner]"), async (_, next) => next()])),
+                async c => c.body("outer"),
+            ])(c, async () => undefined)
+            assert.equal(await c.res.text(), "outer")
+        })
+
+        it("lets what its chain answers through, wrapped", async () => {
+            const c = createContext(new Request("http://127.0.0.1/x"))
+            await compose([
+                scoped(compose([stamp("[inner]"), async c => c.body("mine")])),
+                async c => c.body("outer"),
+            ])(c, async () => undefined)
+            assert.equal(await c.res.text(), "mine[inner]")
         })
     })
 

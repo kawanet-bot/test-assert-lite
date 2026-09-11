@@ -35,18 +35,19 @@ interface Located {
     path: string
 }
 
-// A resolved path that leaves the directory, through "..", is refused, and
-// so is the directory itself.
+// A resolved path that leaves the directory, through "..", is refused. A
+// directory asked for by name, the mount's own or one below with a "/",
+// stands for its index.html; there is no listing.
 const within = (dir: string, rel: string): Located | null => {
     const base = resolve(dir)
-    const path = resolve(base, rel)
+    const path = resolve(base, rel === "" || rel.endsWith("/") ? `${rel}index.html` : rel)
     return path.startsWith(base + sep) ? {base, path} : null
 }
 
 // The check above is lexical; a symlink inside the directory could still
 // point above it and readFile would follow. So the real path is checked
 // against the directory's real path too, and that is what gets read. Only
-// a file is served: a directory has no listing and no index.
+// a file is served: a directory named without a "/" is not one.
 const realWithin = async ({base, path}: Located): Promise<string> => {
     const real = await realpath(path)
     if (base != null && !real.startsWith((await realpath(base)) + sep)) throw new Error("outside")
@@ -56,7 +57,8 @@ const realWithin = async ({base, path}: Located): Promise<string> => {
 
 /**
  * Serves the files under a directory, or the one file, at `path`, to GET
- * and HEAD. A path that is not a file there goes on to the next middleware;
+ * and HEAD; a directory's index.html answers for the directory. A path that
+ * is not a file there goes on to the next middleware;
  * any other method on one is a 405, and a file of a kind a test page is not
  * made of, a .ts or a .cjs say, is a 403 rather than handed out as bytes.
  */

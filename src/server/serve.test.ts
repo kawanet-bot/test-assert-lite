@@ -76,6 +76,9 @@ describe("server/serve", () => {
         await mkdir(join(dir, "dist"))
         await mkdir(join(dir, "elsewhere"))
         await writeFile(join(dir, "htdocs", "page.html"), "<p>page</p>")
+        await writeFile(join(dir, "htdocs", "index.html"), "<p>index</p>")
+        await mkdir(join(dir, "htdocs", "sub"))
+        await writeFile(join(dir, "htdocs", "sub", "index.html"), "<p>sub</p>")
         await writeFile(join(dir, "htdocs", "icon.svg"), "<svg/>")
         // Bytes no text encoding would keep, as a favicon or an image has them.
         await writeFile(join(dir, "htdocs", "favicon.ico"), Buffer.from([0, 0, 1, 0, 255, 254, 128, 10, 13]))
@@ -172,6 +175,12 @@ describe("server/serve", () => {
     it("serves a mounted file by its decoded path, and nothing beside it", async () => {
         assert.equal((await get(server.origin, "/@tal/tests/0/my%20suite.mjs")).status, 200)
         assert.equal((await get(server.origin, "/@tal/tests/0/suite.mjs")).status, 404)
+    })
+
+    it("answers a directory, named with a slash, with its index.html", async () => {
+        assert.equal((await get(server.origin, "/")).body, "<p>index</p>")
+        assert.equal((await get(server.origin, "/sub/")).body, "<p>sub</p>")
+        assert.equal((await get(server.origin, "/sub")).status, 404)
     })
 
     it("answers 404 for a missing file, a directory and a path without a kind", async () => {
