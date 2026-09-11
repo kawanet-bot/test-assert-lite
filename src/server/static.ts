@@ -15,6 +15,7 @@ export interface ServeStaticOptions {
 }
 
 const TYPES: Record<string, string> = {
+    ".cjs": "text/javascript",
     ".css": "text/css",
     ".html": "text/html",
     ".ico": "image/x-icon",
@@ -60,7 +61,7 @@ const realWithin = async ({base, path}: Located): Promise<string> => {
  * and HEAD; a directory's index.html answers for the directory. A path that
  * is not a file there goes on to the next middleware;
  * any other method on one is a 405, and a file of a kind a test page is not
- * made of, a .ts or a .cjs say, is a 403 rather than handed out as bytes.
+ * made of, a .ts say, is a 403 rather than handed out as bytes.
  */
 export const serveStatic = ({path: at, root}: ServeStaticOptions): MiddlewareHandler => async (c, next) => {
     if (c.finalized) return next()

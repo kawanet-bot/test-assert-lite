@@ -191,7 +191,7 @@ describe("server/serve", () => {
     })
 
     it("refuses a kind it does not serve with 403, when the file is there", async () => {
-        assert.equal((await get(server.origin, "/dist/legacy.cjs")).status, 403)
+        assert.equal((await get(server.origin, "/dist/legacy.cjs")).type, "text/javascript; charset=utf-8")
         assert.equal((await get(server.origin, "/dist/source.ts")).status, 403)
         assert.equal((await get(server.origin, "/dist/missing.ts")).status, 404)
     })
@@ -318,11 +318,11 @@ describe("server/serve", () => {
         const from = lines.length
         await get(server.origin, "/dist/lib.mjs")
         await get(server.origin, "/missing.html")
-        await get(server.origin, "/dist/legacy.cjs")
+        await get(server.origin, "/dist/source.ts")
         assert.deepEqual(lines.slice(from).map(line => line.replace(/ \d+\.\d{3} ms$/, " N ms")), [
             "GET /dist/lib.mjs 200 20 - N ms",
             "GET /missing.html 404 - - N ms",
-            "GET /dist/legacy.cjs 403 - - N ms",
+            "GET /dist/source.ts 403 - - N ms",
         ])
     })
 })
