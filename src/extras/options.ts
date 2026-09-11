@@ -12,7 +12,7 @@ export const USAGE = `Usage: test-assert [options] <file...>
   --host <address>            address the server listens on (browser modes, default: 127.0.0.1)
   --port <number>             port the server listens on (browser modes, default: a free one)
   --origin <url>              what the browser reaches the server as, http(s)://host[:port] (browser modes, default: from --host)
-  --alias <specifier>=<file>  ES module a bare specifier resolves to (browser modes, repeatable)
+  --alias <specifier>=<file>  ES module a specifier resolves to, a node: builtin too (repeatable)
   --script <file>             classic script to run first (browser modes, repeatable)
   --mount <dir|url>           what the root serves instead of htdocs: a directory, or an origin to proxy (browser modes)
   --webdriver                 run the suite through a WebDriver server: safaridriver, chromedriver
@@ -53,7 +53,7 @@ export interface BrowserOptions {
 
 export type Options =
     | {mode: "help"}
-    | {mode: "node", suites: string[]}
+    | {mode: "node", suites: string[], aliases: Alias[]}
     | BrowserOptions & {mode: "serve"}
     | BrowserOptions & {mode: "playwright", browser: Browser}
     | BrowserOptions & {mode: "webdriver", session?: string, endpoint: string}
@@ -149,8 +149,8 @@ export const readOptions = (args: string[]): Options => {
     if ((browser != null ? 1 : 0) + (webdriver ? 1 : 0) + (serve ? 1 : 0) > 1) {
         throw new UsageError("--playwright, --webdriver and --serve are exclusive")
     }
-    if (!browsing && (values.script.length || values.alias.length || values.mount != null || values.host != null || values.port != null || values.origin != null)) {
-        throw new UsageError("--host, --port, --origin, --alias, --script and --mount apply to --playwright, --webdriver and --serve only")
+    if (!browsing && (values.script.length || values.mount != null || values.host != null || values.port != null || values.origin != null)) {
+        throw new UsageError("--host, --port, --origin, --script and --mount apply to --playwright, --webdriver and --serve only")
     }
     if (!webdriver && (values["webdriver-session"] != null || values.endpoint != null)) {
         throw new UsageError("--webdriver-session and --endpoint apply to --webdriver only")
@@ -164,7 +164,7 @@ export const readOptions = (args: string[]): Options => {
         // so refuse the extensions that can only be CommonJS up front.
         const commonjs = files.filter(file => /\.c[jt]s$/.test(file))
         if (commonjs.length) throw new UsageError(`CommonJS suites are not supported: ${commonjs.join(", ")}`)
-        return {mode: "node", suites: files.map(file => resolve(file))}
+        return {mode: "node", suites: files.map(file => resolve(file)), aliases: values.alias.map(aliasOf)}
     }
 
     const suites = files.map(file => resolve(file))

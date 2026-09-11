@@ -26,7 +26,7 @@ const run = async (options: Options): Promise<number> => {
     }
 
     if (options.mode === "node") {
-        return (await runInNode(options.suites)).success ? 0 : 1
+        return (await runInNode(options.suites, options.aliases)).success ? 0 : 1
     }
 
     // The application is the middleware, the server runs it; every request

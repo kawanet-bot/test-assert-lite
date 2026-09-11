@@ -38,8 +38,9 @@ test-assert --playwright chromium browser/tests/bundled.mjs  # in headless Chrom
 
 ### --alias <specifier>=<file>
 
-- ES module a bare specifier resolves to, `--alias lodash=node_modules/lodash-es/lodash.js` say. Repeatable.
-- A mistyped file shows up as a 404 in the access log on stderr.
+- ES module a specifier resolves to, `--alias lodash=node_modules/lodash-es/lodash.js` say. Repeatable, in every mode.
+- A `node:` builtin can be named, `--alias node:crypto=sha256.mjs` say, so the same suite runs on the same module in Node and in a browser.
+- In the browser modes a mistyped file shows up as a 404 in the access log on stderr.
 
 ### --script <file>
 

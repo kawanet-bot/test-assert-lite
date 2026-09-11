@@ -89,7 +89,7 @@ describe("extras/options", () => {
         })
 
         it("reads Node mode as the default, the files resolved in order", () => {
-            assert.deepEqual(readOptions(["a.test.ts", "b.test.ts"]), {mode: "node", suites: [resolve("a.test.ts"), resolve("b.test.ts")]})
+            assert.deepEqual(readOptions(["a.test.ts", "b.test.ts"]), {mode: "node", suites: [resolve("a.test.ts"), resolve("b.test.ts")], aliases: []})
         })
 
         it("refuses Node mode without a file, and with a CommonJS one", () => {
@@ -130,6 +130,13 @@ describe("extras/options", () => {
             refused(() => readOptions(["--serve", "--alias", "mod", "suite.mjs"]), /^--alias takes/)
         })
 
+        it("reads --alias in Node mode too", () => {
+            const options = readOptions(["--alias", "node:crypto=sha256.mjs", "a.test.ts"])
+            assert.equal(options.mode, "node")
+            if (options.mode !== "node") return
+            assert.deepEqual(options.aliases, [{specifier: "node:crypto", file: resolve("sha256.mjs")}])
+        })
+
         it("reads --playwright with its browser", () => {
             const options = readOptions(["--playwright", "webkit", "suite.mjs"])
             assert.equal(options.mode, "playwright")
@@ -159,7 +166,7 @@ describe("extras/options", () => {
         })
 
         it("refuses the server's and the page's flags in Node mode", () => {
-            for (const flags of [["--host", "x"], ["--port", "3000"], ["--origin", "http://x"], ["--alias", "a=b"], ["--script", "s.js"], ["--mount", "site"]]) {
+            for (const flags of [["--host", "x"], ["--port", "3000"], ["--origin", "http://x"], ["--script", "s.js"], ["--mount", "site"]]) {
                 refused(() => readOptions([...flags, "a.test.ts"]), /apply to --playwright, --webdriver and --serve only$/)
             }
         })
