@@ -19,11 +19,13 @@ import {packageRoot} from "./package-root.ts"
 const HOOK = `let parentURL, aliases
 const mapped = new Set(["node:test", "node:assert", "node:assert/strict"])
 export const initialize = (data) => { parentURL = data.parentURL; aliases = data.aliases }
-export const resolve = (specifier, context, next) =>
-    specifier in aliases ? {url: aliases[specifier], shortCircuit: true}
-    : mapped.has(specifier)
+export const resolve = (specifier, context, next) => {
+    const url = aliases.get(specifier)
+    if (url != null) return {url, shortCircuit: true}
+    return mapped.has(specifier)
         ? next("test-assert-lite/" + specifier.slice("node:".length), {...context, parentURL})
         : next(specifier, context)
+}
 `
 
 /**
@@ -33,7 +35,8 @@ export const resolve = (specifier, context, next) =>
  * instance run() reads.
  */
 export const runInNode = async (suites: string[], aliases: Alias[]): Promise<TAL.TestSummary> => {
-    const table = Object.fromEntries(aliases.map(({specifier, file}) => [specifier, pathToFileURL(file).href]))
+    // A Map, so a specifier named like an Object property finds no alias.
+    const table = new Map(aliases.map(({specifier, file}) => [specifier, pathToFileURL(file).href]))
     register(`data:text/javascript,${encodeURIComponent(HOOK)}`, {data: {parentURL: packageRoot().href, aliases: table}})
 
     for (const file of suites) {

@@ -66,13 +66,17 @@ test-bin:
 # ln -sfn replaces a link but would step into a real directory, hence the
 # rm. A missing $(PKG_ROOT) stops the recipe rather than handing ln an
 # empty target, which would leave a stray link named after the link path.
-# Only the exit codes matter here, so neither run's output is shown.
+# The alias pair proves the resolve hook in the copy under test: the same
+# suite passes with --alias and cannot resolve without it. Only the exit
+# codes matter here, so no run's output is shown.
 test-cli:
 	mkdir -p ../../sample/node_modules
 	[ -L ../../sample/node_modules/test-assert-lite ] || rm -rf ../../sample/node_modules/test-assert-lite
 	cd ../.. && target=$$(cd $(PKG_ROOT) && pwd -P) && ln -sfn "$$target" sample/node_modules/test-assert-lite
 	cd ../.. && ./$(PKG_ROOT)/bin/cli.mjs sample/pass.mjs > /dev/null 2>&1
 	cd ../.. && ! ./$(PKG_ROOT)/bin/cli.mjs sample/fail.mjs > /dev/null 2>&1
+	cd ../.. && ./$(PKG_ROOT)/bin/cli.mjs --alias greet=sample/lib/greet.mjs sample/alias.mjs > /dev/null 2>&1
+	cd ../.. && ! ./$(PKG_ROOT)/bin/cli.mjs sample/alias.mjs > /dev/null 2>&1
 
 # Script-context run of the minified bundle under $(PKG_ROOT): the browser
 # IIFE consumer shape; in the default root it also proves the tarball
