@@ -10,7 +10,7 @@ import {packageRoot} from "../extras/package-root.ts"
 import type {ChannelOptions} from "./channel.ts"
 import {createChannel} from "./channel.ts"
 import {createFiles} from "./files.ts"
-import {withHead} from "./head.ts"
+import {hasImportMap, withHead} from "./head.ts"
 import type {MiddlewareHandler} from "./middleware.ts"
 import {compose, scoped} from "./middleware.ts"
 import {proxy} from "./proxy.ts"
@@ -101,7 +101,13 @@ export const createApp = (options: AppOptions): App => {
     const importmap = `<script type="importmap">\n${JSON.stringify({imports}, null, 4)}\n</script>\n`
     const tags = scriptUrls.map(url => `<script src="${url}"></script>\n`).join("")
         + suites.map(suite => `<script type="module" src="${served.urlOf(suite)}"></script>\n`).join("")
-    const head = withHead(importmap + tags)
+    // A page with an import map of its own keeps it, and what the suites
+    // import is then its to map; stderr says so, as a 404 would not.
+    const head = withHead((html, path) => {
+        if (!hasImportMap(html)) return importmap + tags
+        stderr(`import map left to the page: ${path}\n`)
+        return tags
+    })
 
     // Two pages get the head: the root's HTML, with the reload ask under
     // watch, and the run's page, without it. Each is a scoped chain so the

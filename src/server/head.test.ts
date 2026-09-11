@@ -1,12 +1,12 @@
 import {strict as assert} from "node:assert"
 import {describe, it} from "node:test"
-import {withHead} from "./head.ts"
+import {hasImportMap, withHead} from "./head.ts"
 import type {MiddlewareHandler} from "./middleware.ts"
 import {compose, createContext} from "./middleware.ts"
 
 // Runs `markup` ahead of an answer of `body` with `type`, and gives back
 // what came out.
-const through = async (markup: string | (() => string), body: string | null, type?: string, status = 200): Promise<{status: number, type: string | null, body: string}> => {
+const through = async (markup: string | ((html: string, path: string) => string), body: string | null, type?: string, status = 200): Promise<{status: number, type: string | null, body: string}> => {
     const answer: MiddlewareHandler = async c => c.body(body, status, type == null ? {} : {"content-type": type})
     const c = createContext(new Request("http://127.0.0.1/page.html"))
     await compose([withHead(markup), answer])(c, async () => undefined)
@@ -25,6 +25,25 @@ describe("server/head", () => {
         const markup = (): string => `<!-- ${++n} $& $1 -->`
         assert.ok((await through(markup, "<head></head>", "text/html")).body.includes("<!-- 1 $& $1 --></head>"))
         assert.ok((await through(markup, "<head></head>", "text/html")).body.includes("<!-- 2 $& $1 --></head>"))
+    })
+
+    it("hands a function the page's HTML and path", async () => {
+        const seen: string[] = []
+        const markup = (html: string, path: string): string => {
+            seen.push(html, path)
+            return "<meta>"
+        }
+        await through(markup, "<head></head>", "text/html")
+        assert.deepEqual(seen, ["<head></head>", "/page.html"])
+    })
+
+    it("sees an import map of the page's own, however the tag is written", () => {
+        for (const tag of ['<script type="importmap">', "<script type='importmap'>", "<script type=importmap>", '<SCRIPT TYPE = "ImportMap">', '<script id="map" type="importmap">', '<script\n  type="importmap"\n>']) {
+            assert.ok(hasImportMap(`<head>${tag}{}</script></head>`), tag)
+        }
+        for (const tag of ['<script type="module">', '<script type="importmapx">', '<script data-type="importmap">', "<script>", '<meta type="importmap">']) {
+            assert.equal(hasImportMap(`<head>${tag}</script></head>`), false, tag)
+        }
     })
 
     it("leaves a page without a </head> as it came", async () => {

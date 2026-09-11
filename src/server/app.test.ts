@@ -202,6 +202,27 @@ describe("server/app", () => {
         }
     })
 
+    it("leaves a mounted page's own import map alone, adds the tags, and says so on stderr", async () => {
+        await mkdir(join(dir, "mapped"))
+        await writeFile(join(dir, "mapped", "index.html"), '<html><head><script type="importmap">{"imports":{"mine":"/mine.mjs"}}</script></head><body>mapped</body></html>')
+        const lines: string[] = []
+        const mapped = createApp({suites: [join(dir, "tests", "my suite.mjs")], mount: join(dir, "mapped"), stdout: () => undefined, stderr: text => lines.push(text)})
+        const running = await serve({handler: mapped.handler})
+        try {
+            const index = (await get(running.origin + "/")).body
+            assert.equal(index.split("importmap").length - 1, 1)
+            assert.ok(index.includes('"mine":"/mine.mjs"'))
+            assert.ok(index.includes('<script src="/@tal/dist/test-assert-lite.min.js"></script>'))
+            assert.ok(index.includes(`<script type="module" src="${tests}my%20suite.mjs"></script>\n</head>`))
+            assert.deepEqual(lines, ["import map left to the page: /\n"])
+            const run = (await get(running.origin + mapped.page)).body
+            assert.ok(run.includes('<script type="importmap">'))
+        } finally {
+            mapped.close()
+            running.close()
+        }
+    })
+
     it("proxies a mounted URL at the root, its HTML with the head", async () => {
         const asked: string[] = []
         const upstream = createServer((req, res) => {
