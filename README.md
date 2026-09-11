@@ -35,7 +35,7 @@ test-assert --playwright chromium browser/tests/bundled.mjs  # in headless Chrom
 
 ### --serve
 
-- Serves the suite for a browser, prints the URL to open, and keeps serving until Ctrl-C.
+- Serves the suite for a browser, prints the URL to open, and keeps serving until Ctrl-C. The page is titled after the package the suites belong to, or after the suites where there is none.
 - The page reloads when the suite, a `--script` or an imported file changes.
 - With `--mount`, the suite may be left out.
 

@@ -40,6 +40,7 @@ describe("server/app", () => {
         await writeFile(join(dir, "tests", "set+up#2.js"), "globalThis.setup = 2")
         await writeFile(join(dir, "lib", "mod.mjs"), "export const mod = 1")
         await writeFile(join(dir, "secret.json"), "{}")
+        await writeFile(join(dir, "package.json"), '{"name": "fixture-pkg"}')
         const laid = createFiles([join(dir, "tests", "my suite.mjs"), join(dir, "lib", "mod.mjs")])
         tests = laid.dirOf(join(dir, "tests", "my suite.mjs")).path
         lib = laid.dirOf(join(dir, "lib", "mod.mjs")).path
@@ -91,6 +92,7 @@ describe("server/app", () => {
         const res = await get(url(app.page))
         assert.equal(res.status, 200)
         assert.match(res.body, /reporter\.client/)
+        assert.ok(res.body.includes("<title>fixture-pkg</title>"))
         assert.ok(res.body.includes(`<script type="module" src="${tests}my%20suite.mjs"></script>\n<script type="module" src="${tests}second.mjs"></script>\n</head>`))
         assert.equal((await get(url("/run.html"))).status, 404)
         assert.equal((await get(url("/@tal/run/000000000/run.html"))).status, 404)
@@ -166,6 +168,30 @@ describe("server/app", () => {
         } finally {
             blind.close()
             running.close()
+        }
+    })
+
+    it("names its own pages after the suites' package, or the suites, and never a mounted page", async () => {
+        assert.ok((await get(url("/"))).body.includes("<title>fixture-pkg</title>\n"))
+        assert.ok((await get(url("/"))).body.includes("<h1>fixture-pkg</h1>"))
+        const plain = await mkdtemp(join(tmpdir(), "tal-nopkg-"))
+        await writeFile(join(plain, "a.mjs"), "")
+        await writeFile(join(plain, "b <c>.mjs"), "")
+        await mkdir(join(plain, "site"))
+        await writeFile(join(plain, "site", "index.html"), "<html><head><title>{{title}}</title></head><body>{{title}}</body></html>")
+        const named = createApp({suites: [join(plain, "a.mjs"), join(plain, "b <c>.mjs"), join(plain, "a.mjs")], stdout: () => undefined})
+        const mounted = createApp({suites: [join(plain, "a.mjs")], mount: join(plain, "site"), stdout: () => undefined})
+        const bare = createApp({mount: join(plain, "site"), stdout: () => undefined})
+        const servers = await Promise.all([named, mounted, bare].map(app => serve({handler: app.handler})))
+        try {
+            assert.ok((await get(servers[0]!.origin + named.page)).body.includes("<title>a.mjs b &#60;c&#62;.mjs</title>"))
+            assert.ok((await get(servers[1]!.origin + "/")).body.includes("<title>{{title}}</title>"))
+            assert.ok((await get(servers[1]!.origin + mounted.page)).body.includes("<title>a.mjs</title>"))
+            assert.ok((await get(servers[2]!.origin + bare.page)).body.includes("<title>test-assert-lite</title>"))
+        } finally {
+            for (const app of [named, mounted, bare]) app.close()
+            for (const server of servers) server.close()
+            await rm(plain, {recursive: true, force: true})
         }
     })
 
