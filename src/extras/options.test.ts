@@ -173,6 +173,14 @@ describe("extras/options", () => {
         it("refuses a browser mode with no suite or with several", () => {
             refused(() => readOptions(["--serve"]))
             refused(() => readOptions(["--serve", "a.mjs", "b.mjs"]))
+            refused(() => readOptions(["--playwright", "chromium", "--mount", "site"]))
+        })
+
+        it("lets --serve with --mount go without a suite", () => {
+            const options = readOptions(["--serve", "--mount", "site"])
+            assert.equal(options.mode, "serve")
+            assert.equal((options as {file?: string}).file, undefined)
+            assert.equal((options as {mount?: string}).mount, resolve("site"))
         })
 
         it("refuses a flag it does not know, and a flag missing its value", () => {

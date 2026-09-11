@@ -18,8 +18,8 @@ import type {Watcher} from "./watch.ts"
 import {createWatcher} from "./watch.ts"
 
 export interface AppOptions extends ChannelOptions {
-    /** The suite, as an absolute path. Its directory is mounted. */
-    file: string
+    /** The suite, as an absolute path. Its directory is mounted. Without one, the pages carry the library and no suite. */
+    file?: string
     /** Classic scripts to run before the suite, absolute, in this order. */
     scripts?: string[]
     /** Bare specifiers and the ES module files they resolve to. */
@@ -79,7 +79,7 @@ export const createApp = (options: AppOptions): App => {
     let watcher: Watcher | null = null
     if (options.watch) {
         try {
-            watcher = createWatcher([file, ...scripts, ...aliases.map(alias => alias.file)])
+            watcher = createWatcher([...(file == null ? [] : [file]), ...scripts, ...aliases.map(alias => alias.file)])
         } catch (error) {
             stderr(`watch is off: ${error instanceof Error ? error.message : String(error)}\n`)
         }
@@ -89,7 +89,7 @@ export const createApp = (options: AppOptions): App => {
     // nested import resolves beside it while nothing above stays reachable;
     // an aliased module gets the same under /@tal/aliases/<n>/. A script
     // cannot import, so each is mounted on its own.
-    const suite = mount("/@tal/tests/0/", file)
+    const suite = file == null ? null : mount("/@tal/tests/0/", file)
     const mounts = scripts.map((script, i) => mount(`/@tal/scripts/${i}/`, script))
 
     // The build browsers get is the IIFE, so that is what runs: it goes in
@@ -109,7 +109,7 @@ export const createApp = (options: AppOptions): App => {
     for (const [i, {specifier}] of aliases.entries()) imports[specifier] = aliasUrls[i] as string
     const importmap = `<script type="importmap">\n${JSON.stringify({imports}, null, 4)}\n</script>\n`
     const tags = scriptUrls.map(url => `<script src="${url}"></script>\n`).join("")
-        + `<script type="module" src="${suite.url}"></script>\n`
+        + (suite == null ? "" : `<script type="module" src="${suite.url}"></script>\n`)
     const head = withHead(importmap + tags)
 
     // The root serves htdocs/, or what --mount names in its place, a
@@ -132,7 +132,7 @@ export const createApp = (options: AppOptions): App => {
         ...mounts.map(({path}, i) => serveStatic({path, root: scripts[i] as string})),
         serveStatic({path: "/@tal/dist/", root: resolve(root, "dist")}),
         serveStatic({path: "/@tal/exports/", root: resolve(root, "exports")}),
-        serveStatic({path: "/@tal/tests/0/", root: dirname(file)}),
+        ...(file == null ? [] : [serveStatic({path: "/@tal/tests/0/", root: dirname(file)})]),
         ...aliasDirs.map((dir, i) => serveStatic({path: dir, root: dirname(aliases[i]?.file as string)})),
         // /@tal/ is the CLI's: what none of the mounts above answered ends
         // here, whatever a mount or an upstream at the root would say to it.
