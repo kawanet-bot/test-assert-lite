@@ -49,13 +49,14 @@ install-chromium: install-playwright
 install-all: install-playwright
 	cd .. && npx --no-install playwright install --only-shell chromium firefox webkit --with-deps
 
-test-chromium:
+# Each run builds what it tests; a plain `make test-webkit` works on its own.
+test-chromium: all
 	cd .. && node bin/cli.mjs --playwright chromium browser/tests/bundled.mjs
 
-test-firefox:
+test-firefox: all
 	cd .. && node bin/cli.mjs --playwright firefox browser/tests/bundled.mjs
 
-test-webkit:
+test-webkit: all
 	cd .. && node bin/cli.mjs --playwright webkit browser/tests/bundled.mjs
 
 # Off CI, the driver being started by hand; each WEBDRIVER_* set here goes
@@ -72,10 +73,10 @@ test-webdriver: all
 # `install` first: its npm step also brings the build tools, so a plain
 # `make -C browser test` works from a clean checkout. It is cheap once
 # Playwright and the browser are present (see LAUNCHABLE).
-test: install all test-chromium
+test: install test-chromium
 
 # Every Playwright browser, on the same bundle. Run by `npm run test-max`.
-test-playwright: install-all all test-chromium test-firefox test-webkit
+test-playwright: install-all test-chromium test-firefox test-webkit
 
 # The same bundle for a person: prints the URL and serves until Ctrl-C.
 serve: all
