@@ -1,6 +1,6 @@
 # test-assert-lite
 
-## Command line
+## CLI
 
 `test-assert` runs ES module test suites written against `node:test` and `node:assert` on this package.
 
@@ -11,15 +11,64 @@ test-assert --playwright chromium browser/tests/bundled.mjs  # in headless Chrom
 test-assert --webdriver browser/tests/bundled.mjs            # in the browser a WebDriver server drives, Safari say
 ```
 
-The browser modes take one suite, bundled, and accept `--alias <specifier>=<file>` for an ES module a bare specifier should resolve to and `--script <file>` for a classic script to run first. `--host <address>` has the server listen on another address than 127.0.0.1, `0.0.0.0` say, for a browser on another machine, and `--port <number>` on a port of your choosing rather than a free one, as a tunnel to that machine may need: `ssh -R 3000:127.0.0.1:3000` there, then `--webdriver --port 3000` here. `--origin <url>` names what the browser reaches the server as, `http://tal.example:3000` say, when that is not the address listened on; it is what the runners open and what `--serve` prints. `--serve` also watches the suite, the scripts and the aliases, and the page reloads when one of them changes. `--playwright` takes `chromium`, `firefox` or `webkit`, and needs the `playwright` package and that browser (`npx playwright install chromium`); `--serve` needs neither. `--mount <dir|url>` puts a directory of your own, or an origin to proxy such as an app's dev server, at the root in place of `htdocs/`: its HTML gets the same import map and suite tags in its head, so a page the app makes carries the suites. The server logs every request to stderr, one line each, so a mistyped `--script` or `--alias` shows up there as a 404. The two pages are `htdocs/index.html`, which `--serve` hands to a person, and `browser/run.html`, which both browser runners open under a URL of the run's own and which reports back to the CLI over HTTP; the CLI puts the import map, the classic scripts and the suites into the head of either.
+- The files are named one by one; globs and directories are the shell's job. CommonJS suites (`.cjs`, `.cts`) are refused.
+- The browser modes, `--serve`, `--playwright` and `--webdriver`, take one suite, bundled with its imports. They are exclusive.
+- The exit code is 0 when every test passed, 1 otherwise, and the report goes to stdout. Everything else, the server's access log included, goes to stderr.
 
-`--webdriver` needs no package: it drives whatever browser a WebDriver server launches, `safaridriver -p 4444` or `chromedriver --port=4444` say. `--webdriver-session <file>` sends the JSON in that file as the body of `POST /session`, for the capabilities a driver takes; `--endpoint <url>` says where the server listens, `http://127.0.0.1:4444` by default. The package carries a few such files under `browser/session/`, to pass as they are or to copy and edit: `chrome-headless.json` and `firefox-headless.json` launch the browser without a window, and `chrome-attach.json` attaches chromedriver to a Chrome already running with `--remote-debugging-port=9222`. The first reads:
+### --serve
 
-```json
-{"capabilities": {"alwaysMatch": {"goog:chromeOptions": {"args": ["--headless=new"]}}}}
-```
+- Serves the suite for a browser, prints the URL to open, and keeps serving until Ctrl-C.
+- The page reloads when the suite, a `--script` or an `--alias` changes.
+- With `--mount`, the suite may be left out: the mounted pages then carry the library and run whatever they load.
 
-The browser fetches the suite from this machine, so a driver on another one, Safari on a Mac reached over an SSH tunnel say, takes `--host` with an address that machine can reach.
+### --host <address>
+
+- Address the server listens on. Default: `127.0.0.1`.
+- For a browser on another machine: the address that machine reaches, `192.168.0.2` say, or `0.0.0.0` with `--origin`.
+
+### --port <number>
+
+- Port the server listens on. Default: a free one.
+- A fixed port is for an SSH tunnel or a firewall rule that has to name it.
+
+### --origin <url>
+
+- What the browser reaches the server as, `http(s)://host[:port]`. Default: the address listened on.
+- For a tunnel or a proxy in between: it is what the runners open and what `--serve` prints.
+
+### --alias <specifier>=<file>
+
+- ES module a bare specifier resolves to, `--alias lodash=node_modules/lodash-es/lodash.js` say. Repeatable.
+- A mistyped file shows up as a 404 in the access log on stderr.
+
+### --script <file>
+
+- Classic script to run before the suite, for a global it sets up. Repeatable, in order.
+- A mistyped file shows up as a 404 in the access log on stderr.
+
+### --mount <dir|url>
+
+- What the root serves in place of `htdocs/`: a directory, or an origin to proxy, `http://127.0.0.1:5173` for an app's dev server say.
+- Its HTML pages get the import map and the suite in their head, so a page the app makes runs the suite.
+
+### --playwright <browser>
+
+- Runs the suite in a headless `chromium`, `firefox` or `webkit` through Playwright.
+- Needs the `playwright` package and that browser: `npm install -D playwright && npx playwright install chromium`.
+
+### --webdriver
+
+- Runs the suite in the browser a WebDriver server drives, `safaridriver -p 4444` or `chromedriver --port=4444` say.
+- Needs no package: the server does the launching, so Safari on a Mac runs the suite too, over an SSH tunnel if need be.
+
+### --webdriver-session <file>
+
+- JSON sent as the body of `POST /session`: the capabilities the driver takes. Default: none.
+- `browser/session/` has a few to pass as they are or to copy and edit: `chrome-headless.json`, `firefox-headless.json`, `chrome-attach.json`.
+
+### --endpoint <url>
+
+- The WebDriver server. Default: `http://127.0.0.1:4444`.
 
 ## Sample run
 
