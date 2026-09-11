@@ -8,6 +8,7 @@ import {parseArgs} from "node:util"
 import {createFiles} from "../server/files.ts"
 
 export const USAGE = `Usage: test-assert [options] <file...>
+  -v, --version               print this package's version
   --serve                     serve the suite for a browser and print the URL; the page reloads on a change
   --host <address>            address the server listens on (browser modes, default: 127.0.0.1)
   --port <number>             port the server listens on (browser modes, default: a free one)
@@ -53,6 +54,7 @@ export interface BrowserOptions {
 
 export type Options =
     | {mode: "help"}
+    | {mode: "version"}
     | {mode: "node", suites: string[], aliases: Alias[]}
     | BrowserOptions & {mode: "serve"}
     | BrowserOptions & {mode: "playwright", browser: Browser}
@@ -126,6 +128,7 @@ const parse = (args: string[]) => {
                 "webdriver-session": {type: "string"},
                 endpoint: {type: "string"},
                 help: {type: "boolean", short: "h", default: false},
+                version: {type: "boolean", short: "v", default: false},
             },
             allowPositionals: true,
         })
@@ -142,6 +145,7 @@ const parse = (args: string[]) => {
 export const readOptions = (args: string[]): Options => {
     const {values, positionals: files} = parse(args)
     if (values.help) return {mode: "help"}
+    if (values.version) return {mode: "version"}
 
     const {playwright, webdriver, serve} = values
     const browser = playwright == null ? undefined : browserOf(playwright)

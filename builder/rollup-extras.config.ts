@@ -1,3 +1,4 @@
+import json from "@rollup/plugin-json"
 import sucrase from "@rollup/plugin-sucrase"
 import type {RollupOptions} from "rollup"
 import {showFiles} from "./show-files.ts"
@@ -15,6 +16,8 @@ const rollupConfig: RollupOptions = {
     },
 
     plugins: [
+        json(),
+
         sucrase({
             disableESTransforms: true,
             exclude: ["node_modules/**"],

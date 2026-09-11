@@ -14,6 +14,11 @@ test-assert --playwright chromium browser/tests/bundled.mjs  # in headless Chrom
 - The files are named one by one; globs and directories are the shell's job. CommonJS suites (`.cjs`, `.cts`) are refused.
 - The browser modes, `--serve`, `--webdriver` and `--playwright`, take one suite, bundled with its imports; `--serve` with `--mount` may take none. They are exclusive.
 - A run exits 0 when every test passed, 1 otherwise, with the report on stdout. Everything else, the server's access log included, goes to stderr.
+- The report ends with two lines `node --test` never prints: this package's version, and the user agent the suites ran under, the browser's or `Node.js/24` say.
+
+### -v, --version
+
+- Prints this package's version and exits.
 
 ### --serve
 

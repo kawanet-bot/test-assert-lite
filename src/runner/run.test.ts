@@ -95,11 +95,22 @@ describe(TITLE, () => {
         const messages = events
             .filter(e => e.type === "test:diagnostic")
             .map(e => e.data.message)
-        assert.deepEqual(messages, [
-            "tests 1", "suites 0", "pass 1", "fail 0", "cancelled 0", "skipped 0", "todo 0",
-            messages.at(-1),
-        ])
-        assert.ok(String(messages.at(-1)).startsWith("duration_ms "))
+        const counts = ["tests 1", "suites 0", "pass 1", "fail 0", "cancelled 0", "skipped 0", "todo 0"]
+        assert.deepEqual(messages.slice(0, counts.length), counts)
+        assert.ok(messages.some(message => /^duration_ms \d/.test(String(message))))
+    })
+
+    it("the summary names this package and the user agent it ran under", async () => {
+        const local = createTAL()
+        const events = capture(local.reporter)
+        local.it("one", () => undefined)
+        await local.run()
+
+        const messages = events.filter(e => e.type === "test:diagnostic").map(e => String(e.data.message))
+        assert.ok(messages.some(message => /^test-assert-lite \d+\.\d+\.\d+/.test(message)), messages.join(", "))
+        assert.ok(messages.some(message => /^user-agent \S/.test(message)), messages.join(", "))
+        const at = events.findIndex(e => e.type === "test:summary")
+        assert.ok(at > 0 && events.slice(at + 1).every(e => e.type !== "test:diagnostic"))
     })
 
     // Registrations are consumed, while reporter settings belong to the harness.
