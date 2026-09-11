@@ -100,7 +100,7 @@ describe("extras/options", () => {
         it("reads --serve: the suite resolved, nothing else set", () => {
             assert.deepEqual(readOptions(["--serve", "suite.mjs"]), {
                 mode: "serve",
-                file: resolve("suite.mjs"),
+                files: [resolve("suite.mjs")],
                 scripts: [],
                 aliases: [],
                 mount: undefined,
@@ -135,7 +135,7 @@ describe("extras/options", () => {
             assert.equal(options.mode, "playwright")
             if (options.mode !== "playwright") return
             assert.equal(options.browser, "webkit")
-            assert.equal(options.file, resolve("suite.mjs"))
+            assert.deepEqual(options.files, [resolve("suite.mjs")])
             refused(() => readOptions(["--playwright", "electron", "suite.mjs"]), /^--playwright takes/)
         })
 
@@ -170,16 +170,24 @@ describe("extras/options", () => {
             refused(() => readOptions(["--endpoint", "http://x", "a.test.ts"]), /apply to --webdriver only$/)
         })
 
-        it("refuses a browser mode with no suite or with several", () => {
+        it("refuses a browser mode with no suite", () => {
             refused(() => readOptions(["--serve"]))
-            refused(() => readOptions(["--serve", "a.mjs", "b.mjs"]))
             refused(() => readOptions(["--playwright", "chromium", "--mount", "site"]))
+        })
+
+        it("reads several suites in a browser mode from one directory, in order, and refuses them from two", () => {
+            const options = readOptions(["--serve", "test/b.mjs", "./test/a.mjs", "test/b.mjs"])
+            assert.equal(options.mode, "serve")
+            if (options.mode !== "serve") return
+            assert.deepEqual(options.files, [resolve("test/b.mjs"), resolve("test/a.mjs"), resolve("test/b.mjs")])
+            refused(() => readOptions(["--serve", "test/a.mjs", "other/b.mjs"]), /^--playwright, --webdriver and --serve take suites from one directory: test\/a\.mjs, other\/b\.mjs$/)
+            refused(() => readOptions(["--playwright", "chromium", "a.mjs", "test/b.mjs"]), /take suites from one directory/)
         })
 
         it("lets --serve with --mount go without a suite", () => {
             const options = readOptions(["--serve", "--mount", "site"])
             assert.equal(options.mode, "serve")
-            assert.equal((options as {file?: string}).file, undefined)
+            assert.deepEqual((options as {files?: string[]}).files, [])
             assert.equal((options as {mount?: string}).mount, resolve("site"))
         })
 

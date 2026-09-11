@@ -1,4 +1,4 @@
-// The browser test application: what to serve and where, for one suite, as
+// The browser test application: what to serve and where, for the suites, as
 // one middleware in the shape of a Hono handler. It lays out the mounts,
 // builds the import map, puts it into the pages and chains them with the
 // channel to the page; the server that runs it is another's, serve.ts today.
@@ -18,15 +18,15 @@ import type {Watcher} from "./watch.ts"
 import {createWatcher} from "./watch.ts"
 
 export interface AppOptions extends ChannelOptions {
-    /** The suite, as an absolute path. Its directory is mounted. Without one, the pages carry the library and no suite. */
-    file?: string
-    /** Classic scripts to run before the suite, absolute, in this order. */
+    /** The suites, absolute, all in one directory, which is mounted. Without any, the pages carry the library and no suite. */
+    files?: string[]
+    /** Classic scripts to run before the suites, absolute, in this order. */
     scripts?: string[]
     /** Bare specifiers and the ES module files they resolve to. */
     aliases?: {specifier: string, file: string}[]
     /** What the root serves in place of htdocs: an absolute directory, or an http(s) URL ending in "/" to proxy. */
     mount?: string
-    /** Reloads the page people open when the suite, a script or an alias changes; off where it cannot watch. */
+    /** Reloads the page people open when a suite, a script or an alias changes; off where it cannot watch. */
     watch?: boolean
 }
 
@@ -66,11 +66,11 @@ const mount = (dir: string, file: string): {url: string, path: string} => ({
 })
 
 /**
- * Builds the application for the suite: its middleware, and the promise
+ * Builds the application for the suites: its middleware, and the promise
  * of the verdict the page at `page` reports back through it.
  */
 export const createApp = (options: AppOptions): App => {
-    const {file, scripts = [], aliases = [], mount: mounted, stderr = text => process.stderr.write(text)} = options
+    const {files = [], scripts = [], aliases = [], mount: mounted, stderr = text => process.stderr.write(text)} = options
     const channel = createChannel(options)
 
     // Watching is a convenience of --serve, not what it is for: where the
@@ -79,17 +79,17 @@ export const createApp = (options: AppOptions): App => {
     let watcher: Watcher | null = null
     if (options.watch) {
         try {
-            watcher = createWatcher([...(file == null ? [] : [file]), ...scripts, ...aliases.map(alias => alias.file)])
+            watcher = createWatcher([...files, ...scripts, ...aliases.map(alias => alias.file)])
         } catch (error) {
             stderr(`watch is off: ${error instanceof Error ? error.message : String(error)}\n`)
         }
     }
 
-    // The suite's directory is mounted at /@tal/tests/0/, so a sibling or a
-    // nested import resolves beside it while nothing above stays reachable;
-    // an aliased module gets the same under /@tal/aliases/<n>/. A script
-    // cannot import, so each is mounted on its own.
-    const suite = file == null ? null : mount("/@tal/tests/0/", file)
+    // The suites' directory is mounted at /@tal/tests/0/, so a sibling or a
+    // nested import resolves beside them, once for all of them, while
+    // nothing above stays reachable; an aliased module gets the same under
+    // /@tal/aliases/<n>/. A script cannot import, so each is mounted on its own.
+    const suites = files.map(file => mount("/@tal/tests/0/", file))
     const mounts = scripts.map((script, i) => mount(`/@tal/scripts/${i}/`, script))
 
     // The build browsers get is the IIFE, so that is what runs: it goes in
@@ -102,14 +102,15 @@ export const createApp = (options: AppOptions): App => {
 
     // The map has to be inline and in place before the first module loads;
     // classic script tags run in order as the head is parsed, and module
-    // tags in order once it is, ahead of the page's own module in the body
-    // that calls run(). So all three go into the head of every HTML page
-    // served from htdocs/, and of the run's page, as it goes out.
+    // tags in order once it is, the suites in the order given as under
+    // Node, ahead of the page's own module in the body that calls run(). So
+    // all three go into the head of every HTML page served from htdocs/,
+    // and of the run's page, as it goes out.
     const imports: Record<string, string> = {...IMPORTS}
     for (const [i, {specifier}] of aliases.entries()) imports[specifier] = aliasUrls[i] as string
     const importmap = `<script type="importmap">\n${JSON.stringify({imports}, null, 4)}\n</script>\n`
     const tags = scriptUrls.map(url => `<script src="${url}"></script>\n`).join("")
-        + (suite == null ? "" : `<script type="module" src="${suite.url}"></script>\n`)
+        + suites.map(({url}) => `<script type="module" src="${url}"></script>\n`).join("")
     const head = withHead(importmap + tags)
 
     // The root serves htdocs/, or what --mount names in its place, a
@@ -132,7 +133,7 @@ export const createApp = (options: AppOptions): App => {
         ...mounts.map(({path}, i) => serveStatic({path, root: scripts[i] as string})),
         serveStatic({path: "/@tal/dist/", root: resolve(root, "dist")}),
         serveStatic({path: "/@tal/exports/", root: resolve(root, "exports")}),
-        ...(file == null ? [] : [serveStatic({path: "/@tal/tests/0/", root: dirname(file)})]),
+        ...(files[0] == null ? [] : [serveStatic({path: "/@tal/tests/0/", root: dirname(files[0])})]),
         ...aliasDirs.map((dir, i) => serveStatic({path: dir, root: dirname(aliases[i]?.file as string)})),
         // /@tal/ is the CLI's: what none of the mounts above answered ends
         // here, whatever a mount or an upstream at the root would say to it.

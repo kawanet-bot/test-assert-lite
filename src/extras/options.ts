@@ -3,7 +3,7 @@
 // value has to take. Anything wrong is a UsageError from here, before the
 // caller has opened a server or a watch on the strength of it.
 
-import {resolve} from "node:path"
+import {dirname, resolve} from "node:path"
 import {parseArgs} from "node:util"
 
 export const USAGE = `Usage: test-assert [options] <file...>
@@ -34,12 +34,12 @@ export interface Alias {
     file: string
 }
 
-// What the three browser modes share: one suite, what the page is made
+// What the three browser modes share: the suites, what the page is made
 // of, and where the server sits. --serve with --mount may go without a
 // suite: the mounted pages carry the library then, and whatever they run.
 export interface BrowserOptions {
-    /** The suite, absolute; none only under --serve with --mount. */
-    file?: string
+    /** The suites, absolute, all in one directory; none only under --serve with --mount. */
+    files: string[]
     /** Classic scripts to run first, absolute, in order. */
     scripts: string[]
     aliases: Alias[]
@@ -142,9 +142,6 @@ export const readOptions = (args: string[]): Options => {
     const {values, positionals: files} = parse(args)
     if (values.help) return {mode: "help"}
 
-    // A browser run takes one suite: several entries would each get their
-    // own mount, and a module shared between them would load once per
-    // mount as a separate instance. Bundle first, as this package's are.
     const {playwright, webdriver, serve} = values
     const browser = playwright == null ? undefined : browserOf(playwright)
     const browsing = browser != null || webdriver || serve
@@ -158,7 +155,7 @@ export const readOptions = (args: string[]): Options => {
         throw new UsageError("--webdriver-session and --endpoint apply to --webdriver only")
     }
     const optional = serve && values.mount != null
-    if (browsing ? files.length > 1 || (!files.length && !optional) : !files.length) throw new UsageError()
+    if (!files.length && !(browsing && optional)) throw new UsageError()
 
     if (!browsing) {
         // The resolve hook only sees ESM resolution; a require() bypasses
@@ -169,8 +166,16 @@ export const readOptions = (args: string[]): Options => {
         return {mode: "node", files: files.map(file => resolve(file))}
     }
 
+    // A browser run's suites share one mount, so a module they share loads
+    // once, as under Node; suites from two directories would need two
+    // mounts, and a module shared across them would load once per mount.
+    const suites = files.map(file => resolve(file))
+    if (new Set(suites.map(file => dirname(file))).size > 1) {
+        throw new UsageError(`--playwright, --webdriver and --serve take suites from one directory: ${files.join(", ")}`)
+    }
+
     const shared: BrowserOptions = {
-        file: files[0] == null ? undefined : resolve(files[0]),
+        files: suites,
         scripts: values.script.map(script => resolve(script)),
         aliases: values.alias.map(aliasOf),
         mount: values.mount == null ? undefined : mountOf(values.mount),
