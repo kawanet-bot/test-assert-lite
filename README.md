@@ -63,7 +63,7 @@ test-assert --playwright chromium browser/tests/bundled.mjs  # in headless Chrom
 
 - What the root serves in place of `htdocs/`: a directory, or an origin to proxy, `http://127.0.0.1:5173` for an app's dev server say.
 - Its HTML pages get the import map and the suite, when there is one, in their head, so a page the app makes runs the suite.
-- A page with an import map of its own is left as it is, scripts and suite included, and stderr says so.
+- If a page has its own `<script type="importmap">`, nothing is added to it: no import map, no script tags, no suite. stderr says so.
 
 ### --webdriver
 
