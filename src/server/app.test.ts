@@ -171,6 +171,23 @@ describe("server/app", () => {
         }
     })
 
+    it("serves a mounted directory without a suite: the library in the head, no suite tag, no suite mount", async () => {
+        await mkdir(join(dir, "plain"))
+        await writeFile(join(dir, "plain", "index.html"), "<html><head></head><body>plain</body></html>")
+        const bare = createApp({mount: join(dir, "plain"), watch: true, stdout: () => undefined})
+        const running = await serve({handler: bare.handler})
+        try {
+            const index = (await get(running.origin + "/")).body
+            assert.ok(index.includes('<script type="importmap">'))
+            assert.ok(index.includes('<script src="/@tal/dist/test-assert-lite.min.js"></script>'))
+            assert.equal(index.includes('type="module" src="/@tal/tests/'), false)
+            assert.equal((await get(running.origin + "/@tal/tests/0/anything.mjs")).status, 404)
+        } finally {
+            bare.close()
+            running.close()
+        }
+    })
+
     it("proxies a mounted URL at the root, its HTML with the head", async () => {
         const asked: string[] = []
         const upstream = createServer((req, res) => {

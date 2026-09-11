@@ -35,10 +35,11 @@ export interface Alias {
 }
 
 // What the three browser modes share: one suite, what the page is made
-// of, and where the server sits.
+// of, and where the server sits. --serve with --mount may go without a
+// suite: the mounted pages carry the library then, and whatever they run.
 export interface BrowserOptions {
-    /** The suite, absolute. */
-    file: string
+    /** The suite, absolute; none only under --serve with --mount. */
+    file?: string
     /** Classic scripts to run first, absolute, in order. */
     scripts: string[]
     aliases: Alias[]
@@ -156,7 +157,8 @@ export const readOptions = (args: string[]): Options => {
     if (!webdriver && (values["webdriver-session"] != null || values.endpoint != null)) {
         throw new UsageError("--webdriver-session and --endpoint apply to --webdriver only")
     }
-    if (browsing ? files.length !== 1 : !files.length) throw new UsageError()
+    const optional = serve && values.mount != null
+    if (browsing ? files.length > 1 || (!files.length && !optional) : !files.length) throw new UsageError()
 
     if (!browsing) {
         // The resolve hook only sees ESM resolution; a require() bypasses
@@ -168,7 +170,7 @@ export const readOptions = (args: string[]): Options => {
     }
 
     const shared: BrowserOptions = {
-        file: resolve(files[0] as string),
+        file: files[0] == null ? undefined : resolve(files[0]),
         scripts: values.script.map(script => resolve(script)),
         aliases: values.alias.map(aliasOf),
         mount: values.mount == null ? undefined : mountOf(values.mount),
