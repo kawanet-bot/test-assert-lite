@@ -172,7 +172,9 @@ describe("server/app", () => {
     })
 
     it("proxies a mounted URL at the root, its HTML with the head", async () => {
+        const asked: string[] = []
         const upstream = createServer((req, res) => {
+            asked.push(req.url ?? "")
             if (req.url === "/app/") return res.writeHead(200, {"content-type": "text/html"}).end("<html><head></head><body>theirs</body></html>")
             res.writeHead(404).end()
         })
@@ -188,6 +190,8 @@ describe("server/app", () => {
             assert.ok(index.body.includes('<script type="importmap">'))
             assert.equal((await get(running.origin + "/elsewhere")).status, 404)
             assert.equal((await get(running.origin + "/@tal/dist/test-assert-lite.min.js")).status, 200)
+            assert.equal((await get(running.origin + "/@tal/nothing")).status, 404)
+            assert.equal(asked.includes("/@tal/nothing"), false)
         } finally {
             mounted.close()
             running.close()

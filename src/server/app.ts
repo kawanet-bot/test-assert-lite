@@ -134,6 +134,9 @@ export const createApp = (options: AppOptions): App => {
         serveStatic({path: "/@tal/exports/", root: resolve(root, "exports")}),
         serveStatic({path: "/@tal/tests/0/", root: dirname(file)}),
         ...aliasDirs.map((dir, i) => serveStatic({path: dir, root: dirname(aliases[i]?.file as string)})),
+        // /@tal/ is the CLI's: what none of the mounts above answered ends
+        // here, whatever a mount or an upstream at the root would say to it.
+        async (c, next) => (c.req.path.startsWith("/@tal/") ? c.notFound() : next()),
         scoped(compose([...(watcher == null ? [] : [watcher.inject]), head, atRoot])),
     ])
 
