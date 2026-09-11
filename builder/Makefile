@@ -80,10 +80,9 @@ $(MJS_DST): $(MJS_CONFIG) $(SRC) $(BUILDER_SRC)
 	@test "$$(wc -c < $@)" -le $(MJS_MAX_BYTES) || { echo "ERROR: $@ exceeds $(MJS_MAX_BYTES) byte cap" >&2; exit 1; }
 	@echo ""
 
-# The extras (the CLI as a function), built alongside the library bundle
-# they resolve at runtime through a plain relative import rather than
-# package self-reference (see rollup-extras.config.ts for why). The
-# executable bin/cli.mjs is hand-written and reaches this by subpath.
+# The extras (the CLI as a function) import the library by the package's
+# own name, which resolves from esm/ but not from under dist/package.json.
+# The executable bin/cli.mjs is hand-written and reaches this by subpath.
 $(EXTRAS_DST): $(EXTRAS_CONFIG) $(EXTRAS_SRC) $(BUILDER_SRC) $(MJS_DST)
 	@mkdir -p $(dir $@)
 	../node_modules/.bin/rollup -c $<
@@ -92,9 +91,7 @@ $(EXTRAS_DST): $(EXTRAS_CONFIG) $(EXTRAS_SRC) $(BUILDER_SRC) $(MJS_DST)
 	@echo ""
 
 # The browser build. dist/package.json marks dist/ as CommonJS so Node can
-# read the .min.js IIFE as a script despite the package being ESM; the ES
-# module builds live in esm/, outside that scope, where the package's own
-# name resolves to them.
+# read the .min.js IIFE as a script despite the package being ESM.
 $(MINJS_DST): $(MINJS_CONFIG) $(SRC) $(BUILDER_SRC) $(PKG_DST)
 	@mkdir -p $(dir $@)
 	../node_modules/.bin/rollup -c $<

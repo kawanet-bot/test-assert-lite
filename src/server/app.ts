@@ -103,15 +103,10 @@ export const createApp = (options: AppOptions): App => {
         + suites.map(suite => `<script type="module" src="${served.urlOf(suite)}"></script>\n`).join("")
     const head = withHead(importmap + tags)
 
-    // The root serves htdocs/, or what --mount names in its place, a
-    // directory or an upstream to proxy: whichever it is, its HTML gets the
-    // head above and, with watch on, the ask that reloads it. The page the
-    // CLI drives lives beside the CLI's other browser files and is served
-    // under the run alone, with the head but no ask. Each is a chain of
-    // its own, so the head reaches what that chain serves and nothing
-    // served after it. Everything else the CLI provides sits under /@tal/,
-    // the build output and the subpath bridges included, as those have to
-    // stay where the package puts them; nothing there is touched.
+    // Two pages get the head: the root's HTML, with the reload ask under
+    // watch, and the run's page, without it. Each is a scoped chain so the
+    // head touches nothing served after it, /@tal/ least of all: the build
+    // and the bridges have to stay as the package ships them.
     const atRoot = mounted == null
         ? serveStatic({path: "/", root: resolve(root, "htdocs")})
         : /^https?:\/\//i.test(mounted) ? proxy({path: "/", upstream: mounted}) : serveStatic({path: "/", root: mounted})
