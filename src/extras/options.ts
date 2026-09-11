@@ -62,7 +62,7 @@ export interface BrowserOptions {
 export type Options =
     | {mode: "help"}
     | {mode: "version"}
-    | {mode: "node", suites: string[], imports: Alias[]}
+    | {mode: "node", suites: string[], imports: Alias[]} // the last entry per specifier
     | BrowserOptions & {mode: "serve"}
     | BrowserOptions & {mode: "playwright", browser: Browser}
     | BrowserOptions & {mode: "webdriver", session?: string, endpoint: string}
@@ -111,9 +111,10 @@ export const mountOf = (value: string): string => {
 }
 
 // An import map file, read as a page would up to what the CLI can do:
-// "imports" alone, bare keys, addresses resolved against the file. A
-// relative address is a file the CLI serves; "/" and absolute URLs are
-// the page's. Prefix entries, "/" at the end, are refused, not mismatched.
+// "imports" alone, keys as written, addresses resolved against the file.
+// A relative address is a file the CLI serves; "/" and absolute URLs are
+// the page's. A relative key, which a page would resolve against its own
+// base, and a prefix entry, "/" at the end, are refused, not mismatched.
 export const importMapOf = (file: string): Import[] => {
     const path = resolve(file)
     const refuse = (reason: string): never => {
@@ -133,7 +134,7 @@ export const importMapOf = (file: string): Import[] => {
     const base = pathToFileURL(path)
     return Object.entries(imports).map(([specifier, address]) => {
         if (typeof address !== "string") return refuse(`"${specifier}": not a string`)
-        if (/^(\.\.?\/|\/)/.test(specifier) || specifier.endsWith("/") || address.endsWith("/")) return refuse(`"${specifier}": prefix and URL-like keys are not supported`)
+        if (/^(\.\.?\/|\/)/.test(specifier) || specifier.endsWith("/") || address.endsWith("/")) return refuse(`"${specifier}": prefix entries and relative keys are not supported`)
         if (/^\.\.?\//.test(address)) return {specifier, file: fileURLToPath(new URL(address, base))}
         if (address.startsWith("/") || URL.canParse(address)) return {specifier, url: address}
         return refuse(`"${specifier}": an address starts with ./, ../, / or a scheme: ${address}`)
@@ -214,11 +215,12 @@ export const readOptions = (args: string[]): Options => {
         const commonjs = files.filter(file => /\.c[jt]s$/.test(file))
         if (commonjs.length) throw new UsageError(`CommonJS suites are not supported: ${commonjs.join(", ")}`)
         // The hook resolves to files; an address the page would fetch has
-        // nowhere to go here.
-        const imports = importsOf(values["import-map"], values.alias)
-        const urls = imports.filter(entry => "url" in entry)
+        // nowhere to go here, unless a later entry, an --alias say, takes
+        // the specifier over. The last entry for each is what the hook gets.
+        const last = new Map(importsOf(values["import-map"], values.alias).map(entry => [entry.specifier, entry]))
+        const urls = [...last.values()].filter(entry => "url" in entry)
         if (urls.length) throw new UsageError(`--import-map addresses starting with / or a scheme apply to --playwright, --webdriver and --serve only: ${urls.map(entry => `"${entry.specifier}"`).join(", ")}`)
-        return {mode: "node", suites: files.map(file => resolve(file)), imports: imports.filter((entry): entry is Alias => "file" in entry)}
+        return {mode: "node", suites: files.map(file => resolve(file)), imports: [...last.values()].filter((entry): entry is Alias => "file" in entry)}
     }
 
     const suites = files.map(file => resolve(file))

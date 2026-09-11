@@ -77,13 +77,14 @@ describe("extras/options", () => {
         })
 
         it("resolves a relative address against the file, and passes / and a URL through", async () => {
-            const file = await map("a.json", '{"imports": {"lib": "./lib/x.js", "up": "../y.js", "root": "/vendor/z.js", "cdn": "https://cdn.example/w.js", "node:crypto": "./sha256.mjs"}}')
+            const file = await map("a.json", '{"imports": {"lib": "./lib/x.js", "up": "../y.js", "root": "/vendor/z.js", "cdn": "https://cdn.example/w.js", "node:crypto": "./sha256.mjs", "https://cdn.example/lib.js": "./local.mjs"}}')
             assert.deepEqual(importMapOf(file), [
                 {specifier: "lib", file: join(dir, "maps", "lib", "x.js")},
                 {specifier: "up", file: join(dir, "y.js")},
                 {specifier: "root", url: "/vendor/z.js"},
                 {specifier: "cdn", url: "https://cdn.example/w.js"},
                 {specifier: "node:crypto", file: join(dir, "maps", "sha256.mjs")},
+                {specifier: "https://cdn.example/lib.js", file: join(dir, "maps", "local.mjs")},
             ])
             assert.deepEqual(importMapOf(await map("empty.json", "{}")), [])
         })
@@ -96,8 +97,8 @@ describe("extras/options", () => {
                 ["scopes.json", '{"imports": {}, "scopes": {}}', /only "imports" is supported: "scopes"$/],
                 ["bare.json", '{"imports": {"a": "lodash"}}', /"a": an address starts with/],
                 ["num.json", '{"imports": {"a": 1}}', /"a": not a string$/],
-                ["prefix.json", '{"imports": {"a/": "./a/"}}', /"a\/": prefix and URL-like keys/],
-                ["urlkey.json", '{"imports": {"./a": "./a.js"}}', /"\.\/a": prefix and URL-like keys/],
+                ["prefix.json", '{"imports": {"a/": "./a/"}}', /"a\/": prefix entries and relative keys/],
+                ["relkey.json", '{"imports": {"./a": "./a.js"}}', /"\.\/a": prefix entries and relative keys/],
             ] as [string, string, RegExp][]) {
                 const file = await map(name, json)
                 refused(() => importMapOf(file), reason)
@@ -109,13 +110,17 @@ describe("extras/options", () => {
             const node = readOptions(["--import-map", file, "--alias", "mod=new.mjs", "a.test.ts"])
             assert.equal(node.mode, "node")
             if (node.mode !== "node") return
-            assert.deepEqual(node.imports, [{specifier: "lib", file: join(dir, "maps", "lib.js")}, {specifier: "mod", file: join(dir, "maps", "old.js")}, {specifier: "mod", file: resolve("new.mjs")}])
+            assert.deepEqual(node.imports, [{specifier: "lib", file: join(dir, "maps", "lib.js")}, {specifier: "mod", file: resolve("new.mjs")}])
             const served = readOptions(["--serve", "--import-map", file, "suite.mjs"])
             assert.equal(served.mode, "serve")
             if (served.mode !== "serve") return
             assert.deepEqual(served.imports.map(entry => entry.specifier), ["lib", "mod"])
             const urls = await map("urls.json", '{"imports": {"root": "/x.js"}}')
             refused(() => readOptions(["--import-map", urls, "a.test.ts"]), /apply to --playwright, --webdriver and --serve only: "root"$/)
+            const taken = readOptions(["--import-map", urls, "--alias", "root=x.mjs", "a.test.ts"])
+            assert.equal(taken.mode, "node")
+            if (taken.mode !== "node") return
+            assert.deepEqual(taken.imports, [{specifier: "root", file: resolve("x.mjs")}])
             assert.equal(readOptions(["--serve", "--import-map", urls, "suite.mjs"]).mode, "serve")
         })
     })

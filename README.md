@@ -29,8 +29,8 @@ test-assert --playwright chromium browser/tests/bundled.mjs  # in headless Chrom
 ### --import-map <file>
 
 - A JSON import map, for the specifiers too many to give as `--alias`. Its `imports` come first, each `--alias` after, so the command line has the last word.
-- A relative address, `./vendor/x.js` say, is resolved against the file and served as an `--alias` file is. An address starting with `/`, or a URL, goes into the page's map as it is, for the root to serve or a CDN; neither is taken in Node mode.
-- `imports` only, with bare specifiers as keys: `scopes`, `integrity` and prefix entries ending in `/` are refused for now rather than mismatched.
+- A relative address, `./vendor/x.js` say, is resolved against the file and served as an `--alias` file is. An address starting with `/`, or a URL, goes into the page's map as it is, for the root to serve or a CDN; in Node mode such an address is refused unless a later entry takes the specifier over.
+- `imports` only, keys as written: a URL can be a key too, to stand a local copy in for a CDN. `scopes`, `integrity`, prefix entries ending in `/` and relative keys are refused for now rather than mismatched.
 - The file is read once; `--serve` watches the files it names, not the map itself.
 
 ### --serve
