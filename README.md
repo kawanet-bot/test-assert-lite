@@ -13,7 +13,7 @@ test-assert --playwright chromium browser/tests/bundled.mjs  # in headless Chrom
 
 - The files are named one by one; globs and directories are the shell's job. CommonJS suites (`.cjs`, `.cts`) are refused.
 - The browser modes, `--serve`, `--webdriver` and `--playwright`, take one suite, bundled with its imports; `--serve` with `--mount` may take none. They are exclusive.
-- The exit code is 0 when every test passed, 1 otherwise. Stdout carries the report, or the URL under `--serve`. Everything else, the server's access log included, goes to stderr.
+- A run exits 0 when every test passed, 1 otherwise, with the report on stdout. Everything else, the server's access log included, goes to stderr.
 
 ### --serve
 
