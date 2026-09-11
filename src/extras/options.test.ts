@@ -1,7 +1,7 @@
 import {strict as assert} from "node:assert"
 import {resolve} from "node:path"
 import {describe, it} from "node:test"
-import {UsageError, aliasOf, browserOf, originOf, portOf, readOptions} from "./options.ts"
+import {UsageError, aliasOf, browserOf, mountOf, originOf, portOf, readOptions} from "./options.ts"
 
 // A UsageError with the reason it gives, or without one, as the usage
 // text alone is the answer to some.
@@ -66,6 +66,21 @@ describe("extras/options", () => {
         })
     })
 
+    describe("mountOf", () => {
+        it("resolves a directory, and takes an http(s) URL as given up to its path, ending in a slash", () => {
+            assert.equal(mountOf("site"), resolve("site"))
+            assert.equal(mountOf("http://127.0.0.1:5173"), "http://127.0.0.1:5173/")
+            assert.equal(mountOf("HTTPS://Example.com/app"), "https://example.com/app/")
+            assert.equal(mountOf("http://x/app/"), "http://x/app/")
+        })
+
+        it("refuses a URL with a query, a fragment or credentials", () => {
+            for (const value of ["http://x/?q=1", "http://x/#top", "http://u:p@x/", "http://"]) {
+                refused(() => mountOf(value), /^--mount takes a directory or http\(s\):\/\/host\[:port\]\[\/path\]: /)
+            }
+        })
+    })
+
     describe("readOptions", () => {
         it("reads --help ahead of anything else, and -h as --help", () => {
             assert.deepEqual(readOptions(["--help"]), {mode: "help"})
@@ -88,6 +103,7 @@ describe("extras/options", () => {
                 file: resolve("suite.mjs"),
                 scripts: [],
                 aliases: [],
+                mount: undefined,
                 host: undefined,
                 port: undefined,
                 origin: undefined,
@@ -143,7 +159,7 @@ describe("extras/options", () => {
         })
 
         it("refuses the server's and the page's flags in Node mode", () => {
-            for (const flags of [["--host", "x"], ["--port", "3000"], ["--origin", "http://x"], ["--alias", "a=b"], ["--script", "s.js"]]) {
+            for (const flags of [["--host", "x"], ["--port", "3000"], ["--origin", "http://x"], ["--alias", "a=b"], ["--script", "s.js"], ["--mount", "site"]]) {
                 refused(() => readOptions([...flags, "a.test.ts"]), /apply to --playwright, --webdriver and --serve only$/)
             }
         })

@@ -36,6 +36,7 @@ const run = async (options: Options): Promise<number> => {
         file: options.file,
         scripts: options.scripts,
         aliases: options.aliases,
+        mount: options.mount,
         watch: options.mode === "serve",
     })
     // A server that cannot listen, its port taken say, is an error to show;
