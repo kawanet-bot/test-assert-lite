@@ -30,10 +30,10 @@ export const resolve = (specifier, context, next) =>
  * a suite outside any project, or beside another copy, still lands on the
  * instance run() reads.
  */
-export const runInNode = async (files: string[]): Promise<TAL.TestSummary> => {
+export const runInNode = async (suites: string[]): Promise<TAL.TestSummary> => {
     register(`data:text/javascript,${encodeURIComponent(HOOK)}`, {data: {parentURL: packageRoot().href}})
 
-    for (const file of files) {
+    for (const file of suites) {
         await import(pathToFileURL(resolve(file)).href)
     }
 

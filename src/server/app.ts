@@ -20,7 +20,7 @@ import {createWatcher} from "./watch.ts"
 
 export interface AppOptions extends ChannelOptions {
     /** The suites, absolute, all served from one directory. Without any, the pages carry the library and no suite. */
-    files?: string[]
+    suites?: string[]
     /** Classic scripts to run before the suites, absolute, in this order. */
     scripts?: string[]
     /** Bare specifiers and the ES module files they resolve to. */
@@ -64,7 +64,7 @@ const IMPORTS = {
  * of the verdict the page at `page` reports back through it.
  */
 export const createApp = (options: AppOptions): App => {
-    const {files = [], scripts = [], aliases = [], mount: mounted, stderr = text => process.stderr.write(text)} = options
+    const {suites = [], scripts = [], aliases = [], mount: mounted, stderr = text => process.stderr.write(text)} = options
     const channel = createChannel(options)
 
     // Watching is a convenience of --serve, not what it is for: where the
@@ -73,7 +73,7 @@ export const createApp = (options: AppOptions): App => {
     let watcher: Watcher | null = null
     if (options.watch) {
         try {
-            watcher = createWatcher([...files, ...scripts, ...aliases.map(alias => alias.file)])
+            watcher = createWatcher([...suites, ...scripts, ...aliases.map(alias => alias.file)])
         } catch (error) {
             stderr(`watch is off: ${error instanceof Error ? error.message : String(error)}\n`)
         }
@@ -82,11 +82,11 @@ export const createApp = (options: AppOptions): App => {
     // Every file given is served from its directory under /@tal/files/, so
     // a sibling or a nested import resolves beside it while nothing above
     // stays reachable; the suites' directory is the same for all of them.
-    const served = createFiles([...files, ...scripts, ...aliases.map(alias => alias.file)])
+    const served = createFiles([...suites, ...scripts, ...aliases.map(alias => alias.file)])
 
     // The build browsers get is the IIFE, so that is what runs: it goes in
     // as the first classic script, and the URL the import map and the
-    // bridges lead to serves browser/import.mjs, the ES module face of its
+    // bridges lead to serves exports/global.mjs, the ES module face of its
     // global, in place of the ESM build.
     const scriptUrls = ["/@tal/dist/test-assert-lite.min.js", ...scripts.map(script => served.urlOf(script))]
 
@@ -100,7 +100,7 @@ export const createApp = (options: AppOptions): App => {
     for (const {specifier, file} of aliases) imports[specifier] = served.urlOf(file)
     const importmap = `<script type="importmap">\n${JSON.stringify({imports}, null, 4)}\n</script>\n`
     const tags = scriptUrls.map(url => `<script src="${url}"></script>\n`).join("")
-        + files.map(file => `<script type="module" src="${served.urlOf(file)}"></script>\n`).join("")
+        + suites.map(suite => `<script type="module" src="${served.urlOf(suite)}"></script>\n`).join("")
     const head = withHead(importmap + tags)
 
     // The root serves htdocs/, or what --mount names in its place, a
@@ -119,7 +119,7 @@ export const createApp = (options: AppOptions): App => {
         channel.handler,
         ...(watcher == null ? [] : [watcher.handler]),
         scoped(compose([head, serveStatic({path: `${channel.path}run.html`, root: resolve(root, "browser", "run.html")})])),
-        serveStatic({path: "/@tal/dist/test-assert-lite.mjs", root: resolve(root, "browser", "import.mjs")}),
+        serveStatic({path: "/@tal/dist/test-assert-lite.mjs", root: resolve(root, "exports", "global.mjs")}),
         serveStatic({path: "/@tal/dist/", root: resolve(root, "dist")}),
         serveStatic({path: "/@tal/exports/", root: resolve(root, "exports")}),
         ...served.dirs.map(dir => serveStatic(dir)),

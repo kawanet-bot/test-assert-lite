@@ -61,7 +61,6 @@
   },
   "files": [
     "bin/cli.mjs",
-    "browser/import.mjs",
     "browser/run.html",
     "browser/session/",
     "dist/package.json",

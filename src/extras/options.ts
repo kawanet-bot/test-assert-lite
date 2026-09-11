@@ -40,7 +40,7 @@ export interface Alias {
 // suite: the mounted pages carry the library then, and whatever they run.
 export interface BrowserOptions {
     /** The suites, absolute, all served from one directory; none only under --serve with --mount. */
-    files: string[]
+    suites: string[]
     /** Classic scripts to run first, absolute, in order. */
     scripts: string[]
     aliases: Alias[]
@@ -53,7 +53,7 @@ export interface BrowserOptions {
 
 export type Options =
     | {mode: "help"}
-    | {mode: "node", files: string[]}
+    | {mode: "node", suites: string[]}
     | BrowserOptions & {mode: "serve"}
     | BrowserOptions & {mode: "playwright", browser: Browser}
     | BrowserOptions & {mode: "webdriver", session?: string, endpoint: string}
@@ -164,7 +164,7 @@ export const readOptions = (args: string[]): Options => {
         // so refuse the extensions that can only be CommonJS up front.
         const commonjs = files.filter(file => /\.c[jt]s$/.test(file))
         if (commonjs.length) throw new UsageError(`CommonJS suites are not supported: ${commonjs.join(", ")}`)
-        return {mode: "node", files: files.map(file => resolve(file))}
+        return {mode: "node", suites: files.map(file => resolve(file))}
     }
 
     const suites = files.map(file => resolve(file))
@@ -180,7 +180,7 @@ export const readOptions = (args: string[]): Options => {
     }
 
     const shared: BrowserOptions = {
-        files: suites,
+        suites: suites,
         scripts,
         aliases,
         mount: values.mount == null ? undefined : mountOf(values.mount),

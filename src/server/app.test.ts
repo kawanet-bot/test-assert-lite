@@ -44,7 +44,7 @@ describe("server/app", () => {
         tests = laid.dirOf(join(dir, "tests", "my suite.mjs")).path
         lib = laid.dirOf(join(dir, "lib", "mod.mjs")).path
         app = createApp({
-            files: [join(dir, "tests", "my suite.mjs"), join(dir, "tests", "second.mjs")],
+            suites: [join(dir, "tests", "my suite.mjs"), join(dir, "tests", "second.mjs")],
             scripts: [join(dir, "tests", "setup.js"), join(dir, "tests", "set+up#2.js")],
             aliases: [{specifier: "mod", file: join(dir, "lib", "mod.mjs")}, {specifier: "dep", file: join(dir, "tests", "nested", "dep.mjs")}],
             stdout: text => stdout.push(text),
@@ -132,7 +132,7 @@ describe("server/app", () => {
     it("asks about changes from the page people open alone, and only with watch on", async () => {
         assert.equal((await get(url("/"))).body.includes("/@tal/watch?after="), false)
         assert.equal((await get(url("/@tal/watch?after=0"))).status, 404)
-        const watching = createApp({files: [join(dir, "tests", "my suite.mjs")], watch: true, stdout: () => undefined})
+        const watching = createApp({suites: [join(dir, "tests", "my suite.mjs")], watch: true, stdout: () => undefined})
         const running = await serve({handler: watching.handler})
         try {
             const index = (await get(running.origin + "/")).body
@@ -151,7 +151,7 @@ describe("server/app", () => {
 
     it("serves without the reload, and says so once, where it cannot watch", async () => {
         const lines: string[] = []
-        const blind = createApp({files: [join(dir, "missing", "suite.mjs")], watch: true, stdout: () => undefined, stderr: text => lines.push(text)})
+        const blind = createApp({suites: [join(dir, "missing", "suite.mjs")], watch: true, stdout: () => undefined, stderr: text => lines.push(text)})
         const running = await serve({handler: blind.handler})
         try {
             assert.equal(lines.length, 1)
@@ -169,7 +169,7 @@ describe("server/app", () => {
     it("serves a mounted directory at the root in place of htdocs, its HTML with the head", async () => {
         await mkdir(join(dir, "site"))
         await writeFile(join(dir, "site", "index.html"), "<html><head></head><body>mine</body></html>")
-        const mounted = createApp({files: [join(dir, "tests", "my suite.mjs")], mount: join(dir, "site"), stdout: () => undefined})
+        const mounted = createApp({suites: [join(dir, "tests", "my suite.mjs")], mount: join(dir, "site"), stdout: () => undefined})
         const running = await serve({handler: mounted.handler})
         try {
             const index = await get(running.origin + "/")
@@ -211,7 +211,7 @@ describe("server/app", () => {
         await new Promise<void>(listening => upstream.listen(0, "127.0.0.1", listening))
         const address = upstream.address()
         const port = typeof address === "object" && address != null ? address.port : 0
-        const mounted = createApp({files: [join(dir, "tests", "my suite.mjs")], mount: `http://127.0.0.1:${port}/app/`, stdout: () => undefined})
+        const mounted = createApp({suites: [join(dir, "tests", "my suite.mjs")], mount: `http://127.0.0.1:${port}/app/`, stdout: () => undefined})
         const running = await serve({handler: mounted.handler})
         try {
             const index = await get(running.origin + "/")
@@ -230,7 +230,7 @@ describe("server/app", () => {
     })
 
     it("fails the verdict on anything but true", async () => {
-        const other = createApp({files: [join(dir, "tests", "my suite.mjs")], stdout: () => undefined})
+        const other = createApp({suites: [join(dir, "tests", "my suite.mjs")], stdout: () => undefined})
         const running = await serve({handler: other.handler})
         try {
             assert.equal(await post(running.origin + other.page.replace(/run\.html$/, "end"), "yes"), 204)
