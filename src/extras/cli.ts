@@ -26,14 +26,14 @@ const run = async (options: Options): Promise<number> => {
     }
 
     if (options.mode === "node") {
-        return (await runInNode(options.files)).success ? 0 : 1
+        return (await runInNode(options.suites)).success ? 0 : 1
     }
 
     // The application is the middleware, the server runs it; every request
     // goes to stderr, apart from the reporter's stdout, so a 404 for a
     // mistyped --script or --alias shows up there.
     const app = createApp({
-        files: options.files,
+        suites: options.suites,
         scripts: options.scripts,
         aliases: options.aliases,
         mount: options.mount,

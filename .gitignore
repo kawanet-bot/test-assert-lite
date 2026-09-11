@@ -1,7 +1,6 @@
 *.cjs
 *.js
 *.mjs
-!browser/import.mjs
 !bin/cli.mjs
 !src/extras/playwright.mjs
 !exports/**/*.mjs
