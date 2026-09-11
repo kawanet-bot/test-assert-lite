@@ -149,6 +149,9 @@ describe("server/serve", () => {
         const res = await get(server.origin, "/dist/lib.mjs")
         assert.equal(res.status, 200)
         assert.equal(res.type, "text/javascript; charset=utf-8")
+        const cjs = await get(server.origin, "/dist/legacy.cjs")
+        assert.equal(cjs.status, 200)
+        assert.equal(cjs.type, "text/javascript; charset=utf-8")
         assert.equal((await get(server.origin, "/dist/nested/deep.mjs")).status, 200)
         assert.equal((await get(server.origin, "/dist/my%20lib.mjs")).body, "export const lib = 2")
     })
@@ -191,7 +194,6 @@ describe("server/serve", () => {
     })
 
     it("refuses a kind it does not serve with 403, when the file is there", async () => {
-        assert.equal((await get(server.origin, "/dist/legacy.cjs")).type, "text/javascript; charset=utf-8")
         assert.equal((await get(server.origin, "/dist/source.ts")).status, 403)
         assert.equal((await get(server.origin, "/dist/missing.ts")).status, 404)
     })

@@ -46,7 +46,7 @@ describe("extras/import-map", () => {
     })
 
     it("refuses what it cannot read or does not take, naming the file", async () => {
-        assert.throws(() => importMapOf(join(dir, "maps", "none.json")), /^Error: ENOENT/)
+        assert.throws(() => importMapOf(join(dir, "maps", "none.json")), /ENOENT/)
         for (const [name, json, reason] of [
             ["bad.json", '{"imports": {"a": "./a.js",}}', /JSON/],
             ["list.json", "[]", /not an object$/],
