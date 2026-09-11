@@ -8,17 +8,18 @@ import {dirname} from "node:path"
 import {pathToFileURL} from "node:url"
 
 // The nearest package.json above `from` that `wanted` takes, with its
-// directory; one that cannot be read is no package.
+// directory; one that cannot be read is no package. The walk ends where
+// going up changes nothing: "/" on POSIX, a drive root on Windows.
 const packageAbove = (from: URL, wanted: (name: unknown) => boolean): {dir: URL, name: string} | undefined => {
-    for (let dir = from; dir.pathname !== "/"; dir = new URL("../", dir)) {
+    for (let dir = from; ; dir = new URL("../", dir)) {
         try {
             const {name} = JSON.parse(readFileSync(new URL("package.json", dir), "utf8")) as {name?: unknown}
             if (wanted(name)) return {dir, name: String(name)}
         } catch {
             // no package.json at this level
         }
+        if (new URL("../", dir).href === dir.href) return undefined
     }
-    return undefined
 }
 
 export const packageRoot = (): URL => {
