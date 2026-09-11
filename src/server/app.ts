@@ -4,9 +4,9 @@
 // channel to the page; the server that runs it is another's, serve.ts today.
 // The CLI turns arguments into AppOptions; anything else could do the same.
 
-import {resolve} from "node:path"
+import {basename, resolve} from "node:path"
 import {fileURLToPath} from "node:url"
-import {packageRoot} from "../extras/package-root.ts"
+import {packageNameOf, packageRoot} from "../extras/package-root.ts"
 import type {ChannelOptions} from "./channel.ts"
 import {createChannel} from "./channel.ts"
 import {createFiles} from "./files.ts"
@@ -15,6 +15,7 @@ import type {MiddlewareHandler} from "./middleware.ts"
 import {compose, scoped} from "./middleware.ts"
 import {proxy} from "./proxy.ts"
 import {serveStatic} from "./static.ts"
+import {withTitle} from "./title.ts"
 import type {Watcher} from "./watch.ts"
 import {createWatcher} from "./watch.ts"
 
@@ -118,10 +119,15 @@ export const createApp = (options: AppOptions): App => {
     const atRoot = mounted == null
         ? serveStatic({path: "/", root: resolve(root, "htdocs")})
         : /^https?:\/\//i.test(mounted) ? proxy({path: "/", upstream: mounted}) : serveStatic({path: "/", root: mounted})
+
+    // The CLI's own pages are named after what they run: the package each
+    // suite belongs to, or the suite's own name where there is none.
+    const names = suites.map(suite => packageNameOf(suite) ?? basename(suite))
+    const title = withTitle([...new Set(names)].join(" ") || "test-assert-lite")
     const handler = compose([
         channel.handler,
         ...(watcher == null ? [] : [watcher.handler]),
-        scoped(compose([head, serveStatic({path: `${channel.path}run.html`, root: resolve(root, "browser", "run.html")})])),
+        scoped(compose([head, title, serveStatic({path: `${channel.path}run.html`, root: resolve(root, "browser", "run.html")})])),
         serveStatic({path: "/@tal/esm/test-assert-lite.mjs", root: resolve(root, "exports", "global.mjs")}),
         serveStatic({path: "/@tal/dist/", root: resolve(root, "dist")}),
         serveStatic({path: "/@tal/exports/", root: resolve(root, "exports")}),
@@ -129,7 +135,7 @@ export const createApp = (options: AppOptions): App => {
         // /@tal/ is the CLI's: what none of the mounts above answered ends
         // here, whatever a mount or an upstream at the root would say to it.
         async (c, next) => (c.req.path.startsWith("/@tal/") ? c.notFound() : next()),
-        scoped(compose([...(watcher == null ? [] : [watcher.inject]), head, atRoot])),
+        scoped(compose([...(watcher == null ? [] : [watcher.inject]), head, ...(mounted == null ? [title] : []), atRoot])),
     ])
 
     return {
