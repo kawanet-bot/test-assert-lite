@@ -1,6 +1,6 @@
 {
   "name": "test-assert-lite",
-  "description": "A subset of node:test and node:assert that runs in browsers",
+  "description": "Run your node:test and node:assert test files in browsers, as they are",
   "version": "0.0.1",
   "author": "Kawanet",
   "bin": {
