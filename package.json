@@ -63,7 +63,6 @@
     "bin/cli.mjs",
     "browser/import.js",
     "browser/import.mjs",
-    "browser/index.html",
     "browser/package.json",
     "browser/run.html",
     "browser/session/",

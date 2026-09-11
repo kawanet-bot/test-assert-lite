@@ -4,14 +4,14 @@
 // channel to the page; the server that runs it is another's, serve.ts today.
 // The CLI turns arguments into AppOptions; anything else could do the same.
 
-import {readFileSync} from "node:fs"
 import {basename, dirname, resolve} from "node:path"
 import {fileURLToPath} from "node:url"
 import {packageRoot} from "../extras/package-root.ts"
 import type {ChannelOptions} from "./channel.ts"
 import {createChannel} from "./channel.ts"
+import {withHead} from "./head.ts"
 import type {MiddlewareHandler} from "./middleware.ts"
-import {compose} from "./middleware.ts"
+import {compose, scoped} from "./middleware.ts"
 import {serveStatic} from "./static.ts"
 import type {Watcher} from "./watch.ts"
 import {createWatcher} from "./watch.ts"
@@ -62,24 +62,6 @@ const mount = (dir: string, file: string): {url: string, path: string} => ({
     path: dir + basename(file),
 })
 
-const isRead = (method: string): boolean => method === "GET" || method === "HEAD"
-
-// What --watch puts into the page people open: it asks after the version
-// it was built with and reloads on an answer. A 204, the wait run out,
-// means ask again at once; anything else, the server gone say, a second
-// later, then two, then three, so a page left behind does not hammer.
-const asks = (after: number): string => `<script>
-(async after => {
-    for (let wait = 1; ; wait++) {
-        const res = await fetch(\`/@tal/watch?after=\${after}\`).catch(() => null)
-        if (res?.status === 200) return location.reload()
-        if (res?.status === 204) wait = 0
-        await new Promise(next => setTimeout(next, wait * 1000))
-    }
-})(${after})
-</script>
-`
-
 /**
  * Builds the application for the suite: its middleware, and the promise
  * of the verdict the page at `page` reports back through it.
@@ -118,49 +100,34 @@ export const createApp = (options: AppOptions): App => {
     // The map has to be inline and in place before the first module loads;
     // classic script tags run in order as the head is parsed, and module
     // tags in order once it is, ahead of the page's own module in the body
-    // that calls run(). So all three go in at the end of each page's head,
-    // past any mention of those tags in a comment.
+    // that calls run(). So all three go into the head of every HTML page
+    // served from htdocs/, and of the run's page, as it goes out.
     const imports: Record<string, string> = {...IMPORTS}
     for (const [i, {specifier}] of aliases.entries()) imports[specifier] = aliasUrls[i] as string
     const importmap = `<script type="importmap">\n${JSON.stringify({imports}, null, 4)}\n</script>\n`
     const tags = scriptUrls.map(url => `<script src="${url}"></script>\n`).join("")
         + `<script type="module" src="${suite.url}"></script>\n`
-    const withHead = (path: string, extra = ""): string => {
-        const html = readFileSync(resolve(root, path), "utf8")
-        const at = html.lastIndexOf("</head>")
-        return html.slice(0, at) + importmap + tags + extra + html.slice(at)
-    }
+    const head = withHead(importmap + tags)
 
-    // Both pages live beside the CLI's other browser files and are built
-    // as asked for: the one people open at the root, the one the CLI
-    // drives under the run only. Only the former asks about changes.
-    const INDEX = "browser/index.html"
-    const pages: Record<string, string> = {
-        "/": INDEX,
-        "/index.html": INDEX,
-        [`${channel.path}run.html`]: "browser/run.html",
-    }
-    const build = (page: string): string => withHead(page, watcher != null && page === INDEX ? asks(watcher.version) : "")
-
-    // Document root is htdocs/, the files served as they are; everything
-    // else the CLI provides sits under /@tal/, the build output and the
-    // subpath bridges included, as those have to stay where the package
-    // puts them. Nothing else is exposed.
+    // Document root is htdocs/, whose HTML gets the head above and, with
+    // watch on, the ask that reloads it; the page the CLI drives lives
+    // beside the CLI's other browser files and is served under the run
+    // alone, with the head but no ask. Each is a chain of its own, so the
+    // head reaches what that chain serves and nothing served after it.
+    // Everything else the CLI provides sits under /@tal/, the build output
+    // and the subpath bridges included, as those have to stay where the
+    // package puts them; nothing there is touched. Nothing else is exposed.
     const handler = compose([
         channel.handler,
         ...(watcher == null ? [] : [watcher.handler]),
-        async (c, next) => {
-            const page = pages[c.req.path]
-            if (page == null) return next()
-            return isRead(c.req.method) ? c.html(build(page)) : c.body(null, 405, {allow: "GET, HEAD"})
-        },
+        scoped(compose([head, serveStatic({path: `${channel.path}run.html`, root: resolve(root, "browser", "run.html")})])),
         serveStatic({path: "/@tal/dist/test-assert-lite.mjs", root: resolve(root, "browser", "import.mjs")}),
         ...mounts.map(({path}, i) => serveStatic({path, root: scripts[i] as string})),
         serveStatic({path: "/@tal/dist/", root: resolve(root, "dist")}),
         serveStatic({path: "/@tal/exports/", root: resolve(root, "exports")}),
         serveStatic({path: "/@tal/tests/0/", root: dirname(file)}),
         ...aliasDirs.map((dir, i) => serveStatic({path: dir, root: dirname(aliases[i]?.file as string)})),
-        serveStatic({path: "/", root: resolve(root, "htdocs")}),
+        scoped(compose([...(watcher == null ? [] : [watcher.inject]), head, serveStatic({path: "/", root: resolve(root, "htdocs")})])),
     ])
 
     return {

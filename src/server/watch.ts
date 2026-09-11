@@ -7,11 +7,14 @@
 import type {FSWatcher} from "node:fs"
 import {watch} from "node:fs"
 import {basename, dirname} from "node:path"
+import {withHead} from "./head.ts"
 import type {MiddlewareHandler} from "./middleware.ts"
 
 export interface Watcher {
     /** Answers GET /@tal/watch?after=<version>: 200 once past that version, 204 when the wait runs out. */
     handler: MiddlewareHandler
+    /** Puts the ask into the head of the pages the chain after it serves. */
+    inject: MiddlewareHandler
     /** How many changes so far; a page is built with this and asks after it. */
     readonly version: number
 
@@ -26,6 +29,22 @@ const QUIET_MS = 100
 // A wait this long draws a 204 rather than an answer, so a proxy or a
 // browser does not give up on the request first.
 const WAIT_MS = 30_000
+
+// What goes into the page people open: it asks after the version it was
+// built with and reloads on an answer. A 204, the wait run out, means ask
+// again at once; anything else, the server gone say, a second later, then
+// two, then three, so a page left behind does not hammer.
+const asks = (after: number): string => `<script>
+(async after => {
+    for (let wait = 1; ; wait++) {
+        const res = await fetch(\`/@tal/watch?after=\${after}\`).catch(() => null)
+        if (res?.status === 200) return location.reload()
+        if (res?.status === 204) wait = 0
+        await new Promise(next => setTimeout(next, wait * 1000))
+    }
+})(${after})
+</script>
+`
 
 /**
  * Watches `files` and answers the page's asks; `wait` is how long an ask
@@ -91,6 +110,7 @@ export const createWatcher = (files: string[], wait = WAIT_MS): Watcher => {
                 ? c.body(String(version), 200, {"content-type": "text/plain; charset=utf-8"})
                 : c.body(null, 204)
         },
+        inject: withHead(() => asks(version)),
         get version(): number {
             return version
         },

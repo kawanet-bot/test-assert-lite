@@ -102,3 +102,15 @@ export const compose = (handlers: MiddlewareHandler[]): MiddlewareHandler => (c,
     }
     return dispatch(0)
 }
+
+/**
+ * Runs `handler` as a chain of its own: its next() ends there, so what
+ * wraps inside it, a middleware that looks at the Response after next(),
+ * sees only what the chain itself answered. What it leaves unanswered
+ * goes on to the next middleware outside, past those wrappers.
+ */
+export const scoped = (handler: MiddlewareHandler): MiddlewareHandler => async (c, next) => {
+    const res = await handler(c, async () => undefined)
+    if (res != null && !c.finalized) c.res = res
+    if (!c.finalized) return next()
+}
