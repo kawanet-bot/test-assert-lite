@@ -176,12 +176,19 @@ describe("extras/options", () => {
         })
 
         it("reads several suites in a browser mode from one directory, in order, and refuses them from two", () => {
-            const options = readOptions(["--serve", "test/b.mjs", "./test/a.mjs", "test/b.mjs"])
+            const options = readOptions(["--serve", "test/b.mjs", "./test/a.mjs", "test/b.mjs", "test/sub/c.mjs"])
             assert.equal(options.mode, "serve")
             if (options.mode !== "serve") return
-            assert.deepEqual(options.files, [resolve("test/b.mjs"), resolve("test/a.mjs"), resolve("test/b.mjs")])
-            refused(() => readOptions(["--serve", "test/a.mjs", "other/b.mjs"]), /^--playwright, --webdriver and --serve take suites from one directory: test\/a\.mjs, other\/b\.mjs$/)
-            refused(() => readOptions(["--playwright", "chromium", "a.mjs", "test/b.mjs"]), /take suites from one directory/)
+            assert.deepEqual(options.files, [resolve("test/b.mjs"), resolve("test/a.mjs"), resolve("test/b.mjs"), resolve("test/sub/c.mjs")])
+            refused(() => readOptions(["--serve", "test/a.mjs", "other/b.mjs"]), /^--playwright, --webdriver and --serve take the suites from one directory$/)
+            refused(() => readOptions(["--playwright", "chromium", "x/a.mjs", "test/b.mjs"]), /from one directory$/)
+            refused(() => readOptions(["--serve", "test/a/x.mjs", "test/b/y.mjs"]), /from one directory$/)
+        })
+
+        it("counts a suite's directory under a script's or an alias's as that one", () => {
+            const options = readOptions(["--serve", "--alias", "lib=test/lib.mjs", "test/a/x.mjs", "test/b/y.mjs"])
+            assert.equal(options.mode, "serve")
+            assert.equal(readOptions(["--serve", "--script", "test/setup.js", "test/a/x.mjs", "test/b/y.mjs"]).mode, "serve")
         })
 
         it("lets --serve with --mount go without a suite", () => {

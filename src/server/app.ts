@@ -4,11 +4,12 @@
 // channel to the page; the server that runs it is another's, serve.ts today.
 // The CLI turns arguments into AppOptions; anything else could do the same.
 
-import {basename, dirname, resolve} from "node:path"
+import {resolve} from "node:path"
 import {fileURLToPath} from "node:url"
 import {packageRoot} from "../extras/package-root.ts"
 import type {ChannelOptions} from "./channel.ts"
 import {createChannel} from "./channel.ts"
+import {createFiles} from "./files.ts"
 import {withHead} from "./head.ts"
 import type {MiddlewareHandler} from "./middleware.ts"
 import {compose, scoped} from "./middleware.ts"
@@ -18,7 +19,7 @@ import type {Watcher} from "./watch.ts"
 import {createWatcher} from "./watch.ts"
 
 export interface AppOptions extends ChannelOptions {
-    /** The suites, absolute, all in one directory, which is mounted. Without any, the pages carry the library and no suite. */
+    /** The suites, absolute, all served from one directory. Without any, the pages carry the library and no suite. */
     files?: string[]
     /** Classic scripts to run before the suites, absolute, in this order. */
     scripts?: string[]
@@ -58,13 +59,6 @@ const IMPORTS = {
     "node:assert/strict": "/@tal/exports/assert/strict.mjs",
 }
 
-// A file mounted by name: the URL a page refers to it by, percent-encoded,
-// and the path a request for it arrives as, decoded back to the name.
-const mount = (dir: string, file: string): {url: string, path: string} => ({
-    url: dir + encodeURIComponent(basename(file)),
-    path: dir + basename(file),
-})
-
 /**
  * Builds the application for the suites: its middleware, and the promise
  * of the verdict the page at `page` reports back through it.
@@ -85,20 +79,16 @@ export const createApp = (options: AppOptions): App => {
         }
     }
 
-    // The suites' directory is mounted at /@tal/tests/0/, so a sibling or a
-    // nested import resolves beside them, once for all of them, while
-    // nothing above stays reachable; an aliased module gets the same under
-    // /@tal/aliases/<n>/. A script cannot import, so each is mounted on its own.
-    const suites = files.map(file => mount("/@tal/tests/0/", file))
-    const mounts = scripts.map((script, i) => mount(`/@tal/scripts/${i}/`, script))
+    // Every file given is served from its directory under /@tal/files/, so
+    // a sibling or a nested import resolves beside it while nothing above
+    // stays reachable; the suites' directory is the same for all of them.
+    const served = createFiles([...files, ...scripts, ...aliases.map(alias => alias.file)])
 
     // The build browsers get is the IIFE, so that is what runs: it goes in
     // as the first classic script, and the URL the import map and the
     // bridges lead to serves browser/import.mjs, the ES module face of its
     // global, in place of the ESM build.
-    const scriptUrls = ["/@tal/dist/test-assert-lite.min.js", ...mounts.map(({url}) => url)]
-    const aliasDirs = aliases.map((_, i) => `/@tal/aliases/${i}/`)
-    const aliasUrls = aliases.map(({file}, i) => mount(aliasDirs[i] as string, file).url)
+    const scriptUrls = ["/@tal/dist/test-assert-lite.min.js", ...scripts.map(script => served.urlOf(script))]
 
     // The map has to be inline and in place before the first module loads;
     // classic script tags run in order as the head is parsed, and module
@@ -107,10 +97,10 @@ export const createApp = (options: AppOptions): App => {
     // all three go into the head of every HTML page served from htdocs/,
     // and of the run's page, as it goes out.
     const imports: Record<string, string> = {...IMPORTS}
-    for (const [i, {specifier}] of aliases.entries()) imports[specifier] = aliasUrls[i] as string
+    for (const {specifier, file} of aliases) imports[specifier] = served.urlOf(file)
     const importmap = `<script type="importmap">\n${JSON.stringify({imports}, null, 4)}\n</script>\n`
     const tags = scriptUrls.map(url => `<script src="${url}"></script>\n`).join("")
-        + suites.map(({url}) => `<script type="module" src="${url}"></script>\n`).join("")
+        + files.map(file => `<script type="module" src="${served.urlOf(file)}"></script>\n`).join("")
     const head = withHead(importmap + tags)
 
     // The root serves htdocs/, or what --mount names in its place, a
@@ -130,11 +120,9 @@ export const createApp = (options: AppOptions): App => {
         ...(watcher == null ? [] : [watcher.handler]),
         scoped(compose([head, serveStatic({path: `${channel.path}run.html`, root: resolve(root, "browser", "run.html")})])),
         serveStatic({path: "/@tal/dist/test-assert-lite.mjs", root: resolve(root, "browser", "import.mjs")}),
-        ...mounts.map(({path}, i) => serveStatic({path, root: scripts[i] as string})),
         serveStatic({path: "/@tal/dist/", root: resolve(root, "dist")}),
         serveStatic({path: "/@tal/exports/", root: resolve(root, "exports")}),
-        ...(files[0] == null ? [] : [serveStatic({path: "/@tal/tests/0/", root: dirname(files[0])})]),
-        ...aliasDirs.map((dir, i) => serveStatic({path: dir, root: dirname(aliases[i]?.file as string)})),
+        ...served.dirs.map(dir => serveStatic(dir)),
         // /@tal/ is the CLI's: what none of the mounts above answered ends
         // here, whatever a mount or an upstream at the root would say to it.
         async (c, next) => (c.req.path.startsWith("/@tal/") ? c.notFound() : next()),

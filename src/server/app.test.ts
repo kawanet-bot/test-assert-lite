@@ -6,6 +6,7 @@ import {join} from "node:path"
 import {after, before, describe, it} from "node:test"
 import type {App} from "./app.ts"
 import {createApp} from "./app.ts"
+import {createFiles} from "./files.ts"
 import type {Server} from "./serve.ts"
 import {serve} from "./serve.ts"
 
@@ -20,6 +21,9 @@ const post = async (url: string, body: string): Promise<number> => (await fetch(
 
 describe("server/app", () => {
     let dir: string
+    // Where the suites and the scripts are served from, and the alias.
+    let tests: string
+    let lib: string
     let app: App
     let server: Server
     const stdout: string[] = []
@@ -36,10 +40,13 @@ describe("server/app", () => {
         await writeFile(join(dir, "tests", "set+up#2.js"), "globalThis.setup = 2")
         await writeFile(join(dir, "lib", "mod.mjs"), "export const mod = 1")
         await writeFile(join(dir, "secret.json"), "{}")
+        const laid = createFiles([join(dir, "tests", "my suite.mjs"), join(dir, "lib", "mod.mjs")])
+        tests = laid.dirOf(join(dir, "tests", "my suite.mjs")).path
+        lib = laid.dirOf(join(dir, "lib", "mod.mjs")).path
         app = createApp({
             files: [join(dir, "tests", "my suite.mjs"), join(dir, "tests", "second.mjs")],
             scripts: [join(dir, "tests", "setup.js"), join(dir, "tests", "set+up#2.js")],
-            aliases: [{specifier: "mod", file: join(dir, "lib", "mod.mjs")}],
+            aliases: [{specifier: "mod", file: join(dir, "lib", "mod.mjs")}, {specifier: "dep", file: join(dir, "tests", "nested", "dep.mjs")}],
             stdout: text => stdout.push(text),
         })
         server = await serve({handler: app.handler})
@@ -63,15 +70,17 @@ describe("server/app", () => {
         }
         const map = at('<script type="importmap">')
         const iife = at('<script src="/@tal/dist/test-assert-lite.min.js"></script>')
-        const script = at('<script src="/@tal/scripts/0/setup.js"></script>')
-        const second = at('<script src="/@tal/scripts/1/set%2Bup%232.js"></script>')
-        const suite = at('<script type="module" src="/@tal/tests/0/my%20suite.mjs"></script>')
-        const other = at('<script type="module" src="/@tal/tests/0/second.mjs"></script>')
+        assert.match(tests, /^\/@tal\/files\/[0-9a-f]{9}\/$/)
+        const script = at(`<script src="${tests}setup.js"></script>`)
+        const second = at(`<script src="${tests}set%2Bup%232.js"></script>`)
+        const suite = at(`<script type="module" src="${tests}my%20suite.mjs"></script>`)
+        const other = at(`<script type="module" src="${tests}second.mjs"></script>`)
         assert.ok(map < iife && iife < script && script < second && second < suite && suite < other)
         const {imports} = JSON.parse(head.slice(head.indexOf("{", map), head.indexOf("</script>", map)))
         assert.equal(imports["node:test"], "/@tal/exports/test.mjs")
         assert.equal(imports["test-assert-lite"], "/@tal/dist/test-assert-lite.mjs")
-        assert.equal(imports["mod"], "/@tal/aliases/0/mod.mjs")
+        assert.equal(imports["mod"], `${lib}mod.mjs`)
+        assert.equal(imports["dep"], `${tests}nested/dep.mjs`)
         assert.equal((await get(url("/index.html"))).body, res.body)
     })
 
@@ -80,21 +89,21 @@ describe("server/app", () => {
         const res = await get(url(app.page))
         assert.equal(res.status, 200)
         assert.match(res.body, /reporter\.client/)
-        assert.ok(res.body.includes('<script type="module" src="/@tal/tests/0/my%20suite.mjs"></script>\n<script type="module" src="/@tal/tests/0/second.mjs"></script>\n</head>'))
+        assert.ok(res.body.includes(`<script type="module" src="${tests}my%20suite.mjs"></script>\n<script type="module" src="${tests}second.mjs"></script>\n</head>`))
         assert.equal((await get(url("/run.html"))).status, 404)
         assert.equal((await get(url("/@tal/run/000000000/run.html"))).status, 404)
     })
 
-    it("mounts the suites' directory once, each script by name and an alias's directory", async () => {
-        assert.equal((await get(url("/@tal/tests/0/my%20suite.mjs"))).body, "export const suite = 1")
-        assert.equal((await get(url("/@tal/tests/0/second.mjs"))).body, "export const suite = 2")
-        assert.equal((await get(url("/@tal/tests/1/second.mjs"))).status, 404)
-        assert.equal((await get(url("/@tal/tests/0/nested/dep.mjs"))).status, 200)
-        assert.equal((await get(url("/@tal/scripts/0/setup.js"))).body, "globalThis.setup = 1")
-        assert.equal((await get(url("/@tal/scripts/1/set%2Bup%232.js"))).body, "globalThis.setup = 2")
-        assert.equal((await get(url("/@tal/scripts/0/my%20suite.mjs"))).status, 404)
-        assert.equal((await get(url("/@tal/aliases/0/mod.mjs"))).status, 200)
-        assert.equal((await get(url("/@tal/aliases/0/secret.json"))).status, 404)
+    it("serves the suites, the scripts and an alias from their directories, one under another through it", async () => {
+        assert.equal((await get(url(`${tests}my%20suite.mjs`))).body, "export const suite = 1")
+        assert.equal((await get(url(`${tests}second.mjs`))).body, "export const suite = 2")
+        assert.equal((await get(url(`${tests}nested/dep.mjs`))).status, 200)
+        assert.equal((await get(url(`${tests}setup.js`))).body, "globalThis.setup = 1")
+        assert.equal((await get(url(`${tests}set%2Bup%232.js`))).body, "globalThis.setup = 2")
+        assert.equal((await get(url(`${lib}mod.mjs`))).status, 200)
+        assert.equal((await get(url(`${lib}my%20suite.mjs`))).status, 404)
+        assert.equal((await get(url(`${lib}secret.json`))).status, 404)
+        assert.equal((await get(url("/@tal/files/000000000/mod.mjs"))).status, 404)
     })
 
     it("serves the package's build, bridges and document root, the ESM build as the IIFE's shim", async () => {
@@ -184,8 +193,8 @@ describe("server/app", () => {
             const index = (await get(running.origin + "/")).body
             assert.ok(index.includes('<script type="importmap">'))
             assert.ok(index.includes('<script src="/@tal/dist/test-assert-lite.min.js"></script>'))
-            assert.equal(index.includes('type="module" src="/@tal/tests/'), false)
-            assert.equal((await get(running.origin + "/@tal/tests/0/anything.mjs")).status, 404)
+            assert.equal(index.includes('type="module" src="/@tal/files/'), false)
+            assert.equal((await get(running.origin + "/@tal/files/000000000/anything.mjs")).status, 404)
         } finally {
             bare.close()
             running.close()
