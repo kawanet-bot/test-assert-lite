@@ -14,10 +14,10 @@ export const USAGE = `Usage: test-assert [options] <file...>
   --alias <specifier>=<file>  ES module a bare specifier resolves to (browser modes, repeatable)
   --script <file>             classic script to run first (browser modes, repeatable)
   --mount <dir|url>           what the root serves instead of htdocs: a directory, or an origin to proxy (browser modes)
-  --playwright <browser>      run the suite through Playwright: chromium, firefox or webkit
   --webdriver                 run the suite through a WebDriver server: safaridriver, chromedriver
   --webdriver-session <file>  JSON sent as the body of POST /session (default: no capabilities)
   --endpoint <url>            the WebDriver server (default: http://127.0.0.1:4444)
+  --playwright <browser>      run the suite through Playwright: chromium, firefox or webkit
 `
 
 // Wrong arguments end in the usage text and exit code 1, after the reason

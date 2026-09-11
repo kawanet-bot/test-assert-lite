@@ -7,19 +7,19 @@
 ```sh
 test-assert test/*.mjs                                       # in this Node process
 test-assert --serve browser/tests/bundled.mjs                # serves the suite and prints the URL to open
-test-assert --playwright chromium browser/tests/bundled.mjs  # in headless Chromium, through Playwright
 test-assert --webdriver browser/tests/bundled.mjs            # in the browser a WebDriver server drives, Safari say
+test-assert --playwright chromium browser/tests/bundled.mjs  # in headless Chromium, through Playwright
 ```
 
 - The files are named one by one; globs and directories are the shell's job. CommonJS suites (`.cjs`, `.cts`) are refused.
-- The browser modes, `--serve`, `--playwright` and `--webdriver`, take one suite, bundled with its imports. They are exclusive.
-- The exit code is 0 when every test passed, 1 otherwise, and the report goes to stdout. Everything else, the server's access log included, goes to stderr.
+- The browser modes, `--serve`, `--webdriver` and `--playwright`, take one suite, bundled with its imports; `--serve` with `--mount` may take none. They are exclusive.
+- The exit code is 0 when every test passed, 1 otherwise. Stdout carries the report, or the URL under `--serve`. Everything else, the server's access log included, goes to stderr.
 
 ### --serve
 
 - Serves the suite for a browser, prints the URL to open, and keeps serving until Ctrl-C.
 - The page reloads when the suite, a `--script` or an `--alias` changes.
-- With `--mount`, the suite may be left out: the mounted pages then carry the library and run whatever they load.
+- With `--mount`, the suite may be left out.
 
 ### --host <address>
 
@@ -33,7 +33,7 @@ test-assert --webdriver browser/tests/bundled.mjs            # in the browser a 
 
 ### --origin <url>
 
-- What the browser reaches the server as, `http(s)://host[:port]`. Default: the address listened on.
+- What the browser reaches the server as, `http(s)://host[:port]`. Default: the address listened on, `127.0.0.1` for a wildcard such as `0.0.0.0`.
 - For a tunnel or a proxy in between: it is what the runners open and what `--serve` prints.
 
 ### --alias <specifier>=<file>
@@ -43,18 +43,13 @@ test-assert --webdriver browser/tests/bundled.mjs            # in the browser a 
 
 ### --script <file>
 
-- Classic script to run before the suite, for a global it sets up. Repeatable, in order.
+- Classic script to run before the suite, an IIFE build for a global it sets up, say. Repeatable, in order.
 - A mistyped file shows up as a 404 in the access log on stderr.
 
 ### --mount <dir|url>
 
 - What the root serves in place of `htdocs/`: a directory, or an origin to proxy, `http://127.0.0.1:5173` for an app's dev server say.
-- Its HTML pages get the import map and the suite in their head, so a page the app makes runs the suite.
-
-### --playwright <browser>
-
-- Runs the suite in a headless `chromium`, `firefox` or `webkit` through Playwright.
-- Needs the `playwright` package and that browser: `npm install -D playwright && npx playwright install chromium`.
+- Its HTML pages get the import map and the suite, when there is one, in their head, so a page the app makes runs the suite.
 
 ### --webdriver
 
@@ -69,6 +64,11 @@ test-assert --webdriver browser/tests/bundled.mjs            # in the browser a 
 ### --endpoint <url>
 
 - The WebDriver server. Default: `http://127.0.0.1:4444`.
+
+### --playwright <browser>
+
+- Runs the suite in a headless `chromium`, `firefox` or `webkit` through Playwright.
+- Needs the `playwright` package and that browser: `npm install -D playwright && npx playwright install chromium`.
 
 ## Sample run
 
