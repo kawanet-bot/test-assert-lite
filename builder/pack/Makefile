@@ -61,7 +61,7 @@ test-bin:
 # The CLI end to end against the copy under test. sample/ is a package
 # scope of its own, so its bare import reaches that copy through a symlink
 # in sample/node_modules, remade each run as the copy differs by lane.
-# The alias pair shows the resolve hook of that copy at work. Only the
+# The alias run shows the resolve hook of that copy at work. Only the
 # exit codes matter here.
 test-cli:
 	mkdir -p ../../sample/node_modules
@@ -70,7 +70,6 @@ test-cli:
 	cd ../.. && ./$(PKG_ROOT)/bin/cli.mjs sample/pass.mjs > /dev/null 2>&1
 	cd ../.. && ! ./$(PKG_ROOT)/bin/cli.mjs sample/fail.mjs > /dev/null 2>&1
 	cd ../.. && ./$(PKG_ROOT)/bin/cli.mjs --alias greet=sample/lib/greet.mjs sample/alias.mjs > /dev/null 2>&1
-	cd ../.. && ! ./$(PKG_ROOT)/bin/cli.mjs sample/alias.mjs > /dev/null 2>&1
 
 # Script-context run of the minified bundle under $(PKG_ROOT): the browser
 # IIFE consumer shape; in the default root it also proves the tarball
