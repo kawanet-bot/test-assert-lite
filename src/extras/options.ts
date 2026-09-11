@@ -3,11 +3,11 @@
 // value has to take. Anything wrong is a UsageError from here, before the
 // caller has opened a server or a watch on the strength of it.
 
-import {readFileSync} from "node:fs"
 import {resolve} from "node:path"
-import {fileURLToPath, pathToFileURL} from "node:url"
 import {parseArgs} from "node:util"
 import {createFiles} from "../server/files.ts"
+import type {Alias, Import} from "./import-map.ts"
+import {importMapOf} from "./import-map.ts"
 
 export const USAGE = `Usage: test-assert [options] <file...>
   -v, --version               print this package's version
@@ -32,15 +32,6 @@ export class UsageError extends Error {
 
 const BROWSERS = ["chromium", "firefox", "webkit"] as const
 export type Browser = typeof BROWSERS[number]
-
-export interface Alias {
-    specifier: string
-    /** The ES module the specifier resolves to, absolute. */
-    file: string
-}
-
-/** What a specifier resolves to: a file served by the CLI, or a URL the page takes as it is. */
-export type Import = Alias | {specifier: string, url: string}
 
 // What the three browser modes share: the suites, what the page is made
 // of, and where the server sits. --serve with --mount may go without a
@@ -67,10 +58,11 @@ export type Options =
     | BrowserOptions & {mode: "playwright", browser: Browser}
     | BrowserOptions & {mode: "webdriver", session?: string, endpoint: string}
 
-// A port is a whole number a socket can take.
+// A port is a whole number a socket can take, written in decimal: what
+// Number() would also read, 0x50 or 1e3 or nothing, is not one.
 export const portOf = (value: string): number => {
     const port = Number(value)
-    if (!Number.isInteger(port) || port < 0 || port > 65535) throw new UsageError(`--port takes a number from 0 to 65535: ${value}`)
+    if (!/^\d+$/.test(value) || port > 65535) throw new UsageError(`--port takes a number from 0 to 65535: ${value}`)
     return port
 }
 
@@ -110,43 +102,19 @@ export const mountOf = (value: string): string => {
     return url.href.endsWith("/") ? url.href : `${url.href}/`
 }
 
-// An import map file, read as a page would up to what the CLI can do:
-// "imports" alone, keys as written, addresses resolved against the file.
-// A relative address is a file the CLI serves; "/" and absolute URLs are
-// the page's. A relative key, which a page would resolve against its own
-// base, and a prefix entry, "/" at the end, are refused, not mismatched.
-export const importMapOf = (file: string): Import[] => {
-    const path = resolve(file)
-    const refuse = (reason: string): never => {
-        throw new UsageError(`--import-map ${file}: ${reason}`)
+// The import map's entries first and each --alias after, so the command
+// line has the last word; what the file cannot be read as is a UsageError.
+export const importsOf = (mapFile: string | undefined, aliases: string[]): Import[] => {
+    let mapped: Import[] = []
+    if (mapFile != null) {
+        try {
+            mapped = importMapOf(mapFile)
+        } catch (error) {
+            throw new UsageError(`--import-map ${mapFile}: ${error instanceof Error ? error.message : String(error)}`)
+        }
     }
-    let map: unknown
-    try {
-        map = JSON.parse(readFileSync(path, "utf8"))
-    } catch (error) {
-        return refuse(error instanceof Error ? error.message : String(error))
-    }
-    if (typeof map !== "object" || map == null || Array.isArray(map)) return refuse("not an object")
-    for (const key of Object.keys(map)) if (key !== "imports") return refuse(`only "imports" is supported: "${key}"`)
-    const {imports = {}} = map as {imports?: unknown}
-    if (typeof imports !== "object" || imports == null || Array.isArray(imports)) return refuse('"imports" is not an object')
-
-    const base = pathToFileURL(path)
-    return Object.entries(imports).map(([specifier, address]) => {
-        if (typeof address !== "string") return refuse(`"${specifier}": not a string`)
-        if (/^(\.\.?\/|\/)/.test(specifier) || specifier.endsWith("/") || address.endsWith("/")) return refuse(`"${specifier}": prefix entries and relative keys are not supported`)
-        if (/^\.\.?\//.test(address)) return {specifier, file: fileURLToPath(new URL(address, base))}
-        if (address.startsWith("/") || URL.canParse(address)) return {specifier, url: address}
-        return refuse(`"${specifier}": an address starts with ./, ../, / or a scheme: ${address}`)
-    })
+    return [...mapped, ...aliases.map(aliasOf)]
 }
-
-/**
- * What the suites' specifiers resolve to, the import map's entries first
- * and each --alias after, so the command line has the last word.
- */
-export const importsOf = (mapFile: string | undefined, aliases: string[]): Import[] =>
-    [...(mapFile == null ? [] : importMapOf(mapFile)), ...aliases.map(aliasOf)]
 
 export const browserOf = (name: string): Browser => {
     if (!(BROWSERS as readonly string[]).includes(name)) throw new UsageError(`--playwright takes chromium, firefox or webkit: ${name}`)
@@ -208,12 +176,18 @@ export const readOptions = (args: string[]): Options => {
     const optional = serve && values.mount != null
     if (!files.length && !(browsing && optional)) throw new UsageError()
 
+    // Suites are ES modules: under Node a require() bypasses the hook and
+    // lands on Node's own runner, and a browser has no require at all, so
+    // the extensions that can only be CommonJS are refused in both. A
+    // browser strips no types either, so TypeScript is refused there too.
+    const commonjs = files.filter(file => /\.c[jt]s$/.test(file))
+    if (commonjs.length) throw new UsageError(`CommonJS suites are not supported: ${commonjs.join(", ")}`)
+    if (browsing) {
+        const typescript = [...files, ...values.script].filter(file => /\.[cm]?ts$/.test(file))
+        if (typescript.length) throw new UsageError(`a browser runs no TypeScript: ${typescript.join(", ")}`)
+    }
+
     if (!browsing) {
-        // The resolve hook only sees ESM resolution; a require() bypasses
-        // it and registers with Node's own runner. Suites are ES modules,
-        // so refuse the extensions that can only be CommonJS up front.
-        const commonjs = files.filter(file => /\.c[jt]s$/.test(file))
-        if (commonjs.length) throw new UsageError(`CommonJS suites are not supported: ${commonjs.join(", ")}`)
         // The hook resolves to files; an address the page would fetch has
         // nowhere to go here, unless a later entry, an --alias say, takes
         // the specifier over. The last entry for each is what the hook gets.
