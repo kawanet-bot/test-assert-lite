@@ -102,12 +102,13 @@ export const createApp = (options: AppOptions): App => {
     const importmap = `<script type="importmap">\n${JSON.stringify({imports}, null, 4)}\n</script>\n`
     const tags = scriptUrls.map(url => `<script src="${url}"></script>\n`).join("")
         + suites.map(suite => `<script type="module" src="${served.urlOf(suite)}"></script>\n`).join("")
-    // A page with an import map of its own keeps it, and what the suites
-    // import is then its to map; stderr says so, as a 404 would not.
+    // A page with an import map of its own goes out as it is: a second map
+    // is not for a browser, and without this one the suites cannot load,
+    // so the scripts and the suites stay out too. stderr says so.
     const head = withHead((html, path) => {
         if (!hasImportMap(html)) return importmap + tags
-        stderr(`import map left to the page: ${path}\n`)
-        return tags
+        stderr(`import map of its own, left as it is: ${path}\n`)
+        return ""
     })
 
     // Two pages get the head: the root's HTML, with the reload ask under
