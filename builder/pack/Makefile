@@ -58,21 +58,18 @@ test-bundled:
 test-bin:
 	[ -x ../../node_modules/.bin/test-assert ]
 
-# The CLI end to end against $(PKG_ROOT). sample/ is its own package
-# scope, so the fixtures' bare import is not a self-reference to the
-# checkout and resolves through sample/node_modules instead, where a
-# symlink points at whichever copy is under test. Nothing is copied.
-# The link is remade every run, since the copy under test differs by lane;
-# ln -sfn replaces a link but would step into a real directory, hence the
-# rm. A missing $(PKG_ROOT) stops the recipe rather than handing ln an
-# empty target, which would leave a stray link named after the link path.
-# Only the exit codes matter here, so neither run's output is shown.
+# The CLI end to end against the copy under test. sample/ is a package
+# scope of its own, so its bare import reaches that copy through a symlink
+# in sample/node_modules, remade each run as the copy differs by lane.
+# The alias run shows the resolve hook of that copy at work. Only the
+# exit codes matter here.
 test-cli:
 	mkdir -p ../../sample/node_modules
 	[ -L ../../sample/node_modules/test-assert-lite ] || rm -rf ../../sample/node_modules/test-assert-lite
 	cd ../.. && target=$$(cd $(PKG_ROOT) && pwd -P) && ln -sfn "$$target" sample/node_modules/test-assert-lite
 	cd ../.. && ./$(PKG_ROOT)/bin/cli.mjs sample/pass.mjs > /dev/null 2>&1
 	cd ../.. && ! ./$(PKG_ROOT)/bin/cli.mjs sample/fail.mjs > /dev/null 2>&1
+	cd ../.. && ./$(PKG_ROOT)/bin/cli.mjs --alias greet=sample/lib/greet.mjs sample/alias.mjs > /dev/null 2>&1
 
 # Script-context run of the minified bundle under $(PKG_ROOT): the browser
 # IIFE consumer shape; in the default root it also proves the tarball
