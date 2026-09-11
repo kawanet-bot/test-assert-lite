@@ -34,9 +34,9 @@ export const resolve = (specifier, context, next) => {
  * a suite outside any project, or beside another copy, still lands on the
  * instance run() reads.
  */
-export const runInNode = async (suites: string[], aliases: Alias[]): Promise<TAL.TestSummary> => {
+export const runInNode = async (suites: string[], imports: Alias[]): Promise<TAL.TestSummary> => {
     // A Map, so a specifier named like an Object property finds no alias.
-    const table = new Map(aliases.map(({specifier, file}) => [specifier, pathToFileURL(file).href]))
+    const table = new Map(imports.map(({specifier, file}) => [specifier, pathToFileURL(file).href]))
     register(`data:text/javascript,${encodeURIComponent(HOOK)}`, {data: {parentURL: packageRoot().href, aliases: table}})
 
     for (const file of suites) {

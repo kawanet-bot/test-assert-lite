@@ -70,6 +70,7 @@ test-cli:
 	cd ../.. && ./$(PKG_ROOT)/bin/cli.mjs sample/pass.mjs > /dev/null 2>&1
 	cd ../.. && ! ./$(PKG_ROOT)/bin/cli.mjs sample/fail.mjs > /dev/null 2>&1
 	cd ../.. && ./$(PKG_ROOT)/bin/cli.mjs --alias greet=sample/lib/greet.mjs sample/alias.mjs > /dev/null 2>&1
+	cd ../.. && ./$(PKG_ROOT)/bin/cli.mjs --import-map sample/import-map.json sample/alias.mjs > /dev/null 2>&1
 
 # Script-context run of the minified bundle under $(PKG_ROOT): the browser
 # IIFE consumer shape; in the default root it also proves the tarball

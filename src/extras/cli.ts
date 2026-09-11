@@ -31,7 +31,7 @@ const run = async (options: Options): Promise<number> => {
     }
 
     if (options.mode === "node") {
-        return (await runInNode(options.suites, options.aliases)).success ? 0 : 1
+        return (await runInNode(options.suites, options.imports)).success ? 0 : 1
     }
 
     // The application is the middleware, the server runs it; every request
@@ -40,7 +40,7 @@ const run = async (options: Options): Promise<number> => {
     const app = createApp({
         suites: options.suites,
         scripts: options.scripts,
-        aliases: options.aliases,
+        imports: options.imports,
         mount: options.mount,
         watch: options.mode === "serve",
     })

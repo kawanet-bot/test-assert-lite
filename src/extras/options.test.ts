@@ -1,7 +1,9 @@
 import {strict as assert} from "node:assert"
-import {resolve} from "node:path"
-import {describe, it} from "node:test"
-import {UsageError, aliasOf, browserOf, mountOf, originOf, portOf, readOptions} from "./options.ts"
+import {mkdir, mkdtemp, rm, writeFile} from "node:fs/promises"
+import {tmpdir} from "node:os"
+import {join, resolve} from "node:path"
+import {after, before, describe, it} from "node:test"
+import {UsageError, aliasOf, browserOf, importMapOf, mountOf, originOf, portOf, readOptions} from "./options.ts"
 
 // A UsageError with the reason it gives, or without one, as the usage
 // text alone is the answer to some.
@@ -57,6 +59,72 @@ describe("extras/options", () => {
         })
     })
 
+    describe("importMapOf", () => {
+        let dir: string
+        const map = async (name: string, json: string): Promise<string> => {
+            const file = join(dir, "maps", name)
+            await writeFile(file, json)
+            return file
+        }
+
+        before(async () => {
+            dir = await mkdtemp(join(tmpdir(), "tal-options-"))
+            await mkdir(join(dir, "maps"))
+        })
+
+        after(async () => {
+            await rm(dir, {recursive: true, force: true})
+        })
+
+        it("resolves a relative address against the file, and passes / and a URL through", async () => {
+            const file = await map("a.json", '{"imports": {"lib": "./lib/x.js", "up": "../y.js", "root": "/vendor/z.js", "cdn": "https://cdn.example/w.js", "node:crypto": "./sha256.mjs", "https://cdn.example/lib.js": "./local.mjs"}}')
+            assert.deepEqual(importMapOf(file), [
+                {specifier: "lib", file: join(dir, "maps", "lib", "x.js")},
+                {specifier: "up", file: join(dir, "y.js")},
+                {specifier: "root", url: "/vendor/z.js"},
+                {specifier: "cdn", url: "https://cdn.example/w.js"},
+                {specifier: "node:crypto", file: join(dir, "maps", "sha256.mjs")},
+                {specifier: "https://cdn.example/lib.js", file: join(dir, "maps", "local.mjs")},
+            ])
+            assert.deepEqual(importMapOf(await map("empty.json", "{}")), [])
+        })
+
+        it("refuses what it cannot read or does not take, naming the file", async () => {
+            refused(() => importMapOf(join(dir, "maps", "none.json")), /^--import-map .*none\.json: ENOENT/)
+            for (const [name, json, reason] of [
+                ["bad.json", '{"imports": {"a": "./a.js",}}', /^--import-map .*bad\.json: /],
+                ["list.json", "[]", /not an object$/],
+                ["scopes.json", '{"imports": {}, "scopes": {}}', /only "imports" is supported: "scopes"$/],
+                ["bare.json", '{"imports": {"a": "lodash"}}', /"a": an address starts with/],
+                ["num.json", '{"imports": {"a": 1}}', /"a": not a string$/],
+                ["prefix.json", '{"imports": {"a/": "./a/"}}', /"a\/": prefix entries and relative keys/],
+                ["relkey.json", '{"imports": {"./a": "./a.js"}}', /"\.\/a": prefix entries and relative keys/],
+            ] as [string, string, RegExp][]) {
+                const file = await map(name, json)
+                refused(() => importMapOf(file), reason)
+            }
+        })
+
+        it("reads --import-map before --alias in both modes, and refuses a page's address in Node mode", async () => {
+            const file = await map("m.json", '{"imports": {"lib": "./lib.js", "mod": "./old.js"}}')
+            const node = readOptions(["--import-map", file, "--alias", "mod=new.mjs", "a.test.ts"])
+            assert.equal(node.mode, "node")
+            if (node.mode !== "node") return
+            assert.deepEqual(node.imports, [{specifier: "lib", file: join(dir, "maps", "lib.js")}, {specifier: "mod", file: resolve("new.mjs")}])
+            const served = readOptions(["--serve", "--import-map", file, "suite.mjs"])
+            assert.equal(served.mode, "serve")
+            if (served.mode !== "serve") return
+            assert.deepEqual(served.imports.map(entry => entry.specifier), ["lib", "mod"])
+            const urls = await map("urls.json", '{"imports": {"root": "/x.js"}}')
+            refused(() => readOptions(["--import-map", urls, "a.test.ts"]), /apply to --playwright, --webdriver and --serve only: "root"$/)
+            const taken = readOptions(["--import-map", urls, "--alias", "root=x.mjs", "a.test.ts"])
+            assert.equal(taken.mode, "node")
+            if (taken.mode !== "node") return
+            assert.deepEqual(taken.imports, [{specifier: "root", file: resolve("x.mjs")}])
+            assert.equal(readOptions(["--serve", "--import-map", urls, "suite.mjs"]).mode, "serve")
+        })
+    })
+
     describe("browserOf", () => {
         it("takes one of Playwright's three, and nothing else", () => {
             assert.equal(browserOf("chromium"), "chromium")
@@ -95,7 +163,7 @@ describe("extras/options", () => {
         })
 
         it("reads Node mode as the default, the files resolved in order", () => {
-            assert.deepEqual(readOptions(["a.test.ts", "b.test.ts"]), {mode: "node", suites: [resolve("a.test.ts"), resolve("b.test.ts")], aliases: []})
+            assert.deepEqual(readOptions(["a.test.ts", "b.test.ts"]), {mode: "node", suites: [resolve("a.test.ts"), resolve("b.test.ts")], imports: []})
         })
 
         it("refuses Node mode without a file, and with a CommonJS one", () => {
@@ -108,7 +176,7 @@ describe("extras/options", () => {
                 mode: "serve",
                 suites: [resolve("suite.mjs")],
                 scripts: [],
-                aliases: [],
+                imports: [],
                 mount: undefined,
                 host: undefined,
                 port: undefined,
@@ -132,7 +200,7 @@ describe("extras/options", () => {
             assert.equal(options.mode, "serve")
             if (options.mode !== "serve") return
             assert.deepEqual(options.scripts, [resolve("a.js"), resolve("b.js")])
-            assert.deepEqual(options.aliases, [{specifier: "mod", file: resolve("m.mjs")}])
+            assert.deepEqual(options.imports, [{specifier: "mod", file: resolve("m.mjs")}])
             refused(() => readOptions(["--serve", "--alias", "mod", "suite.mjs"]), /^--alias takes/)
         })
 
@@ -140,7 +208,7 @@ describe("extras/options", () => {
             const options = readOptions(["--alias", "node:crypto=sha256.mjs", "a.test.ts"])
             assert.equal(options.mode, "node")
             if (options.mode !== "node") return
-            assert.deepEqual(options.aliases, [{specifier: "node:crypto", file: resolve("sha256.mjs")}])
+            assert.deepEqual(options.imports, [{specifier: "node:crypto", file: resolve("sha256.mjs")}])
         })
 
         it("reads --playwright with its browser", () => {
