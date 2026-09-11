@@ -33,7 +33,7 @@ const run = async (options: Options): Promise<number> => {
     // goes to stderr, apart from the reporter's stdout, so a 404 for a
     // mistyped --script or --alias shows up there.
     const app = createApp({
-        file: options.file,
+        files: options.files,
         scripts: options.scripts,
         aliases: options.aliases,
         mount: options.mount,

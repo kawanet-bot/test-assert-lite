@@ -30,13 +30,14 @@ describe("server/app", () => {
         await mkdir(join(dir, "tests", "nested"), {recursive: true})
         await mkdir(join(dir, "lib"))
         await writeFile(join(dir, "tests", "my suite.mjs"), "export const suite = 1")
+        await writeFile(join(dir, "tests", "second.mjs"), "export const suite = 2")
         await writeFile(join(dir, "tests", "nested", "dep.mjs"), "export const dep = 1")
         await writeFile(join(dir, "tests", "setup.js"), "globalThis.setup = 1")
         await writeFile(join(dir, "tests", "set+up#2.js"), "globalThis.setup = 2")
         await writeFile(join(dir, "lib", "mod.mjs"), "export const mod = 1")
         await writeFile(join(dir, "secret.json"), "{}")
         app = createApp({
-            file: join(dir, "tests", "my suite.mjs"),
+            files: [join(dir, "tests", "my suite.mjs"), join(dir, "tests", "second.mjs")],
             scripts: [join(dir, "tests", "setup.js"), join(dir, "tests", "set+up#2.js")],
             aliases: [{specifier: "mod", file: join(dir, "lib", "mod.mjs")}],
             stdout: text => stdout.push(text),
@@ -65,7 +66,8 @@ describe("server/app", () => {
         const script = at('<script src="/@tal/scripts/0/setup.js"></script>')
         const second = at('<script src="/@tal/scripts/1/set%2Bup%232.js"></script>')
         const suite = at('<script type="module" src="/@tal/tests/0/my%20suite.mjs"></script>')
-        assert.ok(map < iife && iife < script && script < second && second < suite)
+        const other = at('<script type="module" src="/@tal/tests/0/second.mjs"></script>')
+        assert.ok(map < iife && iife < script && script < second && second < suite && suite < other)
         const {imports} = JSON.parse(head.slice(head.indexOf("{", map), head.indexOf("</script>", map)))
         assert.equal(imports["node:test"], "/@tal/exports/test.mjs")
         assert.equal(imports["test-assert-lite"], "/@tal/dist/test-assert-lite.mjs")
@@ -78,13 +80,15 @@ describe("server/app", () => {
         const res = await get(url(app.page))
         assert.equal(res.status, 200)
         assert.match(res.body, /reporter\.client/)
-        assert.ok(res.body.includes('<script type="module" src="/@tal/tests/0/my%20suite.mjs"></script>\n</head>'))
+        assert.ok(res.body.includes('<script type="module" src="/@tal/tests/0/my%20suite.mjs"></script>\n<script type="module" src="/@tal/tests/0/second.mjs"></script>\n</head>'))
         assert.equal((await get(url("/run.html"))).status, 404)
         assert.equal((await get(url("/@tal/run/000000000/run.html"))).status, 404)
     })
 
-    it("mounts the suite's directory, each script by name and an alias's directory", async () => {
+    it("mounts the suites' directory once, each script by name and an alias's directory", async () => {
         assert.equal((await get(url("/@tal/tests/0/my%20suite.mjs"))).body, "export const suite = 1")
+        assert.equal((await get(url("/@tal/tests/0/second.mjs"))).body, "export const suite = 2")
+        assert.equal((await get(url("/@tal/tests/1/second.mjs"))).status, 404)
         assert.equal((await get(url("/@tal/tests/0/nested/dep.mjs"))).status, 200)
         assert.equal((await get(url("/@tal/scripts/0/setup.js"))).body, "globalThis.setup = 1")
         assert.equal((await get(url("/@tal/scripts/1/set%2Bup%232.js"))).body, "globalThis.setup = 2")
@@ -119,7 +123,7 @@ describe("server/app", () => {
     it("asks about changes from the page people open alone, and only with watch on", async () => {
         assert.equal((await get(url("/"))).body.includes("/@tal/watch?after="), false)
         assert.equal((await get(url("/@tal/watch?after=0"))).status, 404)
-        const watching = createApp({file: join(dir, "tests", "my suite.mjs"), watch: true, stdout: () => undefined})
+        const watching = createApp({files: [join(dir, "tests", "my suite.mjs")], watch: true, stdout: () => undefined})
         const running = await serve({handler: watching.handler})
         try {
             const index = (await get(running.origin + "/")).body
@@ -138,7 +142,7 @@ describe("server/app", () => {
 
     it("serves without the reload, and says so once, where it cannot watch", async () => {
         const lines: string[] = []
-        const blind = createApp({file: join(dir, "missing", "suite.mjs"), watch: true, stdout: () => undefined, stderr: text => lines.push(text)})
+        const blind = createApp({files: [join(dir, "missing", "suite.mjs")], watch: true, stdout: () => undefined, stderr: text => lines.push(text)})
         const running = await serve({handler: blind.handler})
         try {
             assert.equal(lines.length, 1)
@@ -156,7 +160,7 @@ describe("server/app", () => {
     it("serves a mounted directory at the root in place of htdocs, its HTML with the head", async () => {
         await mkdir(join(dir, "site"))
         await writeFile(join(dir, "site", "index.html"), "<html><head></head><body>mine</body></html>")
-        const mounted = createApp({file: join(dir, "tests", "my suite.mjs"), mount: join(dir, "site"), stdout: () => undefined})
+        const mounted = createApp({files: [join(dir, "tests", "my suite.mjs")], mount: join(dir, "site"), stdout: () => undefined})
         const running = await serve({handler: mounted.handler})
         try {
             const index = await get(running.origin + "/")
@@ -198,7 +202,7 @@ describe("server/app", () => {
         await new Promise<void>(listening => upstream.listen(0, "127.0.0.1", listening))
         const address = upstream.address()
         const port = typeof address === "object" && address != null ? address.port : 0
-        const mounted = createApp({file: join(dir, "tests", "my suite.mjs"), mount: `http://127.0.0.1:${port}/app/`, stdout: () => undefined})
+        const mounted = createApp({files: [join(dir, "tests", "my suite.mjs")], mount: `http://127.0.0.1:${port}/app/`, stdout: () => undefined})
         const running = await serve({handler: mounted.handler})
         try {
             const index = await get(running.origin + "/")
@@ -217,7 +221,7 @@ describe("server/app", () => {
     })
 
     it("fails the verdict on anything but true", async () => {
-        const other = createApp({file: join(dir, "tests", "my suite.mjs"), stdout: () => undefined})
+        const other = createApp({files: [join(dir, "tests", "my suite.mjs")], stdout: () => undefined})
         const running = await serve({handler: other.handler})
         try {
             assert.equal(await post(running.origin + other.page.replace(/run\.html$/, "end"), "yes"), 204)
