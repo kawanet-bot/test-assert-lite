@@ -14,9 +14,9 @@ const mapFile = pathToFileURL(resolve("maps", "x.json"))
 const alias = (entry: string): ImportAliasItem => new ImportAliasItem(entry, cwd)
 const mapped = (specifier: string, address: unknown): ImportMapItem => new ImportMapItem(specifier, address, mapFile)
 // The addresses are Files' to give, from the items' own files: this package's
-// at fixed paths, the rest under a directory digest, which only a pattern can name.
+// at fixed paths, the rest under a directory digest, blanked out to compare.
 const serveFor = (...items: ImportBase[]): ((file: string) => string) => createFiles(new Imports(items).paths()).urlOf
-const HASHED = (name: string): RegExp => new RegExp(`^/@tal/files/[0-9a-f]{9}/${name.replace(/\./g, "\\.")}$`)
+const unhash = (address: string | undefined): string => address?.replace(/\/[0-9a-f]{9}\//, "/xxxxxxxxx/") || ""
 
 const refused = (fn: () => unknown, reason: RegExp): void => {
     assert.throws(fn, (error: unknown) => {
@@ -33,7 +33,7 @@ describe("extras/imports", () => {
                 const item = alias(entry)
                 assert.ok(item.isPath(), entry)
                 assert.equal(item.getPath(), file)
-                assert.match(item.getAddress(serveFor(item)), HASHED(name))
+                assert.equal(unhash(item.getAddress(serveFor(item))), `/@tal/files/xxxxxxxxx/${name}`)
                 assert.equal(item.refusal("node"), undefined)
                 assert.equal(item.refusal("browser"), undefined)
             }
@@ -83,7 +83,7 @@ describe("extras/imports", () => {
             assert.ok(item.isPath())
             assert.equal(item.getPath(), resolve("maps", "lib", "x.js"))
             assert.equal(mapped("up", "../y.js").getPath(), resolve("y.js"))
-            assert.match(item.getAddress(serveFor(item)), HASHED("x.js"))
+            assert.equal(unhash(item.getAddress(serveFor(item))), "/@tal/files/xxxxxxxxx/x.js")
             assert.equal(item.refusal("node"), undefined)
             assert.equal(item.refusal("browser"), undefined)
         })
@@ -161,7 +161,7 @@ describe("extras/imports", () => {
             const addresses = new Imports(items).addresses(serveFor(...items))
             assert.equal(addresses["test-assert-lite"], "/@tal/exports/global.mjs")
             assert.equal(addresses["node:assert"], "/@tal/exports/assert.mjs")
-            assert.match(addresses["a"] ?? "", HASHED("one.mjs"))
+            assert.equal(unhash(addresses["a"]), "/@tal/files/xxxxxxxxx/one.mjs")
             assert.equal(addresses["r"], "/r.js")
         })
 
