@@ -4,6 +4,7 @@
 // and the address a page gets; the list keeps them in order, last wins.
 
 import {readFileSync} from "node:fs"
+import {resolve} from "node:path"
 import {fileURLToPath, pathToFileURL} from "node:url"
 import {UsageError} from "./usage-error.ts"
 
@@ -54,9 +55,12 @@ export abstract class ImportBase {
     /** The local file, absolute: a path against `base`, or a bundled name from this package. Nothing for a URL. */
     getPath(): string | undefined {
         if (this.isBundled()) return fileURLToPath(import.meta.resolve(this.target))
-        if (this.isPath()) return fileURLToPath(new URL(this.target, this.base))
+        if (this.isPath()) return this.resolvePath()
         return undefined
     }
+
+    /** A path target as a file; the subclass says by which rules. */
+    protected abstract resolvePath(): string
 
     /** The address a page's import map gets: `serve` turns a file into its served URL. */
     getAddress(serve: (file: string) => string): string {
@@ -89,6 +93,12 @@ export class ImportAliasItem extends ImportBase {
         return !this.isURL() && !this.isBundled()
     }
 
+    // By the file system's rules, as the command line's other paths are: a
+    // Windows drive letter is a drive, not a URL scheme.
+    protected resolvePath(): string {
+        return resolve(fileURLToPath(this.base), this.target)
+    }
+
     refusal(mode: Mode): string | undefined {
         if (mode === "node" && this.isURL()) return `--alias: a URL applies to --playwright, --webdriver and --serve only: "${this.specifier}"`
         if (mode === "browser" && this.keyRefusal() != null) return `--alias: ${this.keyRefusal()}: "${this.specifier}"`
@@ -111,6 +121,11 @@ export class ImportMapItem extends ImportBase {
 
     isPath(): boolean {
         return /^\.\.?\//.test(this.target)
+    }
+
+    // As a page would, against the map's URL.
+    protected resolvePath(): string {
+        return fileURLToPath(new URL(this.target, this.base))
     }
 
     refusal(mode: Mode): string | undefined {
