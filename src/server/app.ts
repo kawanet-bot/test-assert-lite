@@ -6,6 +6,8 @@
 
 import {basename, resolve} from "node:path"
 import {fileURLToPath} from "node:url"
+import type {Import} from "../extras/import-map.ts"
+import {isAliasFile} from "../extras/import-map.ts"
 import {packageNameOf, packageRoot} from "../extras/package-root.ts"
 import type {ChannelOptions} from "./channel.ts"
 import {createChannel} from "./channel.ts"
@@ -25,7 +27,7 @@ export interface AppOptions extends ChannelOptions {
     /** Classic scripts to run before the suites, absolute, in this order. */
     scripts?: string[]
     /** Specifiers and what they resolve to: a file, served from its directory, or a URL put into the map as it is. */
-    imports?: ({specifier: string, file: string} | {specifier: string, url: string})[]
+    imports?: Import[]
     /** What the root serves in place of htdocs: an absolute directory, or an http(s) URL ending in "/" to proxy. */
     mount?: string
     /** Reloads the page people open when a suite, a script or an imported file changes; off where it cannot watch. */
@@ -66,7 +68,7 @@ const IMPORTS = {
  */
 export const createApp = (options: AppOptions): App => {
     const {suites = [], scripts = [], imports: entries = [], mount: mounted, stderr = text => process.stderr.write(text)} = options
-    const aliases = entries.filter((entry): entry is {specifier: string, file: string} => "file" in entry)
+    const aliases = entries.filter(isAliasFile)
     const channel = createChannel(options)
 
     // Watching is a convenience of --serve, not what it is for: where the
@@ -99,7 +101,7 @@ export const createApp = (options: AppOptions): App => {
     // all three go into the head of every HTML page served from htdocs/,
     // and of the run's page, as it goes out.
     const imports: Record<string, string> = {...IMPORTS}
-    for (const entry of entries) imports[entry.specifier] = "file" in entry ? served.urlOf(entry.file) : entry.url
+    for (const entry of entries) imports[entry.specifier] = isAliasFile(entry) ? served.urlOf(entry.file) : entry.url
     const importmap = `<script type="importmap">\n${JSON.stringify({imports}, null, 4)}\n</script>\n`
     const tags = scriptUrls.map(url => `<script src="${url}"></script>\n`).join("")
         + suites.map(suite => `<script type="module" src="${served.urlOf(suite)}"></script>\n`).join("")

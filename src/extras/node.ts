@@ -5,7 +5,7 @@
 import {register} from "node:module"
 import {resolve} from "node:path"
 import {pathToFileURL} from "node:url"
-import type {Alias} from "./import-map.ts"
+import type {AliasFile} from "./import-map.ts"
 // By name, not from src/: the suites reach the package through the hook
 // below, so run() has to be the instance the package's exports point at.
 import type {TAL} from "test-assert-lite"
@@ -13,17 +13,35 @@ import {run} from "test-assert-lite"
 import {packageRoot} from "./package-root.ts"
 
 // Suites are written against node:test and node:assert, and this package
-// stands in for both: an import map in the browser, a resolve hook here.
+// stands in for both: an import map in the browser, this table here. Each
+// builtin maps onto the subpath of the same name, exactly.
+const BUILTINS = new Map([
+    ["node:test", "test-assert-lite/test"],
+    ["node:assert", "test-assert-lite/assert"],
+    ["node:assert/strict", "test-assert-lite/assert/strict"],
+])
+
+/** What the hook is handed at registration, and the only place its source and this file meet. */
+interface HookData {
+    /** Where a subpath of this package resolves from, so a suite's own location does not decide it. */
+    parentURL: string
+    /** From --import-map and --alias, the specifier to the file URL it takes. */
+    aliases: Map<string, string>
+    /** The builtins this package stands in for, the specifier to the subpath. */
+    builtins: Map<string, string>
+}
+
 // An --alias comes first, as in the import map, so it can name a builtin
-// too; each builtin then maps onto the subpath of the same name, exactly.
-const HOOK = `let parentURL, aliases
-const mapped = new Set(["node:test", "node:assert", "node:assert/strict"])
-export const initialize = (data) => { parentURL = data.parentURL; aliases = data.aliases }
+// too. Written as source because a hook reaches the loader as a module of
+// its own; what it works on comes in as data, where types still hold.
+const HOOK = `let parentURL, aliases, builtins
+export const initialize = (data) => { ({parentURL, aliases, builtins} = data) }
 export const resolve = (specifier, context, next) => {
     const url = aliases.get(specifier)
     if (url != null) return {url, shortCircuit: true}
-    return mapped.has(specifier)
-        ? next("test-assert-lite/" + specifier.slice("node:".length), {...context, parentURL})
+    const builtin = builtins.get(specifier)
+    return builtin != null
+        ? next(builtin, {...context, parentURL})
         : next(specifier, context)
 }
 `
@@ -34,10 +52,11 @@ export const resolve = (specifier, context, next) => {
  * a suite outside any project, or beside another copy, still lands on the
  * instance run() reads.
  */
-export const runInNode = async (suites: string[], imports: Alias[]): Promise<TAL.TestSummary> => {
+export const runInNode = async (suites: string[], imports: AliasFile[]): Promise<TAL.TestSummary> => {
     // A Map, so a specifier named like an Object property finds no alias.
-    const table = new Map(imports.map(({specifier, file}) => [specifier, pathToFileURL(file).href]))
-    register(`data:text/javascript,${encodeURIComponent(HOOK)}`, {data: {parentURL: packageRoot().href, aliases: table}})
+    const aliases = new Map(imports.map(({specifier, file}) => [specifier, pathToFileURL(file).href]))
+    const data: HookData = {parentURL: packageRoot().href, aliases, builtins: BUILTINS}
+    register(`data:text/javascript,${encodeURIComponent(HOOK)}`, {data})
 
     for (const file of suites) {
         await import(pathToFileURL(resolve(file)).href)
