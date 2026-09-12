@@ -28,9 +28,8 @@ describe("server/files", () => {
 
     it("serves each file from its directory, named by nine hex digits, the same in every layout", () => {
         const one = createFiles([join(dir, "src", "a.mjs")])
-        assert.equal(one.dirs.length, 1)
+        assert.deepEqual(one.dirs.map(({root}) => under(root)), ["src"])
         assert.match(one.dirs[0]?.path ?? "", /^\/@tal\/files\/[0-9a-f]{9}\/$/)
-        assert.equal(under(one.dirs[0]!.root), "src")
         assert.equal(one.urlOf(join(dir, "src", "a.mjs")), `${one.dirs[0]?.path}a.mjs`)
         const again = createFiles([join(dir, "src", "my b.mjs"), join(dir, "lib", "mod.mjs")])
         assert.equal(again.dirs.length, 2)
@@ -65,8 +64,7 @@ describe("server/files", () => {
         assert.equal(linked.dirs.length, 1)
         assert.equal(linked.urlOf(join(dir, "src", "link.mjs")), linked.urlOf(join(dir, "lib", "mod.mjs")))
         const missing = createFiles([join(dir, "none", "x.mjs")])
-        assert.equal(missing.dirs.length, 1)
-        assert.equal(under(missing.dirs[0]!.root), "none")
+        assert.deepEqual(missing.dirs.map(({root}) => under(root)), ["none"])
         assert.equal(missing.urlOf(join(dir, "none", "x.mjs")), `${missing.dirs[0]?.path}x.mjs`)
         assert.throws(() => missing.urlOf(join(dir, "src", "a.mjs")), /not among the files/)
     })
