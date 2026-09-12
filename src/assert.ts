@@ -4,7 +4,7 @@ import {deepEqualPair, looseSame} from "./assert/deep-equal.ts"
 import {doesNotReject, rejects} from "./assert/rejects.ts"
 import {doesNotThrow, throws} from "./assert/throws.ts"
 import {isError} from "./common/is-error.ts"
-import {stringify} from "./common/stringify.ts"
+import {messageOf, stringify} from "./common/stringify.ts"
 
 // An Error passed as the message is thrown as it is. node:assert applies
 // that rule to every assertion, not only to fail().
@@ -108,8 +108,7 @@ export const createAssert = (): AssertControl => {
     const ifError = (value: unknown): void => {
         if (value == null) return
         throw new AssertionError({
-            // node names an Error by its message alone, other values as inspected.
-            message: `ifError got unwanted exception: ${isError(value) ? value.message : stringify(value)}`,
+            message: `ifError got unwanted exception: ${messageOf(value)}`,
             actual: value, operator: "ifError",
         })
     }

@@ -113,6 +113,9 @@ describe(TITLE, () => {
         assert.doesNotThrow(() => TAL.strict.ifError(null))
         assert.doesNotThrow(() => TAL.strict.ifError(undefined))
         assert.throws(() => TAL.strict.ifError(new Error("x")), /unwanted exception: x$/)
+        assert.throws(() => TAL.strict.ifError(new TypeError()), /unwanted exception: TypeError$/)
+        assert.throws(() => TAL.strict.ifError({message: "m"}), /unwanted exception: m$/)
+        assert.throws(() => TAL.strict.ifError("str"), /unwanted exception: "str"$/)
     })
 
     it("fail", () => {

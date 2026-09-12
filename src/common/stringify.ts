@@ -18,6 +18,17 @@ export const stringify = (value: unknown, nest: number = 0): string => {
     }
 }
 
+// What node:assert says a value is in one line: an error-like object by
+// its message, its constructor's name when that is empty, anything else
+// as inspected. errorText() is the reporter's rendering, stack and all.
+export const messageOf = (value: unknown): string => {
+    if ("object" === typeof value && value != null && "string" === typeof (value as {message?: unknown}).message) {
+        const {message, constructor} = value as {message: string, constructor?: {name?: string}}
+        return message === "" && constructor?.name ? constructor.name : message
+    }
+    return stringify(value)
+}
+
 // minimum subset of https://github.com/kawanet/html-ele
 export const $$ = (t: TemplateStringsArray, ...args: string[]): string => {
     let str = t[0]!
