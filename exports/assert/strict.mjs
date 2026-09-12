@@ -1,7 +1,7 @@
 // node:assert/strict's shape on this package: the strict assert as the
 // default and its methods as named exports, so `equal` here is the strict
 // one, as in node. From the one library instance; ES modules only.
-import {strict} from "../../esm/test-assert-lite.mjs"
+import {strict} from "test-assert-lite"
 
 export default strict
 export {strict}
