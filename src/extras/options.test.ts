@@ -198,8 +198,8 @@ describe("extras/options", () => {
         })
 
         it("refuses a flag it does not know, and a flag missing its value", () => {
-            assert.throws(() => readOptions(["--watch", "suite.mjs"]))
-            assert.throws(() => readOptions(["--serve", "--port"]))
+            assert.throws(() => readOptions(["--watch", "suite.mjs"]), /--watch/)
+            assert.throws(() => readOptions(["--serve", "--port"]), /--port/)
         })
     })
 })
