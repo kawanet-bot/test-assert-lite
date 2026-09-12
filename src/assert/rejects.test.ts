@@ -19,14 +19,6 @@ const boom = async (): Promise<never> => {
 
 const fine = async (): Promise<number> => 1
 
-// Every misuse ends in the same TypeError, as a rejection, which is all a
-// caller needs to tell it apart from a failed assertion.
-const refused = async (promise: Promise<unknown>): Promise<void> => {
-    const error = await settled(promise)
-    assert.ok(error instanceof TypeError, "did not refuse")
-    assert.match(String((error as Error).message), /invalid arguments/)
-}
-
 describe(TITLE, () => {
     it("rejects passes on a rejection and fails on a fulfilment", async () => {
         await assert.doesNotReject(() => TAL.rejects(boom))
@@ -67,8 +59,8 @@ describe(TITLE, () => {
         assert.equal(missing.name, "AssertionError")
         assert.equal(missing.message, "should have rejected")
         await assert.doesNotReject(() => TAL.rejects(boom, "should have rejected"))
-        await refused(TAL.rejects(boom, "boom"))
-        await refused(TAL.rejects(boom, "one" as never, "two"))
+        await assert.rejects(TAL.rejects(boom, "boom"), /invalid arguments/)
+        await assert.rejects(TAL.rejects(boom, "one" as never, "two"), /invalid arguments/)
         await assert.doesNotReject(() => TAL.rejects(boom, undefined, "boom"))
     })
 
@@ -76,16 +68,17 @@ describe(TITLE, () => {
     // object with both then and catch, from any realm, and a function that
     // returns anything else is a misuse. All of it rejects rather than throws.
     it("rejects refuses what node:assert refuses, as a rejection", async () => {
-        await refused(TAL.rejects("not a function" as never))
-        await refused(TAL.rejects(123 as never))
-        await refused(TAL.rejects(() => undefined as never))
-        await refused(TAL.rejects(() => new Map() as never))
-        await refused(TAL.rejects({then: () => undefined} as never))
-        await refused(TAL.rejects(boom, 123 as never))
-        await refused(TAL.rejects(boom, {}))
+        // Every misuse ends in the same TypeError, which is what tells it apart from a failed assertion.
+        await assert.rejects(TAL.rejects("not a function" as never), /invalid arguments/)
+        await assert.rejects(TAL.rejects(123 as never), /invalid arguments/)
+        await assert.rejects(TAL.rejects(() => undefined as never), /invalid arguments/)
+        await assert.rejects(TAL.rejects(() => new Map() as never), /invalid arguments/)
+        await assert.rejects(TAL.rejects({then: () => undefined} as never), /invalid arguments/)
+        await assert.rejects(TAL.rejects(boom, 123 as never), /invalid arguments/)
+        await assert.rejects(TAL.rejects(boom, {}), /invalid arguments/)
         // A function carrying then and catch is not a promise either.
         const thenableFn = Object.assign(() => undefined, {then: () => undefined, catch: () => undefined})
-        await refused(TAL.rejects(() => thenableFn as never))
+        await assert.rejects(TAL.rejects(() => thenableFn as never), /invalid arguments/)
         // Nothing here throws synchronously.
         assert.doesNotThrow(() => void TAL.rejects("x" as never).catch(() => undefined))
     })
@@ -106,8 +99,8 @@ describe(TITLE, () => {
     // rejected and unhandled by the refusal.)
     it("refuses a Promise whose catch was overwritten, on its shape alone", async () => {
         const without = Object.defineProperty(Promise.resolve(1), "catch", {value: undefined})
-        await refused(TAL.rejects(without, /x/))
-        await refused(TAL.doesNotReject(without))
+        await assert.rejects(TAL.rejects(without, /x/), /invalid arguments/)
+        await assert.rejects(TAL.doesNotReject(without), /invalid arguments/)
     })
 
     // Likewise an object claiming the Promise tag is judged by its shape,
@@ -115,7 +108,7 @@ describe(TITLE, () => {
     it("judges an object claiming the Promise tag by its shape, without reading the tag", async () => {
         const claiming = (extra: object): Promise<unknown> =>
             ({[Symbol.toStringTag]: "Promise", then: (_ok: unknown, fail: (e: unknown) => void) => fail(new Error("x")), ...extra}) as unknown as Promise<unknown>
-        await refused(TAL.rejects(claiming({}), /x/))
+        await assert.rejects(TAL.rejects(claiming({}), /x/), /invalid arguments/)
         await assert.doesNotReject(() => TAL.rejects(claiming({catch: () => undefined}), /x/))
 
         const injected = (): never => {
@@ -126,7 +119,7 @@ describe(TITLE, () => {
             Symbol.toStringTag,
             {get: injected},
         ) as unknown as Promise<unknown>
-        await refused(TAL.rejects(trapped({}), /x/))
+        await assert.rejects(TAL.rejects(trapped({}), /x/), /invalid arguments/)
         await assert.doesNotReject(() => TAL.rejects(trapped({catch: () => undefined}), /x/))
     })
 
@@ -160,11 +153,11 @@ describe(TITLE, () => {
     })
 
     it("doesNotReject refuses what node:assert refuses, as a rejection", async () => {
-        await refused(TAL.doesNotReject("not a function" as never))
-        await refused(TAL.doesNotReject(() => new Map() as never))
-        await refused(TAL.doesNotReject({then: () => undefined} as never))
-        await refused(TAL.doesNotReject(boom, new Error("note") as never))
-        await refused(TAL.doesNotReject(boom, {message: "boom"} as never))
+        await assert.rejects(TAL.doesNotReject("not a function" as never), /invalid arguments/)
+        await assert.rejects(TAL.doesNotReject(() => new Map() as never), /invalid arguments/)
+        await assert.rejects(TAL.doesNotReject({then: () => undefined} as never), /invalid arguments/)
+        await assert.rejects(TAL.doesNotReject(boom, new Error("note") as never), /invalid arguments/)
+        await assert.rejects(TAL.doesNotReject(boom, {message: "boom"} as never), /invalid arguments/)
     })
 
     it("the failures name the rejects operators and carry the reason", async () => {

@@ -5,16 +5,6 @@ import {join, resolve} from "node:path"
 import {after, before, describe, it} from "node:test"
 import {aliasOf, importMapOf} from "./import-map.ts"
 import {readOptions} from "./options.ts"
-import {UsageError} from "./usage-error.ts"
-
-// A UsageError with the reason it gives.
-const refused = (fn: () => unknown, reason: RegExp): void => {
-    assert.throws(fn, (error: unknown) => {
-        assert.ok(error instanceof UsageError)
-        assert.match(error.message, reason)
-        return true
-    })
-}
 
 describe("extras/import-map", () => {
     let dir: string
@@ -48,18 +38,18 @@ describe("extras/import-map", () => {
         })
 
         it("refuses what it cannot read or does not take, naming the option", async () => {
-            refused(() => importMapOf(join(dir, "maps", "none.json")), /^--import-map: ENOENT/)
+            assert.throws(() => importMapOf(join(dir, "maps", "none.json")), /--import-map: ENOENT/)
             for (const [name, json, reason] of [
-                ["bad.json", '{"imports": {"a": "./a.js",}}', /^--import-map: .*JSON/],
-                ["list.json", "[]", /^--import-map: not an object$/],
-                ["scopes.json", '{"imports": {}, "scopes": {}}', /^--import-map: only "imports" is supported: "scopes"$/],
-                ["bare.json", '{"imports": {"a": "lodash"}}', /^--import-map: an address starts with \.\/, \.\.\/, \/ or a scheme: "a"$/],
-                ["num.json", '{"imports": {"a": 1}}', /^--import-map: not a string: "a"$/],
-                ["prefix.json", '{"imports": {"a/": "./a/"}}', /^--import-map: no prefix entry or relative key: "a\/"$/],
-                ["relkey.json", '{"imports": {"./a": "./a.js"}}', /^--import-map: no prefix entry or relative key: "\.\/a"$/],
+                ["bad.json", '{"imports": {"a": "./a.js",}}', /--import-map: .*JSON/],
+                ["list.json", "[]", /--import-map: not an object$/],
+                ["scopes.json", '{"imports": {}, "scopes": {}}', /--import-map: only "imports" is supported: "scopes"$/],
+                ["bare.json", '{"imports": {"a": "lodash"}}', /--import-map: an address starts with \.\/, \.\.\/, \/ or a scheme: "a"$/],
+                ["num.json", '{"imports": {"a": 1}}', /--import-map: not a string: "a"$/],
+                ["prefix.json", '{"imports": {"a/": "./a/"}}', /--import-map: no prefix entry or relative key: "a\/"$/],
+                ["relkey.json", '{"imports": {"./a": "./a.js"}}', /--import-map: no prefix entry or relative key: "\.\/a"$/],
             ] as [string, string, RegExp][]) {
                 const file = await map(name, json)
-                refused(() => importMapOf(file), reason)
+                assert.throws(() => importMapOf(file), reason)
             }
         })
     })
@@ -72,7 +62,7 @@ describe("extras/import-map", () => {
 
         it("refuses an entry without a specifier or a file", () => {
             for (const entry of ["mod", "=mod.mjs", "mod="]) {
-                refused(() => aliasOf(entry), /^--alias takes <specifier>=<file>: /)
+                assert.throws(() => aliasOf(entry), /--alias takes <specifier>=<file>: /)
             }
         })
     })
@@ -80,7 +70,7 @@ describe("extras/import-map", () => {
     // Nothing reaches importsOf but readOptions, so what it settles is read back from there.
     describe("importsOf", () => {
         it("is read by readOptions before --alias in both modes, and a page's address refused in Node mode", async () => {
-            refused(() => readOptions(["--import-map", join(dir, "maps", "none.json"), "a.test.ts"]), /^--import-map: ENOENT/)
+            assert.throws(() => readOptions(["--import-map", join(dir, "maps", "none.json"), "a.test.ts"]), /--import-map: ENOENT/)
             const file = await map("m.json", '{"imports": {"lib": "./lib.js", "mod": "./old.js"}}')
             const node = readOptions(["--import-map", file, "--alias", "mod=new.mjs", "a.test.ts"])
             assert.equal(node.mode, "node")
@@ -91,7 +81,7 @@ describe("extras/import-map", () => {
             if (served.mode !== "serve") return
             assert.deepEqual(served.imports.map(entry => entry.specifier), ["lib", "mod"])
             const urls = await map("urls.json", '{"imports": {"root": "/x.js"}}')
-            refused(() => readOptions(["--import-map", urls, "a.test.ts"]), /apply to --playwright, --webdriver and --serve only: "root"$/)
+            assert.throws(() => readOptions(["--import-map", urls, "a.test.ts"]), /apply to --playwright, --webdriver and --serve only: "root"$/)
             const taken = readOptions(["--import-map", urls, "--alias", "root=x.mjs", "a.test.ts"])
             assert.equal(taken.mode, "node")
             if (taken.mode !== "node") return
