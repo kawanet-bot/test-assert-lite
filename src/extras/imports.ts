@@ -10,19 +10,9 @@ import {UsageError} from "./usage-error.ts"
 
 export type Mode = "node" | "browser"
 
-// This package's own names and the addresses a page gets for them; a
-// target naming one is "bundled", resolved from this package in both modes.
-// The root name leads a page to the ES module face of the IIFE's global,
-// not to the ESM build: the map is the CLI's to write, and says so.
-const BUNDLED = new Map([
-    ["test-assert-lite", "/@tal/exports/global.mjs"],
-    ["test-assert-lite/test", "/@tal/exports/test.mjs"],
-    ["test-assert-lite/assert", "/@tal/exports/assert.mjs"],
-    ["test-assert-lite/assert/strict", "/@tal/exports/assert/strict.mjs"],
-])
-
-/** The addresses a page needs for this package's own names, whatever else is mapped. */
-export const bundledAddresses = (): Record<string, string> => Object.fromEntries(BUNDLED)
+// This package's own names; a target naming one is "bundled": its file is
+// what the package's exports say, resolved from this copy in both modes.
+const BUNDLED = new Set(["test-assert-lite", "test-assert-lite/test", "test-assert-lite/assert", "test-assert-lite/assert/strict"])
 
 /** One specifier and its target, as given; the checks a mode adds are `refusal()`. */
 export abstract class ImportBase {
@@ -64,10 +54,8 @@ export abstract class ImportBase {
     /** A path target as a file; the subclass says by which rules. */
     protected abstract resolvePath(): string
 
-    /** The address a page's import map gets: `serve` turns a file into its served URL. */
+    /** The address a page's import map gets: `serve` turns a file into its served URL, a URL goes as written. */
     getAddress(serve: (file: string) => string): string {
-        const bundled = BUNDLED.get(this.target)
-        if (bundled != null) return bundled
         const path = this.getPath()
         return path == null ? this.target : serve(path)
     }
@@ -157,16 +145,44 @@ export const readImportMap = (file: string): ImportMapItem[] => {
     return importMapItems(map, url)
 }
 
-// Suites are written against node:test and node:assert, and this package
-// stands in for both; these come first, so a later item may take them over.
-const defaults = (): ImportAliasItem[] => {
-    const cwd = pathToFileURL(`${process.cwd()}/`)
-    return ["node:test=test-assert-lite/test", "node:assert=test-assert-lite/assert", "node:assert/strict=test-assert-lite/assert/strict"]
-        .map(entry => new ImportAliasItem(entry, cwd))
+/**
+ * One of this package's own names as a target, from no command line: what
+ * the CLI maps before anything is given. Never a path, refused nowhere.
+ */
+export class ImportBundledItem extends ImportBase {
+    constructor(specifier: string, target: string) {
+        super(specifier, target, pathToFileURL(`${process.cwd()}/`))
+    }
+
+    isPath(): boolean {
+        return false
+    }
+
+    refusal(): undefined {
+        return undefined
+    }
+
+    protected resolvePath(): string {
+        throw new Error(`not a path: ${this.target}`)
+    }
 }
 
+// What the CLI maps before anything is given: this package's own names to
+// themselves, so a page's map has them; and node:test and node:assert to
+// the subpaths that stand in for them. A later item takes any of these over.
+const DEFAULTS: [specifier: string, target: string][] = [
+    ["test-assert-lite", "test-assert-lite"],
+    ["test-assert-lite/test", "test-assert-lite/test"],
+    ["test-assert-lite/assert", "test-assert-lite/assert"],
+    ["test-assert-lite/assert/strict", "test-assert-lite/assert/strict"],
+    ["node:test", "test-assert-lite/test"],
+    ["node:assert", "test-assert-lite/assert"],
+    ["node:assert/strict", "test-assert-lite/assert/strict"],
+]
+const defaults = (): ImportBundledItem[] => DEFAULTS.map(([specifier, target]) => new ImportBundledItem(specifier, target))
+
 /**
- * The items in the order given, this package's three defaults first, so
+ * The items in the order given, this package's defaults first, so
  * the last for a specifier wins. Files are every item's, losers included:
  * a file named is watched and served whether or not it is what resolves.
  */
@@ -187,11 +203,9 @@ export class Imports {
         return new Map(this.items.map(item => [item.specifier, item]))
     }
 
-    /** What a page's import map gets: this package's own names, then each specifier's address. */
+    /** What a page's import map gets: each specifier's address. */
     addresses(serve: (file: string) => string): Record<string, string> {
-        const out = bundledAddresses()
-        for (const [specifier, item] of this.entries()) out[specifier] = item.getAddress(serve)
-        return out
+        return Object.fromEntries([...this.entries()].map(([specifier, item]) => [specifier, item.getAddress(serve)]))
     }
 
     /** Why `mode` cannot take the list: one reason per item that resolves and is refused. */
