@@ -4,15 +4,16 @@
 // caller has opened a server or a watch on the strength of it.
 
 import {resolve} from "node:path"
+import {pathToFileURL} from "node:url"
 import {parseArgs} from "node:util"
 import {createFiles} from "../server/files.ts"
-import type {AliasFile, Import} from "./import-map.ts"
-import {importsOf, isAliasFile} from "./import-map.ts"
+import type {Mode} from "./imports.ts"
+import {ImportAliasItem, Imports, readImportMap} from "./imports.ts"
 import {UsageError} from "./usage-error.ts"
 
 export const USAGE = `Usage: test-assert [options] <file...>
   -v, --version               print this package's version
-  --alias <specifier>=<file>  ES module a specifier resolves to, a node: builtin too (repeatable)
+  --alias <specifier>=<file>  what a specifier resolves to: a file, a URL for the page, or this package's own name (repeatable)
   --import-map <file>         JSON import map: a relative address is a file beside it, / and http(s):// go to the page as they are
   --serve                     serve the suite for a browser and print the URL; the page reloads on a change
   --host <address>            address the server listens on (browser modes, default: 127.0.0.1)
@@ -37,8 +38,8 @@ export interface BrowserOptions {
     suites: string[]
     /** Classic scripts to run first, absolute, in order. */
     scripts: string[]
-    /** From --import-map then --alias, a later entry over an earlier one of the same specifier. */
-    imports: Import[]
+    /** From --import-map then --alias, a later item over an earlier one of the same specifier. */
+    imports: Imports
     /** What the root serves in place of htdocs: an absolute directory, or an http(s) URL ending in "/". */
     mount?: string
     host?: string
@@ -49,7 +50,7 @@ export interface BrowserOptions {
 export type Options =
     | {mode: "help"}
     | {mode: "version"}
-    | {mode: "node", suites: string[], imports: AliasFile[]} // the last entry per specifier
+    | {mode: "node", suites: string[], imports: Imports}
     | BrowserOptions & {mode: "serve"}
     | BrowserOptions & {mode: "playwright", browser: Browser}
     | BrowserOptions & {mode: "webdriver", session?: string, endpoint: string}
@@ -89,6 +90,17 @@ export const mountOf = (value: string): string => {
     }
     if (url.search || url.hash || url.username || url.password) throw new UsageError(`--mount takes a directory or http(s)://host[:port][/path]: ${value}`)
     return url.href.endsWith("/") ? url.href : `${url.href}/`
+}
+
+// The import map's items first and each --alias after, so the command
+// line has the last word; what `mode` cannot take of the result is refused
+// here, one reason per specifier, before anything is served or hooked.
+export const importsOf = (mapFile: string | undefined, aliases: string[], mode: Mode): Imports => {
+    const cwd = pathToFileURL(`${process.cwd()}/`)
+    const imports = new Imports([...(mapFile == null ? [] : readImportMap(resolve(mapFile))), ...aliases.map(entry => new ImportAliasItem(entry, cwd))])
+    const refusals = imports.refusals(mode)
+    if (refusals.length) throw new UsageError(refusals.join("\n"))
+    return imports
 }
 
 export const browserOf = (name: string): Browser => {
@@ -162,25 +174,16 @@ export const readOptions = (args: string[]): Options => {
         if (typescript.length) throw new UsageError(`a browser runs no TypeScript: ${typescript.join(", ")}`)
     }
 
-    if (!browsing) {
-        // The hook resolves to files; an address the page would fetch has
-        // nowhere to go here, unless a later entry, an --alias say, takes
-        // the specifier over. The last entry for each is what the hook gets.
-        const last = new Map(importsOf(values["import-map"], values.alias).map(entry => [entry.specifier, entry]))
-        const urls = [...last.values()].filter(entry => "url" in entry)
-        if (urls.length) throw new UsageError(`--import-map addresses starting with / or a scheme apply to --playwright, --webdriver and --serve only: ${urls.map(entry => `"${entry.specifier}"`).join(", ")}`)
-        return {mode: "node", suites: files.map(file => resolve(file)), imports: [...last.values()].filter(isAliasFile)}
-    }
+    const imports = importsOf(values["import-map"], values.alias, browsing ? "browser" : "node")
+    if (!browsing) return {mode: "node", suites: files.map(file => resolve(file)), imports}
 
     const suites = files.map(file => resolve(file))
     const scripts = values.script.map(script => resolve(script))
-    const imports = importsOf(values["import-map"], values.alias)
-    const aliases = imports.filter(isAliasFile)
 
     // The suites are served from one directory, so a module they share is
     // one URL and loads once, as under Node; from two, it would load once
     // per directory. One under another counts as served from the latter.
-    const served = createFiles([...suites, ...scripts, ...aliases.map(alias => alias.file)])
+    const served = createFiles([...suites, ...scripts, ...imports.paths()])
     if (new Set(suites.map(file => served.dirOf(file))).size > 1) {
         throw new UsageError("--playwright, --webdriver and --serve take the suites from one directory")
     }

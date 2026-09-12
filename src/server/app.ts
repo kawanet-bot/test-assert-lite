@@ -6,8 +6,7 @@
 
 import {basename, resolve} from "node:path"
 import {fileURLToPath} from "node:url"
-import type {Import} from "../extras/import-map.ts"
-import {isAliasFile} from "../extras/import-map.ts"
+import {Imports} from "../extras/imports.ts"
 import {packageNameOf, packageRoot} from "../extras/package-root.ts"
 import type {ChannelOptions} from "./channel.ts"
 import {createChannel} from "./channel.ts"
@@ -27,7 +26,7 @@ export interface AppOptions extends ChannelOptions {
     /** Classic scripts to run before the suites, absolute, in this order. */
     scripts?: string[]
     /** Specifiers and what they resolve to: a file, served from its directory, or a URL put into the map as it is. */
-    imports?: Import[]
+    imports?: Imports
     /** What the root serves in place of htdocs: an absolute directory, or an http(s) URL ending in "/" to proxy. */
     mount?: string
     /** Reloads the page people open when a suite, a script or an imported file changes; off where it cannot watch. */
@@ -49,26 +48,12 @@ export interface App {
 // they are served from there whatever the suite's location.
 const root = fileURLToPath(packageRoot())
 
-// This package stands in for node:test and node:assert in a browser: each
-// builtin maps onto the subpath of the same name, and the subpaths resolve
-// too. An import, from --import-map or --alias, adds its specifier on top.
-const IMPORTS = {
-    "test-assert-lite": "/@tal/esm/test-assert-lite.mjs",
-    "test-assert-lite/test": "/@tal/exports/test.mjs",
-    "test-assert-lite/assert": "/@tal/exports/assert.mjs",
-    "test-assert-lite/assert/strict": "/@tal/exports/assert/strict.mjs",
-    "node:test": "/@tal/exports/test.mjs",
-    "node:assert": "/@tal/exports/assert.mjs",
-    "node:assert/strict": "/@tal/exports/assert/strict.mjs",
-}
-
 /**
  * Builds the application for the suites: its middleware, and the promise
  * of the verdict the page at `page` reports back through it.
  */
 export const createApp = (options: AppOptions): App => {
-    const {suites = [], scripts = [], imports: entries = [], mount: mounted, stderr = text => process.stderr.write(text)} = options
-    const aliases = entries.filter(isAliasFile)
+    const {suites = [], scripts = [], imports = new Imports([]), mount: mounted, stderr = text => process.stderr.write(text)} = options
     const channel = createChannel(options)
 
     // Watching is a convenience of --serve, not what it is for: where the
@@ -77,7 +62,7 @@ export const createApp = (options: AppOptions): App => {
     let watcher: Watcher | null = null
     if (options.watch) {
         try {
-            watcher = createWatcher([...suites, ...scripts, ...aliases.map(alias => alias.file)])
+            watcher = createWatcher([...suites, ...scripts, ...imports.paths()])
         } catch (error) {
             stderr(`watch is off: ${error instanceof Error ? error.message : String(error)}\n`)
         }
@@ -86,7 +71,7 @@ export const createApp = (options: AppOptions): App => {
     // Every file given is served from its directory under /@tal/files/, so
     // a sibling or a nested import resolves beside it while nothing above
     // stays reachable; the suites' directory is the same for all of them.
-    const served = createFiles([...suites, ...scripts, ...aliases.map(alias => alias.file)])
+    const served = createFiles([...suites, ...scripts, ...imports.paths()])
 
     // The build browsers get is the IIFE, so that is what runs: it goes in
     // as the first classic script, and the URL the import map and the
@@ -100,9 +85,7 @@ export const createApp = (options: AppOptions): App => {
     // Node, ahead of the page's own module in the body that calls run(). So
     // all three go into the head of every HTML page served from htdocs/,
     // and of the run's page, as it goes out.
-    const imports: Record<string, string> = {...IMPORTS}
-    for (const entry of entries) imports[entry.specifier] = isAliasFile(entry) ? served.urlOf(entry.file) : entry.url
-    const importmap = `<script type="importmap">\n${JSON.stringify({imports}, null, 4)}\n</script>\n`
+    const importmap = `<script type="importmap">\n${JSON.stringify({imports: imports.addresses(file => served.urlOf(file))}, null, 4)}\n</script>\n`
     const tags = scriptUrls.map(url => `<script src="${url}"></script>\n`).join("")
         + suites.map(suite => `<script type="module" src="${served.urlOf(suite)}"></script>\n`).join("")
     // A page with an import map of its own goes out as it is: a second map

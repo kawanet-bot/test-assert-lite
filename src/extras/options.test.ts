@@ -71,7 +71,11 @@ describe("extras/options", () => {
         })
 
         it("reads Node mode as the default, the files resolved in order", () => {
-            assert.deepEqual(readOptions(["a.test.ts", "b.test.ts"]), {mode: "node", suites: [resolve("a.test.ts"), resolve("b.test.ts")], imports: []})
+            const options = readOptions(["a.test.ts", "b.test.ts"])
+            assert.equal(options.mode, "node")
+            if (options.mode !== "node") return
+            assert.deepEqual(options.suites, [resolve("a.test.ts"), resolve("b.test.ts")])
+            assert.deepEqual(options.imports.paths(), [])
         })
 
         it("refuses Node mode without a file, and a CommonJS suite in every mode", () => {
@@ -90,11 +94,13 @@ describe("extras/options", () => {
         })
 
         it("reads --serve: the suite resolved, nothing else set", () => {
-            assert.deepEqual(readOptions(["--serve", "suite.mjs"]), {
+            const options = readOptions(["--serve", "suite.mjs"])
+            assert.ok(options.mode === "serve" && options.imports.paths().length === 0)
+            assert.deepEqual({...options, imports: null}, {
                 mode: "serve",
                 suites: [resolve("suite.mjs")],
                 scripts: [],
-                imports: [],
+                imports: null,
                 mount: undefined,
                 host: undefined,
                 port: undefined,
@@ -118,7 +124,8 @@ describe("extras/options", () => {
             assert.equal(options.mode, "serve")
             if (options.mode !== "serve") return
             assert.deepEqual(options.scripts, [resolve("a.js"), resolve("b.js")])
-            assert.deepEqual(options.imports, [{specifier: "mod", file: resolve("m.mjs")}])
+            assert.deepEqual(options.imports.paths(), [resolve("m.mjs")])
+            assert.equal(options.imports.entries().get("mod")?.getPath(), resolve("m.mjs"))
             assert.throws(() => readOptions(["--serve", "--alias", "mod", "suite.mjs"]), /--alias takes/)
         })
 
@@ -126,7 +133,8 @@ describe("extras/options", () => {
             const options = readOptions(["--alias", "node:crypto=sha256.mjs", "a.test.ts"])
             assert.equal(options.mode, "node")
             if (options.mode !== "node") return
-            assert.deepEqual(options.imports, [{specifier: "node:crypto", file: resolve("sha256.mjs")}])
+            assert.equal(options.imports.entries().get("node:crypto")?.getPath(), resolve("sha256.mjs"))
+            assert.throws(() => readOptions(["--alias", "cdn=https://cdn.example/x.js", "a.test.ts"]), /--alias: a URL applies to --playwright, --webdriver and --serve only: "cdn"/)
         })
 
         it("reads --playwright with its browser", () => {
