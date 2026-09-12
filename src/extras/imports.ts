@@ -10,6 +10,9 @@ import {UsageError} from "./usage-error.ts"
 
 export type Mode = "node" | "browser"
 
+/** The working directory as a URL, what an --alias resolves a relative target against. */
+export const cwdURL = (): URL => pathToFileURL(`${process.cwd()}/`)
+
 // What the CLI maps before anything is given: this package's own names to
 // themselves, so a page's map has them; and node:test and node:assert to
 // the subpaths that stand in for them. A later item takes any of these over.
@@ -33,13 +36,10 @@ export abstract class ImportBase {
     readonly specifier: string
     /** The right-hand side as written. */
     readonly target: string
-    /** What a relative target resolves against. */
-    protected readonly base: URL
 
-    constructor(specifier: string, target: string, base: URL) {
+    constructor(specifier: string, target: string) {
         this.specifier = specifier
         this.target = target
-        this.base = base
     }
 
     /** `./x`, `../x` or `/x`, or a bare path where the subclass takes one. */
@@ -58,7 +58,7 @@ export abstract class ImportBase {
     /** Why `mode` cannot take this item, or nothing. */
     abstract refusal(mode: Mode): string | undefined
 
-    /** The local file, absolute: a path against `base`, or a bundled name from this package. Nothing for a URL. */
+    /** The local file, absolute: a path as the subclass resolves it, or a bundled name from this package. Nothing for a URL. */
     getPath(): string | undefined {
         if (this.isBundled()) return fileURLToPath(import.meta.resolve(this.target))
         if (this.isPath()) return this.resolvePath()
@@ -87,10 +87,14 @@ export abstract class ImportBase {
  * A bare path is a path, as it is for every other file the CLI takes.
  */
 export class ImportAliasItem extends ImportBase {
+    /** What a relative target resolves against: the working directory. */
+    private readonly cwd: URL
+
     constructor(entry: string, cwd: URL) {
         const at = entry.indexOf("=")
         if (at < 1 || at === entry.length - 1) throw new UsageError(`--alias takes <specifier>=<target>: ${entry}`)
-        super(entry.slice(0, at), entry.slice(at + 1), cwd)
+        super(entry.slice(0, at), entry.slice(at + 1))
+        this.cwd = cwd
     }
 
     isPath(): boolean {
@@ -100,7 +104,7 @@ export class ImportAliasItem extends ImportBase {
     // By the file system's rules, as the command line's other paths are: a
     // Windows drive letter is a drive, not a URL scheme.
     protected resolvePath(): string {
-        return resolve(fileURLToPath(this.base), this.target)
+        return resolve(fileURLToPath(this.cwd), this.target)
     }
 
     refusal(mode: Mode): string | undefined {
@@ -116,9 +120,13 @@ export class ImportAliasItem extends ImportBase {
  * page's, a bare name is not an address at all.
  */
 export class ImportMapItem extends ImportBase {
+    /** What a relative address resolves against: the map file. */
+    private readonly mapFile: URL
+
     constructor(specifier: string, address: unknown, mapFile: URL) {
         if (typeof address !== "string") throw new UsageError(`--import-map: not a string: "${specifier}"`)
-        super(specifier, address, mapFile)
+        super(specifier, address)
+        this.mapFile = mapFile
         if (this.keyRefusal() != null || address.endsWith("/")) throw new UsageError(`--import-map: ${this.keyRefusal() ?? "no prefix entry or relative key"}: "${specifier}"`)
         if (!this.isPath() && !this.isURL() && !address.startsWith("/")) throw new UsageError(`--import-map: an address starts with ./, ../, / or a scheme: "${specifier}"`)
     }
@@ -129,7 +137,7 @@ export class ImportMapItem extends ImportBase {
 
     // As a page would, against the map's URL.
     protected resolvePath(): string {
-        return fileURLToPath(new URL(this.target, this.base))
+        return fileURLToPath(new URL(this.target, this.mapFile))
     }
 
     refusal(mode: Mode): string | undefined {
@@ -165,7 +173,7 @@ export const readImportMap = (file: string): ImportMapItem[] => {
  */
 export class ImportBundledItem extends ImportBase {
     constructor(specifier: string, target: string) {
-        super(specifier, target, pathToFileURL(`${process.cwd()}/`))
+        super(specifier, target)
     }
 
     isPath(): boolean {

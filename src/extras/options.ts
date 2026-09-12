@@ -4,11 +4,10 @@
 // caller has opened a server or a watch on the strength of it.
 
 import {resolve} from "node:path"
-import {pathToFileURL} from "node:url"
 import {parseArgs} from "node:util"
 import {createFiles} from "../server/files.ts"
 import type {Mode} from "./imports.ts"
-import {ImportAliasItem, Imports, readImportMap} from "./imports.ts"
+import {ImportAliasItem, Imports, cwdURL, readImportMap} from "./imports.ts"
 import {UsageError} from "./usage-error.ts"
 
 export const USAGE = `Usage: test-assert [options] <file...>
@@ -96,8 +95,7 @@ export const mountOf = (value: string): string => {
 // line has the last word; what `mode` cannot take of the result is refused
 // here, one reason per specifier, before anything is served or hooked.
 export const importsOf = (mapFile: string | undefined, aliases: string[], mode: Mode): Imports => {
-    const cwd = pathToFileURL(`${process.cwd()}/`)
-    const imports = new Imports([...(mapFile == null ? [] : readImportMap(resolve(mapFile))), ...aliases.map(entry => new ImportAliasItem(entry, cwd))])
+    const imports = new Imports([...(mapFile == null ? [] : readImportMap(resolve(mapFile))), ...aliases.map(entry => new ImportAliasItem(entry, cwdURL()))])
     const refusals = imports.refusals(mode)
     if (refusals.length) throw new UsageError(refusals.join("\n"))
     return imports
