@@ -10,9 +10,23 @@ import {UsageError} from "./usage-error.ts"
 
 export type Mode = "node" | "browser"
 
-// This package's own names; a target naming one is "bundled": its file is
-// what the package's exports say, resolved from this copy in both modes.
-const BUNDLED = new Set(["test-assert-lite", "test-assert-lite/test", "test-assert-lite/assert", "test-assert-lite/assert/strict"])
+// What the CLI maps before anything is given: this package's own names to
+// themselves, so a page's map has them; and node:test and node:assert to
+// the subpaths that stand in for them. A later item takes any of these over.
+const DEFAULTS: [specifier: string, target: string][] = [
+    ["test-assert-lite", "test-assert-lite"],
+    ["test-assert-lite/test", "test-assert-lite/test"],
+    ["test-assert-lite/assert", "test-assert-lite/assert"],
+    ["test-assert-lite/assert/strict", "test-assert-lite/assert/strict"],
+    ["node:test", "test-assert-lite/test"],
+    ["node:assert", "test-assert-lite/assert"],
+    ["node:assert/strict", "test-assert-lite/assert/strict"],
+]
+
+// The bundled names, this package's own, are what the defaults point at:
+// a target naming one is resolved from this copy of the package in both
+// modes, and no name is one without a row above that maps it.
+const BUNDLED = new Set(DEFAULTS.map(([, target]) => target))
 
 /** One specifier and its target, as given; the checks a mode adds are `refusal()`. */
 export abstract class ImportBase {
@@ -167,18 +181,6 @@ export class ImportBundledItem extends ImportBase {
     }
 }
 
-// What the CLI maps before anything is given: this package's own names to
-// themselves, so a page's map has them; and node:test and node:assert to
-// the subpaths that stand in for them. A later item takes any of these over.
-const DEFAULTS: [specifier: string, target: string][] = [
-    ["test-assert-lite", "test-assert-lite"],
-    ["test-assert-lite/test", "test-assert-lite/test"],
-    ["test-assert-lite/assert", "test-assert-lite/assert"],
-    ["test-assert-lite/assert/strict", "test-assert-lite/assert/strict"],
-    ["node:test", "test-assert-lite/test"],
-    ["node:assert", "test-assert-lite/assert"],
-    ["node:assert/strict", "test-assert-lite/assert/strict"],
-]
 const defaults = (): ImportBundledItem[] => DEFAULTS.map(([specifier, target]) => new ImportBundledItem(specifier, target))
 
 /**
