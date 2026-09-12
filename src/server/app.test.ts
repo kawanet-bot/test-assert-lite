@@ -4,6 +4,8 @@ import {createServer} from "node:http"
 import {tmpdir} from "node:os"
 import {join} from "node:path"
 import {after, before, describe, it} from "node:test"
+import {pathToFileURL} from "node:url"
+import {ImportAliasItem, ImportMapItem, Imports} from "../extras/imports.ts"
 import type {App} from "./app.ts"
 import {createApp} from "./app.ts"
 import {createFiles} from "./files.ts"
@@ -28,6 +30,7 @@ describe("server/app", () => {
     let server: Server
     const stdout: string[] = []
     const url = (path: string): string => server.origin + path
+    const cwd = pathToFileURL(`${process.cwd()}/`)
 
     before(async () => {
         dir = await mkdtemp(join(tmpdir(), "tal-app-"))
@@ -47,7 +50,13 @@ describe("server/app", () => {
         app = createApp({
             suites: [join(dir, "tests", "my suite.mjs"), join(dir, "tests", "second.mjs")],
             scripts: [join(dir, "tests", "setup.js"), join(dir, "tests", "set+up#2.js")],
-            imports: [{specifier: "mod", file: join(dir, "lib", "mod.mjs")}, {specifier: "dep", file: join(dir, "tests", "nested", "dep.mjs")}, {specifier: "cdn", url: "https://cdn.example/lib.js"}, {specifier: "mine", url: "/mine.js"}, {specifier: "mod", file: join(dir, "lib", "mod.mjs")}],
+            imports: new Imports([
+                new ImportAliasItem(`mod=${join(dir, "lib", "mod.mjs")}`, cwd),
+                new ImportAliasItem(`dep=${join(dir, "tests", "nested", "dep.mjs")}`, cwd),
+                new ImportAliasItem("cdn=https://cdn.example/lib.js", cwd),
+                new ImportMapItem("mine", "/mine.js", pathToFileURL(join(dir, "map.json"))),
+                new ImportAliasItem(`mod=${join(dir, "lib", "mod.mjs")}`, cwd),
+            ]),
             stdout: text => stdout.push(text),
         })
         server = await serve({handler: app.handler})
