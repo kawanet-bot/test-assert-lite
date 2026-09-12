@@ -51,7 +51,7 @@ describe("extras/imports", () => {
             assert.equal(item.isPath(), false)
             assert.equal(item.getPath(), resolve("exports", "test.mjs"))
             assert.equal(item.getAddress(serve), "/@tal/exports/test.mjs")
-            assert.equal(alias("x=test-assert-lite").getAddress(serve), "/@tal/esm/test-assert-lite.mjs")
+            assert.equal(alias("x=test-assert-lite").getAddress(serve), "/@tal/exports/global.mjs")
             assert.equal(item.refusal("node"), undefined)
             assert.equal(item.refusal("browser"), undefined)
         })

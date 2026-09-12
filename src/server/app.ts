@@ -74,9 +74,8 @@ export const createApp = (options: AppOptions): App => {
     const served = createFiles([...suites, ...scripts, ...imports.paths()])
 
     // The build browsers get is the IIFE, so that is what runs: it goes in
-    // as the first classic script, and the URL the import map and the
-    // bridges lead to serves exports/global.mjs, the ES module face of its
-    // global, in place of the ESM build.
+    // as the first classic script; the package's name in the map leads to
+    // exports/global.mjs, the ES module face of its global, not the ESM build.
     const scriptUrls = ["/@tal/dist/test-assert-lite.min.js", ...scripts.map(script => served.urlOf(script))]
 
     // The map has to be inline and in place before the first module loads;
@@ -113,7 +112,6 @@ export const createApp = (options: AppOptions): App => {
         channel.handler,
         ...(watcher == null ? [] : [watcher.handler]),
         scoped(compose([head, title, serveStatic({path: `${channel.path}run.html`, root: resolve(root, "browser", "run.html")})])),
-        serveStatic({path: "/@tal/esm/test-assert-lite.mjs", root: resolve(root, "exports", "global.mjs")}),
         serveStatic({path: "/@tal/dist/", root: resolve(root, "dist")}),
         serveStatic({path: "/@tal/exports/", root: resolve(root, "exports")}),
         ...served.dirs.map(dir => serveStatic(dir)),

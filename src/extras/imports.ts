@@ -10,10 +10,12 @@ import {UsageError} from "./usage-error.ts"
 
 export type Mode = "node" | "browser"
 
-// This package's own names and the addresses the CLI serves them at; a
+// This package's own names and the addresses a page gets for them; a
 // target naming one is "bundled", resolved from this package in both modes.
+// The root name leads a page to the ES module face of the IIFE's global,
+// not to the ESM build: the map is the CLI's to write, and says so.
 const BUNDLED = new Map([
-    ["test-assert-lite", "/@tal/esm/test-assert-lite.mjs"],
+    ["test-assert-lite", "/@tal/exports/global.mjs"],
     ["test-assert-lite/test", "/@tal/exports/test.mjs"],
     ["test-assert-lite/assert", "/@tal/exports/assert.mjs"],
     ["test-assert-lite/assert/strict", "/@tal/exports/assert/strict.mjs"],
