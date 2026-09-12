@@ -108,7 +108,8 @@ export const createAssert = (): AssertControl => {
     const ifError = (value: unknown): void => {
         if (value == null) return
         throw new AssertionError({
-            message: `ifError got unwanted exception: ${stringify(value)}`,
+            // node names an Error by its message alone, other values as inspected.
+            message: `ifError got unwanted exception: ${isError(value) ? value.message : stringify(value)}`,
             actual: value, operator: "ifError",
         })
     }
