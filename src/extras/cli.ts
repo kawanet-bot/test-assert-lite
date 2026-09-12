@@ -11,9 +11,9 @@ import {serve} from "../server/serve.ts"
 import {VERSION} from "../version.ts"
 import {runInNode} from "./node.ts"
 import type {Options} from "./options.ts"
-import {USAGE, readOptions} from "./options.ts"
+import {readOptions} from "./options.ts"
 import {runInPlaywright} from "./playwright.mjs"
-import {UsageError} from "./usage-error.ts"
+import {USAGE, UsageError} from "./usage-error.ts"
 import {runInWebDriver} from "./webdriver.ts"
 
 export interface CLIOptions {
