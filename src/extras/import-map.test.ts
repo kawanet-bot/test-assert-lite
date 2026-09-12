@@ -14,6 +14,12 @@ describe("extras/import-map", () => {
         return file
     }
 
+    // The map file written, then read back: the one call assert.throws takes.
+    const reading = async (name: string, json: string): Promise<() => unknown> => {
+        const file = await map(name, json)
+        return () => importMapOf(file)
+    }
+
     before(async () => {
         dir = await mkdtemp(join(tmpdir(), "tal-import-map-"))
         await mkdir(join(dir, "maps"))
@@ -39,18 +45,13 @@ describe("extras/import-map", () => {
 
         it("refuses what it cannot read or does not take, naming the option", async () => {
             assert.throws(() => importMapOf(join(dir, "maps", "none.json")), /--import-map: ENOENT/)
-            for (const [name, json, reason] of [
-                ["bad.json", '{"imports": {"a": "./a.js",}}', /--import-map: .*JSON/],
-                ["list.json", "[]", /--import-map: not an object$/],
-                ["scopes.json", '{"imports": {}, "scopes": {}}', /--import-map: only "imports" is supported: "scopes"$/],
-                ["bare.json", '{"imports": {"a": "lodash"}}', /--import-map: an address starts with \.\/, \.\.\/, \/ or a scheme: "a"$/],
-                ["num.json", '{"imports": {"a": 1}}', /--import-map: not a string: "a"$/],
-                ["prefix.json", '{"imports": {"a/": "./a/"}}', /--import-map: no prefix entry or relative key: "a\/"$/],
-                ["relkey.json", '{"imports": {"./a": "./a.js"}}', /--import-map: no prefix entry or relative key: "\.\/a"$/],
-            ] as [string, string, RegExp][]) {
-                const file = await map(name, json)
-                assert.throws(() => importMapOf(file), reason)
-            }
+            assert.throws(await reading("bad.json", '{"imports": {"a": "./a.js",}}'), /--import-map: .*JSON/)
+            assert.throws(await reading("list.json", "[]"), /--import-map: not an object$/)
+            assert.throws(await reading("scopes.json", '{"imports": {}, "scopes": {}}'), /--import-map: only "imports" is supported: "scopes"$/)
+            assert.throws(await reading("bare.json", '{"imports": {"a": "lodash"}}'), /--import-map: an address starts with \.\/, \.\.\/, \/ or a scheme: "a"$/)
+            assert.throws(await reading("num.json", '{"imports": {"a": 1}}'), /--import-map: not a string: "a"$/)
+            assert.throws(await reading("prefix.json", '{"imports": {"a/": "./a/"}}'), /--import-map: no prefix entry or relative key: "a\/"$/)
+            assert.throws(await reading("relkey.json", '{"imports": {"./a": "./a.js"}}'), /--import-map: no prefix entry or relative key: "\.\/a"$/)
         })
     })
 
