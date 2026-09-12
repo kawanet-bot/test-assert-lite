@@ -26,11 +26,27 @@ export type Import = AliasFile | AliasUrl
 /** Which half of the union an entry is: the file the CLI serves, against the address the page takes as it is. */
 export const isAliasFile = (entry: Import): entry is AliasFile => "file" in entry
 
-// An import map file, read as a page would up to what the CLI can do:
-// "imports" alone, keys as written, addresses resolved against the file.
-// A relative address is a file the CLI serves; "/" and absolute URLs are
-// the page's. A relative key, which a page would resolve against its own
-// base, and a prefix entry, "/" at the end, are refused, not mismatched.
+// What an import map declares, read as a page would up to what the CLI
+// can do: "imports" alone, keys as written, addresses against `base`. A
+// relative address is a file the CLI serves; "/" and absolute URLs are the
+// page's. A relative key and a prefix entry are refused, not mismatched.
+export const importsOfMap = (map: unknown, base: URL): Import[] => {
+    if (typeof map !== "object" || map == null || Array.isArray(map)) throw new UsageError("--import-map: not an object")
+    for (const key of Object.keys(map)) if (key !== "imports") throw new UsageError(`--import-map: only "imports" is supported: "${key}"`)
+    const {imports = {}} = map as {imports?: unknown}
+    if (typeof imports !== "object" || imports == null || Array.isArray(imports)) throw new UsageError('--import-map: not an object: "imports"')
+
+    return Object.entries(imports).map(([specifier, address]) => {
+        if (typeof address !== "string") throw new UsageError(`--import-map: not a string: "${specifier}"`)
+        if (/^(\.\.?\/|\/)/.test(specifier) || specifier.endsWith("/") || address.endsWith("/")) throw new UsageError(`--import-map: no prefix entry or relative key: "${specifier}"`)
+        if (/^\.\.?\//.test(address)) return {specifier, file: fileURLToPath(new URL(address, base))}
+        if (address.startsWith("/") || URL.canParse(address)) return {specifier, url: address}
+        throw new UsageError(`--import-map: an address starts with ./, ../, / or a scheme: "${specifier}"`)
+    })
+}
+
+// The same from a file: read and parsed here, and its own location is what
+// a relative address resolves against.
 export const importMapOf = (file: string): Import[] => {
     const path = resolve(file)
     let map: unknown
@@ -39,19 +55,7 @@ export const importMapOf = (file: string): Import[] => {
     } catch (error) {
         throw new UsageError(`--import-map: ${error instanceof Error ? error.message : String(error)}`)
     }
-    if (typeof map !== "object" || map == null || Array.isArray(map)) throw new UsageError("--import-map: not an object")
-    for (const key of Object.keys(map)) if (key !== "imports") throw new UsageError(`--import-map: only "imports" is supported: "${key}"`)
-    const {imports = {}} = map as {imports?: unknown}
-    if (typeof imports !== "object" || imports == null || Array.isArray(imports)) throw new UsageError('--import-map: not an object: "imports"')
-
-    const base = pathToFileURL(path)
-    return Object.entries(imports).map(([specifier, address]) => {
-        if (typeof address !== "string") throw new UsageError(`--import-map: not a string: "${specifier}"`)
-        if (/^(\.\.?\/|\/)/.test(specifier) || specifier.endsWith("/") || address.endsWith("/")) throw new UsageError(`--import-map: no prefix entry or relative key: "${specifier}"`)
-        if (/^\.\.?\//.test(address)) return {specifier, file: fileURLToPath(new URL(address, base))}
-        if (address.startsWith("/") || URL.canParse(address)) return {specifier, url: address}
-        throw new UsageError(`--import-map: an address starts with ./, ../, / or a scheme: "${specifier}"`)
-    })
+    return importsOfMap(map, pathToFileURL(path))
 }
 
 // Each --alias is `<specifier>=<file>`, split at the first "=".

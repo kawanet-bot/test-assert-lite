@@ -3,7 +3,8 @@ import {mkdir, mkdtemp, rm, writeFile} from "node:fs/promises"
 import {tmpdir} from "node:os"
 import {join, resolve} from "node:path"
 import {after, before, describe, it} from "node:test"
-import {aliasOf, importMapOf} from "./import-map.ts"
+import {pathToFileURL} from "node:url"
+import {aliasOf, importMapOf, importsOfMap} from "./import-map.ts"
 import {readOptions} from "./options.ts"
 
 describe("extras/import-map", () => {
@@ -12,12 +13,6 @@ describe("extras/import-map", () => {
         const file = join(dir, "maps", name)
         await writeFile(file, json)
         return file
-    }
-
-    // The map file written, then read back: the one call assert.throws takes.
-    const reading = async (name: string, json: string): Promise<() => unknown> => {
-        const file = await map(name, json)
-        return () => importMapOf(file)
     }
 
     before(async () => {
@@ -29,29 +24,47 @@ describe("extras/import-map", () => {
         await rm(dir, {recursive: true, force: true})
     })
 
-    describe("importMapOf", () => {
-        it("resolves a relative address against the file, and passes / and a URL through", async () => {
-            const file = await map("a.json", '{"imports": {"lib": "./lib/x.js", "up": "../y.js", "root": "/vendor/z.js", "cdn": "https://cdn.example/w.js", "node:crypto": "./sha256.mjs", "https://cdn.example/lib.js": "./local.mjs"}}')
-            assert.deepEqual(importMapOf(file), [
-                {specifier: "lib", file: join(dir, "maps", "lib", "x.js")},
-                {specifier: "up", file: join(dir, "y.js")},
+    // No file is read here, so the base a relative address resolves against
+    // is given as one: what it points at need not exist.
+    describe("importsOfMap", () => {
+        const base = pathToFileURL(resolve("maps", "x.json"))
+
+        it("resolves a relative address against the base, and passes / and a URL through", () => {
+            assert.deepEqual(importsOfMap({imports: {"lib": "./lib/x.js", "up": "../y.js", "root": "/vendor/z.js", "cdn": "https://cdn.example/w.js", "node:crypto": "./sha256.mjs", "https://cdn.example/lib.js": "./local.mjs"}}, base), [
+                {specifier: "lib", file: resolve("maps", "lib", "x.js")},
+                {specifier: "up", file: resolve("y.js")},
                 {specifier: "root", url: "/vendor/z.js"},
                 {specifier: "cdn", url: "https://cdn.example/w.js"},
-                {specifier: "node:crypto", file: join(dir, "maps", "sha256.mjs")},
-                {specifier: "https://cdn.example/lib.js", file: join(dir, "maps", "local.mjs")},
+                {specifier: "node:crypto", file: resolve("maps", "sha256.mjs")},
+                {specifier: "https://cdn.example/lib.js", file: resolve("maps", "local.mjs")},
             ])
-            assert.deepEqual(importMapOf(await map("empty.json", "{}")), [])
+            assert.deepEqual(importsOfMap({}, base), [])
         })
 
-        it("refuses what it cannot read or does not take, naming the option", async () => {
+        it("refuses what it does not take, naming the option and the key", () => {
+            assert.throws(() => importsOfMap([], base), /--import-map: not an object$/)
+            assert.throws(() => importsOfMap({imports: {}, scopes: {}}, base), /--import-map: only "imports" is supported: "scopes"$/)
+            assert.throws(() => importsOfMap({imports: []}, base), /--import-map: not an object: "imports"$/)
+            assert.throws(() => importsOfMap({imports: {a: 1}}, base), /--import-map: not a string: "a"$/)
+            assert.throws(() => importsOfMap({imports: {"a/": "./a/"}}, base), /--import-map: no prefix entry or relative key: "a\/"$/)
+            assert.throws(() => importsOfMap({imports: {"./a": "./a.js"}}, base), /--import-map: no prefix entry or relative key: "\.\/a"$/)
+            assert.throws(() => importsOfMap({imports: {a: "lodash"}}, base), /--import-map: an address starts with \.\/, \.\.\/, \/ or a scheme: "a"$/)
+        })
+    })
+
+    // What reading adds: the file itself, and its location as the base.
+    describe("importMapOf", () => {
+        it("resolves a relative address against the file it was read from", async () => {
+            assert.deepEqual(importMapOf(await map("a.json", '{"imports": {"lib": "./lib/x.js", "up": "../y.js"}}')), [
+                {specifier: "lib", file: join(dir, "maps", "lib", "x.js")},
+                {specifier: "up", file: join(dir, "y.js")},
+            ])
+        })
+
+        it("refuses what it cannot read or parse, naming the option", async () => {
             assert.throws(() => importMapOf(join(dir, "maps", "none.json")), /--import-map: ENOENT/)
-            assert.throws(await reading("bad.json", '{"imports": {"a": "./a.js",}}'), /--import-map: .*JSON/)
-            assert.throws(await reading("list.json", "[]"), /--import-map: not an object$/)
-            assert.throws(await reading("scopes.json", '{"imports": {}, "scopes": {}}'), /--import-map: only "imports" is supported: "scopes"$/)
-            assert.throws(await reading("bare.json", '{"imports": {"a": "lodash"}}'), /--import-map: an address starts with \.\/, \.\.\/, \/ or a scheme: "a"$/)
-            assert.throws(await reading("num.json", '{"imports": {"a": 1}}'), /--import-map: not a string: "a"$/)
-            assert.throws(await reading("prefix.json", '{"imports": {"a/": "./a/"}}'), /--import-map: no prefix entry or relative key: "a\/"$/)
-            assert.throws(await reading("relkey.json", '{"imports": {"./a": "./a.js"}}'), /--import-map: no prefix entry or relative key: "\.\/a"$/)
+            const bad = await map("bad.json", '{"imports": {"a": "./a.js",}}')
+            assert.throws(() => importMapOf(bad), /--import-map: .*JSON/)
         })
     })
 
