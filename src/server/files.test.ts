@@ -1,7 +1,7 @@
 import {strict as assert} from "node:assert"
 import {mkdir, mkdtemp, rm, symlink, writeFile} from "node:fs/promises"
 import {tmpdir} from "node:os"
-import {join} from "node:path"
+import {join, resolve} from "node:path"
 import {after, before, describe, it} from "node:test"
 import {createFiles} from "./files.ts"
 
@@ -45,6 +45,16 @@ describe("server/files", () => {
         }
         const apart = createFiles([join(dir, "src", "sub", "c.mjs"), join(dir, "lib", "mod.mjs")])
         assert.deepEqual(apart.dirs.map(({root}) => root), [join(dir, "lib"), join(dir, "src", "sub")])
+    })
+
+    it("serves this package's own dist/ and exports/ at the paths of their names, the IIFE's face in place of the ESM entry", () => {
+        const files = createFiles([join(dir, "src", "a.mjs")])
+        assert.deepEqual(files.own.map(({path}) => path), ["/@tal/dist/", "/@tal/exports/"])
+        assert.equal(files.dirs.length, 1)
+        assert.equal(files.urlOf(resolve("exports", "test.mjs")), "/@tal/exports/test.mjs")
+        assert.equal(files.urlOf(resolve("exports", "assert", "strict.mjs")), "/@tal/exports/assert/strict.mjs")
+        assert.equal(files.urlOf(resolve("dist", "test-assert-lite.min.js")), "/@tal/dist/test-assert-lite.min.js")
+        assert.equal(files.urlOf(resolve("esm", "test-assert-lite.mjs")), "/@tal/exports/global.mjs")
     })
 
     it("takes a symlink for its target, and a file that is not there as given", () => {

@@ -44,8 +44,8 @@ export interface App {
     close(): void
 }
 
-// The package root holds dist/, esm/, exports/, htdocs/ and the IIFE's shim;
-// they are served from there whatever the suite's location.
+// The package root holds the pages, htdocs/ and browser/run.html; they
+// are served from there whatever the suite's location.
 const root = fileURLToPath(packageRoot())
 
 /**
@@ -75,8 +75,8 @@ export const createApp = (options: AppOptions): App => {
 
     // The build browsers get is the IIFE, so that is what runs: it goes in
     // as the first classic script; the package's name in the map leads to
-    // exports/global.mjs, the ES module face of its global, not the ESM build.
-    const scriptUrls = ["/@tal/dist/test-assert-lite.min.js", ...scripts.map(script => served.urlOf(script))]
+    // the ES module face of its global, in place of the ESM build.
+    const scriptUrls = [served.urlOf(resolve(root, "dist", "test-assert-lite.min.js")), ...scripts.map(script => served.urlOf(script))]
 
     // The map has to be inline and in place before the first module loads;
     // classic script tags run in order as the head is parsed, and module
@@ -112,9 +112,7 @@ export const createApp = (options: AppOptions): App => {
         channel.handler,
         ...(watcher == null ? [] : [watcher.handler]),
         scoped(compose([head, title, serveStatic({path: `${channel.path}run.html`, root: resolve(root, "browser", "run.html")})])),
-        serveStatic({path: "/@tal/dist/", root: resolve(root, "dist")}),
-        serveStatic({path: "/@tal/exports/", root: resolve(root, "exports")}),
-        ...served.dirs.map(dir => serveStatic(dir)),
+        ...[...served.own, ...served.dirs].map(dir => serveStatic(dir)),
         // /@tal/ is the CLI's: what none of the mounts above answered ends
         // here, whatever a mount or an upstream at the root would say to it.
         async (c, next) => (c.req.path.startsWith("/@tal/") ? c.notFound() : next()),

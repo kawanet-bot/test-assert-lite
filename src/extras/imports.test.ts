@@ -4,14 +4,19 @@ import {tmpdir} from "node:os"
 import {join, resolve} from "node:path"
 import {after, before, describe, it} from "node:test"
 import {pathToFileURL} from "node:url"
-import {ImportAliasItem, ImportMapItem, Imports, bundledAddresses, importMapItems, readImportMap} from "./imports.ts"
+import {createFiles} from "../server/files.ts"
+import type {ImportBase} from "./imports.ts"
+import {ImportAliasItem, ImportMapItem, Imports, importMapItems, readImportMap} from "./imports.ts"
 import {UsageError} from "./usage-error.ts"
 
 const cwd = pathToFileURL(`${process.cwd()}/`)
 const mapFile = pathToFileURL(resolve("maps", "x.json"))
 const alias = (entry: string): ImportAliasItem => new ImportAliasItem(entry, cwd)
 const mapped = (specifier: string, address: unknown): ImportMapItem => new ImportMapItem(specifier, address, mapFile)
-const serve = (file: string): string => `served:${file}`
+// The addresses are Files' to give, from the items' own files: this package's
+// at fixed paths, the rest under a directory digest, blanked out to compare.
+const serveFor = (...items: ImportBase[]): ((file: string) => string) => createFiles(new Imports(items).paths()).urlOf
+const unhash = (address: string | undefined): string => address?.replace(/\/[0-9a-f]{9}\//, "/xxxxxxxxx/") || ""
 
 const refused = (fn: () => unknown, reason: RegExp): void => {
     assert.throws(fn, (error: unknown) => {
@@ -24,14 +29,17 @@ const refused = (fn: () => unknown, reason: RegExp): void => {
 describe("extras/imports", () => {
     describe("an --alias item", () => {
         it("takes a relative, bare or absolute path against the working directory, in both modes", () => {
-            for (const [entry, file] of [["a=./lib/x.mjs", resolve("lib", "x.mjs")], ["b=../y.mjs", resolve("..", "y.mjs")], ["c=dist/z.mjs", resolve("dist", "z.mjs")], ["d=/opt/w.mjs", "/opt/w.mjs"]] as [string, string][]) {
+            for (const [entry, file, name] of [["a=./lib/x.mjs", resolve("lib", "x.mjs"), "x.mjs"], ["b=../y.mjs", resolve("..", "y.mjs"), "y.mjs"], ["c=vendor/z.mjs", resolve("vendor", "z.mjs"), "z.mjs"], ["d=/opt/w.mjs", "/opt/w.mjs", "w.mjs"]] as [string, string, string][]) {
                 const item = alias(entry)
                 assert.ok(item.isPath(), entry)
                 assert.equal(item.getPath(), file)
-                assert.equal(item.getAddress(serve), `served:${file}`)
+                assert.equal(unhash(item.getAddress(serveFor(item))), `/@tal/files/xxxxxxxxx/${name}`)
                 assert.equal(item.refusal("node"), undefined)
                 assert.equal(item.refusal("browser"), undefined)
             }
+            // A path into this package's own dist/ is served where the package serves it, not under a digest.
+            const own = alias("e=dist/test-assert-lite.min.js")
+            assert.equal(own.getAddress(serveFor(own)), "/@tal/dist/test-assert-lite.min.js")
         })
 
         it("takes a URL for a page, and refuses it under Node", () => {
@@ -39,7 +47,7 @@ describe("extras/imports", () => {
                 const item = alias(entry)
                 assert.ok(item.isURL())
                 assert.equal(item.getPath(), undefined)
-                assert.equal(item.getAddress(serve), entry.slice(entry.indexOf("=") + 1))
+                assert.equal(item.getAddress(serveFor(item)), entry.slice(entry.indexOf("=") + 1))
                 assert.match(item.refusal("node") ?? "", /^--alias: a URL applies to --playwright, --webdriver and --serve only: "/)
                 assert.equal(item.refusal("browser"), undefined)
             }
@@ -49,9 +57,10 @@ describe("extras/imports", () => {
             const item = alias("node:test=test-assert-lite/test")
             assert.ok(item.isBundled())
             assert.equal(item.isPath(), false)
-            assert.equal(item.getPath(), resolve("exports", "test.mjs"))
-            assert.equal(item.getAddress(serve), "/@tal/exports/test.mjs")
-            assert.equal(alias("x=test-assert-lite").getAddress(serve), "/@tal/exports/global.mjs")
+            assert.match(item.getPath()!, /exports.test\.mjs$/)
+            assert.equal(item.getAddress(serveFor(item)), "/@tal/exports/test.mjs")
+            assert.match(alias("x=test-assert-lite").getPath()!, /esm.test-assert-lite\.mjs$/)
+            assert.equal(alias("x=test-assert-lite").getAddress(serveFor()), "/@tal/exports/global.mjs")
             assert.equal(item.refusal("node"), undefined)
             assert.equal(item.refusal("browser"), undefined)
         })
@@ -74,7 +83,7 @@ describe("extras/imports", () => {
             assert.ok(item.isPath())
             assert.equal(item.getPath(), resolve("maps", "lib", "x.js"))
             assert.equal(mapped("up", "../y.js").getPath(), resolve("y.js"))
-            assert.equal(item.getAddress(serve), `served:${resolve("maps", "lib", "x.js")}`)
+            assert.equal(unhash(item.getAddress(serveFor(item))), "/@tal/files/xxxxxxxxx/x.js")
             assert.equal(item.refusal("node"), undefined)
             assert.equal(item.refusal("browser"), undefined)
         })
@@ -84,7 +93,7 @@ describe("extras/imports", () => {
                 const item = mapped(specifier, address)
                 assert.equal(item.isPath(), false)
                 assert.equal(item.getPath(), undefined)
-                assert.equal(item.getAddress(serve), address)
+                assert.equal(item.getAddress(serveFor(item)), address)
                 assert.match(item.refusal("node") ?? "", /^--import-map: an address starting with \/ or a scheme applies to --playwright, --webdriver and --serve only: "/)
                 assert.equal(item.refusal("browser"), undefined)
             }
@@ -133,25 +142,26 @@ describe("extras/imports", () => {
     })
 
     describe("the list", () => {
-        it("starts with this package's three defaults, which a later item takes over", () => {
+        it("starts with this package's defaults, which a later item takes over", () => {
             const list = new Imports([alias("node:test=./my-test.mjs")])
-            assert.deepEqual([...list.entries().keys()], ["node:test", "node:assert", "node:assert/strict"])
+            assert.deepEqual([...list.entries().keys()], ["test-assert-lite", "test-assert-lite/test", "test-assert-lite/assert", "test-assert-lite/assert/strict", "node:test", "node:assert", "node:assert/strict"])
             assert.equal(list.entries().get("node:test")?.target, "./my-test.mjs")
-            assert.equal(new Imports([]).entries().get("node:test")?.getAddress(serve), "/@tal/exports/test.mjs")
+            assert.equal(new Imports([]).entries().get("node:test")?.getAddress(serveFor()), "/@tal/exports/test.mjs")
         })
 
         it("names every path item's file once, losers included, and resolves each specifier to its last item", () => {
             const list = new Imports([alias("a=./one.mjs"), mapped("a", "./two.js"), alias("b=./one.mjs"), alias("c=https://cdn.example/c.js")])
             assert.deepEqual(list.paths(), [resolve("one.mjs"), resolve("maps", "two.js")])
             assert.equal(list.entries().get("a")?.target, "./two.js")
-            assert.equal(list.entries().size, 3 + 3)
+            assert.equal(list.entries().size, 7 + 3)
         })
 
         it("gives a page this package's names and each specifier's address", () => {
-            const addresses = new Imports([alias("a=./one.mjs"), mapped("r", "/r.js")]).addresses(serve)
-            assert.equal(addresses["test-assert-lite"], bundledAddresses()["test-assert-lite"])
+            const items = [alias("a=./one.mjs"), mapped("r", "/r.js")]
+            const addresses = new Imports(items).addresses(serveFor(...items))
+            assert.equal(addresses["test-assert-lite"], "/@tal/exports/global.mjs")
             assert.equal(addresses["node:assert"], "/@tal/exports/assert.mjs")
-            assert.equal(addresses["a"], `served:${resolve("one.mjs")}`)
+            assert.equal(unhash(addresses["a"]), "/@tal/files/xxxxxxxxx/one.mjs")
             assert.equal(addresses["r"], "/r.js")
         })
 

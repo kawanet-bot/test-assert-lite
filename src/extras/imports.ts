@@ -10,32 +10,36 @@ import {UsageError} from "./usage-error.ts"
 
 export type Mode = "node" | "browser"
 
-// This package's own names and the addresses a page gets for them; a
-// target naming one is "bundled", resolved from this package in both modes.
-// The root name leads a page to the ES module face of the IIFE's global,
-// not to the ESM build: the map is the CLI's to write, and says so.
-const BUNDLED = new Map([
-    ["test-assert-lite", "/@tal/exports/global.mjs"],
-    ["test-assert-lite/test", "/@tal/exports/test.mjs"],
-    ["test-assert-lite/assert", "/@tal/exports/assert.mjs"],
-    ["test-assert-lite/assert/strict", "/@tal/exports/assert/strict.mjs"],
-])
+/** The working directory as a URL, what an --alias resolves a relative target against. */
+export const cwdURL = (): URL => pathToFileURL(`${process.cwd()}/`)
 
-/** The addresses a page needs for this package's own names, whatever else is mapped. */
-export const bundledAddresses = (): Record<string, string> => Object.fromEntries(BUNDLED)
+// What the CLI maps before anything is given: this package's own names to
+// themselves, so a page's map has them; and node:test and node:assert to
+// the subpaths that stand in for them. A later item takes any of these over.
+const DEFAULTS: [specifier: string, target: string][] = [
+    ["test-assert-lite", "test-assert-lite"],
+    ["test-assert-lite/test", "test-assert-lite/test"],
+    ["test-assert-lite/assert", "test-assert-lite/assert"],
+    ["test-assert-lite/assert/strict", "test-assert-lite/assert/strict"],
+    ["node:test", "test-assert-lite/test"],
+    ["node:assert", "test-assert-lite/assert"],
+    ["node:assert/strict", "test-assert-lite/assert/strict"],
+]
+
+// The bundled names, this package's own, are what the defaults point at:
+// a target naming one is resolved from this copy of the package in both
+// modes, and no name is one without a row above that maps it.
+const BUNDLED = new Set(DEFAULTS.map(([, target]) => target))
 
 /** One specifier and its target, as given; the checks a mode adds are `refusal()`. */
 export abstract class ImportBase {
     readonly specifier: string
     /** The right-hand side as written. */
     readonly target: string
-    /** What a relative target resolves against. */
-    protected readonly base: URL
 
-    constructor(specifier: string, target: string, base: URL) {
+    constructor(specifier: string, target: string) {
         this.specifier = specifier
         this.target = target
-        this.base = base
     }
 
     /** `./x`, `../x` or `/x`, or a bare path where the subclass takes one. */
@@ -54,7 +58,7 @@ export abstract class ImportBase {
     /** Why `mode` cannot take this item, or nothing. */
     abstract refusal(mode: Mode): string | undefined
 
-    /** The local file, absolute: a path against `base`, or a bundled name from this package. Nothing for a URL. */
+    /** The local file, absolute: a path as the subclass resolves it, or a bundled name from this package. Nothing for a URL. */
     getPath(): string | undefined {
         if (this.isBundled()) return fileURLToPath(import.meta.resolve(this.target))
         if (this.isPath()) return this.resolvePath()
@@ -64,10 +68,8 @@ export abstract class ImportBase {
     /** A path target as a file; the subclass says by which rules. */
     protected abstract resolvePath(): string
 
-    /** The address a page's import map gets: `serve` turns a file into its served URL. */
+    /** The address a page's import map gets: `serve` turns a file into its served URL, a URL goes as written. */
     getAddress(serve: (file: string) => string): string {
-        const bundled = BUNDLED.get(this.target)
-        if (bundled != null) return bundled
         const path = this.getPath()
         return path == null ? this.target : serve(path)
     }
@@ -85,10 +87,14 @@ export abstract class ImportBase {
  * A bare path is a path, as it is for every other file the CLI takes.
  */
 export class ImportAliasItem extends ImportBase {
+    /** What a relative target resolves against: the working directory. */
+    private readonly cwd: URL
+
     constructor(entry: string, cwd: URL) {
         const at = entry.indexOf("=")
         if (at < 1 || at === entry.length - 1) throw new UsageError(`--alias takes <specifier>=<target>: ${entry}`)
-        super(entry.slice(0, at), entry.slice(at + 1), cwd)
+        super(entry.slice(0, at), entry.slice(at + 1))
+        this.cwd = cwd
     }
 
     isPath(): boolean {
@@ -98,7 +104,7 @@ export class ImportAliasItem extends ImportBase {
     // By the file system's rules, as the command line's other paths are: a
     // Windows drive letter is a drive, not a URL scheme.
     protected resolvePath(): string {
-        return resolve(fileURLToPath(this.base), this.target)
+        return resolve(fileURLToPath(this.cwd), this.target)
     }
 
     refusal(mode: Mode): string | undefined {
@@ -114,9 +120,13 @@ export class ImportAliasItem extends ImportBase {
  * page's, a bare name is not an address at all.
  */
 export class ImportMapItem extends ImportBase {
+    /** What a relative address resolves against: the map file. */
+    private readonly mapFile: URL
+
     constructor(specifier: string, address: unknown, mapFile: URL) {
         if (typeof address !== "string") throw new UsageError(`--import-map: not a string: "${specifier}"`)
-        super(specifier, address, mapFile)
+        super(specifier, address)
+        this.mapFile = mapFile
         if (this.keyRefusal() != null || address.endsWith("/")) throw new UsageError(`--import-map: ${this.keyRefusal() ?? "no prefix entry or relative key"}: "${specifier}"`)
         if (!this.isPath() && !this.isURL() && !address.startsWith("/")) throw new UsageError(`--import-map: an address starts with ./, ../, / or a scheme: "${specifier}"`)
     }
@@ -127,7 +137,7 @@ export class ImportMapItem extends ImportBase {
 
     // As a page would, against the map's URL.
     protected resolvePath(): string {
-        return fileURLToPath(new URL(this.target, this.base))
+        return fileURLToPath(new URL(this.target, this.mapFile))
     }
 
     refusal(mode: Mode): string | undefined {
@@ -157,16 +167,32 @@ export const readImportMap = (file: string): ImportMapItem[] => {
     return importMapItems(map, url)
 }
 
-// Suites are written against node:test and node:assert, and this package
-// stands in for both; these come first, so a later item may take them over.
-const defaults = (): ImportAliasItem[] => {
-    const cwd = pathToFileURL(`${process.cwd()}/`)
-    return ["node:test=test-assert-lite/test", "node:assert=test-assert-lite/assert", "node:assert/strict=test-assert-lite/assert/strict"]
-        .map(entry => new ImportAliasItem(entry, cwd))
+/**
+ * One of this package's own names as a target, from no command line: what
+ * the CLI maps before anything is given. Never a path, refused nowhere.
+ */
+export class ImportBundledItem extends ImportBase {
+    constructor(specifier: string, target: string) {
+        super(specifier, target)
+    }
+
+    isPath(): boolean {
+        return false
+    }
+
+    refusal(): undefined {
+        return undefined
+    }
+
+    protected resolvePath(): string {
+        throw new Error(`not a path: ${this.target}`)
+    }
 }
 
+const defaults = (): ImportBundledItem[] => DEFAULTS.map(([specifier, target]) => new ImportBundledItem(specifier, target))
+
 /**
- * The items in the order given, this package's three defaults first, so
+ * The items in the order given, this package's defaults first, so
  * the last for a specifier wins. Files are every item's, losers included:
  * a file named is watched and served whether or not it is what resolves.
  */
@@ -187,11 +213,9 @@ export class Imports {
         return new Map(this.items.map(item => [item.specifier, item]))
     }
 
-    /** What a page's import map gets: this package's own names, then each specifier's address. */
+    /** What a page's import map gets: each specifier's address. */
     addresses(serve: (file: string) => string): Record<string, string> {
-        const out = bundledAddresses()
-        for (const [specifier, item] of this.entries()) out[specifier] = item.getAddress(serve)
-        return out
+        return Object.fromEntries([...this.entries()].map(([specifier, item]) => [specifier, item.getAddress(serve)]))
     }
 
     /** Why `mode` cannot take the list: one reason per item that resolves and is refused. */
