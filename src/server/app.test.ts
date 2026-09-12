@@ -119,7 +119,7 @@ describe("server/app", () => {
         assert.equal((await get(url("/@tal/files/000000000/mod.mjs"))).status, 404)
     })
 
-    it("serves the package's build, bridges and document root, the ESM build as the IIFE's shim", async () => {
+    it("serves the package's IIFE, its global face, the bridges and the document root, and not the ESM build", async () => {
         assert.equal((await get(url("/@tal/dist/test-assert-lite.min.js"))).status, 200)
         assert.match((await get(url("/@tal/exports/global.mjs"))).body, /globalThis\.TAL/)
         assert.equal((await get(url("/@tal/esm/test-assert-lite.mjs"))).status, 404)
