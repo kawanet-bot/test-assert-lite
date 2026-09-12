@@ -65,6 +65,7 @@ describe("server/files", () => {
         assert.equal(linked.dirs.length, 1)
         assert.equal(linked.urlOf(join(dir, "src", "link.mjs")), linked.urlOf(join(dir, "lib", "mod.mjs")))
         const missing = createFiles([join(dir, "none", "x.mjs")])
+        assert.equal(missing.dirs.length, 1)
         assert.equal(under(missing.dirs[0]!.root), "none")
         assert.equal(missing.urlOf(join(dir, "none", "x.mjs")), `${missing.dirs[0]?.path}x.mjs`)
         assert.throws(() => missing.urlOf(join(dir, "src", "a.mjs")), /not among the files/)
