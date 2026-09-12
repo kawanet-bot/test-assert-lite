@@ -121,8 +121,8 @@ const parse = (args: string[]) => {
             },
             allowPositionals: true,
         })
-    } catch (error: any) {
-        throw new UsageError(error?.message || error?.code)
+    } catch (error) {
+        throw new UsageError(error instanceof Error ? error.message : String(error))
     }
 }
 
