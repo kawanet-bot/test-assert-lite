@@ -1,7 +1,8 @@
 import {strict as assert} from "node:assert"
 import {resolve} from "node:path"
 import {describe, it} from "node:test"
-import {UsageError, aliasOf, browserOf, mountOf, originOf, portOf, readOptions} from "./options.ts"
+import {browserOf, mountOf, originOf, portOf, readOptions} from "./options.ts"
+import {UsageError} from "./usage-error.ts"
 
 // A UsageError with the reason it gives, or without one, as the usage
 // text alone is the answer to some.
@@ -40,19 +41,6 @@ describe("extras/options", () => {
         it("refuses another scheme, a path, a query, a fragment or credentials", () => {
             for (const value of ["tal.example", "tal.example:3000", "ftp://tal.example", "http://", "http://tal.example/base", "http://tal.example/?x", "http://tal.example/#f", "http://u:p@tal.example/"]) {
                 refused(() => originOf(value), /^--origin takes http\(s\):\/\/host\[:port\]: /)
-            }
-        })
-    })
-
-    describe("aliasOf", () => {
-        it("splits at the first = and resolves the file", () => {
-            assert.deepEqual(aliasOf("mod=lib/mod.mjs"), {specifier: "mod", file: resolve("lib/mod.mjs")})
-            assert.deepEqual(aliasOf("a=b=c.mjs"), {specifier: "a", file: resolve("b=c.mjs")})
-        })
-
-        it("refuses an entry without a specifier or a file", () => {
-            for (const entry of ["mod", "=mod.mjs", "mod="]) {
-                refused(() => aliasOf(entry), /^--alias takes <specifier>=<file>: /)
             }
         })
     })

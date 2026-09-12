@@ -5,7 +5,7 @@
 import {register} from "node:module"
 import {resolve} from "node:path"
 import {pathToFileURL} from "node:url"
-import type {Alias} from "./import-map.ts"
+import type {AliasFile} from "./import-map.ts"
 // By name, not from src/: the suites reach the package through the hook
 // below, so run() has to be the instance the package's exports point at.
 import type {TAL} from "test-assert-lite"
@@ -34,7 +34,7 @@ export const resolve = (specifier, context, next) => {
  * a suite outside any project, or beside another copy, still lands on the
  * instance run() reads.
  */
-export const runInNode = async (suites: string[], imports: Alias[]): Promise<TAL.TestSummary> => {
+export const runInNode = async (suites: string[], imports: AliasFile[]): Promise<TAL.TestSummary> => {
     // A Map, so a specifier named like an Object property finds no alias.
     const table = new Map(imports.map(({specifier, file}) => [specifier, pathToFileURL(file).href]))
     register(`data:text/javascript,${encodeURIComponent(HOOK)}`, {data: {parentURL: packageRoot().href, aliases: table}})

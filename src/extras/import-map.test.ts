@@ -3,8 +3,9 @@ import {mkdir, mkdtemp, rm, writeFile} from "node:fs/promises"
 import {tmpdir} from "node:os"
 import {join, resolve} from "node:path"
 import {after, before, describe, it} from "node:test"
-import {importMapOf} from "./import-map.ts"
-import {UsageError, readOptions} from "./options.ts"
+import {aliasOf, importMapOf} from "./import-map.ts"
+import {readOptions} from "./options.ts"
+import {UsageError} from "./usage-error.ts"
 
 // A UsageError with the reason it gives.
 const refused = (fn: () => unknown, reason: RegExp): void => {
@@ -79,5 +80,18 @@ describe("extras/import-map", () => {
         if (taken.mode !== "node") return
         assert.deepEqual(taken.imports, [{specifier: "root", file: resolve("x.mjs")}])
         assert.equal(readOptions(["--serve", "--import-map", urls, "suite.mjs"]).mode, "serve")
+    })
+
+    describe("aliasOf", () => {
+        it("splits at the first = and resolves the file", () => {
+            assert.deepEqual(aliasOf("mod=lib/mod.mjs"), {specifier: "mod", file: resolve("lib/mod.mjs")})
+            assert.deepEqual(aliasOf("a=b=c.mjs"), {specifier: "a", file: resolve("b=c.mjs")})
+        })
+
+        it("refuses an entry without a specifier or a file", () => {
+            for (const entry of ["mod", "=mod.mjs", "mod="]) {
+                refused(() => aliasOf(entry), /^--alias takes <specifier>=<file>: /)
+            }
+        })
     })
 })

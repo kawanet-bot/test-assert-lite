@@ -6,8 +6,9 @@
 import {resolve} from "node:path"
 import {parseArgs} from "node:util"
 import {createFiles} from "../server/files.ts"
-import type {Alias, Import} from "./import-map.ts"
-import {importMapOf} from "./import-map.ts"
+import type {AliasFile, Import} from "./import-map.ts"
+import {importsOf} from "./import-map.ts"
+import {UsageError} from "./usage-error.ts"
 
 export const USAGE = `Usage: test-assert [options] <file...>
   -v, --version               print this package's version
@@ -24,11 +25,6 @@ export const USAGE = `Usage: test-assert [options] <file...>
   --endpoint <url>            the WebDriver server (default: http://127.0.0.1:4444)
   --playwright <browser>      run the suite through Playwright: chromium, firefox or webkit
 `
-
-// Wrong arguments end in the usage text and exit code 1, after the reason
-// when there is one to give.
-export class UsageError extends Error {
-}
 
 const BROWSERS = ["chromium", "firefox", "webkit"] as const
 export type Browser = typeof BROWSERS[number]
@@ -53,7 +49,7 @@ export interface BrowserOptions {
 export type Options =
     | {mode: "help"}
     | {mode: "version"}
-    | {mode: "node", suites: string[], imports: Alias[]} // the last entry per specifier
+    | {mode: "node", suites: string[], imports: AliasFile[]} // the last entry per specifier
     | BrowserOptions & {mode: "serve"}
     | BrowserOptions & {mode: "playwright", browser: Browser}
     | BrowserOptions & {mode: "webdriver", session?: string, endpoint: string}
@@ -80,13 +76,6 @@ export const originOf = (value: string): string => {
     return url.origin
 }
 
-// Each --alias is `<specifier>=<file>`, split at the first "=".
-export const aliasOf = (entry: string): Alias => {
-    const at = entry.indexOf("=")
-    if (at < 1 || at === entry.length - 1) throw new UsageError(`--alias takes <specifier>=<file>: ${entry}`)
-    return {specifier: entry.slice(0, at), file: resolve(entry.slice(at + 1))}
-}
-
 // A mount is a directory, resolved, or an http(s) URL to proxy, taken
 // as given up to its path and made to end in "/" so a request's path
 // joins onto it.
@@ -100,20 +89,6 @@ export const mountOf = (value: string): string => {
     }
     if (url.search || url.hash || url.username || url.password) throw new UsageError(`--mount takes a directory or http(s)://host[:port][/path]: ${value}`)
     return url.href.endsWith("/") ? url.href : `${url.href}/`
-}
-
-// The import map's entries first and each --alias after, so the command
-// line has the last word; what the file cannot be read as is a UsageError.
-export const importsOf = (mapFile: string | undefined, aliases: string[]): Import[] => {
-    let mapped: Import[] = []
-    if (mapFile != null) {
-        try {
-            mapped = importMapOf(mapFile)
-        } catch (error) {
-            throw new UsageError(`--import-map ${mapFile}: ${error instanceof Error ? error.message : String(error)}`)
-        }
-    }
-    return [...mapped, ...aliases.map(aliasOf)]
 }
 
 export const browserOf = (name: string): Browser => {
@@ -194,13 +169,13 @@ export const readOptions = (args: string[]): Options => {
         const last = new Map(importsOf(values["import-map"], values.alias).map(entry => [entry.specifier, entry]))
         const urls = [...last.values()].filter(entry => "url" in entry)
         if (urls.length) throw new UsageError(`--import-map addresses starting with / or a scheme apply to --playwright, --webdriver and --serve only: ${urls.map(entry => `"${entry.specifier}"`).join(", ")}`)
-        return {mode: "node", suites: files.map(file => resolve(file)), imports: [...last.values()].filter((entry): entry is Alias => "file" in entry)}
+        return {mode: "node", suites: files.map(file => resolve(file)), imports: [...last.values()].filter((entry): entry is AliasFile => "file" in entry)}
     }
 
     const suites = files.map(file => resolve(file))
     const scripts = values.script.map(script => resolve(script))
     const imports = importsOf(values["import-map"], values.alias)
-    const aliases = imports.filter((entry): entry is Alias => "file" in entry)
+    const aliases = imports.filter((entry): entry is AliasFile => "file" in entry)
 
     // The suites are served from one directory, so a module they share is
     // one URL and loads once, as under Node; from two, it would load once
