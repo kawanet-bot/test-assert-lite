@@ -46,24 +46,24 @@ describe("extras/import-map", () => {
         assert.deepEqual(importMapOf(await map("empty.json", "{}")), [])
     })
 
-    it("refuses what it cannot read or does not take, naming the file", async () => {
-        assert.throws(() => importMapOf(join(dir, "maps", "none.json")), /ENOENT/)
+    it("refuses what it cannot read or does not take, naming the option", async () => {
+        refused(() => importMapOf(join(dir, "maps", "none.json")), /^--import-map: ENOENT/)
         for (const [name, json, reason] of [
-            ["bad.json", '{"imports": {"a": "./a.js",}}', /JSON/],
-            ["list.json", "[]", /not an object$/],
-            ["scopes.json", '{"imports": {}, "scopes": {}}', /only "imports" is supported: "scopes"$/],
-            ["bare.json", '{"imports": {"a": "lodash"}}', /"a": an address starts with/],
-            ["num.json", '{"imports": {"a": 1}}', /"a": not a string$/],
-            ["prefix.json", '{"imports": {"a/": "./a/"}}', /"a\/": prefix entries and relative keys/],
-            ["relkey.json", '{"imports": {"./a": "./a.js"}}', /"\.\/a": prefix entries and relative keys/],
+            ["bad.json", '{"imports": {"a": "./a.js",}}', /^--import-map: .*JSON/],
+            ["list.json", "[]", /^--import-map: not an object$/],
+            ["scopes.json", '{"imports": {}, "scopes": {}}', /^--import-map: only "imports" is supported: "scopes"$/],
+            ["bare.json", '{"imports": {"a": "lodash"}}', /^--import-map: an address starts with \.\/, \.\.\/, \/ or a scheme: "a"$/],
+            ["num.json", '{"imports": {"a": 1}}', /^--import-map: not a string: "a"$/],
+            ["prefix.json", '{"imports": {"a/": "./a/"}}', /^--import-map: no prefix entry or relative key: "a\/"$/],
+            ["relkey.json", '{"imports": {"./a": "./a.js"}}', /^--import-map: no prefix entry or relative key: "\.\/a"$/],
         ] as [string, string, RegExp][]) {
             const file = await map(name, json)
-            assert.throws(() => importMapOf(file), reason)
+            refused(() => importMapOf(file), reason)
         }
     })
 
-    it("is read by readOptions before --alias in both modes, its errors as UsageErrors, and a page's address refused in Node mode", async () => {
-        refused(() => readOptions(["--import-map", join(dir, "maps", "none.json"), "a.test.ts"]), /^--import-map .*none\.json: ENOENT/)
+    it("is read by readOptions before --alias in both modes, and a page's address refused in Node mode", async () => {
+        refused(() => readOptions(["--import-map", join(dir, "maps", "none.json"), "a.test.ts"]), /^--import-map: ENOENT/)
         const file = await map("m.json", '{"imports": {"lib": "./lib.js", "mod": "./old.js"}}')
         const node = readOptions(["--import-map", file, "--alias", "mod=new.mjs", "a.test.ts"])
         assert.equal(node.mode, "node")

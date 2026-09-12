@@ -1,7 +1,7 @@
 // What the suites' specifiers resolve to, as the command line names it:
 // an --alias, or an import map file read as a page would up to what the
-// CLI can do. Reasons are plain Errors here; the command line's wording
-// is the caller's.
+// CLI can do. A reason names the option it came from and ends in the key
+// to go and look at, so the caller has nothing to add.
 
 import {readFileSync} from "node:fs"
 import {resolve} from "node:path"
@@ -30,27 +30,24 @@ export type Import = AliasFile | AliasUrl
 // base, and a prefix entry, "/" at the end, are refused, not mismatched.
 export const importMapOf = (file: string): Import[] => {
     const path = resolve(file)
-    const refuse = (reason: string): never => {
-        throw new Error(reason)
-    }
     let map: unknown
     try {
         map = JSON.parse(readFileSync(path, "utf8"))
     } catch (error) {
-        return refuse(error instanceof Error ? error.message : String(error))
+        throw new UsageError(`--import-map: ${error instanceof Error ? error.message : String(error)}`)
     }
-    if (typeof map !== "object" || map == null || Array.isArray(map)) return refuse("not an object")
-    for (const key of Object.keys(map)) if (key !== "imports") return refuse(`only "imports" is supported: "${key}"`)
+    if (typeof map !== "object" || map == null || Array.isArray(map)) throw new UsageError("--import-map: not an object")
+    for (const key of Object.keys(map)) if (key !== "imports") throw new UsageError(`--import-map: only "imports" is supported: "${key}"`)
     const {imports = {}} = map as {imports?: unknown}
-    if (typeof imports !== "object" || imports == null || Array.isArray(imports)) return refuse('"imports" is not an object')
+    if (typeof imports !== "object" || imports == null || Array.isArray(imports)) throw new UsageError('--import-map: not an object: "imports"')
 
     const base = pathToFileURL(path)
     return Object.entries(imports).map(([specifier, address]) => {
-        if (typeof address !== "string") return refuse(`"${specifier}": not a string`)
-        if (/^(\.\.?\/|\/)/.test(specifier) || specifier.endsWith("/") || address.endsWith("/")) return refuse(`"${specifier}": prefix entries and relative keys are not supported`)
+        if (typeof address !== "string") throw new UsageError(`--import-map: not a string: "${specifier}"`)
+        if (/^(\.\.?\/|\/)/.test(specifier) || specifier.endsWith("/") || address.endsWith("/")) throw new UsageError(`--import-map: no prefix entry or relative key: "${specifier}"`)
         if (/^\.\.?\//.test(address)) return {specifier, file: fileURLToPath(new URL(address, base))}
         if (address.startsWith("/") || URL.canParse(address)) return {specifier, url: address}
-        return refuse(`"${specifier}": an address starts with ./, ../, / or a scheme: ${address}`)
+        throw new UsageError(`--import-map: an address starts with ./, ../, / or a scheme: "${specifier}"`)
     })
 }
 
@@ -62,15 +59,8 @@ export const aliasOf = (entry: string): AliasFile => {
 }
 
 // The import map's entries first and each --alias after, so the command
-// line has the last word; what the file cannot be read as is a UsageError.
+// line has the last word.
 export const importsOf = (mapFile: string | undefined, aliases: string[]): Import[] => {
-    let mapped: Import[] = []
-    if (mapFile != null) {
-        try {
-            mapped = importMapOf(mapFile)
-        } catch (error) {
-            throw new UsageError(`--import-map ${mapFile}: ${error instanceof Error ? error.message : String(error)}`)
-        }
-    }
+    const mapped = mapFile == null ? [] : importMapOf(mapFile)
     return [...mapped, ...aliases.map(aliasOf)]
 }
