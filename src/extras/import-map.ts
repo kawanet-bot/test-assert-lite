@@ -23,6 +23,9 @@ export interface AliasUrl {
 /** What a specifier resolves to: a file served by the CLI, or a URL the page takes as it is. */
 export type Import = AliasFile | AliasUrl
 
+/** Which half of the union an entry is: the file the CLI serves, against the address the page takes as it is. */
+export const isAliasFile = (entry: Import): entry is AliasFile => "file" in entry
+
 // An import map file, read as a page would up to what the CLI can do:
 // "imports" alone, keys as written, addresses resolved against the file.
 // A relative address is a file the CLI serves; "/" and absolute URLs are

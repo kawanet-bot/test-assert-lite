@@ -7,7 +7,7 @@ import {resolve} from "node:path"
 import {parseArgs} from "node:util"
 import {createFiles} from "../server/files.ts"
 import type {AliasFile, Import} from "./import-map.ts"
-import {importsOf} from "./import-map.ts"
+import {importsOf, isAliasFile} from "./import-map.ts"
 import {UsageError} from "./usage-error.ts"
 
 export const USAGE = `Usage: test-assert [options] <file...>
@@ -169,13 +169,13 @@ export const readOptions = (args: string[]): Options => {
         const last = new Map(importsOf(values["import-map"], values.alias).map(entry => [entry.specifier, entry]))
         const urls = [...last.values()].filter(entry => "url" in entry)
         if (urls.length) throw new UsageError(`--import-map addresses starting with / or a scheme apply to --playwright, --webdriver and --serve only: ${urls.map(entry => `"${entry.specifier}"`).join(", ")}`)
-        return {mode: "node", suites: files.map(file => resolve(file)), imports: [...last.values()].filter((entry): entry is AliasFile => "file" in entry)}
+        return {mode: "node", suites: files.map(file => resolve(file)), imports: [...last.values()].filter(isAliasFile)}
     }
 
     const suites = files.map(file => resolve(file))
     const scripts = values.script.map(script => resolve(script))
     const imports = importsOf(values["import-map"], values.alias)
-    const aliases = imports.filter((entry): entry is AliasFile => "file" in entry)
+    const aliases = imports.filter(isAliasFile)
 
     // The suites are served from one directory, so a module they share is
     // one URL and loads once, as under Node; from two, it would load once
