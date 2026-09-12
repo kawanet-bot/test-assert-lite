@@ -2,18 +2,6 @@ import {strict as assert} from "node:assert"
 import {resolve} from "node:path"
 import {describe, it} from "node:test"
 import {browserOf, mountOf, originOf, portOf, readOptions} from "./options.ts"
-import {UsageError} from "./usage-error.ts"
-
-// A UsageError with the reason it gives, or without one, as the usage
-// text alone is the answer to some.
-const refused = (fn: () => unknown, reason?: RegExp): void => {
-    assert.throws(fn, (error: unknown) => {
-        assert.ok(error instanceof UsageError)
-        if (reason == null) assert.equal(error.message, "")
-        else assert.match(error.message, reason)
-        return true
-    })
-}
 
 describe("extras/options", () => {
     describe("portOf", () => {
@@ -25,7 +13,7 @@ describe("extras/options", () => {
 
         it("refuses what is no port, with the value in the reason", () => {
             for (const value of ["65536", "-1", "3000.5", "port", "0x50", "1e3", "", " 3000 "]) {
-                refused(() => portOf(value), /^--port takes a number from 0 to 65535: /)
+                assert.throws(() => portOf(value), /--port takes a number from 0 to 65535: /)
             }
         })
     })
@@ -40,7 +28,7 @@ describe("extras/options", () => {
 
         it("refuses another scheme, a path, a query, a fragment or credentials", () => {
             for (const value of ["tal.example", "tal.example:3000", "ftp://tal.example", "http://", "http://tal.example/base", "http://tal.example/?x", "http://tal.example/#f", "http://u:p@tal.example/"]) {
-                refused(() => originOf(value), /^--origin takes http\(s\):\/\/host\[:port\]: /)
+                assert.throws(() => originOf(value), /--origin takes http\(s\):\/\/host\[:port\]: /)
             }
         })
     })
@@ -50,7 +38,7 @@ describe("extras/options", () => {
             assert.equal(browserOf("chromium"), "chromium")
             assert.equal(browserOf("firefox"), "firefox")
             assert.equal(browserOf("webkit"), "webkit")
-            refused(() => browserOf("electron"), /^--playwright takes chromium, firefox or webkit: electron$/)
+            assert.throws(() => browserOf("electron"), /--playwright takes chromium, firefox or webkit: electron$/)
         })
     })
 
@@ -64,7 +52,7 @@ describe("extras/options", () => {
 
         it("refuses a URL with a query, a fragment or credentials", () => {
             for (const value of ["http://x/?q=1", "http://x/#top", "http://u:p@x/", "http://"]) {
-                refused(() => mountOf(value), /^--mount takes a directory or http\(s\):\/\/host\[:port\]\[\/path\]: /)
+                assert.throws(() => mountOf(value), /--mount takes a directory or http\(s\):\/\/host\[:port\]\[\/path\]: /)
             }
         })
     })
@@ -87,16 +75,16 @@ describe("extras/options", () => {
         })
 
         it("refuses Node mode without a file, and a CommonJS suite in every mode", () => {
-            refused(() => readOptions([]))
-            refused(() => readOptions(["a.test.ts", "b.cjs", "c.cts"]), /^CommonJS suites are not supported: b\.cjs, c\.cts$/)
-            refused(() => readOptions(["--serve", "b.cjs"]), /^CommonJS suites are not supported: b\.cjs$/)
-            refused(() => readOptions(["--playwright", "chromium", "c.cts"]), /^CommonJS suites are not supported: c\.cts$/)
+            assert.throws(() => readOptions([]))
+            assert.throws(() => readOptions(["a.test.ts", "b.cjs", "c.cts"]), /CommonJS suites are not supported: b\.cjs, c\.cts$/)
+            assert.throws(() => readOptions(["--serve", "b.cjs"]), /CommonJS suites are not supported: b\.cjs$/)
+            assert.throws(() => readOptions(["--playwright", "chromium", "c.cts"]), /CommonJS suites are not supported: c\.cts$/)
         })
 
         it("refuses TypeScript in the browser modes, for a suite and for a --script, and takes it in Node mode", () => {
-            refused(() => readOptions(["--serve", "a.test.ts"]), /^a browser runs no TypeScript: a\.test\.ts$/)
-            refused(() => readOptions(["--webdriver", "a.mts"]), /^a browser runs no TypeScript: a\.mts$/)
-            refused(() => readOptions(["--serve", "--script", "setup.ts", "--script", "setup.cjs", "suite.mjs"]), /^a browser runs no TypeScript: setup\.ts$/)
+            assert.throws(() => readOptions(["--serve", "a.test.ts"]), /a browser runs no TypeScript: a\.test\.ts$/)
+            assert.throws(() => readOptions(["--webdriver", "a.mts"]), /a browser runs no TypeScript: a\.mts$/)
+            assert.throws(() => readOptions(["--serve", "--script", "setup.ts", "--script", "setup.cjs", "suite.mjs"]), /a browser runs no TypeScript: setup\.ts$/)
             assert.equal(readOptions(["--serve", "--script", "setup.cjs", "suite.mjs"]).mode, "serve")
             assert.equal(readOptions(["a.test.ts", "b.mts"]).mode, "node")
         })
@@ -121,8 +109,8 @@ describe("extras/options", () => {
             assert.equal(options.host, "0.0.0.0")
             assert.equal(options.port, 3000)
             assert.equal(options.origin, "https://tal.example")
-            refused(() => readOptions(["--serve", "--port", "port", "suite.mjs"]), /^--port takes/)
-            refused(() => readOptions(["--serve", "--origin", "tal.example", "suite.mjs"]), /^--origin takes/)
+            assert.throws(() => readOptions(["--serve", "--port", "port", "suite.mjs"]), /--port takes/)
+            assert.throws(() => readOptions(["--serve", "--origin", "tal.example", "suite.mjs"]), /--origin takes/)
         })
 
         it("reads --script and --alias, each resolved, in order", () => {
@@ -131,7 +119,7 @@ describe("extras/options", () => {
             if (options.mode !== "serve") return
             assert.deepEqual(options.scripts, [resolve("a.js"), resolve("b.js")])
             assert.deepEqual(options.imports, [{specifier: "mod", file: resolve("m.mjs")}])
-            refused(() => readOptions(["--serve", "--alias", "mod", "suite.mjs"]), /^--alias takes/)
+            assert.throws(() => readOptions(["--serve", "--alias", "mod", "suite.mjs"]), /--alias takes/)
         })
 
         it("reads --alias in Node mode too", () => {
@@ -147,7 +135,7 @@ describe("extras/options", () => {
             if (options.mode !== "playwright") return
             assert.equal(options.browser, "webkit")
             assert.deepEqual(options.suites, [resolve("suite.mjs")])
-            refused(() => readOptions(["--playwright", "electron", "suite.mjs"]), /^--playwright takes/)
+            assert.throws(() => readOptions(["--playwright", "electron", "suite.mjs"]), /--playwright takes/)
         })
 
         it("reads --webdriver with its session file and endpoint, the endpoint on loopback by default", () => {
@@ -164,26 +152,26 @@ describe("extras/options", () => {
         })
 
         it("refuses two of --playwright, --webdriver and --serve", () => {
-            refused(() => readOptions(["--playwright", "chromium", "--serve", "suite.mjs"]), /are exclusive$/)
-            refused(() => readOptions(["--webdriver", "--serve", "suite.mjs"]), /are exclusive$/)
-            refused(() => readOptions(["--playwright", "chromium", "--webdriver", "suite.mjs"]), /are exclusive$/)
+            assert.throws(() => readOptions(["--playwright", "chromium", "--serve", "suite.mjs"]), /are exclusive$/)
+            assert.throws(() => readOptions(["--webdriver", "--serve", "suite.mjs"]), /are exclusive$/)
+            assert.throws(() => readOptions(["--playwright", "chromium", "--webdriver", "suite.mjs"]), /are exclusive$/)
         })
 
         it("refuses the server's and the page's flags in Node mode", () => {
             for (const flags of [["--host", "x"], ["--port", "3000"], ["--origin", "http://x"], ["--script", "s.js"], ["--mount", "site"]]) {
-                refused(() => readOptions([...flags, "a.test.ts"]), /apply to --playwright, --webdriver and --serve only$/)
+                assert.throws(() => readOptions([...flags, "a.test.ts"]), /apply to --playwright, --webdriver and --serve only$/)
             }
         })
 
         it("refuses the WebDriver flags outside --webdriver", () => {
-            refused(() => readOptions(["--serve", "--webdriver-session", "s.json", "suite.mjs"]), /apply to --webdriver only$/)
-            refused(() => readOptions(["--playwright", "chromium", "--endpoint", "http://x", "suite.mjs"]), /apply to --webdriver only$/)
-            refused(() => readOptions(["--endpoint", "http://x", "a.test.ts"]), /apply to --webdriver only$/)
+            assert.throws(() => readOptions(["--serve", "--webdriver-session", "s.json", "suite.mjs"]), /apply to --webdriver only$/)
+            assert.throws(() => readOptions(["--playwright", "chromium", "--endpoint", "http://x", "suite.mjs"]), /apply to --webdriver only$/)
+            assert.throws(() => readOptions(["--endpoint", "http://x", "a.test.ts"]), /apply to --webdriver only$/)
         })
 
         it("refuses a browser mode with no suite", () => {
-            refused(() => readOptions(["--serve"]))
-            refused(() => readOptions(["--playwright", "chromium", "--mount", "site"]))
+            assert.throws(() => readOptions(["--serve"]))
+            assert.throws(() => readOptions(["--playwright", "chromium", "--mount", "site"]))
         })
 
         it("reads several suites in a browser mode from one directory, in order, and refuses them from two", () => {
@@ -191,9 +179,9 @@ describe("extras/options", () => {
             assert.equal(options.mode, "serve")
             if (options.mode !== "serve") return
             assert.deepEqual(options.suites, [resolve("test/b.mjs"), resolve("test/a.mjs"), resolve("test/b.mjs"), resolve("test/sub/c.mjs")])
-            refused(() => readOptions(["--serve", "test/a.mjs", "other/b.mjs"]), /^--playwright, --webdriver and --serve take the suites from one directory$/)
-            refused(() => readOptions(["--playwright", "chromium", "x/a.mjs", "test/b.mjs"]), /from one directory$/)
-            refused(() => readOptions(["--serve", "test/a/x.mjs", "test/b/y.mjs"]), /from one directory$/)
+            assert.throws(() => readOptions(["--serve", "test/a.mjs", "other/b.mjs"]), /--playwright, --webdriver and --serve take the suites from one directory$/)
+            assert.throws(() => readOptions(["--playwright", "chromium", "x/a.mjs", "test/b.mjs"]), /from one directory$/)
+            assert.throws(() => readOptions(["--serve", "test/a/x.mjs", "test/b/y.mjs"]), /from one directory$/)
         })
 
         it("counts a suite's directory under a script's or an alias's as that one", () => {
@@ -210,8 +198,8 @@ describe("extras/options", () => {
         })
 
         it("refuses a flag it does not know, and a flag missing its value", () => {
-            refused(() => readOptions(["--watch", "suite.mjs"]))
-            refused(() => readOptions(["--serve", "--port"]))
+            assert.throws(() => readOptions(["--watch", "suite.mjs"]), /--watch/)
+            assert.throws(() => readOptions(["--serve", "--port"]), /--port/)
         })
     })
 })

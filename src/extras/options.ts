@@ -97,8 +97,8 @@ export const browserOf = (name: string): Browser => {
 }
 
 // parseArgs settles the flag forms (--x=v, -h, --) and rejects a flag this
-// CLI does not know rather than taking it for a file name; its wording on
-// such an error gives way to the usage text.
+// CLI does not know rather than taking it for a file name. What it says
+// becomes the reason, ahead of the usage text, in node's own wording.
 const parse = (args: string[]) => {
     try {
         return parseArgs({
@@ -121,8 +121,8 @@ const parse = (args: string[]) => {
             },
             allowPositionals: true,
         })
-    } catch {
-        throw new UsageError()
+    } catch (error) {
+        throw new UsageError(error instanceof Error ? error.message : String(error))
     }
 }
 
