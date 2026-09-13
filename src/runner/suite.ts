@@ -1,7 +1,8 @@
 import type * as declared from "test-assert-lite"
 import type {Args} from "./declare.ts"
 import {nameOf, normalize} from "./declare.ts"
-import {Test} from "./tester.ts"
+import {Root} from "./root.ts"
+import type {Test} from "./tester.ts"
 
 type TestFn = declared.TAL.TestFn
 type SuiteFn = declared.TAL.SuiteFn
@@ -10,7 +11,7 @@ type SuiteFn = declared.TAL.SuiteFn
 // suite whose body is running, which is where a declaration lands. Wrapping
 // it in a factory lets the self-tests build an isolated tree.
 export interface HarnessState {
-    root: Test
+    root: Root
     current: Test
     // Test bodies not yet settled, a timed out one included, and suite
     // bodies being run. A declaration is taken while a suite body runs, and
@@ -20,15 +21,16 @@ export interface HarnessState {
     openSuites: number
 }
 
-const makeRoot = (): Test => new Test("suite", "", {}, undefined, null)
-
+// The root and the state point at each other, so the state is made first
+// and the root put in, here and on every reset.
 export const createHarnessState = (): HarnessState => {
-    const root = makeRoot()
-    return {root, current: root, openBodies: 0, openSuites: 0}
+    const state = {openBodies: 0, openSuites: 0} as HarnessState
+    resetHarnessState(state)
+    return state
 }
 
 export const resetHarnessState = (state: HarnessState): void => {
-    state.root = makeRoot()
+    state.root = new Root(state)
     state.current = state.root
 }
 
@@ -39,15 +41,17 @@ interface Registrar {
     after: typeof declared.after
 }
 
-// Binds the four registration functions to one state. Each of them only
-// reads current, so the four of them close over exactly what they need.
-export const createRegistrar = (state: HarnessState): Registrar => {
+// Binds the four registration functions to one state. A declaration at
+// the root is what starts the walk, as under node:test, so the two that
+// declare tell the scheduler; a hook alone waits for run().
+export const createRegistrar = (state: HarnessState, schedule: () => void): Registrar => {
     const fromTestBody = (): boolean => state.openBodies > 0 && state.openSuites === 0
 
     const suiteBase: declared.TAL.SuiteBase = (...args: Args<SuiteFn>) => {
         if (fromTestBody()) throw new Error("describe() cannot be called from inside a test body")
         const {name, options, fn} = normalize<SuiteFn>(args)
         state.current.declare("suite", nameOf(name, fn), options, fn)
+        if (state.current === state.root) schedule()
     }
 
     const suiteSkip: declared.TAL.SuiteBase = (...args: Args<SuiteFn>) => {
@@ -66,6 +70,7 @@ export const createRegistrar = (state: HarnessState): Registrar => {
         if (fromTestBody()) throw new Error("it() cannot be called from inside a test body; use t.test() instead")
         const {name, options, fn} = normalize<TestFn>(args)
         state.current.declare("test", nameOf(name, fn), options, fn)
+        if (state.current === state.root) schedule()
     }
 
     const testSkip: declared.TAL.TestBase = (...args: Args<TestFn>) => {

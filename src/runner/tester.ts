@@ -1,5 +1,4 @@
 import type * as declared from "test-assert-lite"
-import type {ReporterControl} from "../reporter.ts"
 import {TesterError, cancelledByParent, parentAlreadyFinished, testRunnerError} from "../utils/tester-error.ts"
 import type {Args} from "./declare.ts"
 import {nameOf, normalize, skipOf, todoOf} from "./declare.ts"
@@ -28,11 +27,10 @@ interface Verdict {
 export interface Run {
     counters: Counters
     success: boolean
-    emit: ReporterControl["emit"]
+    emit: (type: string, data: declared.TAL.TestEvent["data"]) => Promise<void>
     // t.assert uses the harness's assert, so once it takes options, what a
     // body sees stays consistent within one run().
     assert: declared.TAL.AssertMethods
-    harness: HarnessState
     // Set once the root has nothing left to run. A body that outlived its
     // verdict is not waited for; what it does after this is dropped.
     closed: boolean
@@ -57,6 +55,7 @@ export class Test {
     readonly options: TestOptions
     readonly fn: TestFn | SuiteFn | undefined
     readonly parent: Test | null
+    readonly harness: HarnessState
     readonly nesting: number
     readonly testNumber: number
     readonly before: HookFn[] = []
@@ -69,17 +68,17 @@ export class Test {
     // Resumes the body that declared this late subtest, once it is reported.
     private onDone: (() => void) | undefined
 
-    private run!: Run
+    protected run!: Run
     private announced = false
-    private started = false
-    private startedAt = 0
+    protected started = false
+    protected startedAt = 0
     private endedAt = 0
     // The verdict is out, from this test or from a parent that gave up on
     // it. Set before the first reporter await, so nothing the body does
     // while the verdict is being reported can reopen it.
-    private settled = false
+    protected settled = false
     private reported = false
-    private error: Error | undefined
+    protected error: Error | undefined
     private cancelled = false
     // A skip called from the body outranks the one it was declared with.
     private skipped: string | true | undefined
@@ -89,6 +88,9 @@ export class Test {
     // The verdict a parent handed down, when it gave up on this test.
     private closedWith: Verdict | undefined
 
+    // The next child to start. The root keeps taking declarations while
+    // it runs, so its walk resumes from here.
+    protected next = 0
     // node:test runs subtests one at a time: a new one waits for the
     // previous one, awaited or not, while the first starts synchronously.
     private last: Promise<unknown> = Promise.resolve()
@@ -98,25 +100,22 @@ export class Test {
     // while the subtest, already settled itself, is still reporting.
     private finish: Promise<unknown> | undefined
 
-    constructor(kind: Kind, name: string, options: TestOptions, fn: TestFn | SuiteFn | undefined, parent: Test | null) {
+    constructor(kind: Kind, name: string, options: TestOptions, fn: TestFn | SuiteFn | undefined, parent: Test | null, harness: HarnessState) {
         this.kind = kind
         this.name = name
         this.options = options
         this.fn = fn
         this.parent = parent
+        this.harness = harness
         this.nesting = parent == null ? -1 : parent.nesting + 1
         this.testNumber = parent == null ? 0 : parent.children.length + 1
         this.todo = todoOf(options) ?? (parent?.todo != null ? true : undefined)
     }
 
-    get isRoot(): boolean {
-        return this.parent == null
-    }
-
     // Declares a child in the next slot. A child of a settled parent is
     // closed on the spot, with the parent's verdict handed down.
     declare(kind: Kind, name: string, options: TestOptions, fn: TestFn | SuiteFn | undefined): Test {
-        const child = new Test(kind, name, options, fn, this)
+        const child = new Test(kind, name, options, fn, this, this.harness)
         // A child of a running parent may be reported before it starts.
         if (this.run != null) child.run = this.run
         this.children.push(child)
@@ -125,12 +124,10 @@ export class Test {
         return child
     }
 
-    // What this test hands to a child it gives up on. The root has no
-    // result of its own, so node:test charges its hook error to each direct
-    // child; anywhere else the child is cancelled.
-    private get verdictForChildren(): Verdict | undefined {
+    // What this test hands to a child it gives up on: the child is
+    // cancelled. The root, with no result of its own, decides otherwise.
+    protected get verdictForChildren(): Verdict | undefined {
         if (!this.settled) return undefined
-        if (this.isRoot) return this.error == null ? undefined : {error: this.error, outcome: "failed"}
         return {error: cancelledByParent(), outcome: "cancelled"}
     }
 
@@ -259,7 +256,7 @@ export class Test {
     // A descendant that settled on its own may still be reporting. That is
     // bounded, and its results belong ahead of this test's and in the
     // counts, so they are waited for, through the descendants closed here.
-    private async awaitReporting(): Promise<void> {
+    protected async awaitReporting(): Promise<void> {
         for (const child of this.children) {
             if (!child.started) continue
             if (child.closedWith != null) await child.awaitReporting()
@@ -280,7 +277,7 @@ export class Test {
     // with it handed down, deepest first. The list comes back for the
     // caller to report: a test reports its subtests here, running or
     // queued, while a suite reports its children as it starts each in turn.
-    private settle(error?: Error, timedOut = false): Test[] {
+    protected settle(error?: Error, timedOut = false): Test[] {
         if (this.settled) return []
         this.settled = true
         this.endedAt = performance.now()
@@ -310,63 +307,40 @@ export class Test {
             this.settle()
             return
         }
-        let error = await this.runSuiteBody()
-        if (error == null) error = await this.runHooks(this.before)
-
-        let failedChildren = 0
-        let next = 0
-        const runChildren = async (): Promise<void> => {
-            for (; next < this.children.length; next++) {
-                const outcome = await this.children[next]!.start(this.run)
-                if (outcome === "failed" || outcome === "cancelled") failedChildren++
-            }
-        }
-        if (error != null) {
-            // Nothing below a broken setup may run.
-            this.settle(error)
-            for (const child of this.children) await child.start(this.run)
-        } else {
-            await runChildren()
-        }
+        // The hooks run whatever the body did, as in node:test; the body's
+        // error is the one charged. Nothing below a broken setup may run:
+        // the children are closed here, and start only to be reported.
+        const bodyError = await this.runSuiteBody()
+        const beforeError = await this.runHooks(this.before)
+        let error = bodyError ?? beforeError
+        if (error != null) this.settle(error)
+        const failedChildren = await this.runChildren()
 
         // after runs whatever happened above, as it does in node:test.
-        const setupError = error
         const afterError = await this.runHooks(this.after)
         error ??= afterError
-
-        if (this.isRoot) {
-            // Late subtests join the end of the root's line and run after its
-            // teardown, so a timed out body cannot hold that up.
-            while (await this.drain()) await runChildren()
-            // The root cannot carry a result, so a failing root hook that no
-            // child could be charged with is reported on its own and left out
-            // of the counts. node:test lets an empty run pass here; a failed
-            // setup should never be green, so success is cleared regardless.
-            const orphaned = [
-                ...(setupError != null && !this.children.length ? [["root before hook", setupError]] : []),
-                ...(afterError != null ? [["root after hook", afterError]] : []),
-            ] as [string, Error][]
-            for (const [name, hookError] of orphaned) {
-                await this.run.emit("test:fail", {
-                    name, nesting: 0, testNumber: 0,
-                    details: {duration_ms: 0, type: "suite", error: hookError},
-                })
-            }
-            if (error != null) this.run.success = false
-            return
-        }
-
         if (error == null && failedChildren) {
             error = new TesterError(`${failedChildren} subtest${failedChildren === 1 ? "" : "s"} failed`, "subtestsFailed")
         }
         this.settle(error)
     }
 
+    // Starts the children not started yet, in order, and counts the ones
+    // that failed. A child declared while an earlier one runs is taken.
+    protected async runChildren(): Promise<number> {
+        let failed = 0
+        for (; this.next < this.children.length; this.next++) {
+            const outcome = await this.children[this.next]!.start(this.run)
+            if (outcome === "failed" || outcome === "cancelled") failed++
+        }
+        return failed
+    }
+
     // The body runs for the first time here, so both the registration of
     // children and an async body settle while the walk is still inside
     // this suite. Its own error, if any, is the suite's to carry.
     private async runSuiteBody(): Promise<Error | undefined> {
-        const {harness} = this.run
+        const {harness} = this
         const previous = harness.current
         harness.current = this
         harness.openSuites++
@@ -384,7 +358,7 @@ export class Test {
 
     // Runs the hooks in order and stops at the first failure, which is
     // returned as the error to charge to the suite.
-    private async runHooks(list: HookFn[]): Promise<Error | undefined> {
+    protected async runHooks(list: HookFn[]): Promise<Error | undefined> {
         for (const fn of list) {
             try {
                 await fn()
@@ -395,21 +369,9 @@ export class Test {
         return undefined
     }
 
-    // Once the registered tests and the after hooks are done, what is
-    // declared by then is all that is left: a body that outlived its
-    // timeout is not waited for. One turn is given, since a body that was
-    // awaiting the last late subtest resumes only then and may declare more.
-    private async drain(): Promise<boolean> {
-        await new Promise(resolve => setTimeout(resolve, 0))
-        if (this.children.some(child => !child.started && child.closedWith == null)) return true
-        this.run.closed = true
-        return false
-    }
-
     // ---- test ----
 
     private async runTest(): Promise<Test[]> {
-        const {run} = this
         const skip = skipOf(this.options)
         if (skip != null || this.fn == null) {
             this.settle()
@@ -419,7 +381,7 @@ export class Test {
         // Counted until the body settles, not until the verdict: a body that
         // outlives its timeout is still a body. A synchronous throw becomes a
         // rejection here, so the count comes down the same way in every case.
-        const {harness} = run
+        const {harness} = this
         harness.openBodies++
         const body = new Promise<void>((resolve) => resolve((this.fn as TestFn)(this.context())))
         void body.finally(() => harness.openBodies--).catch(() => undefined)
@@ -479,8 +441,8 @@ export class Test {
     // count ahead of the verdict, as in node:test, though the event still
     // carries the failure; a todo's failure does not fail the run, whether
     // or not a skip hides the mark.
-    private async report(): Promise<void> {
-        if (this.reported || this.isRoot) return
+    protected async report(): Promise<void> {
+        if (this.reported) return
         this.reported = true
         const {counters} = this.run
         const skip = this.skip

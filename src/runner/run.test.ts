@@ -36,6 +36,27 @@ describe(TITLE, () => {
         assert.equal(ran, true)
     })
 
+    // A suite may declare on either side of a top-level await; run() takes
+    // both, as node --test does once every file has loaded.
+    it("a test declared after an await is run with the earlier ones", async () => {
+        const local = createTAL()
+        const events = capture(local.reporter)
+        const order: string[] = []
+        local.it("first", () => {
+            order.push("first")
+        })
+        await new Promise(r => setTimeout(r, 0))
+        assert.equal(order.length, 0)
+        local.it("second", () => {
+            order.push("second")
+        })
+        const summary = await local.run()
+
+        assert.deepEqual(order, ["first", "second"])
+        assert.deepEqual(names(events, "test:pass"), ["first", "second"])
+        assert.equal(summary.counts.tests, 2)
+    })
+
     it("reports a failing test and flips success", async () => {
         const local = createTAL()
         local.reporter.output(() => undefined)

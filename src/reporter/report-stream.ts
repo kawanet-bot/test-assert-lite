@@ -12,10 +12,11 @@ interface QueueItem {
 
 // Bridges emit() to an async generator formatter. A request for the next
 // event means the previous one has been written, and that is when emit()'s
-// promise settles, so run() stays in step by awaiting emit alone.
+// promise settles, so run() stays in step by awaiting emit alone. Until
+// attach() the events are only kept, and emit() settles at once.
 export class ReportStream {
-    private format: FormatFn
-    private output: OutputFn
+    private format: FormatFn | null = null
+    private output: OutputFn | null = null
     private pending: QueueItem[] = []
     private active: QueueItem | null = null
     private wake: (() => void) | null = null
@@ -24,9 +25,11 @@ export class ReportStream {
     private failure: unknown
     private loop: Promise<void> | null = null
 
-    constructor(format: FormatFn, output: OutputFn) {
+    // Takes the settings and starts writing, what was kept going first.
+    attach(format: FormatFn, output: OutputFn): void {
         this.format = format
         this.output = output
+        this.start()
     }
 
     emit(event: TestEvent): Promise<void> {
@@ -35,6 +38,7 @@ export class ReportStream {
 
         const promise = new Promise<void>((resolve, reject) => {
             this.pending.push({event, resolve, reject})
+            if (this.format == null) resolve()
             const wake = this.wake
             this.wake = null
             wake?.()
@@ -43,7 +47,7 @@ export class ReportStream {
         // deliberately synchronous. Mark every rejection handled here while
         // preserving it for awaiters and close().
         void promise.catch(() => undefined)
-        this.start()
+        if (this.format != null) this.start()
         return promise
     }
 
@@ -86,8 +90,8 @@ export class ReportStream {
     }
 
     private async consume(): Promise<void> {
-        for await (const chunk of this.format(this.source())) {
-            if (chunk) await this.output(chunk)
+        for await (const chunk of this.format!(this.source())) {
+            if (chunk) await this.output!(chunk)
         }
         if (!this.closed) {
             throw new Error("Reporter formatter ended before its input")
