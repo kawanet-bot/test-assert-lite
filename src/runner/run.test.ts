@@ -22,18 +22,22 @@ describe(TITLE, () => {
         assert.equal(summary.success, true)
     })
 
-    it("nothing runs until run() is called", async () => {
+    // The tests start on their own, a microtask after they are declared, as
+    // under node:test; what they report waits for run() all the same.
+    it("tests start on their own and the events wait for run()", async () => {
         const local = createTAL()
         const events = capture(local.reporter)
         let ran = false
-        local.it("later", () => {
+        local.it("soon", () => {
             ran = true
         })
 
         assert.equal(ran, false)
+        await new Promise(r => setTimeout(r, 0))
+        assert.equal(ran, true)
         assert.equal(events.length, 0)
         await local.run()
-        assert.equal(ran, true)
+        assert.deepEqual(names(events, "test:pass"), ["soon"])
     })
 
     it("reports a failing test and flips success", async () => {

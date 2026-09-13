@@ -290,8 +290,10 @@ export declare const reporter: TAL.Reporter
 export declare function createTAL(): TAL.TestHarness
 
 /**
- * Runs every registered test, then resets the registry. Reporter format and
- * output settings remain installed for later runs.
+ * Waits for the registered tests, which start on their own a microtask after
+ * they are declared, runs the root after hooks, reports the summary, then
+ * resets the registry. The reporter takes its format and output settings as
+ * they are when run() is called; what was reported before is written first.
  * Resolves once all tests and hooks have finished, the formatter has ended
  * and any asynchronous output has completed. Reporter failures and a
  * formatter that ends before its input reject the returned promise.

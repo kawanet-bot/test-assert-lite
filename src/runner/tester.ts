@@ -1,5 +1,4 @@
 import type * as declared from "test-assert-lite"
-import type {ReporterControl} from "../reporter.ts"
 import {TesterError, cancelledByParent, parentAlreadyFinished, testRunnerError} from "../utils/tester-error.ts"
 import type {Args} from "./declare.ts"
 import {nameOf, normalize, skipOf, todoOf} from "./declare.ts"
@@ -28,7 +27,7 @@ interface Verdict {
 export interface Run {
     counters: Counters
     success: boolean
-    emit: ReporterControl["emit"]
+    emit: (type: string, data: declared.TAL.TestEvent["data"]) => Promise<void>
     // t.assert uses the harness's assert, so once it takes options, what a
     // body sees stays consistent within one run().
     assert: declared.TAL.AssertMethods
@@ -89,6 +88,10 @@ export class Test {
     // The verdict a parent handed down, when it gave up on this test.
     private closedWith: Verdict | undefined
 
+    // The next child to start. The root keeps taking declarations while
+    // it runs, so its walk resumes from here.
+    private next = 0
+    private setupError: Error | undefined
     // node:test runs subtests one at a time: a new one waits for the
     // previous one, awaited or not, while the first starts synchronously.
     private last: Promise<unknown> = Promise.resolve()
@@ -313,53 +316,78 @@ export class Test {
         let error = await this.runSuiteBody()
         if (error == null) error = await this.runHooks(this.before)
 
-        let failedChildren = 0
-        let next = 0
-        const runChildren = async (): Promise<void> => {
-            for (; next < this.children.length; next++) {
-                const outcome = await this.children[next]!.start(this.run)
-                if (outcome === "failed" || outcome === "cancelled") failedChildren++
-            }
-        }
-        if (error != null) {
-            // Nothing below a broken setup may run.
-            this.settle(error)
-            for (const child of this.children) await child.start(this.run)
-        } else {
-            await runChildren()
-        }
+        // Nothing below a broken setup may run: the children are closed
+        // here, and start only to be reported.
+        if (error != null) this.settle(error)
+        const failedChildren = await this.runChildren()
 
         // after runs whatever happened above, as it does in node:test.
-        const setupError = error
         const afterError = await this.runHooks(this.after)
         error ??= afterError
-
-        if (this.isRoot) {
-            // Late subtests join the end of the root's line and run after its
-            // teardown, so a timed out body cannot hold that up.
-            while (await this.drain()) await runChildren()
-            // The root cannot carry a result, so a failing root hook that no
-            // child could be charged with is reported on its own and left out
-            // of the counts. node:test lets an empty run pass here; a failed
-            // setup should never be green, so success is cleared regardless.
-            const orphaned = [
-                ...(setupError != null && !this.children.length ? [["root before hook", setupError]] : []),
-                ...(afterError != null ? [["root after hook", afterError]] : []),
-            ] as [string, Error][]
-            for (const [name, hookError] of orphaned) {
-                await this.run.emit("test:fail", {
-                    name, nesting: 0, testNumber: 0,
-                    details: {duration_ms: 0, type: "suite", error: hookError},
-                })
-            }
-            if (error != null) this.run.success = false
-            return
-        }
-
         if (error == null && failedChildren) {
             error = new TesterError(`${failedChildren} subtest${failedChildren === 1 ? "" : "s"} failed`, "subtestsFailed")
         }
         this.settle(error)
+    }
+
+    // Starts the children not started yet, in order, and counts the ones
+    // that failed. A child declared while an earlier one runs is taken.
+    private async runChildren(): Promise<number> {
+        let failed = 0
+        for (; this.next < this.children.length; this.next++) {
+            const outcome = await this.children[this.next]!.start(this.run)
+            if (outcome === "failed" || outcome === "cancelled") failed++
+        }
+        return failed
+    }
+
+    // ---- root ----
+
+    // The root runs in pieces, on the scheduler's clock: its setup once,
+    // the children as they are declared, and its teardown when run() asks.
+    async startRoot(run: Run): Promise<void> {
+        this.run = run
+        this.started = true
+        this.startedAt = performance.now()
+        // Nothing below a broken setup may run: the children so far are
+        // closed here, the later ones as they are declared.
+        this.setupError = await this.runHooks(this.before)
+        if (this.setupError != null) this.settle(this.setupError)
+    }
+
+    async runRootChildren(): Promise<void> {
+        await this.runChildren()
+    }
+
+    get hasPendingChildren(): boolean {
+        return this.next < this.children.length
+    }
+
+    async finishRoot(): Promise<void> {
+        // after runs whatever happened above, as it does in node:test. Late
+        // subtests join the end of the root's line and run after its
+        // teardown, so a timed out body cannot hold that up.
+        const setupError = this.setupError
+        const afterError = await this.runHooks(this.after)
+        while (await this.drain()) await this.runChildren()
+
+        // The root cannot carry a result, so a failing root hook that no
+        // child could be charged with is reported on its own and left out
+        // of the counts. node:test lets an empty run pass here; a failed
+        // setup should never be green, so success is cleared regardless.
+        const orphaned = [
+            ...(setupError != null && !this.children.length ? [["root before hook", setupError]] : []),
+            ...(afterError != null ? [["root after hook", afterError]] : []),
+        ] as [string, Error][]
+        for (const [name, hookError] of orphaned) {
+            await this.run.emit("test:fail", {
+                name, nesting: 0, testNumber: 0,
+                details: {duration_ms: 0, type: "suite", error: hookError},
+            })
+        }
+        if (setupError != null || afterError != null) this.run.success = false
+        this.settle()
+        await this.awaitReporting()
     }
 
     // The body runs for the first time here, so both the registration of
