@@ -22,28 +22,23 @@ describe(TITLE, () => {
         assert.equal(summary.success, true)
     })
 
-    // The tests start on their own, a microtask after they are declared, as
-    // under node:test; what they report waits for run() all the same.
-    it("tests start on their own and the events wait for run()", async () => {
+    it("nothing runs until run() is called", async () => {
         const local = createTAL()
         const events = capture(local.reporter)
         let ran = false
-        local.it("soon", () => {
+        local.it("later", () => {
             ran = true
         })
 
         assert.equal(ran, false)
-        await new Promise(r => setTimeout(r, 0))
-        assert.equal(ran, true)
         assert.equal(events.length, 0)
         await local.run()
-        assert.deepEqual(names(events, "test:pass"), ["soon"])
+        assert.equal(ran, true)
     })
 
-    // As under node:test, where the root keeps taking tests until the
-    // process is about to exit: a test declared after a top-level await,
-    // once the earlier ones have run, still runs and is counted.
-    it("a test declared after the walk went idle runs as well", async () => {
+    // A suite may declare on either side of a top-level await; run() takes
+    // both, as node --test does once every file has loaded.
+    it("a test declared after an await is run with the earlier ones", async () => {
         const local = createTAL()
         const events = capture(local.reporter)
         const order: string[] = []
@@ -51,7 +46,7 @@ describe(TITLE, () => {
             order.push("first")
         })
         await new Promise(r => setTimeout(r, 0))
-        assert.deepEqual(order, ["first"])
+        assert.equal(order.length, 0)
         local.it("second", () => {
             order.push("second")
         })
@@ -60,32 +55,6 @@ describe(TITLE, () => {
         assert.deepEqual(order, ["first", "second"])
         assert.deepEqual(names(events, "test:pass"), ["first", "second"])
         assert.equal(summary.counts.tests, 2)
-    })
-
-    // As under node:test: the bodies start within the microtask queue, so
-    // a timer set beside the declarations fires only after them.
-    it("tests declared together start before a timer set beside them", async () => {
-        const local = createTAL()
-        local.reporter.output(() => undefined)
-        const order: string[] = []
-        local.it("a", () => {
-            order.push("a")
-        })
-        local.describe("s", () => {
-            local.it("s1", () => {
-                order.push("s1")
-            })
-        })
-        local.it("b", () => {
-            order.push("b")
-        })
-        await new Promise<void>(resolve => setTimeout(() => {
-            order.push("timer")
-            resolve()
-        }, 0))
-        await local.run()
-
-        assert.deepEqual(order, ["a", "s1", "b", "timer"])
     })
 
     it("reports a failing test and flips success", async () => {

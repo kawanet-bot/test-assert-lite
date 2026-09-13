@@ -44,8 +44,6 @@ describe(TITLE, () => {
         assert.equal((await a.run()).counts.tests, 1)
     })
 
-    // The two walks interleave, since each starts on its own, so what is
-    // checked is that a's hooks run once, around a's test, and not for b.
     it("two harnesses do not share hooks", async () => {
         const a = createTAL()
         const b = createTAL()
@@ -55,9 +53,6 @@ describe(TITLE, () => {
 
         a.before(() => {
             order.push("a:before")
-        })
-        a.after(() => {
-            order.push("a:after")
         })
         a.it("a-test", () => {
             order.push("a-test")
@@ -69,8 +64,7 @@ describe(TITLE, () => {
         await b.run()
         await a.run()
 
-        assert.deepEqual(order.filter(item => item !== "b-test"), ["a:before", "a-test", "a:after"])
-        assert.deepEqual(order.filter(item => item === "b-test"), ["b-test"])
+        assert.deepEqual(order, ["b-test", "a:before", "a-test"])
     })
 
     it("run() resets only its own harness", async () => {

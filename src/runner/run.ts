@@ -7,12 +7,13 @@ import {resetHarnessState} from "./suite.ts"
 import type {Run} from "./tester.ts"
 
 // One cycle of the harness: from the first declaration to the run() that
-// reports it. The tests start on their own, a microtask after they are
-// declared, as they do under node:test; run() waits for them.
+// reports it. The tests are held until run() lets them go, so a suite
+// still loading cannot declare into one already running.
 interface Cycle {
     run: Run
     stream: ReportStream
     startedAt: number
+    held: boolean
     // The walk under way, or null while idle between declarations.
     walk: Promise<void> | null
     // run() is closing the cycle and drives the rest itself.
@@ -22,7 +23,8 @@ interface Cycle {
 }
 
 export interface Scheduler {
-    // Called on a declaration at the root: starts the walk unless one runs.
+    // Called on a declaration at the root: starts the walk, once run() has
+    // let it, unless one is under way.
     schedule: () => void
     run: typeof declared.run
 }
@@ -44,13 +46,13 @@ export const createScheduler = (
             assert,
             closed: false,
         }
-        return {run, stream, startedAt: performance.now(), walk: null, closing: false, failure: undefined}
+        return {run, stream, startedAt: performance.now(), held: true, walk: null, closing: false, failure: undefined}
     }
 
     // A walk that ends picks up what was declared while it wound down.
     const schedule = (): void => {
         const current = cycle ??= open()
-        if (current.walk != null || current.closing || current.failure != null) return
+        if (current.held || current.walk != null || current.closing || current.failure != null) return
         current.walk = new Promise<void>(resolve => queueMicrotask(resolve))
             .then(() => harness.root.walk(current.run))
             .catch(error => {
@@ -67,14 +69,15 @@ export const createScheduler = (
         running = true
         // An empty run still reports, and root hooks alone still run.
         const current = cycle ??= open()
+        current.held = false
+        schedule()
         current.closing = true
 
         let result: declared.TAL.TestSummary | undefined
         let failed = false
         let failure: unknown
         try {
-            // The reporter takes the settings as they are now, and what
-            // the tests reported so far goes out ahead of the rest.
+            // The reporter takes the settings as they are now.
             control.attach(current.stream)
             while (current.walk != null) await current.walk
             if (current.failure != null) throw current.failure.error

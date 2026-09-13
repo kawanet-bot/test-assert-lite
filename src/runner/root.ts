@@ -26,9 +26,8 @@ export class Root extends Test {
         return
     }
 
-    // One walk: the before hooks not run yet, the children not started
-    // yet, then the after hooks not run yet, as node:test does when its
-    // queue drains. Declared later, the same again on the next walk.
+    // Takes what was declared since the last walk, hooks included, as
+    // node:test does each time its queue drains.
     async walk(run: Run): Promise<void> {
         if (!this.started) {
             this.run = run

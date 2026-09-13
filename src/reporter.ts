@@ -13,8 +13,8 @@ const defaultOutput: OutputFn = (text) => {
     console.log(text.replace(/\n$/, ""))
 }
 
-// What the runner drives: a stream per cycle, opened as the tests start
-// and attached to the settings when run() reports. The public Reporter
+// What the runner drives: a stream per cycle, attached to the settings
+// when run() reports. The public Reporter
 // carries the settings only, as node:test gives a test no way to send an
 // event of its own either.
 export interface ReporterControl {

@@ -113,10 +113,10 @@ describe(TITLE, () => {
         assert.equal(summary.success, false)
     })
 
-    // node:test runs the root's after hooks once its queue drains, and a
-    // root before hook as soon as it is declared, so a top-level await
-    // between two suites sees the hooks declared so far run around each.
-    it("root hooks declared around a top-level await run in declaration order", async () => {
+    // Under node --test every file loads before the tests start, so the
+    // root hooks declared on either side of an await wrap the whole run:
+    // the before hooks ahead of the first test, the after hooks once.
+    it("root hooks declared around a top-level await wrap the whole run", async () => {
         const local = createTAL()
         local.reporter.output(() => undefined)
         const order: string[] = []
@@ -151,7 +151,7 @@ describe(TITLE, () => {
         })
         await local.run()
 
-        assert.deepEqual(order, ["before1", "a", "after(A)", "after1", "before2", "b", "c", "after2"])
+        assert.deepEqual(order, ["before1", "before2", "a", "after(A)", "b", "c", "after1", "after2"])
     })
 
     it("a failing after hook fails the suite but keeps the children passed", async () => {
