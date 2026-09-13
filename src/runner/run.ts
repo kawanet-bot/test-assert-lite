@@ -15,8 +15,6 @@ interface Cycle {
     startedAt: number
     // The walk under way, or null while idle between declarations.
     walk: Promise<void> | null
-    // The root's setup ran, so a walk goes straight to the children.
-    started: boolean
     // run() is closing the cycle and drives the rest itself.
     closing: boolean
     // What the walk failed with, kept for run() to reject with.
@@ -44,28 +42,17 @@ export const createScheduler = (
             success: true,
             emit: (type, data) => stream.emit({type, data} as declared.TAL.TestEvent),
             assert,
-            harness,
             closed: false,
         }
-        return {run, stream, startedAt: performance.now(), walk: null, started: false, closing: false, failure: undefined}
+        return {run, stream, startedAt: performance.now(), walk: null, closing: false, failure: undefined}
     }
 
-    // The root's setup once, then the children declared so far. A walk
-    // that ends picks up what was declared while it wound down.
-    const walk = async (current: Cycle): Promise<void> => {
-        const {root} = harness
-        if (!current.started) {
-            current.started = true
-            await root.startRoot(current.run)
-        }
-        await root.runRootChildren()
-    }
-
+    // A walk that ends picks up what was declared while it wound down.
     const schedule = (): void => {
         const current = cycle ??= open()
         if (current.walk != null || current.closing || current.failure != null) return
         current.walk = new Promise<void>(resolve => queueMicrotask(resolve))
-            .then(() => walk(current))
+            .then(() => harness.root.walk(current.run))
             .catch(error => {
                 current.failure = {error}
             })
@@ -91,8 +78,9 @@ export const createScheduler = (
             control.attach(current.stream)
             while (current.walk != null) await current.walk
             if (current.failure != null) throw current.failure.error
-            if (!current.started) await walk(current)
-            result = await finish(current)
+            // Hooks declared since the last walk, or with no test at all.
+            await harness.root.walk(current.run)
+            result = await finish(harness, current)
         } catch (error) {
             failed = true
             failure = error
@@ -122,9 +110,9 @@ export const createScheduler = (
 
 // The root's teardown, then the summary. The root has no result of its
 // own, so the summary is what stands for it.
-const finish = async (current: Cycle): Promise<declared.TAL.TestSummary> => {
+const finish = async (harness: HarnessState, current: Cycle): Promise<declared.TAL.TestSummary> => {
     const {run} = current
-    await run.harness.root.finishRoot()
+    await harness.root.end()
 
     const duration_ms = performance.now() - current.startedAt
     const summary: declared.TAL.TestSummary = {

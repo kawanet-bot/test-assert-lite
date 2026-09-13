@@ -1,7 +1,8 @@
 import type * as declared from "test-assert-lite"
 import type {Args} from "./declare.ts"
 import {nameOf, normalize} from "./declare.ts"
-import {Test} from "./tester.ts"
+import {Root} from "./root.ts"
+import type {Test} from "./tester.ts"
 
 type TestFn = declared.TAL.TestFn
 type SuiteFn = declared.TAL.SuiteFn
@@ -10,7 +11,7 @@ type SuiteFn = declared.TAL.SuiteFn
 // suite whose body is running, which is where a declaration lands. Wrapping
 // it in a factory lets the self-tests build an isolated tree.
 export interface HarnessState {
-    root: Test
+    root: Root
     current: Test
     // Test bodies not yet settled, a timed out one included, and suite
     // bodies being run. A declaration is taken while a suite body runs, and
@@ -20,15 +21,16 @@ export interface HarnessState {
     openSuites: number
 }
 
-const makeRoot = (): Test => new Test("suite", "", {}, undefined, null)
-
+// The root and the state point at each other, so the state is made first
+// and the root put in, here and on every reset.
 export const createHarnessState = (): HarnessState => {
-    const root = makeRoot()
-    return {root, current: root, openBodies: 0, openSuites: 0}
+    const state = {openBodies: 0, openSuites: 0} as HarnessState
+    resetHarnessState(state)
+    return state
 }
 
 export const resetHarnessState = (state: HarnessState): void => {
-    state.root = makeRoot()
+    state.root = new Root(state)
     state.current = state.root
 }
 

@@ -85,6 +85,75 @@ describe(TITLE, () => {
         assert.equal(summary.success, false)
     })
 
+    // node:test runs the suite's hooks even when its body threw, and the
+    // body's error is the one charged to the suite.
+    it("a throwing describe body still runs the hooks declared before the throw", async () => {
+        const local = createTAL()
+        const events = capture(local.reporter)
+        const order: string[] = []
+        const broken = new Error("body")
+        local.describe("S", () => {
+            local.before(() => {
+                order.push("before")
+            })
+            local.after(() => {
+                order.push("after")
+            })
+            local.it("a", () => {
+                order.push("a")
+            })
+            throw broken
+        })
+        const summary = await local.run()
+
+        assert.deepEqual(order, ["before", "after"])
+        const fails = ofType(events, "test:fail")
+        assert.deepEqual(fails.map(e => e.data.name), ["a", "S"])
+        assert.equal(fails[1]?.data.details.error, broken)
+        assert.equal(summary.success, false)
+    })
+
+    // node:test runs the root's after hooks once its queue drains, and a
+    // root before hook as soon as it is declared, so a top-level await
+    // between two suites sees the hooks declared so far run around each.
+    it("root hooks declared around a top-level await run in declaration order", async () => {
+        const local = createTAL()
+        local.reporter.output(() => undefined)
+        const order: string[] = []
+        local.before(() => {
+            order.push("before1")
+        })
+        local.describe("A", () => {
+            local.it("a", () => {
+                order.push("a")
+            })
+            local.after(() => {
+                order.push("after(A)")
+            })
+        })
+        local.after(() => {
+            order.push("after1")
+        })
+        await new Promise(r => setTimeout(r, 0))
+        local.describe("B", () => {
+            local.it("b", () => {
+                order.push("b")
+            })
+        })
+        local.after(() => {
+            order.push("after2")
+        })
+        local.before(() => {
+            order.push("before2")
+        })
+        local.it("c", () => {
+            order.push("c")
+        })
+        await local.run()
+
+        assert.deepEqual(order, ["before1", "a", "after(A)", "after1", "before2", "b", "c", "after2"])
+    })
+
     it("a failing after hook fails the suite but keeps the children passed", async () => {
         const local = createTAL()
         const events = capture(local.reporter)

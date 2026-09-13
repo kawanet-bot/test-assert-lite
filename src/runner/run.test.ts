@@ -62,6 +62,32 @@ describe(TITLE, () => {
         assert.equal(summary.counts.tests, 2)
     })
 
+    // As under node:test: the bodies start within the microtask queue, so
+    // a timer set beside the declarations fires only after them.
+    it("tests declared together start before a timer set beside them", async () => {
+        const local = createTAL()
+        local.reporter.output(() => undefined)
+        const order: string[] = []
+        local.it("a", () => {
+            order.push("a")
+        })
+        local.describe("s", () => {
+            local.it("s1", () => {
+                order.push("s1")
+            })
+        })
+        local.it("b", () => {
+            order.push("b")
+        })
+        await new Promise<void>(resolve => setTimeout(() => {
+            order.push("timer")
+            resolve()
+        }, 0))
+        await local.run()
+
+        assert.deepEqual(order, ["a", "s1", "b", "timer"])
+    })
+
     it("reports a failing test and flips success", async () => {
         const local = createTAL()
         local.reporter.output(() => undefined)

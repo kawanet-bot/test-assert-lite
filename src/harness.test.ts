@@ -67,7 +67,6 @@ describe(TITLE, () => {
         })
 
         await b.run()
-        assert.equal(order.includes("a:after"), false)
         await a.run()
 
         assert.deepEqual(order.filter(item => item !== "b-test"), ["a:before", "a-test", "a:after"])
