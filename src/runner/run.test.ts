@@ -40,6 +40,28 @@ describe(TITLE, () => {
         assert.deepEqual(names(events, "test:pass"), ["soon"])
     })
 
+    // As under node:test, where the root keeps taking tests until the
+    // process is about to exit: a test declared after a top-level await,
+    // once the earlier ones have run, still runs and is counted.
+    it("a test declared after the walk went idle runs as well", async () => {
+        const local = createTAL()
+        const events = capture(local.reporter)
+        const order: string[] = []
+        local.it("first", () => {
+            order.push("first")
+        })
+        await new Promise(r => setTimeout(r, 0))
+        assert.deepEqual(order, ["first"])
+        local.it("second", () => {
+            order.push("second")
+        })
+        const summary = await local.run()
+
+        assert.deepEqual(order, ["first", "second"])
+        assert.deepEqual(names(events, "test:pass"), ["first", "second"])
+        assert.equal(summary.counts.tests, 2)
+    })
+
     it("reports a failing test and flips success", async () => {
         const local = createTAL()
         local.reporter.output(() => undefined)
