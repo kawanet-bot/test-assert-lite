@@ -81,16 +81,15 @@ describe(TITLE, () => {
             return i
         }
         const map = at('<script type="importmap">')
-        const iife = at('<script src="/@tal/dist/test-assert-lite.min.js"></script>')
         assert.match(tests, /^\/@tal\/files\/[0-9a-f]{9}\/$/)
         const script = at(`<script src="${tests}setup.js"></script>`)
         const second = at(`<script src="${tests}set%2Bup%232.js"></script>`)
         const suite = at(`<script type="module" src="${tests}my%20suite.mjs"></script>`)
         const other = at(`<script type="module" src="${tests}second.mjs"></script>`)
-        assert.ok(map < iife && iife < script && script < second && second < suite && suite < other)
+        assert.ok(map < script && script < second && second < suite && suite < other)
         const {imports} = JSON.parse(head.slice(head.indexOf("{", map), head.indexOf("</script>", map)))
         assert.equal(imports["node:test"], "/@tal/exports/test.mjs")
-        assert.equal(imports["test-assert-lite"], "/@tal/exports/global.mjs")
+        assert.equal(imports["test-assert-lite"], "/@tal/dist/test-assert-lite.min.js")
         assert.equal(imports["mod"], `${lib}mod.mjs`)
         assert.equal(imports["dep"], `${tests}nested/dep.mjs`)
         assert.equal(imports["cdn"], "https://cdn.example/lib.js")
@@ -121,9 +120,9 @@ describe(TITLE, () => {
         assert.equal((await get(url("/@tal/files/000000000/mod.mjs"))).status, 404)
     })
 
-    it("serves the package's IIFE, its global face, the bridges and the document root, and not the ESM build", async () => {
-        assert.equal((await get(url("/@tal/dist/test-assert-lite.min.js"))).status, 200)
-        assert.match((await get(url("/@tal/exports/global.mjs"))).body, /globalThis\.TAL/)
+    it("serves the package's minified build, the bridges and the document root, and not the ESM entry", async () => {
+        assert.match((await get(url("/@tal/dist/test-assert-lite.min.js"))).body, /^(?!.*globalThis\.TAL)[^]*export\{/)
+        assert.equal((await get(url("/@tal/exports/global.mjs"))).status, 404)
         assert.equal((await get(url("/@tal/esm/test-assert-lite.mjs"))).status, 404)
         assert.equal((await get(url("/@tal/exports/test.mjs"))).status, 200)
         assert.equal((await get(url("/@tal/exports/assert/strict.mjs"))).status, 200)
@@ -232,7 +231,7 @@ describe(TITLE, () => {
         try {
             const index = (await get(running.origin + "/")).body
             assert.ok(index.includes('<script type="importmap">'))
-            assert.ok(index.includes('<script src="/@tal/dist/test-assert-lite.min.js"></script>'))
+            assert.equal(index.includes("/@tal/dist/test-assert-lite.min.js\"></script>"), false)
             assert.equal(index.includes('type="module" src="/@tal/files/'), false)
             assert.equal((await get(running.origin + "/@tal/files/000000000/anything.mjs")).status, 404)
         } finally {

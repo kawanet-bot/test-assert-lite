@@ -279,18 +279,17 @@ safaridriver -p 4444 &
 test-assert --webdriver htdocs/scripts/bundled-tests.mjs
 ```
 
-## BROWSER GLOBAL
+## BROWSER MODULE
 
 Or skip the build: tests can go straight into a page.
 
-The browser script exposes the package as `globalThis.TAL`.
+The minified build is an ES module, so a page imports the package from a CDN.
 
 ```html
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/test-assert-lite/htdocs/styles/test-assert-lite.css">
-<script src="https://cdn.jsdelivr.net/npm/test-assert-lite/dist/test-assert-lite.min.js"></script>
 <div id="output"></div>
-<script>
-    const {describe, it, strict: assert, reporter, run, session} = globalThis.TAL
+<script type="module">
+    import {describe, it, strict as assert, reporter, run, session} from "https://cdn.jsdelivr.net/npm/test-assert-lite/dist/test-assert-lite.min.js"
 
     // The report goes to console.log by default; render it as HTML in the page instead.
     // session() comes before the first test is declared.
@@ -310,9 +309,9 @@ The browser script exposes the package as `globalThis.TAL`.
 </script>
 ```
 
-### Bundled tests on the global
+### Bundled tests in a page
 
-Load the package from a CDN when your own page starts the test run.
+Bundle the suites as one ES module with `node:test` and `node:assert` left external, and let an import map lead them, and the package's name the bridges import, to the CDN.
 
 ```js
 // rollup.config.mjs
@@ -324,20 +323,28 @@ export default {
     ],
     output: {
         file: "htdocs/scripts/bundled-tests.js",
-        format: "iife",
-        globals: {
-            "node:test": "TAL",
-            "node:assert": "TAL.assert",
-        },
+        format: "es",
     },
     treeshake: false,
 }
 ```
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/test-assert-lite/dist/test-assert-lite.min.js"></script>
-<script src="./scripts/bundled-tests.js"></script>
-<script>TAL.run()</script>
+<script type="importmap">
+{
+    "imports": {
+        "test-assert-lite": "https://cdn.jsdelivr.net/npm/test-assert-lite/dist/test-assert-lite.min.js",
+        "node:test": "https://cdn.jsdelivr.net/npm/test-assert-lite/exports/test.mjs",
+        "node:assert": "https://cdn.jsdelivr.net/npm/test-assert-lite/exports/assert.mjs",
+        "node:assert/strict": "https://cdn.jsdelivr.net/npm/test-assert-lite/exports/assert/strict.mjs"
+    }
+}
+</script>
+<script type="module" src="./scripts/bundled-tests.js"></script>
+<script type="module">
+    import {run} from "test-assert-lite"
+    run()
+</script>
 ```
 
 ## SEE ALSO

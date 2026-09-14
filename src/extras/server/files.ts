@@ -45,14 +45,14 @@ const realOf = (file: string): string => {
 const nameOf = (dir: string): string => createHash("sha256").update(dir).digest("hex").slice(0, 9)
 
 // This package's own directories, at the paths of their names. The ESM
-// entry is the one file a browser must not get: the IIFE's face, the ES
-// module on the global the IIFE leaves, stands in for it.
+// entry is the one file a browser must not get: the minified build of the
+// same module stands in for it.
 const own = fileURLToPath(packageRoot())
 const OWN: Dir[] = [
     {path: "/@tal/dist/", root: realOf(resolve(own, "dist"))},
     {path: "/@tal/exports/", root: realOf(resolve(own, "exports"))},
 ]
-const STAND_IN = new Map([[realOf(resolve(own, "esm", "test-assert-lite.mjs")), realOf(resolve(own, "exports", "global.mjs"))]])
+const STAND_IN = new Map([[realOf(resolve(own, "esm", "test-assert-lite.mjs")), realOf(resolve(own, "dist", "test-assert-lite.min.js"))]])
 
 /**
  * Lays out the directories the files are served from: every file's own,

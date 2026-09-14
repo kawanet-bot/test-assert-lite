@@ -20,7 +20,6 @@ BUILDER_SRC := $(wildcard ./*.ts)
 MJS_DST := ../esm/test-assert-lite.mjs
 MINJS_DST := ../dist/test-assert-lite.min.js
 EXTRAS_DST := ../esm/test-assert-lite.extras.mjs
-PKG_DST := ../dist/package.json
 BROWSER_TEST_DST := ../browser/tests/bundled.mjs
 BUILDER_TEST_DST := ./tests/bundled.mjs
 
@@ -81,8 +80,8 @@ $(MJS_DST): $(MJS_CONFIG) $(SRC) $(BUILDER_SRC)
 	@echo ""
 
 # The extras (the CLI as a function) import the library by the package's
-# own name, which resolves from esm/ but not from under dist/package.json.
-# The executable bin/cli.mjs is hand-written and reaches this by subpath.
+# own name, which resolves from esm/. The executable bin/cli.mjs is
+# hand-written and reaches this by subpath.
 $(EXTRAS_DST): $(EXTRAS_CONFIG) $(EXTRAS_SRC) $(BUILDER_SRC) $(MJS_DST)
 	@mkdir -p $(dir $@)
 	../node_modules/.bin/rollup -c $<
@@ -90,24 +89,17 @@ $(EXTRAS_DST): $(EXTRAS_CONFIG) $(EXTRAS_SRC) $(BUILDER_SRC) $(MJS_DST)
 	@test "$$(wc -c < $@)" -le $(EXTRAS_MAX_BYTES) || { echo "ERROR: $@ exceeds $(EXTRAS_MAX_BYTES) byte cap" >&2; exit 1; }
 	@echo ""
 
-# The browser build. dist/package.json marks dist/ as CommonJS so Node can
-# read the .min.js IIFE as a script despite the package being ESM.
-$(MINJS_DST): $(MINJS_CONFIG) $(SRC) $(BUILDER_SRC) $(PKG_DST)
+# The browser build: the library as one minified ES module.
+$(MINJS_DST): $(MINJS_CONFIG) $(SRC) $(BUILDER_SRC)
 	@mkdir -p $(dir $@)
 	../node_modules/.bin/rollup -c $<
 	@ls -l $@
 	@test "$$(wc -c < $@)" -le $(MINJS_MAX_BYTES) || { echo "ERROR: $@ exceeds $(MINJS_MAX_BYTES) byte cap" >&2; exit 1; }
 	@echo ""
 
-$(PKG_DST):
-	@mkdir -p $(dir $@)
-	echo '{"type":"commonjs"}' > $@
-	@ls -l $@
-	@echo ""
-
 # Bundle of the test suites for the browser, with node:test, node:assert
 # and the package name left external for the import map the CLI serves,
-# which points all three at the IIFE build through its ES module shim.
+# which points all three at the minified build.
 $(BROWSER_TEST_DST): $(BROWSER_TEST_CONFIG) $(SRC) $(BUILDER_SRC) $(TEST_SRC) $(TYPES) $(MJS_DST)
 	@mkdir -p $(dir $@)
 	../node_modules/.bin/rollup -c $<
@@ -157,6 +149,6 @@ test-quick: all
 ####
 
 clean:
-	/bin/rm -fr $(ALL) $(BROWSER_TEST_DST) $(PKG_DST)
+	/bin/rm -fr $(ALL) $(BROWSER_TEST_DST)
 
 .PHONY: all clean test test-full is-buildable is-not-buildable

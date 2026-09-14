@@ -73,10 +73,9 @@ export const createApp = (options: AppOptions): App => {
     // stays reachable; the suites' directory is the same for all of them.
     const served = createFiles([...suites, ...scripts, ...imports.paths()])
 
-    // The build browsers get is the IIFE, so that is what runs: it goes in
-    // as the first classic script; the package's name in the map leads to
-    // the ES module face of its global, in place of the ESM build.
-    const scriptUrls = [served.urlOf(resolve(root, "dist", "test-assert-lite.min.js")), ...scripts.map(script => served.urlOf(script))]
+    // The package's name in the map leads to the minified build, so the
+    // library loads as the suites import it; only the scripts go in as tags.
+    const scriptUrls = scripts.map(script => served.urlOf(script))
 
     // The map has to be inline and in place before the first module loads;
     // classic script tags run in order as the head is parsed, and module
