@@ -27,7 +27,7 @@ const rollupConfig: RollupOptions = {
             transforms: ["typescript"],
         }),
 
-        showFiles({deny: /\W(extra|test)\W/}),
+        showFiles({deny: /\W(extras|test)\W/}),
 
         terser({
             compress: true,
