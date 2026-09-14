@@ -341,9 +341,9 @@ export default {
 {
     "imports": {
         "test-assert-lite": "https://cdn.jsdelivr.net/npm/test-assert-lite/dist/test-assert-lite.min.js",
-        "node:test": "https://cdn.jsdelivr.net/npm/test-assert-lite/exports/test.mjs",
-        "node:assert": "https://cdn.jsdelivr.net/npm/test-assert-lite/exports/assert.mjs",
-        "node:assert/strict": "https://cdn.jsdelivr.net/npm/test-assert-lite/exports/assert/strict.mjs"
+        "node:test": "https://cdn.jsdelivr.net/npm/test-assert-lite/exports/test.js",
+        "node:assert": "https://cdn.jsdelivr.net/npm/test-assert-lite/exports/assert.js",
+        "node:assert/strict": "https://cdn.jsdelivr.net/npm/test-assert-lite/exports/assert/strict.js"
     }
 }
 </script>

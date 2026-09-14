@@ -17,9 +17,9 @@ EXTRAS_SRC := $(shell find ../src/extras -name '*.ts' -or -name '*.mjs')
 TYPES := $(wildcard ../types/*.d.ts)
 BUILDER_SRC := $(wildcard ./*.ts)
 
-MJS_DST := ../dist/test-assert-lite.mjs
+MJS_DST := ../dist/test-assert-lite.js
 MINJS_DST := ../dist/test-assert-lite.min.js
-EXTRAS_DST := ../dist/test-assert-lite.extras.mjs
+EXTRAS_DST := ../dist/test-assert-lite.extras.js
 BROWSER_TEST_DST := ../browser/tests/bundled.mjs
 BUILDER_TEST_DST := ./tests/bundled.mjs
 

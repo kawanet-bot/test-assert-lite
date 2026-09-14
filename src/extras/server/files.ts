@@ -52,7 +52,7 @@ const OWN: Dir[] = [
     {path: "/@tal/dist/", root: realOf(resolve(own, "dist"))},
     {path: "/@tal/exports/", root: realOf(resolve(own, "exports"))},
 ]
-const STAND_IN = new Map([[realOf(resolve(own, "dist", "test-assert-lite.mjs")), realOf(resolve(own, "dist", "test-assert-lite.min.js"))]])
+const STAND_IN = new Map([[realOf(resolve(own, "dist", "test-assert-lite.js")), realOf(resolve(own, "dist", "test-assert-lite.min.js"))]])
 
 /**
  * Lays out the directories the files are served from: every file's own,

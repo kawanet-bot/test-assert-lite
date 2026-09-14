@@ -88,7 +88,7 @@ describe(TITLE, () => {
         const other = at(`<script type="module" src="${tests}second.mjs"></script>`)
         assert.ok(map < script && script < second && second < suite && suite < other)
         const {imports} = JSON.parse(head.slice(head.indexOf("{", map), head.indexOf("</script>", map)))
-        assert.equal(imports["node:test"], "/@tal/exports/test.mjs")
+        assert.equal(imports["node:test"], "/@tal/exports/test.js")
         assert.equal(imports["test-assert-lite"], "/@tal/dist/test-assert-lite.min.js")
         assert.equal(imports["mod"], `${lib}mod.mjs`)
         assert.equal(imports["dep"], `${tests}nested/dep.mjs`)
@@ -122,8 +122,8 @@ describe(TITLE, () => {
 
     it("serves the package's minified build, the bridges and the document root", async () => {
         assert.match((await get(url("/@tal/dist/test-assert-lite.min.js"))).body, /export\{/)
-        assert.equal((await get(url("/@tal/exports/test.mjs"))).status, 200)
-        assert.equal((await get(url("/@tal/exports/assert/strict.mjs"))).status, 200)
+        assert.equal((await get(url("/@tal/exports/test.js"))).status, 200)
+        assert.equal((await get(url("/@tal/exports/assert/strict.js"))).status, 200)
         assert.equal((await get(url("/styles/test-assert-lite.css"))).type, "text/css; charset=utf-8")
         assert.equal((await get(url("/favicon.svg"))).status, 200)
         assert.equal((await get(url("/package.json"))).status, 404)

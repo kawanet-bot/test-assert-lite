@@ -11,7 +11,7 @@ const rollupConfig: RollupOptions = {
     external: [/^[^.\/]/],
 
     output: {
-        file: "../dist/test-assert-lite.extras.mjs",
+        file: "../dist/test-assert-lite.extras.js",
         format: "esm",
     },
 

@@ -55,10 +55,10 @@ describe(TITLE, () => {
         const files = createFiles([join(dir, "src", "a.mjs")])
         assert.deepEqual(files.own.map(({path}) => path), ["/@tal/dist/", "/@tal/exports/"])
         assert.equal(files.dirs.length, 1)
-        assert.equal(files.urlOf(resolve("exports", "test.mjs")), "/@tal/exports/test.mjs")
-        assert.equal(files.urlOf(resolve("exports", "assert", "strict.mjs")), "/@tal/exports/assert/strict.mjs")
+        assert.equal(files.urlOf(resolve("exports", "test.js")), "/@tal/exports/test.js")
+        assert.equal(files.urlOf(resolve("exports", "assert", "strict.js")), "/@tal/exports/assert/strict.js")
         assert.equal(files.urlOf(resolve("dist", "test-assert-lite.min.js")), "/@tal/dist/test-assert-lite.min.js")
-        assert.equal(files.urlOf(resolve("dist", "test-assert-lite.mjs")), "/@tal/dist/test-assert-lite.min.js")
+        assert.equal(files.urlOf(resolve("dist", "test-assert-lite.js")), "/@tal/dist/test-assert-lite.min.js")
     })
 
     it("takes a symlink for its target, and a file that is not there as given", () => {

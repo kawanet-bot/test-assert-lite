@@ -13,7 +13,7 @@ const require = createRequire(import.meta.url)
 const runtime: typeof declared = m
 void runtime
 
-// module-sync sends this to the .mjs, since require(esm) exists on every
+// module-sync sends this to the ES module, since require(esm) exists on every
 // version this package declares support for.
 test("require entry", () => {
     const m: typeof declared = require("test-assert-lite")
@@ -52,7 +52,7 @@ test("minified entry (.min.js)", () => {
     assert.equal(typeof m.test, "function")
 })
 
-test("import entry (.mjs)", () => {
+test("import entry (.js)", () => {
     assert.equal(typeof m.after, "function")
     assert.equal(typeof m.assert, "function")
     assert.equal(typeof m.before, "function")
