@@ -235,6 +235,14 @@ export declare namespace TAL {
 
     // --- session ---
 
+    // What capture listens on: a window, or anything that takes a listener
+    // the same way, an iframe's or a worker's global say. The DOM's own
+    // EventTarget fits; only these two are asked of it.
+    interface EventTarget {
+        addEventListener(type: string, listener: (event: unknown) => void, capture?: boolean): void
+        removeEventListener(type: string, listener: (event: unknown) => void, capture?: boolean): void
+    }
+
     interface SessionOptions {
         /** What the run's events are formatted with; `reporter.spec()` unless given. */
         format?: FormatFn
@@ -245,6 +253,13 @@ export declare namespace TAL {
          * session reports to the CLI through it. Any other base means nothing.
          */
         base?: string | URL
+        /**
+         * Takes the errors outside the tests, until end(): the uncaught
+         * errors and unhandled rejections of the window, for `true`, or of
+         * the target given, each one failed test at the top level. Under
+         * Node `true` means nothing yet.
+         */
+        capture?: boolean | EventTarget
     }
 
     // Where the console goes: the CLI under a run's URL, Node's own streams,
