@@ -21,7 +21,7 @@ type Equality = (actual: unknown, expected: unknown, message?: string | Error) =
 
 // Strict compares with Object.is: NaN equals NaN, and 0 differs from -0.
 // Loose compares with ==, NaN still equal to itself, as node's equal does.
-const equalPair = (strict: boolean): {equal: Equality, notEqual: Equality} => {
+const equalPair = (strict: boolean): { equal: Equality, notEqual: Equality } => {
     const same = strict ? Object.is : looseSame
 
     const equal: Equality = (actual, expected, message) => {
@@ -53,7 +53,7 @@ const equalPair = (strict: boolean): {equal: Equality, notEqual: Equality} => {
 // strict ones also serve as the *StrictEqual names of both.
 const flavour = (strict: boolean) => ({...equalPair(strict), ...deepEqualPair(strict)})
 
-const match = (value: string, regExp: RegExp, message?: string | Error): void => {
+const match: declared.TAL.Assert["match"] = (value, regExp, message) => {
     if (regExp.test(value)) return
     if (isError(message)) throw message
     throw new AssertionError({
@@ -62,12 +62,28 @@ const match = (value: string, regExp: RegExp, message?: string | Error): void =>
     })
 }
 
-const doesNotMatch = (value: string, regExp: RegExp, message?: string | Error): void => {
+const doesNotMatch: declared.TAL.Assert["doesNotMatch"] = (value, regExp, message) => {
     if (!regExp.test(value)) return
     if (isError(message)) throw message
     throw new AssertionError({
         message: message ?? `${stringify(value)} matched ${regExp}`,
         actual: value, expected: regExp, operator: "doesNotMatch",
+    })
+}
+
+const fail: declared.TAL.Assert["fail"] = (message) => {
+    if (isError(message)) throw message
+    throw new AssertionError({
+        message: message ?? "Failed",
+        operator: "fail",
+    })
+}
+
+const ifError: declared.TAL.Assert["ifError"] = (value) => {
+    if (value == null) return
+    throw new AssertionError({
+        message: `ifError got unwanted exception: ${messageOf(value)}`,
+        actual: value, operator: "ifError",
     })
 }
 
@@ -86,13 +102,7 @@ export const createAssert = (): AssertControl => {
     const looseOnly = flavour(false)
 
     const shared = {
-        fail: (message?: string | Error): never => {
-            if (isError(message)) throw message
-            throw new AssertionError({
-                message: message ?? "Failed",
-                operator: "fail",
-            })
-        },
+        fail,
         strictEqual: strictOnly.equal,
         notStrictEqual: strictOnly.notEqual,
         deepStrictEqual: strictOnly.deepEqual,
@@ -105,14 +115,6 @@ export const createAssert = (): AssertControl => {
         doesNotMatch,
     }
 
-    const ifError = (value: unknown): void => {
-        if (value == null) return
-        throw new AssertionError({
-            message: `ifError got unwanted exception: ${messageOf(value)}`,
-            actual: value, operator: "ifError",
-        })
-    }
-
     // For t.assert, which in node:test carries the loose equal / deepEqual
     // like the plain assert. ok / ifError are plain checks here, not
     // assertion signatures.
@@ -123,11 +125,12 @@ export const createAssert = (): AssertControl => {
         ((value: unknown, message?: string | Error) => ok(value, message)) as declared.TAL.Assert,
         shared,
         own,
-        {ok, ifError: ifError as declared.TAL.Assert["ifError"]},
+        {ok, ifError},
     )
 
     const strict = callable(strictOnly)
     const assert = callable(looseOnly)
+
     // As in node, `.strict` leads to the strict one from either.
     assert.strict = strict
     strict.strict = strict

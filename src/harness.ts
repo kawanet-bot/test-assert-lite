@@ -10,20 +10,20 @@ import {createHarnessState} from "./session/state.ts"
 export const createTAL: typeof declared.createTAL = () => {
     const state = createHarnessState()
     const sessions = createSessions(state)
-    const assert = createAssert()
-    const {schedule, end} = createScheduler(state, sessions, assert.methods)
+    const {assert, methods, strict} = createAssert()
+    const {schedule, end} = createScheduler(state, sessions, methods)
     const {suite, test, before, after} = createRegistrar(state, schedule)
 
     return {
         after,
-        assert: assert.assert,
+        assert,
         before,
         describe: suite,
         end,
         it: test,
         reporter,
         session: sessions.session,
-        strict: assert.strict,
+        strict,
         suite,
         test,
     }
