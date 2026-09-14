@@ -12,9 +12,9 @@
          suites added at the end of the head. -->
     <script type="module">
         // Module scripts run once the page is parsed, in order: this one
-        // first, the suites the CLI adds after it. The build by its own URL,
-        // since the import map comes later in the head.
-        import {reporter, session} from "/@tal/dist/test-assert-lite.min.js";
+        // first, the suites the CLI adds after it. The import map the CLI
+        // puts ahead of this script gives the package's name.
+        import {reporter, session} from "test-assert-lite";
 
         session({
             format: reporter.html(),
@@ -26,7 +26,7 @@
 <h1>{{title}}</h1>
 <div id="output"></div>
 <script type="module">
-    import {run} from "/@tal/dist/test-assert-lite.min.js";
+    import {run} from "test-assert-lite";
 
     await run().catch(console.error);
 </script>

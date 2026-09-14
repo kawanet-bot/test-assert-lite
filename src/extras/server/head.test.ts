@@ -1,5 +1,6 @@
 import {strict as assert} from "node:assert"
 import {describe, it} from "node:test"
+import type {HeadMarkup} from "./head.ts"
 import {hasImportMap, withHead} from "./head.ts"
 import type {MiddlewareHandler} from "./middleware.ts"
 import {compose, createContext} from "./middleware.ts"
@@ -8,7 +9,7 @@ const TITLE = "extras/server/head.test.ts"
 
 // Runs `markup` ahead of an answer of `body` with `type`, and gives back
 // what came out.
-const through = async (markup: string | ((html: string, path: string) => string), body: string | null, type?: string, status = 200): Promise<{status: number, type: string | null, body: string}> => {
+const through = async (markup: string | HeadMarkup | ((html: string, path: string) => string), body: string | null, type?: string, status = 200): Promise<{status: number, type: string | null, body: string}> => {
     const answer: MiddlewareHandler = async c => c.body(body, status, type == null ? {} : {"content-type": type})
     const c = createContext(new Request("http://127.0.0.1/page.html"))
     await compose([withHead(markup), answer])(c, async () => undefined)
@@ -46,6 +47,16 @@ describe(TITLE, () => {
         for (const tag of ['<script type="module">', '<script type="importmapx">', '<script data-type="importmap">', "<script>", '<meta type="importmap">']) {
             assert.equal(hasImportMap(`<head>${tag}</script></head>`), false, tag)
         }
+    })
+
+    // What has to precede every script, the import map, goes ahead of the
+    // head's first one, whatever kind it is; a script in the body is no bar.
+    it("puts what goes ahead before the first script of the head, and before </head> where there is none", async () => {
+        const markup: HeadMarkup = {ahead: "<map>", end: "<end>"}
+        assert.equal((await through(markup, '<head><meta><script type="module">1</script><script>2</script></head><body></body>', "text/html")).body, '<head><meta><map><script type="module">1</script><script>2</script><end></head><body></body>')
+        assert.equal((await through(markup, "<head><meta><SCRIPT>1</SCRIPT></head>", "text/html")).body, "<head><meta><map><SCRIPT>1</SCRIPT><end></head>")
+        assert.equal((await through(markup, "<head><meta></head><body><script>1</script></body>", "text/html")).body, "<head><meta><map><end></head><body><script>1</script></body>")
+        assert.equal((await through({end: "<end>"}, "<head><script>1</script></head>", "text/html")).body, "<head><script>1</script><end></head>")
     })
 
     it("leaves a page without a </head> as it came", async () => {

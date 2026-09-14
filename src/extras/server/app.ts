@@ -77,12 +77,10 @@ export const createApp = (options: AppOptions): App => {
     // library loads as the suites import it; only the scripts go in as tags.
     const scriptUrls = scripts.map(script => served.urlOf(script))
 
-    // The map has to be inline and in place before the first module loads;
-    // classic script tags run in order as the head is parsed, and module
-    // tags in order once it is, the suites in the order given as under
-    // Node, ahead of the page's own module in the body that calls run(). So
-    // all three go into the head of every HTML page served from htdocs/,
-    // and of the run's page, as it goes out.
+    // The map goes ahead of the page's first script, so the page's own
+    // module imports the package by name; the scripts and the suites go
+    // at the end of the head, the suites in the order given as under Node,
+    // ahead of the page's module in the body that calls run().
     const importmap = `<script type="importmap">\n${JSON.stringify({imports: imports.addresses(file => served.urlOf(file))}, null, 4)}\n</script>\n`
     const tags = scriptUrls.map(url => `<script src="${url}"></script>\n`).join("")
         + suites.map(suite => `<script type="module" src="${served.urlOf(suite)}"></script>\n`).join("")
@@ -90,7 +88,7 @@ export const createApp = (options: AppOptions): App => {
     // is not for a browser, and without this one the suites cannot load,
     // so the scripts and the suites stay out too. stderr says so.
     const head = withHead((html, path) => {
-        if (!hasImportMap(html)) return importmap + tags
+        if (!hasImportMap(html)) return {ahead: importmap, end: tags}
         stderr(`import map of its own, left as it is: ${path}\n`)
         return ""
     })
