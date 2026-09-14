@@ -3,10 +3,19 @@
 // per flush, so a burst of a hundred console lines is one round trip.
 // Node's fetch() is all it uses, so it runs anywhere with a base to reach.
 
-import type * as declared from "test-assert-lite"
 import {errorText} from "../utils/tester-error.ts"
 
-type Client = declared.TAL.Client
+export interface Client {
+    /** Tells the CLI the page is up; it waits for this with a timeout. */
+    begin(): Promise<void>
+    /** Text for the CLI's stdout, buffered. */
+    stdout(text: string): void
+    /** A line for the CLI's stderr, buffered. */
+    stderr(item: string | Error): void
+    /** The verdict, sent once the buffers have drained; true alone passes. */
+    end(success: boolean): Promise<void>
+}
+
 type Stream = "stdout" | "stderr"
 
 // How long lines gather before a flush: a test's burst of output becomes
@@ -19,6 +28,13 @@ const FLUSH_MS = 50
 // check runs each second, so the line lands on time rather than a beat late.
 const QUIET_MS = 10_000
 const TICK_MS = 1_000
+
+// stderr holds lines, as node keeps a test's stderr in lines: an Error
+// becomes its text, and a line that lacks its newline gets one.
+export const line = (item: string | Error): string => {
+    const text = errorText(item)
+    return text.endsWith("\n") ? text : `${text}\n`
+}
 
 /**
  * Connects to the CLI at `base`, the run's URL ending in "/". Sending
@@ -50,13 +66,6 @@ export const client = (base: string | URL): Client => {
             void post(stream, text)
         }
         return inflight
-    }
-
-    // stderr holds lines, as node keeps a test's stderr in lines: an Error
-    // becomes its text, and a line that lacks its newline gets one.
-    const line = (item: string | Error): string => {
-        const text = errorText(item)
-        return text.endsWith("\n") ? text : `${text}\n`
     }
 
     const write = (stream: Stream, text: string): void => {

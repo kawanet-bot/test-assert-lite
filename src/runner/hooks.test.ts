@@ -13,7 +13,7 @@ const TITLE = "runner/hooks.test.ts"
 describe(TITLE, () => {
     it("before and after wrap the run", async () => {
         const local = createTAL()
-        local.reporter.output(() => undefined)
+        local.session({output: () => undefined})
         const order: string[] = []
         local.before(() => {
             order.push("before")
@@ -32,7 +32,7 @@ describe(TITLE, () => {
     // A hook belongs to the suite that declares it, scoped as in node:test.
     it("hooks are scoped to the suite that declares them", async () => {
         const local = createTAL()
-        local.reporter.output(() => undefined)
+        local.session({output: () => undefined})
         const order: string[] = []
         local.describe("S", () => {
             local.before(() => {
@@ -57,7 +57,7 @@ describe(TITLE, () => {
     // charges the hook's error to the suite, and still runs after.
     it("a failing before hook cancels the children and still runs after", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         const order: string[] = []
         const setup = new Error("setup")
         local.describe("S", () => {
@@ -89,7 +89,7 @@ describe(TITLE, () => {
     // body's error is the one charged to the suite.
     it("a throwing describe body still runs the hooks declared before the throw", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         const order: string[] = []
         const broken = new Error("body")
         local.describe("S", () => {
@@ -118,7 +118,7 @@ describe(TITLE, () => {
     // the before hooks ahead of the first test, the after hooks once.
     it("root hooks declared around a top-level await wrap the whole run", async () => {
         const local = createTAL()
-        local.reporter.output(() => undefined)
+        local.session({output: () => undefined})
         const order: string[] = []
         local.before(() => {
             order.push("before1")
@@ -156,7 +156,7 @@ describe(TITLE, () => {
 
     it("a failing after hook fails the suite but keeps the children passed", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         const teardown = new Error("teardown")
         local.describe("S", () => {
             local.after(() => {
@@ -179,7 +179,7 @@ describe(TITLE, () => {
     // hook's error to each direct child: tests fail, suites cancel theirs.
     it("a failing root before hook is charged to the direct children", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         const setup = new Error("root setup")
         let ran = 0
         local.before(() => {
@@ -211,7 +211,7 @@ describe(TITLE, () => {
     // A failed setup is never green here.
     it("a failing root before hook with no children still fails the run", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         local.before(() => {
             throw new Error("root setup")
         })
@@ -226,7 +226,7 @@ describe(TITLE, () => {
     // repeated under the before hook's name.
     it("a failing root after hook with no children is reported once", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         local.after(() => {
             throw new Error("root teardown")
         })
@@ -238,7 +238,7 @@ describe(TITLE, () => {
 
     it("a failing root after hook is reported without being counted", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         local.after(() => {
             throw new Error("root teardown")
         })
@@ -254,7 +254,7 @@ describe(TITLE, () => {
     // carrying the parent's error, but the count goes to skipped.
     it("a skipped test under a failing before hook stays skipped", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         local.describe("S", () => {
             local.before(() => {
                 throw new Error("setup")
@@ -275,7 +275,7 @@ describe(TITLE, () => {
     // the skipped suite is the only place the failure can be reported.
     it("a failing root before hook still fails a run of skipped children", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         const setup = new Error("root setup")
         local.before(() => {
             throw setup
@@ -297,7 +297,7 @@ describe(TITLE, () => {
     // children, and its report covers the time that took.
     it("a cancelled suite reports the time its body took", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         local.before(() => {
             throw new Error("root setup")
         })
@@ -313,7 +313,7 @@ describe(TITLE, () => {
 
     it("cancellation reaches the grandchildren", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         local.describe("P", () => {
             local.before(() => {
                 throw new Error("setup")

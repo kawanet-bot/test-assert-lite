@@ -16,7 +16,7 @@ describe(TITLE, () => {
     // when the walk reaches it.
     it("runs children in declaration order", async () => {
         const local = createTAL()
-        local.reporter.output(() => undefined)
+        local.session({output: () => undefined})
         const order: string[] = []
         local.it("top1", () => {
             order.push("top1")
@@ -37,7 +37,7 @@ describe(TITLE, () => {
 
     it("describe nesting increases the reported nesting", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         local.describe("outer", () => {
             local.describe("inner", () => {
                 local.it("deep", () => undefined)
@@ -52,7 +52,7 @@ describe(TITLE, () => {
 
     it("async describe bodies are awaited before their children run", async () => {
         const local = createTAL()
-        local.reporter.output(() => undefined)
+        local.session({output: () => undefined})
         const order: string[] = []
         local.describe("async suite", async () => {
             await new Promise(r => setTimeout(r, 20))
@@ -68,7 +68,7 @@ describe(TITLE, () => {
 
     it("a throwing describe body is reported and flips success", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         local.describe("broken", () => {
             throw new Error("bad suite")
         })
@@ -81,7 +81,7 @@ describe(TITLE, () => {
 
     it("describe.skip does not run the body", async () => {
         const local = createTAL()
-        local.reporter.output(() => undefined)
+        local.session({output: () => undefined})
         let ran = false
         local.describe.skip("skipped suite", () => {
             ran = true
@@ -98,7 +98,7 @@ describe(TITLE, () => {
     // in t.test(), so its message says so.
     it("the declaration API is rejected from inside a test body", async () => {
         const local = createTAL()
-        local.reporter.output(() => undefined)
+        local.session({output: () => undefined})
         const caught: string[] = []
         const attempt = (fn: () => void) => {
             try {
@@ -129,7 +129,7 @@ describe(TITLE, () => {
     // covering hook scope, describe and it interleaving, and grandchildren.
     it("matches the execution order of node:test", async () => {
         const local = createTAL()
-        local.reporter.output(() => undefined)
+        local.session({output: () => undefined})
         const order: string[] = []
         const mark = (s: string) => () => {
             order.push(s)
@@ -162,7 +162,7 @@ describe(TITLE, () => {
     // carries the verdict of everything below it.
     it("a passing suite is reported after its children", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         local.describe("S", () => {
             local.it("a", () => undefined)
         })
@@ -176,7 +176,7 @@ describe(TITLE, () => {
     // a failing child is counted as todo and leaves the suite passing.
     it("describe.todo and it.todo are the static forms of the todo option", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         local.it.todo("static", () => undefined)
         local.describe.todo("DS", () => {
             local.it("ok", () => undefined)
@@ -196,7 +196,7 @@ describe(TITLE, () => {
 
     it("describe.skip is reported as a skipped suite", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         local.describe.skip("S", () => {
             local.it("never", () => undefined)
         })
@@ -214,7 +214,7 @@ describe(TITLE, () => {
     // child once and marks the suite subtestsFailed.
     it("a suite whose child fails is reported as subtestsFailed", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         local.describe("S", () => {
             local.it("bad", () => {
                 throw new Error("x")
@@ -236,7 +236,7 @@ describe(TITLE, () => {
     // The skip decides the test's own count, not whether its suite failed.
     it("a skipped test that failed still fails its suite", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         local.describe("S", () => {
             local.it("skip then throw", (t) => {
                 t.skip("why")
@@ -253,7 +253,7 @@ describe(TITLE, () => {
 
     it("a throwing describe body cancels the children already registered", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         const body = new Error("body")
         local.describe("S", () => {
             local.it("a", () => undefined)
@@ -270,7 +270,7 @@ describe(TITLE, () => {
 
     it("a suite's result carries its own nesting", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         local.describe("S1", () => {
             local.describe("S2", () => {
                 local.before(() => {
@@ -289,7 +289,7 @@ describe(TITLE, () => {
     // node:test numbers the children of each parent from 1, suites and tests together.
     it("testNumber counts within the parent", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         local.describe("S", () => {
             local.it("a", () => undefined)
             local.it("b", () => undefined)

@@ -1,6 +1,6 @@
 // The CLI's side of the channel to the page it drives: the run's own path,
 // which only this process and that page know, and the endpoints under it
-// the page reports to, as reporter.client() sends: begin, the two streams
+// the page reports to, as the page's session sends: begin, the two streams
 // and the verdict at the end. What comes in goes to the streams given;
 // nothing changes in the protocol here without a change in the client.
 

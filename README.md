@@ -290,17 +290,20 @@ The browser script exposes the package as `globalThis.TAL`.
 <script src="https://cdn.jsdelivr.net/npm/test-assert-lite/dist/test-assert-lite.min.js"></script>
 <div id="output"></div>
 <script>
-    const {describe, it, strict: assert, reporter, run} = globalThis.TAL
+    const {describe, it, strict: assert, reporter, run, session} = globalThis.TAL
+
+    // The report goes to console.log by default; render it as HTML in the page instead.
+    // session() comes before the first test is declared.
+    session({
+        format: reporter.html(),
+        output: html => document.getElementById("output").insertAdjacentHTML("beforeend", html),
+    })
 
     describe("URL", () => {
         it("keeps the host", () => {
             assert.equal(new URL("https://example.com/a?b").host, "example.com")
         })
     })
-
-    // The report goes to console.log by default; render it as HTML in the page instead
-    reporter.format(reporter.html())
-    reporter.output(html => document.getElementById("output").insertAdjacentHTML("beforeend", html))
 
     // run() runs every test registered so far and resolves with the summary
     run().then(summary => console.log(summary.success ? "PASS" : "FAIL"))

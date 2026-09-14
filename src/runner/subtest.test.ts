@@ -14,7 +14,7 @@ const TITLE = "runner/subtest.test.ts"
 describe(TITLE, () => {
     it("t.test() runs the subtest ahead of the rest of the parent", async () => {
         const local = createTAL()
-        local.reporter.output(() => undefined)
+        local.session({output: () => undefined})
         const order: string[] = []
         local.it("parent", async (t) => {
             order.push("parent start")
@@ -33,7 +33,7 @@ describe(TITLE, () => {
     // so this errs on the safer side.
     it("an unawaited subtest still finishes before the parent is reported", async () => {
         const local = createTAL()
-        local.reporter.output(() => undefined)
+        local.session({output: () => undefined})
         const order: string[] = []
         local.it("parent", async (t) => {
             void t.test("child", async () => {
@@ -52,7 +52,7 @@ describe(TITLE, () => {
     // node:test fails the parent as subtestsFailed, so both are counted.
     it("a failing subtest fails the parent as well", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         local.it("parent", async (t) => {
             await t.test("bad child", () => {
                 throw new Error("boom")
@@ -70,7 +70,7 @@ describe(TITLE, () => {
 
     it("an unawaited failing subtest still fails the parent", async () => {
         const local = createTAL()
-        local.reporter.output(() => undefined)
+        local.session({output: () => undefined})
         local.it("parent", async (t) => {
             void t.test("bad child", () => {
                 throw new Error("boom")
@@ -86,7 +86,7 @@ describe(TITLE, () => {
     // await before the parent's next statement runs.
     it("the first subtest starts before t.test() returns", async () => {
         const local = createTAL()
-        local.reporter.output(() => undefined)
+        local.session({output: () => undefined})
         const order: string[] = []
         local.it("parent", async (t) => {
             const pending = t.test("child", () => {
@@ -105,7 +105,7 @@ describe(TITLE, () => {
     // take the sibling for a suite heading.
     it("unawaited subtests run one after another", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         const order: string[] = []
         local.it("parent", async (t) => {
             void t.test("slow", async () => {
@@ -129,7 +129,7 @@ describe(TITLE, () => {
     // its body settles later, goes nowhere.
     it("a parent that throws cancels the subtest still running", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         let settled = false
         local.it("parent", async (t) => {
             void t.test("child", async () => {
@@ -156,7 +156,7 @@ describe(TITLE, () => {
 
     it("a parent that throws cancels the queued subtests without running them", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         let ran = false
         local.it("parent", async (t) => {
             void t.test("running", async () => {
@@ -179,7 +179,7 @@ describe(TITLE, () => {
     // fails as parentAlreadyFinished, as node:test files it.
     it("a subtest declared by a cancelled child goes to the root", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         local.it("parent", async (t) => {
             void t.test("child", async (inner) => {
                 await new Promise(r => setTimeout(r, 20))
@@ -201,7 +201,7 @@ describe(TITLE, () => {
 
     it("subtests are numbered within their parent", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         local.it("parent", async (t) => {
             await t.test("c1", () => undefined)
             await t.test("c2", () => undefined)

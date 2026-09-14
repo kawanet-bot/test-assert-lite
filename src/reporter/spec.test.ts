@@ -29,8 +29,10 @@ describe(TITLE, () => {
 
             const local = createTAL()
             const lines: string[] = []
-            local.reporter.output(text => {
-                lines.push(text)
+            local.session({
+                output: text => {
+                    lines.push(text)
+                },
             })
             local.it("colored", () => undefined)
             await local.run()
@@ -50,8 +52,10 @@ describe(TITLE, () => {
         if ("undefined" !== typeof process && process.stdout.isTTY) return
         const local = createTAL()
         const lines: string[] = []
-        local.reporter.output(text => {
-            lines.push(text)
+        local.session({
+            output: text => {
+                lines.push(text)
+            },
         })
         local.it("plain", () => undefined)
         await local.run()
@@ -179,9 +183,11 @@ describe(TITLE, () => {
     it("renders a cancelled suite like node:test", async () => {
         const local = createTAL()
         const lines: string[] = []
-        local.reporter.format(local.reporter.spec({colors: false}))
-        local.reporter.output(text => {
-            lines.push(text)
+        local.session({
+            format: local.reporter.spec({colors: false}),
+            output: text => {
+                lines.push(text)
+            },
         })
         local.describe("S", () => {
             local.before(() => {

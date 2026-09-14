@@ -13,7 +13,7 @@ const TITLE = "runner/run.test.ts"
 describe(TITLE, () => {
     it("runs registered tests and counts them", async () => {
         const local = createTAL()
-        local.reporter.output(() => undefined)
+        local.session({output: () => undefined})
         local.it("a", () => undefined)
         local.it("b", () => undefined)
         const summary = await local.run()
@@ -24,7 +24,7 @@ describe(TITLE, () => {
 
     it("nothing runs until run() is called", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         let ran = false
         local.it("later", () => {
             ran = true
@@ -40,7 +40,7 @@ describe(TITLE, () => {
     // both, as node --test does once every file has loaded.
     it("a test declared after an await is run with the earlier ones", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         const order: string[] = []
         local.it("first", () => {
             order.push("first")
@@ -59,7 +59,7 @@ describe(TITLE, () => {
 
     it("reports a failing test and flips success", async () => {
         const local = createTAL()
-        local.reporter.output(() => undefined)
+        local.session({output: () => undefined})
         local.it("bad", () => {
             throw new Error("boom")
         })
@@ -72,7 +72,7 @@ describe(TITLE, () => {
 
     it("tests run in registration order", async () => {
         const local = createTAL()
-        local.reporter.output(() => undefined)
+        local.session({output: () => undefined})
         const order: string[] = []
         local.it("1", async () => {
             await new Promise(r => setTimeout(r, 20))
@@ -88,7 +88,7 @@ describe(TITLE, () => {
 
     it("summary is emitted last and matches the return value", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         local.it("only", () => undefined)
         const summary = await local.run()
 
@@ -100,7 +100,7 @@ describe(TITLE, () => {
     // The caller can read tests to tell an empty run from a successful one.
     it("an empty run resolves with zero counts", async () => {
         const local = createTAL()
-        local.reporter.output(() => undefined)
+        local.session({output: () => undefined})
         const summary = await local.run()
 
         assert.equal(summary.counts.tests, 0)
@@ -109,7 +109,7 @@ describe(TITLE, () => {
 
     it("the summary diagnostics precede the summary event", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         local.it("one", () => undefined)
         await local.run()
 
@@ -123,7 +123,7 @@ describe(TITLE, () => {
 
     it("the summary names this package, after the counts and before the summary event", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         local.it("one", () => undefined)
         await local.run()
 
@@ -136,19 +136,18 @@ describe(TITLE, () => {
     // Registrations are consumed, while reporter settings belong to the harness.
     it("run() resets the registry", async () => {
         const local = createTAL()
-        local.reporter.output(() => undefined)
+        local.session({output: () => undefined})
         local.it("first", () => undefined)
         const first = await local.run()
         assert.equal(first.counts.tests, 1)
 
-        local.reporter.output(() => undefined)
         const second = await local.run()
         assert.equal(second.counts.tests, 0)
     })
 
     it("rejects a concurrent run without running the test twice", async () => {
         const local = createTAL()
-        local.reporter.output(() => undefined)
+        local.session({output: () => undefined})
         let release!: () => void
         const waiting = new Promise<void>(resolve => {
             release = resolve
@@ -178,7 +177,7 @@ describe(TITLE, () => {
 
     it("an anonymous test falls back to the function name", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         local.it(function namedFn() {
             // With no name the function name is used, as in node:test.
         })
@@ -192,7 +191,7 @@ describe(TITLE, () => {
     // anything else is wrapped so that details.error is always an Error.
     it("a thrown Error passes through and a thrown value is wrapped", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         const thrown = new RangeError("as is")
         local.it("error", () => {
             throw thrown

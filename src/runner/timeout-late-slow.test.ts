@@ -26,7 +26,7 @@ describeSlow(TITLE, () => {
     // its own kind at the top level, awaited or not.
     it("a subtest after the timeout is counted as parentAlreadyFinished", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         let ran = 0
         local.it("slow", {timeout: slow(30)}, async (t) => {
             await new Promise(r => setTimeout(r, slow(40)))
@@ -52,7 +52,7 @@ describeSlow(TITLE, () => {
     // node.options carried no skip when it was declared.
     it("a late subtest's own skip is honored", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         local.it("slow", {timeout: slow(30)}, async (t) => {
             await new Promise(r => setTimeout(r, slow(40)))
             await t.test("late", (t2) => {
@@ -70,7 +70,7 @@ describeSlow(TITLE, () => {
     // What a late subtest starts and does not await settles before the summary too.
     it("a late subtest's unawaited subtest settles before the summary", async () => {
         const local = createTAL()
-        local.reporter.output(() => undefined)
+        local.session({output: () => undefined})
         let settled = false
         local.it("slow", {timeout: slow(30)}, async (t) => {
             await new Promise(r => setTimeout(r, slow(40)))
@@ -92,7 +92,7 @@ describeSlow(TITLE, () => {
     // own body, so a subtest it starts announces the late test first.
     it("a late subtest announces itself before its own subtest", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         local.it("slow", {timeout: slow(30)}, async (t) => {
             await new Promise(r => setTimeout(r, slow(40)))
             await t.test("late", async (inner) => {
@@ -110,7 +110,7 @@ describeSlow(TITLE, () => {
     // subtest it had already started.
     it("a late subtest's own timeout does not wait for its body or its subtest", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         const order: string[] = []
         local.it("slow", {timeout: slow(30)}, async (t) => {
             await new Promise(r => setTimeout(r, slow(40)))
@@ -136,7 +136,7 @@ describeSlow(TITLE, () => {
     // body ended, throwing synchronously included.
     it("a late subtest that throws synchronously is still counted and reported", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         local.it("slow", {timeout: slow(30)}, async (t) => {
             await new Promise(r => setTimeout(r, slow(40)))
             await t.test("late", () => {
@@ -155,7 +155,7 @@ describeSlow(TITLE, () => {
     // the verdict, the same as a registered test's does.
     it("a late subtest's own skip survives its own timeout", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         local.it("slow", {timeout: slow(30)}, async (t) => {
             await new Promise(r => setTimeout(r, slow(40)))
             await t.test("late", {timeout: slow(10)}, async (inner) => {
@@ -175,7 +175,7 @@ describeSlow(TITLE, () => {
     // failure event, and counts it as skipped.
     it("a skipped subtest after the timeout stays skipped", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         let ran = false
         local.it("slow", {timeout: slow(30)}, async (t) => {
             await new Promise(r => setTimeout(r, slow(40)))
@@ -196,7 +196,7 @@ describeSlow(TITLE, () => {
     // as the root's next child, so a test still to run keeps its own number.
     it("a late subtest is reported after the registered tests", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         local.it("slow", {timeout: slow(10)}, async (t) => {
             await new Promise(r => setTimeout(r, slow(40)))
             await t.test("late", () => undefined)

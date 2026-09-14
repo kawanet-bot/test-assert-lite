@@ -13,7 +13,7 @@ const TITLE = "runner/skip-todo.test.ts"
 describe(TITLE, () => {
     it("skip option marks the test skipped without running it", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         let ran = false
         local.it("skipped", {skip: "why"}, () => {
             ran = true
@@ -29,7 +29,7 @@ describe(TITLE, () => {
 
     it("it.skip is the static form of the skip option", async () => {
         const local = createTAL()
-        local.reporter.output(() => undefined)
+        local.session({output: () => undefined})
         let ran = false
         local.it.skip("static", () => {
             ran = true
@@ -42,7 +42,7 @@ describe(TITLE, () => {
 
     it("t.skip() does not abort the body", async () => {
         const local = createTAL()
-        local.reporter.output(() => undefined)
+        local.session({output: () => undefined})
         let reached = false
         local.it("runtime skip", (t) => {
             t.skip("later")
@@ -58,7 +58,7 @@ describe(TITLE, () => {
     // skipped; only the child adds to fail.
     it("a runtime skip outranks a failing subtest in the count", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         local.it("parent", async (t) => {
             t.skip("why")
             await t.test("c", () => {
@@ -78,7 +78,7 @@ describe(TITLE, () => {
     // verdict; a failing todo does not fail the run.
     it("todo option runs the test and counts it as todo", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         let ran = 0
         local.it("bare", {todo: true}, () => {
             ran++
@@ -102,7 +102,7 @@ describe(TITLE, () => {
 
     it("t.todo() marks the test from the body", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         local.it("later", (t) => {
             t.todo("later")
         })
@@ -117,7 +117,7 @@ describe(TITLE, () => {
     // A result carries skip or todo, never both, and the count follows the skip.
     it("a skip outranks a todo", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         local.it("declared", {skip: true, todo: true}, () => undefined)
         local.it("called", (t) => {
             t.todo("t")
@@ -134,7 +134,7 @@ describe(TITLE, () => {
     // that fails does not fail its parent.
     it("subtests inherit todo, and a failing todo subtest does not fail its parent", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         local.it("parent", {todo: true}, async (t) => {
             await t.test("child", () => {
                 throw new Error("boom")
@@ -154,7 +154,7 @@ describe(TITLE, () => {
     // still keeps the failure from the run and the parent, as in node:test.
     it("a todo that skips and then fails still does not fail the run or its parent", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         local.it("parent", {todo: true}, async (t) => {
             await t.test("child", (inner) => {
                 inner.skip("why")

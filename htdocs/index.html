@@ -15,15 +15,16 @@
 <body>
 <h1>{{title}}</h1>
 <div id="output"></div>
+<script>
+    // Ahead of the suites, which the CLI put into the head as module
+    // scripts: those run once the page is parsed, this runs now.
+    TAL.session({
+        format: TAL.reporter.html(),
+        output: text => document.querySelector("#output")?.insertAdjacentHTML("beforeend", text),
+    });
+</script>
 <script type="module">
-    // The suites came in the head, put there by the CLI, so they are
-    // registered by now: only the reporter is this page's own, set before
-    // run() reads it.
-    const {reporter, run} = await import("test-assert-lite");
-
-    reporter.format(reporter.html());
-    reporter.output(text => document.querySelector("#output")?.insertAdjacentHTML("beforeend", text));
-    await run().catch(console.error);
+    await TAL.run().catch(console.error);
 </script>
 </body>
 </html>

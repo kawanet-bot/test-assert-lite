@@ -16,7 +16,7 @@ describeSlow(TITLE, () => {
     // node:test files a timeout under cancelled, not failed.
     it("timeout option cancels the test", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         local.it("slow", {timeout: slow(10)}, async () => {
             await new Promise(r => setTimeout(r, slow(200)))
         })
@@ -35,7 +35,7 @@ describeSlow(TITLE, () => {
     // The child is filed under cancelled, the parent under failed.
     it("a timed out subtest fails the parent", async () => {
         const local = createTAL()
-        local.reporter.output(() => undefined)
+        local.session({output: () => undefined})
         local.it("parent", async (t) => {
             await t.test("slow child", {timeout: slow(10)}, async () => {
                 await new Promise(r => setTimeout(r, slow(200)))
@@ -52,7 +52,7 @@ describeSlow(TITLE, () => {
     // waited for, and its own verdict, when it settles, goes nowhere.
     it("a parent's timeout cancels the subtest still running", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         local.it("parent", {timeout: slow(10)}, async (t) => {
             void t.test("child", async () => {
                 await new Promise(r => setTimeout(r, slow(40)))
@@ -75,7 +75,7 @@ describeSlow(TITLE, () => {
     // The parent's verdict stands; the child does not report a second time.
     it("a child's own timeout after its parent's does not report it again", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         local.it("parent", {timeout: slow(10)}, async (t) => {
             void t.test("child", {timeout: slow(30)}, async () => {
                 await new Promise(r => setTimeout(r, slow(100)))
@@ -92,7 +92,7 @@ describeSlow(TITLE, () => {
     // reports it, not the options it was declared with.
     it("a running child's own skip is kept when its parent times out", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         local.it("parent", {timeout: slow(10)}, async (t) => {
             void t.test("child", async (t2) => {
                 t2.skip("why")
@@ -112,7 +112,7 @@ describeSlow(TITLE, () => {
     // does not wait on the body: one that never settles cannot hold it open.
     it("run() does not wait for a timed out body", async () => {
         const local = createTAL()
-        local.reporter.output(() => undefined)
+        local.session({output: () => undefined})
         let settled = false
         local.it("slow", {timeout: slow(10)}, async () => {
             await new Promise(r => setTimeout(r, slow(40)))
@@ -127,7 +127,7 @@ describeSlow(TITLE, () => {
     // What a body does after the run has ended is dropped.
     it("what a timed out body does after the run has ended is dropped", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         let settled = false
         local.it("slow", {timeout: slow(10)}, async (t) => {
             await new Promise(r => setTimeout(r, slow(60)))
@@ -147,7 +147,7 @@ describeSlow(TITLE, () => {
 
     it("a diagnostic after the timeout is dropped", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         local.it("slow", {timeout: slow(10)}, async (t) => {
             t.diagnostic("in time")
             await new Promise(r => setTimeout(r, slow(40)))
@@ -165,7 +165,7 @@ describeSlow(TITLE, () => {
     // declares once the run has ended is dropped rather than run.
     it("root after hooks run without waiting for a timed out body", async () => {
         const local = createTAL()
-        local.reporter.output(() => undefined)
+        local.session({output: () => undefined})
         const order: string[] = []
         local.after(() => {
             order.push("after")
@@ -190,7 +190,7 @@ describeSlow(TITLE, () => {
     // in the next run.
     it("the declaration API stays rejected after the test timed out", async () => {
         const local = createTAL()
-        local.reporter.output(() => undefined)
+        local.session({output: () => undefined})
         let caught: string | undefined
         local.it("slow", {timeout: slow(10)}, async () => {
             await new Promise(r => setTimeout(r, slow(40)))
@@ -204,7 +204,6 @@ describeSlow(TITLE, () => {
         await new Promise(r => setTimeout(r, slow(60)))
 
         assert.equal(caught, "it() cannot be called from inside a test body; use t.test() instead")
-        local.reporter.output(() => undefined)
         const second = await local.run()
         assert.equal(second.counts.tests, 0)
     })
@@ -214,7 +213,7 @@ describeSlow(TITLE, () => {
     // are the suite's own and must be taken.
     it("a suite after a timed out test still declares its tests", async () => {
         const local = createTAL()
-        local.reporter.output(() => undefined)
+        local.session({output: () => undefined})
         local.it("slow", {timeout: slow(10)}, async () => {
             await new Promise(r => setTimeout(r, slow(60)))
         })
