@@ -1,5 +1,5 @@
 import type * as declared from "test-assert-lite"
-import type {Run} from "../suite/tester.ts"
+import type {Run} from "../suite/job.ts"
 import {VERSION} from "../utils/version.ts"
 import {ReportStream} from "./report-stream.ts"
 import type {SessionControl} from "./session.ts"
