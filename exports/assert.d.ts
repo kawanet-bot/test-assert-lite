@@ -1,4 +1,4 @@
-// Declarations for assert.mjs: the root entry's `assert` and `strict`, and
+// Declarations for assert.js: the root entry's `assert` and `strict`, and
 // each method typed off the Assert interface so it cannot drift from it.
 import type {TAL} from "test-assert-lite"
 import {assert} from "test-assert-lite"

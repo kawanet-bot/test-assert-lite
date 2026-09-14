@@ -59,9 +59,9 @@ describe(TITLE, () => {
             const item = alias("node:test=test-assert-lite/test")
             assert.ok(item.isBundled())
             assert.equal(item.isPath(), false)
-            assert.match(item.getPath()!, /exports.test\.mjs$/)
-            assert.equal(item.getAddress(serveFor(item)), "/@tal/exports/test.mjs")
-            assert.match(alias("x=test-assert-lite").getPath()!, /esm.test-assert-lite\.mjs$/)
+            assert.match(item.getPath()!, /exports.test\.js$/)
+            assert.equal(item.getAddress(serveFor(item)), "/@tal/exports/test.js")
+            assert.match(alias("x=test-assert-lite").getPath()!, /dist.test-assert-lite\.js$/)
             assert.equal(alias("x=test-assert-lite").getAddress(serveFor()), "/@tal/dist/test-assert-lite.min.js")
             assert.equal(item.refusal("node"), undefined)
             assert.equal(item.refusal("browser"), undefined)
@@ -148,7 +148,7 @@ describe(TITLE, () => {
             const list = new Imports([alias("node:test=./my-test.mjs")])
             assert.deepEqual([...list.entries().keys()], ["test-assert-lite", "test-assert-lite/test", "test-assert-lite/assert", "test-assert-lite/assert/strict", "node:test", "node:assert", "node:assert/strict"])
             assert.equal(list.entries().get("node:test")?.target, "./my-test.mjs")
-            assert.equal(new Imports([]).entries().get("node:test")?.getAddress(serveFor()), "/@tal/exports/test.mjs")
+            assert.equal(new Imports([]).entries().get("node:test")?.getAddress(serveFor()), "/@tal/exports/test.js")
         })
 
         it("names every path item's file once, losers included, and resolves each specifier to its last item", () => {
@@ -162,7 +162,7 @@ describe(TITLE, () => {
             const items = [alias("a=./one.mjs"), mapped("r", "/r.js")]
             const addresses = new Imports(items).addresses(serveFor(...items))
             assert.equal(addresses["test-assert-lite"], "/@tal/dist/test-assert-lite.min.js")
-            assert.equal(addresses["node:assert"], "/@tal/exports/assert.mjs")
+            assert.equal(addresses["node:assert"], "/@tal/exports/assert.js")
             assert.equal(unhash(addresses["a"]), "/@tal/files/xxxxxxxxx/one.mjs")
             assert.equal(addresses["r"], "/r.js")
         })

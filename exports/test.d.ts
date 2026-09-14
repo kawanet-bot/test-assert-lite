@@ -1,4 +1,4 @@
-// Declarations for test.mjs, borrowed from the root entry's.
+// Declarations for test.js, borrowed from the root entry's.
 import {test} from "test-assert-lite"
 
 export default test

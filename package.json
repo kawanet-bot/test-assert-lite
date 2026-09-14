@@ -36,37 +36,37 @@
   "exports": {
     ".": {
       "types": "./types/test-assert-lite.d.ts",
-      "module-sync": "./esm/test-assert-lite.mjs",
-      "import": "./esm/test-assert-lite.mjs"
+      "module-sync": "./dist/test-assert-lite.js",
+      "import": "./dist/test-assert-lite.js"
     },
     "./extras": {
       "types": "./types/extras.d.ts",
-      "module-sync": "./esm/test-assert-lite.extras.mjs",
-      "import": "./esm/test-assert-lite.extras.mjs"
+      "module-sync": "./dist/test-assert-lite.extras.js",
+      "import": "./dist/test-assert-lite.extras.js"
     },
     "./test": {
-      "types": "./exports/test.d.mts",
-      "module-sync": "./exports/test.mjs",
-      "import": "./exports/test.mjs"
+      "types": "./exports/test.d.ts",
+      "module-sync": "./exports/test.js",
+      "import": "./exports/test.js"
     },
     "./assert": {
-      "types": "./exports/assert.d.mts",
-      "module-sync": "./exports/assert.mjs",
-      "import": "./exports/assert.mjs"
+      "types": "./exports/assert.d.ts",
+      "module-sync": "./exports/assert.js",
+      "import": "./exports/assert.js"
     },
     "./assert/strict": {
-      "types": "./exports/assert/strict.d.mts",
-      "module-sync": "./exports/assert/strict.mjs",
-      "import": "./exports/assert/strict.mjs"
+      "types": "./exports/assert/strict.d.ts",
+      "module-sync": "./exports/assert/strict.js",
+      "import": "./exports/assert/strict.js"
     }
   },
   "files": [
     "bin/cli.mjs",
     "browser/run.html",
     "browser/session/",
+    "dist/test-assert-lite.extras.js",
+    "dist/test-assert-lite.js",
     "dist/test-assert-lite.min.js",
-    "esm/test-assert-lite.extras.mjs",
-    "esm/test-assert-lite.mjs",
     "exports/",
     "htdocs/",
     "LICENSE",
@@ -86,7 +86,7 @@
     "vitest"
   ],
   "license": "MIT",
-  "main": "./dist/test-assert-lite.min.js",
+  "main": "./dist/test-assert-lite.js",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/kawanet/test-assert-lite.git"

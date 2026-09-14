@@ -1,7 +1,7 @@
 // Pins the subpath entries. Each is a re-export of the root entry's objects,
 // so the checks are identity against the root as the package resolves it,
 // and the named lists must not drift from what the root exposes. The
-// declaration assignments make tsc read the bridges' .d.mts too.
+// declaration assignments make tsc read the bridges' .d.ts too.
 import {strict as assert} from "node:assert"
 import {test} from "node:test"
 import * as root from "test-assert-lite"

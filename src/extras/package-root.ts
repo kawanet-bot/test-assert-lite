@@ -1,5 +1,5 @@
 // Package roots, found by walking up to a package.json: this package's
-// own, by name, from wherever this code runs, src/extras/ or esm/, so
+// own, by name, from wherever this code runs, src/extras/ or dist/, so
 // that what the CLI serves or resolves hangs off this copy; and a suite's,
 // the nearest named one above it, for the name a page shows.
 

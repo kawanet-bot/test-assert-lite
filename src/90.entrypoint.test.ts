@@ -13,7 +13,7 @@ const require = createRequire(import.meta.url)
 const runtime: typeof declared = m
 void runtime
 
-// module-sync sends this to the .mjs, since require(esm) exists on every
+// module-sync sends this to the ES module, since require(esm) exists on every
 // version this package declares support for.
 test("require entry", () => {
     const m: typeof declared = require("test-assert-lite")
@@ -33,10 +33,10 @@ test("require entry", () => {
 })
 
 // The exports map has no "require" condition below module-sync, so reach
-// the minified bundle by its path instead: dist/, beside the esm/ the
-// entry resolves into. An ES module, so this is require(esm) too.
+// the minified bundle by its path instead: beside the entry the package
+// resolves to. An ES module, so this is require(esm) too.
 test("minified entry (.min.js)", () => {
-    const m: typeof declared = require(path.join(path.dirname(require.resolve("test-assert-lite")), "..", "dist", "test-assert-lite.min.js"))
+    const m: typeof declared = require(path.join(path.dirname(require.resolve("test-assert-lite")), "test-assert-lite.min.js"))
     assert.equal(typeof m.after, "function")
     assert.equal(typeof m.assert, "function")
     assert.equal(typeof m.before, "function")
@@ -52,7 +52,7 @@ test("minified entry (.min.js)", () => {
     assert.equal(typeof m.test, "function")
 })
 
-test("import entry (.mjs)", () => {
+test("import entry (.js)", () => {
     assert.equal(typeof m.after, "function")
     assert.equal(typeof m.assert, "function")
     assert.equal(typeof m.before, "function")

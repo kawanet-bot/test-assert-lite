@@ -7,11 +7,11 @@ const rollupConfig: RollupOptions = {
     input: "../src/extras/extras.ts",
 
     // Every bare import stays external, the package's own name among
-    // them: from esm/ it resolves through the package's exports.
+    // them: from dist/ it resolves through the package's exports.
     external: [/^[^.\/]/],
 
     output: {
-        file: "../esm/test-assert-lite.extras.mjs",
+        file: "../dist/test-assert-lite.extras.js",
         format: "esm",
     },
 
