@@ -3,10 +3,10 @@
 // registered by then; this follows the same two-phase shape.
 
 import {register} from "node:module"
-import {resolve} from "node:path"
+import {relative, resolve} from "node:path"
 import {pathToFileURL} from "node:url"
 import type {TAL} from "test-assert-lite"
-import {run} from "test-assert-lite"
+import {it, run} from "test-assert-lite"
 import type {Imports} from "../imports.ts"
 
 /** What the hook is handed at registration, and the only place its source and this file meet. */
@@ -39,7 +39,15 @@ export const runInNode = async (suites: string[], imports: Imports): Promise<TAL
     register(`data:text/javascript,${encodeURIComponent(HOOK)}`, {data})
 
     for (const file of suites) {
-        await import(pathToFileURL(resolve(file)).href)
+        try {
+            await import(pathToFileURL(resolve(file)).href)
+        } catch (error) {
+            // A suite that threw while loading is one failed test named
+            // after it, as node --test files it; the rest still run.
+            it(relative(process.cwd(), file), () => {
+                throw error
+            })
+        }
     }
 
     return run()
