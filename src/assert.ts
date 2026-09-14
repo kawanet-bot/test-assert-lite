@@ -1,6 +1,8 @@
 import type * as declared from "test-assert-lite"
 import {AssertionError} from "./assert/assertion-error.ts"
-import {deepEqualPair, looseSame} from "./assert/deep-equal.ts"
+import {deepEqualPair} from "./assert/deep-equal.ts"
+import {equalPair} from "./assert/equal.ts"
+import {doesNotMatch, match} from "./assert/match.ts"
 import {doesNotReject, rejects} from "./assert/rejects.ts"
 import {doesNotThrow, throws} from "./assert/throws.ts"
 import {isError} from "./utils/is-error.ts"
@@ -17,59 +19,9 @@ const ok: declared.TAL.Assert["ok"] = (value, message) => {
     })
 }
 
-type Equality = (actual: unknown, expected: unknown, message?: string | Error) => void
-
-// Strict compares with Object.is: NaN equals NaN, and 0 differs from -0.
-// Loose compares with ==, NaN still equal to itself, as node's equal does.
-const equalPair = (strict: boolean): { equal: Equality, notEqual: Equality } => {
-    const same = strict ? Object.is : looseSame
-
-    const equal: Equality = (actual, expected, message) => {
-        if (same(actual, expected)) return
-        if (isError(message)) throw message
-
-        // Keep the values even when a message is given: without them there
-        // is nothing to start from. node:assert does this for strictEqual alone.
-        const detail = `expected ${stringify(expected)}, got ${stringify(actual)}`
-        throw new AssertionError({
-            message: message == null ? detail : `${message}\n\n${detail}`,
-            actual, expected, operator: strict ? "strictEqual" : "equal",
-        })
-    }
-
-    const notEqual: Equality = (actual, expected, message) => {
-        if (!same(actual, expected)) return
-        if (isError(message)) throw message
-        throw new AssertionError({
-            message: message ?? `expected not ${stringify(expected)}`,
-            actual, expected, operator: strict ? "notStrictEqual" : "notEqual",
-        })
-    }
-
-    return {equal, notEqual}
-}
-
 // The four assertions that come in a strict and a loose flavour; the
 // strict ones also serve as the *StrictEqual names of both.
 const flavour = (strict: boolean) => ({...equalPair(strict), ...deepEqualPair(strict)})
-
-const match: declared.TAL.Assert["match"] = (value, regExp, message) => {
-    if (regExp.test(value)) return
-    if (isError(message)) throw message
-    throw new AssertionError({
-        message: message ?? `${stringify(value)} did not match ${regExp}`,
-        actual: value, expected: regExp, operator: "match",
-    })
-}
-
-const doesNotMatch: declared.TAL.Assert["doesNotMatch"] = (value, regExp, message) => {
-    if (!regExp.test(value)) return
-    if (isError(message)) throw message
-    throw new AssertionError({
-        message: message ?? `${stringify(value)} matched ${regExp}`,
-        actual: value, expected: regExp, operator: "doesNotMatch",
-    })
-}
 
 const fail: declared.TAL.Assert["fail"] = (message) => {
     if (isError(message)) throw message
