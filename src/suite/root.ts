@@ -1,18 +1,18 @@
 import type {HarnessState} from "../session/state.ts"
-import type {Run} from "./tester.ts"
-import {Tester} from "./tester.ts"
+import type {Run} from "./job.ts"
+import {Suite} from "./suite.ts"
 
 // What the top level declares into. The root has no body and no result of
 // its own, and runs on the scheduler's clock rather than in a parent's
 // turn: each walk takes the hooks and the children declared since the
 // last one, and end() asks for the teardown once nothing is left.
-export class Root extends Tester {
+export class Root extends Suite {
     private beforeNext = 0
     private afterNext = 0
     private setupError: Error | undefined
 
     constructor(harness: HarnessState) {
-        super("suite", "", {}, undefined, null, harness)
+        super("", {}, undefined, null, harness)
     }
 
     // The root cannot carry a result, so node:test charges its hook error

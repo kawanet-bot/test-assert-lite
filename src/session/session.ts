@@ -62,7 +62,7 @@ const SERVED = /^\/@tal\/files\/[0-9a-f]{9}\//
 // test body is open, and the walk takes it.
 const capture = (harness: HarnessState, target: EventTarget): (() => void) => {
     const take = (name: string, error: unknown): void => {
-        harness.root.declare("test", name, {}, () => {
+        harness.root.declareTest(name, {}, () => {
             throw error
         })
     }

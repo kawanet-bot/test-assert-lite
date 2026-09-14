@@ -22,7 +22,7 @@ export const createRegistrar = (state: HarnessState, schedule: () => void): Regi
     const suiteBase: declared.TAL.SuiteBase = (...args: Args<SuiteFn>) => {
         if (fromTestBody()) throw new Error("describe() cannot be called from inside a test body")
         const {name, options, fn} = normalize<SuiteFn>(args)
-        state.current.declare("suite", nameOf(name, fn), options, fn)
+        state.current.declareSuite(nameOf(name, fn), options, fn)
         if (state.current === state.root) schedule()
     }
 
@@ -41,7 +41,7 @@ export const createRegistrar = (state: HarnessState, schedule: () => void): Regi
     const testBase: declared.TAL.TestBase = (...args: Args<TestFn>) => {
         if (fromTestBody()) throw new Error("it() cannot be called from inside a test body; use t.test() instead")
         const {name, options, fn} = normalize<TestFn>(args)
-        state.current.declare("test", nameOf(name, fn), options, fn)
+        state.current.declareTest(nameOf(name, fn), options, fn)
         if (state.current === state.root) schedule()
     }
 
