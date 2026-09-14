@@ -49,18 +49,18 @@ const timeoutAfter = (ms: number): {promise: Promise<never>, error: TesterError,
 // parent declares it, then starts it in turn; the test decides its own
 // verdict and reports itself, unless the parent gave up first, in which
 // case the parent's verdict is handed down and reported for it.
-export class Test {
+export class Tester {
     readonly kind: Kind
     readonly name: string
     readonly options: TestOptions
     readonly fn: TestFn | SuiteFn | undefined
-    readonly parent: Test | null
+    readonly parent: Tester | null
     readonly harness: HarnessState
     readonly nesting: number
     readonly testNumber: number
     readonly before: HookFn[] = []
     readonly after: HookFn[] = []
-    readonly children: Test[] = []
+    readonly children: Tester[] = []
 
     // The failure a late subtest carries from the start: node:test files it
     // as parentAlreadyFinished whatever its body does.
@@ -100,7 +100,7 @@ export class Test {
     // while the subtest, already settled itself, is still reporting.
     private finish: Promise<unknown> | undefined
 
-    constructor(kind: Kind, name: string, options: TestOptions, fn: TestFn | SuiteFn | undefined, parent: Test | null, harness: HarnessState) {
+    constructor(kind: Kind, name: string, options: TestOptions, fn: TestFn | SuiteFn | undefined, parent: Tester | null, harness: HarnessState) {
         this.kind = kind
         this.name = name
         this.options = options
@@ -114,8 +114,8 @@ export class Test {
 
     // Declares a child in the next slot. A child of a settled parent is
     // closed on the spot, with the parent's verdict handed down.
-    declare(kind: Kind, name: string, options: TestOptions, fn: TestFn | SuiteFn | undefined): Test {
-        const child = new Test(kind, name, options, fn, this, this.harness)
+    declare(kind: Kind, name: string, options: TestOptions, fn: TestFn | SuiteFn | undefined): Tester {
+        const child = new Tester(kind, name, options, fn, this, this.harness)
         // A child of a running parent may be reported before it starts.
         if (this.run != null) child.run = this.run
         this.children.push(child)
@@ -202,7 +202,7 @@ export class Test {
     // fails as parentAlreadyFinished whatever its body does.
     private lateSubtest(name: string, options: TestOptions, fn: TestFn | undefined): Promise<void> {
         if (this.run.closed) return Promise.resolve()
-        let root: Test = this
+        let root: Tester = this
         while (root.parent != null) root = root.parent
         const child = root.declare("test", name, options, fn)
         child.late = parentAlreadyFinished()
@@ -221,7 +221,7 @@ export class Test {
         this.started = true
         this.startedAt = performance.now()
 
-        let closed: Test[] = []
+        let closed: Tester[] = []
         if (this.kind === "suite") await this.runSuite()
         else closed = await this.runTest()
         // The parent gave up on this test while it ran and reports it, now
@@ -277,17 +277,17 @@ export class Test {
     // with it handed down, deepest first. The list comes back for the
     // caller to report: a test reports its subtests here, running or
     // queued, while a suite reports its children as it starts each in turn.
-    protected settle(error?: Error, timedOut = false): Test[] {
+    protected settle(error?: Error, timedOut = false): Tester[] {
         if (this.settled) return []
         this.settled = true
         this.endedAt = performance.now()
         this.cancelled = timedOut && this.late == null
         if (error != null) this.error = this.late ?? error
         else if (this.late != null) this.error = this.late
-        const closed: Test[] = []
+        const closed: Tester[] = []
         const verdict = this.verdictForChildren
         if (verdict != null) {
-            const collect = (parent: Test, handed: Verdict): void => {
+            const collect = (parent: Tester, handed: Verdict): void => {
                 for (const child of parent.children) {
                     if (child.settled) continue
                     collect(child, {error: cancelledByParent(), outcome: "cancelled"})
@@ -371,7 +371,7 @@ export class Test {
 
     // ---- test ----
 
-    private async runTest(): Promise<Test[]> {
+    private async runTest(): Promise<Tester[]> {
         const skip = skipOf(this.options)
         if (skip != null || this.fn == null) {
             this.settle()
@@ -388,7 +388,7 @@ export class Test {
 
         let error: Error | undefined
         let failedSubtests = 0
-        let closed: Test[] = []
+        let closed: Tester[] = []
         try {
             const {timeout} = this.options
             if (timeout != null && timeout > 0) {
