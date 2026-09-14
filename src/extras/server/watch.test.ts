@@ -23,7 +23,14 @@ describe(TITLE, () => {
     let dir: string
     let file: string
     let other: string
+    // The wait is how long an ask waits for a change before a 204, so a
+    // test that expects a change gives it plenty: on a busy runner the
+    // loop can stall past a short wait before the file's events are read,
+    // and the wait would answer first. The 204 is drawn from a second
+    // watcher with a short wait, on a directory nothing ever writes to.
     let watcher: Watcher
+    let quiet: string
+    let brief: Watcher
 
     before(async () => {
         dir = await mkdtemp(join(tmpdir(), "tal-watch-"))
@@ -31,7 +38,10 @@ describe(TITLE, () => {
         other = join(dir, "other.mjs")
         await writeFile(file, "v0")
         await writeFile(other, "v0")
-        watcher = createWatcher([file], 300)
+        watcher = createWatcher([file], 5000)
+        quiet = await mkdtemp(join(tmpdir(), "tal-watch-quiet-"))
+        await writeFile(join(quiet, "still.mjs"), "v0")
+        brief = createWatcher([join(quiet, "still.mjs")], 300)
         // macOS may deliver the writes above after the watch began, and
         // without a name; let them settle before the first ask.
         await sleep(200)
@@ -39,12 +49,14 @@ describe(TITLE, () => {
 
     after(async () => {
         watcher.close()
+        brief.close()
         await rm(dir, {recursive: true, force: true})
+        await rm(quiet, {recursive: true, force: true})
     })
 
     it("holds an ask until the wait runs out, then answers 204", async () => {
         const started = Date.now()
-        assert.deepEqual(await ask(watcher, watcher.version), {status: 204, body: ""})
+        assert.deepEqual(await ask(brief, brief.version), {status: 204, body: ""})
         assert.ok(Date.now() - started >= 250)
     })
 
@@ -58,7 +70,7 @@ describe(TITLE, () => {
         assert.deepEqual(await pending, {status: 200, body: String(before + 1)})
         assert.equal(watcher.version, before + 1)
         assert.deepEqual(await ask(watcher, before), {status: 200, body: String(before + 1)})
-        assert.equal((await ask(watcher, before + 1)).status, 204)
+        assert.equal((await ask(brief, brief.version)).status, 204)
     })
 
     it("sees a file saved by a rename over it, and again after that", async () => {
@@ -74,7 +86,9 @@ describe(TITLE, () => {
     it("ignores another file in the directory", async () => {
         const before = watcher.version
         await writeFile(other, "v1")
-        assert.equal((await ask(watcher, before)).status, 204)
+        // Long past the quiet period, so a change would have counted by now.
+        await sleep(300)
+        assert.equal(watcher.version, before)
     })
 
     it("leaves another path to the next middleware, and refuses another method", async () => {
