@@ -245,6 +245,12 @@ export declare namespace TAL {
          * session reports to the CLI through it. Any other base means nothing.
          */
         base?: string | URL
+        /**
+         * Takes the errors outside the tests, until end(). In a browser:
+         * the window's uncaught errors and unhandled rejections, each one
+         * failed test at the top level. Nothing under Node yet.
+         */
+        capture?: boolean
     }
 
     // Where the console goes: the CLI under a run's URL, Node's own streams,

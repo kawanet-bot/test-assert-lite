@@ -2,6 +2,7 @@ import type * as declared from "test-assert-lite"
 import {client, line} from "./reporter/client.ts"
 import type {ReportStream} from "./reporter/report-stream.ts"
 import {spec} from "./reporter/spec.ts"
+import type {HarnessState} from "./runner/suite.ts"
 
 type FormatFn = declared.TAL.FormatFn
 type OutputFn = declared.TAL.OutputFn
@@ -17,6 +18,8 @@ interface Open {
     end: (success: boolean) => Promise<void>
     // Opened by a declaration rather than by session(): the refusal differs.
     auto: boolean
+    // Lets go of the errors outside the tests, where capture took them.
+    release: () => void
 }
 
 export interface SessionControl {
@@ -45,32 +48,75 @@ const writer = (name: "stdout" | "stderr"): ((text: string) => void) => {
     return text => log(text.replace(/\n$/, ""))
 }
 
-export const createSessions = (): SessionControl => {
+// The suites are served under a digest-named directory; the name a
+// person knows is what follows it.
+const SERVED = /^\/@tal\/files\/[0-9a-f]{9}\//
+
+// A window's uncaught errors and unhandled rejections, each one failed
+// test at the root, named after the script it came from where the event
+// says, as a suite that threw is under Node. Declared on the root itself,
+// since one may arrive while a test body is open, and the walk takes it.
+const capture = (harness: HarnessState): (() => void) => {
+    const take = (name: string, error: unknown): void => {
+        harness.root.declare("test", name, {}, () => {
+            throw error
+        })
+    }
+    const nameOf = (url: string | undefined): string | undefined => {
+        try {
+            return url ? new URL(url).pathname.replace(SERVED, "") : undefined
+        } catch {
+            return url
+        }
+    }
+    const onError = (event: Event): void => {
+        const {error, message, filename} = event as Partial<ErrorEvent>
+        const src = (event.target as {src?: string} | null)?.src
+        const name = nameOf(filename || src) ?? "error"
+        take(name, error ?? new Error(message || `failed to load ${name}`))
+    }
+    const onRejection = (event: Event): void => {
+        take("unhandled rejection", (event as Partial<PromiseRejectionEvent>).reason)
+    }
+    globalThis.addEventListener("error", onError, true)
+    globalThis.addEventListener("unhandledrejection", onRejection)
+    return () => {
+        globalThis.removeEventListener("error", onError, true)
+        globalThis.removeEventListener("unhandledrejection", onRejection)
+    }
+}
+
+export const createSessions = (harness: HarnessState): SessionControl => {
     let current: Open | null = null
 
     const create = (options: SessionOptions, auto: boolean): Open => {
         const {format = spec(), base} = options
         const url = base == null ? null : new URL(base)
+        const opened = (open: Omit<Open, "release" | "auto">): Open => {
+            // Nothing takes the process's errors yet, so under Node the option means nothing.
+            const release = options.capture && "function" === typeof globalThis.addEventListener
+                ? capture(harness)
+                : () => undefined
+            return {...open, auto, release}
+        }
         if (url != null && CHANNEL.test(url.pathname)) {
             const channel = client(url)
             void channel.begin()
-            return {
+            return opened({
                 format,
                 output: options.output ?? (text => channel.stdout(text)),
                 session: {stdout: channel.stdout, stderr: channel.stderr},
                 end: channel.end,
-                auto,
-            }
+            })
         }
         const stdout = writer("stdout")
         const stderr = writer("stderr")
-        return {
+        return opened({
             format,
             output: options.output ?? defaultOutput,
             session: {stdout, stderr: item => stderr(line(item))},
             end: async () => undefined,
-            auto,
-        }
+        })
     }
 
     const session: typeof declared.session = (options = {}) => {
@@ -85,6 +131,7 @@ export const createSessions = (): SessionControl => {
         const open = current
         if (open == null) return
         current = null
+        open.release()
         await open.end(success)
     }
 

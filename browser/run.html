@@ -15,39 +15,31 @@
         import {session} from "test-assert-lite";
 
         // The run's URL is this page's own directory: the session reports
-        // there, and the console and the errors go the same way.
+        // there, takes the errors outside the tests, and the console goes
+        // the same way.
         const {stdout, stderr} = session({
-            base: new URL("./", location.href),
+            base: new URL("./", import.meta.url),
+            capture: true,
             output: text => {
                 document.querySelector("#output")?.append(text);
                 stdout(text);
             },
         });
-        const tal = window["@tal"] = {failed: false};
         for (const level of ["log", "info", "debug"]) console[level] = (...args) => stdout(`${args.join(" ")}\n`);
         for (const level of ["warn", "error"]) console[level] = (...args) => stderr(args.join(" "));
-        addEventListener("error", event => { tal.failed = true; stderr(event.error || event.reason || String(event)); }, true);
-        addEventListener("unhandledrejection", event => { tal.failed = true; stderr(event.reason || String(event)); });
     </script>
 </head>
 <body>
 <pre id="output"></pre>
 <script type="module">
-    // An error before the run, a suite or a script that did not load or
-    // threw, means the run does not start, as under node --test.
     import {end, run} from "test-assert-lite";
 
-    const tal = window["@tal"];
-    if (tal.failed) {
+    try {
+        const summary = await run();
+        await end(summary.success);
+    } catch (error) {
+        console.error(error || "Error");
         await end(false);
-    } else {
-        try {
-            const summary = await run();
-            await end(summary.success && !tal.failed);
-        } catch (error) {
-            console.error(error || "Error");
-            await end(false);
-        }
     }
 </script>
 </body>

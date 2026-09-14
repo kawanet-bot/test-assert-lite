@@ -8,7 +8,7 @@ import {createSessions} from "./session.ts"
 // because suite.ts reaching for runner.ts would close a cycle.
 export const createTAL: typeof declared.createTAL = () => {
     const state = createHarnessState()
-    const sessions = createSessions()
+    const sessions = createSessions(state)
     const assert = createAssert()
     const {schedule, run} = createScheduler(state, sessions, assert.methods)
     const {suite, test, before, after} = createRegistrar(state, schedule)
