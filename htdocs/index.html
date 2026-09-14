@@ -11,20 +11,25 @@
          serves this page with the import map, the classic scripts, the
          library's own build first, and the suites added at the end of the
          head. -->
+    <script type="module">
+        // Module scripts run once the page is parsed, in order: this one
+        // first, the suites the CLI adds after it. The face by its own URL,
+        // since the import map comes later in the head.
+        import {reporter, session} from "/@tal/exports/global.mjs";
+
+        session({
+            format: reporter.html(),
+            output: text => document.querySelector("#output")?.insertAdjacentHTML("beforeend", text),
+        });
+    </script>
 </head>
 <body>
 <h1>{{title}}</h1>
 <div id="output"></div>
-<script>
-    // Ahead of the suites, which the CLI put into the head as module
-    // scripts: those run once the page is parsed, this runs now.
-    TAL.session({
-        format: TAL.reporter.html(),
-        output: text => document.querySelector("#output")?.insertAdjacentHTML("beforeend", text),
-    });
-</script>
 <script type="module">
-    await TAL.run().catch(console.error);
+    import {run} from "/@tal/exports/global.mjs";
+
+    await run().catch(console.error);
 </script>
 </body>
 </html>

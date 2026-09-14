@@ -311,8 +311,8 @@ export declare function end(success: boolean): Promise<void>
 export declare function createTAL(): TAL.TestHarness
 
 /**
- * Runs every registered test, then resets the registry. Reporter format and
- * output settings remain installed for later runs.
+ * Runs every registered test, then resets the registry. The session, its
+ * format and output included, stays open for later runs until end().
  * Resolves once all tests and hooks have finished, the formatter has ended
  * and any asynchronous output has completed. Reporter failures and a
  * formatter that ends before its input reject the returned promise.

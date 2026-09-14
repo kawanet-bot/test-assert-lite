@@ -102,10 +102,7 @@ describe(TITLE, () => {
         assert.match(app.page, /^\/@tal\/run\/[0-9a-z]{9}\/run\.html$/)
         const res = await get(url(app.page))
         assert.equal(res.status, 200)
-        assert.match(res.body, /TAL\.session\(/)
-        // The build once, by the page itself: the CLI adds none to this page.
-        assert.equal(res.body.match(/test-assert-lite\.min\.js/g)?.length, 1)
-        assert.ok(res.body.indexOf("min.js") < res.body.indexOf("<script type=\"importmap\">"))
+        assert.match(res.body, /\bsession\(\{/)
         assert.ok(res.body.includes("<title>fixture-pkg</title>"))
         assert.ok(res.body.includes(`<script type="module" src="${tests}my%20suite.mjs"></script>\n<script type="module" src="${tests}second.mjs"></script>\n</head>`))
         assert.equal((await get(url("/run.html"))).status, 404)

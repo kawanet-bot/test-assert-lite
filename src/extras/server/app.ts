@@ -73,12 +73,10 @@ export const createApp = (options: AppOptions): App => {
     // stays reachable; the suites' directory is the same for all of them.
     const served = createFiles([...suites, ...scripts, ...imports.paths()])
 
-    // The build browsers get is the IIFE, so it goes in as the first classic
-    // script, and the package's name in the map leads to the ES module face
-    // of its global. The run's page loads the build itself, ahead of its own
-    // head, so its session is open before the scripts: it gets none here.
-    const build = served.urlOf(resolve(root, "dist", "test-assert-lite.min.js"))
-    const scriptUrls = scripts.map(script => served.urlOf(script))
+    // The build browsers get is the IIFE, so that is what runs: it goes in
+    // as the first classic script; the package's name in the map leads to
+    // the ES module face of its global, in place of the ESM build.
+    const scriptUrls = [served.urlOf(resolve(root, "dist", "test-assert-lite.min.js")), ...scripts.map(script => served.urlOf(script))]
 
     // The map has to be inline and in place before the first module loads;
     // classic script tags run in order as the head is parsed, and module
@@ -87,13 +85,13 @@ export const createApp = (options: AppOptions): App => {
     // all three go into the head of every HTML page served from htdocs/,
     // and of the run's page, as it goes out.
     const importmap = `<script type="importmap">\n${JSON.stringify({imports: imports.addresses(file => served.urlOf(file))}, null, 4)}\n</script>\n`
-    const tags = (urls: string[]): string => urls.map(url => `<script src="${url}"></script>\n`).join("")
+    const tags = scriptUrls.map(url => `<script src="${url}"></script>\n`).join("")
         + suites.map(suite => `<script type="module" src="${served.urlOf(suite)}"></script>\n`).join("")
     // A page with an import map of its own goes out as it is: a second map
     // is not for a browser, and without this one the suites cannot load,
     // so the scripts and the suites stay out too. stderr says so.
-    const head = (urls: string[]): MiddlewareHandler => withHead((html, path) => {
-        if (!hasImportMap(html)) return importmap + tags(urls)
+    const head = withHead((html, path) => {
+        if (!hasImportMap(html)) return importmap + tags
         stderr(`import map of its own, left as it is: ${path}\n`)
         return ""
     })
@@ -113,12 +111,12 @@ export const createApp = (options: AppOptions): App => {
     const handler = compose([
         channel.handler,
         ...(watcher == null ? [] : [watcher.handler]),
-        scoped(compose([head(scriptUrls), title, serveStatic({path: `${channel.path}run.html`, root: resolve(root, "browser", "run.html")})])),
+        scoped(compose([head, title, serveStatic({path: `${channel.path}run.html`, root: resolve(root, "browser", "run.html")})])),
         ...[...served.own, ...served.dirs].map(dir => serveStatic(dir)),
         // /@tal/ is the CLI's: what none of the mounts above answered ends
         // here, whatever a mount or an upstream at the root would say to it.
         async (c, next) => (c.req.path.startsWith("/@tal/") ? c.notFound() : next()),
-        scoped(compose([...(watcher == null ? [] : [watcher.inject]), head([build, ...scriptUrls]), ...(mounted == null ? [title] : []), atRoot])),
+        scoped(compose([...(watcher == null ? [] : [watcher.inject]), head, ...(mounted == null ? [title] : []), atRoot])),
     ])
 
     return {

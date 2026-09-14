@@ -4,28 +4,30 @@
     <meta charset="utf-8"/>
     <title>{{title}}</title>
     <!-- The page the CLI drives, through Playwright or a WebDriver server
-         alike, served under the run's own URL and reporting back there. The
-         library comes first, by its own URL, so the session is open ahead of
-         what the CLI adds to the head; the <pre> below is for a person
-         watching the browser. index.html, at the root, is the page people open. -->
-    <script src="/@tal/dist/test-assert-lite.min.js"></script>
-    <script>
+         alike, served under the run's own URL and reporting back there;
+         the <pre> below is for a person watching the browser. The CLI adds
+         the import map, the build, the classic scripts and the suites at
+         the end of the head. index.html, at the root, is the page people open. -->
+    <script type="module">
+        // Module scripts run once the page is parsed, in order: this one
+        // first, the suites the CLI adds after it. The face by its own URL,
+        // since the import map comes later in the head.
+        import {session} from "/@tal/exports/global.mjs";
+
         // The run's URL is this page's own directory: the session reports
         // there, and the console and the errors go the same way.
-        (() => {
-            const {stdout, stderr} = TAL.session({
-                base: new URL("./", location.href),
-                output: text => {
-                    document.querySelector("#output")?.append(text);
-                    stdout(text);
-                },
-            });
-            const tal = window["@tal"] = {failed: false};
-            for (const level of ["log", "info", "debug"]) console[level] = (...args) => stdout(`${args.join(" ")}\n`);
-            for (const level of ["warn", "error"]) console[level] = (...args) => stderr(args.join(" "));
-            addEventListener("error", event => { tal.failed = true; stderr(event.error || event.reason || String(event)); }, true);
-            addEventListener("unhandledrejection", event => { tal.failed = true; stderr(event.reason || String(event)); });
-        })();
+        const {stdout, stderr} = session({
+            base: new URL("./", location.href),
+            output: text => {
+                document.querySelector("#output")?.append(text);
+                stdout(text);
+            },
+        });
+        const tal = window["@tal"] = {failed: false};
+        for (const level of ["log", "info", "debug"]) console[level] = (...args) => stdout(`${args.join(" ")}\n`);
+        for (const level of ["warn", "error"]) console[level] = (...args) => stderr(args.join(" "));
+        addEventListener("error", event => { tal.failed = true; stderr(event.error || event.reason || String(event)); }, true);
+        addEventListener("unhandledrejection", event => { tal.failed = true; stderr(event.reason || String(event)); });
     </script>
 </head>
 <body>
@@ -33,7 +35,8 @@
 <script type="module">
     // An error before the run, a suite or a script that did not load or
     // threw, means the run does not start, as under node --test.
-    const {run, end} = TAL;
+    import {end, run} from "/@tal/exports/global.mjs";
+
     const tal = window["@tal"];
     if (tal.failed) {
         await end(false);
