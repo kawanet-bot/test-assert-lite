@@ -10,9 +10,9 @@
          the head. index.html, at the root, is the page people open. -->
     <script type="module">
         // Module scripts run once the page is parsed, in order: this one
-        // first, the suites the CLI adds after it. The build by its own URL,
-        // since the import map comes later in the head.
-        import {session} from "/@tal/dist/test-assert-lite.min.js";
+        // first, the suites the CLI adds after it. The import map the CLI
+        // puts ahead of this script gives the package's name.
+        import {session} from "test-assert-lite";
 
         // The run's URL is this page's own directory: the session reports
         // there, and the console and the errors go the same way.
@@ -35,7 +35,7 @@
 <script type="module">
     // An error before the run, a suite or a script that did not load or
     // threw, means the run does not start, as under node --test.
-    import {end, run} from "/@tal/dist/test-assert-lite.min.js";
+    import {end, run} from "test-assert-lite";
 
     const tal = window["@tal"];
     if (tal.failed) {
