@@ -2,7 +2,7 @@ import {strict as assert} from "node:assert"
 import {after, before, describe, it} from "node:test"
 import {createTAL} from "../index.ts"
 
-const TITLE = "reporter/client.test.ts"
+const TITLE = "session/client.test.ts"
 
 // The CLI's side without a network: fetch() is all the session sends with,
 // so a stand-in takes what goes to the run below and keeps each request's

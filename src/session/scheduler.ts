@@ -1,10 +1,10 @@
 import type * as declared from "test-assert-lite"
-import {ReportStream} from "../reporter/report-stream.ts"
-import type {SessionControl} from "../session.ts"
+import type {HarnessState} from "../runner/suite.ts"
+import {resetHarnessState} from "../runner/suite.ts"
+import type {Run} from "../runner/tester.ts"
 import {VERSION} from "../utils/version.ts"
-import type {HarnessState} from "./suite.ts"
-import {resetHarnessState} from "./suite.ts"
-import type {Run} from "./tester.ts"
+import {ReportStream} from "./report-stream.ts"
+import type {SessionControl} from "./session.ts"
 
 // One cycle of the harness: from the first declaration to the end() that
 // reports it. The tests are held until end() lets them go, so a suite
