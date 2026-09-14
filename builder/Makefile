@@ -17,13 +17,13 @@ EXTRAS_SRC := $(shell find ../src/extras -name '*.ts' -or -name '*.mjs')
 TYPES := $(wildcard ../types/*.d.ts)
 BUILDER_SRC := $(wildcard ./*.ts)
 
-JS_DST := ../dist/test-assert-lite.js
+MJS_DST := ../dist/test-assert-lite.js
 MINJS_DST := ../dist/test-assert-lite.min.js
 EXTRAS_DST := ../dist/test-assert-lite.extras.js
 BROWSER_TEST_DST := ../browser/tests/bundled.mjs
 BUILDER_TEST_DST := ./tests/bundled.mjs
 
-JS_CONFIG := ./rollup-js.config.ts
+MJS_CONFIG := ./rollup-mjs.config.ts
 MINJS_CONFIG := ./rollup-minjs.config.ts
 EXTRAS_CONFIG := ./rollup-extras.config.ts
 BROWSER_TEST_CONFIG := ./rollup-browser-test.config.ts
@@ -33,9 +33,9 @@ BUILDER_TEST_CONFIG := ./rollup-builder-test.config.ts
 # notice an unintended dependency being pulled in. Pre-release, features
 # still land in quick succession, so the headroom is wider than the ~20%
 # over the actual size (round 10KB) it will settle on once published.
-JS_MAX_BYTES := 100000
+MJS_MAX_BYTES := 100000
 
-# Minified build of the same sources, so the cap tracks the plain one at the
+# Minified build of the same sources, so the cap tracks the mjs one at the
 # ratio the two currently show (about a third).
 MINJS_MAX_BYTES := 35000
 
@@ -49,7 +49,7 @@ EXTRAS_MAX_BYTES := 60000
 # so this only guards against gross growth and can stay generous.
 TEST_MAX_BYTES := 300000
 
-ALL := $(JS_DST) $(MINJS_DST) $(EXTRAS_DST) $(BUILDER_TEST_DST)
+ALL := $(MJS_DST) $(MINJS_DST) $(EXTRAS_DST) $(BUILDER_TEST_DST)
 
 # Build/test paths require Node's native TypeScript type-strip (default on
 # Node 22.18+). Older runtimes report BUILDABLE=NO and skip the build.
@@ -72,17 +72,17 @@ is-not-buildable:
 
 # The published bundle. package.json points the package name at it, so the
 # test bundle below resolves to this file rather than to the sources.
-$(JS_DST): $(JS_CONFIG) $(SRC) $(BUILDER_SRC)
+$(MJS_DST): $(MJS_CONFIG) $(SRC) $(BUILDER_SRC)
 	@mkdir -p $(dir $@)
 	../node_modules/.bin/rollup -c $<
 	@ls -l $@
-	@test "$$(wc -c < $@)" -le $(JS_MAX_BYTES) || { echo "ERROR: $@ exceeds $(JS_MAX_BYTES) byte cap" >&2; exit 1; }
+	@test "$$(wc -c < $@)" -le $(MJS_MAX_BYTES) || { echo "ERROR: $@ exceeds $(MJS_MAX_BYTES) byte cap" >&2; exit 1; }
 	@echo ""
 
 # The extras (the CLI as a function) import the library by the package's
 # own name, which resolves from dist/. The executable bin/cli.mjs is
 # hand-written and reaches this by subpath.
-$(EXTRAS_DST): $(EXTRAS_CONFIG) $(EXTRAS_SRC) $(BUILDER_SRC) $(JS_DST)
+$(EXTRAS_DST): $(EXTRAS_CONFIG) $(EXTRAS_SRC) $(BUILDER_SRC) $(MJS_DST)
 	@mkdir -p $(dir $@)
 	../node_modules/.bin/rollup -c $<
 	@ls -l $@
@@ -100,7 +100,7 @@ $(MINJS_DST): $(MINJS_CONFIG) $(SRC) $(BUILDER_SRC)
 # Bundle of the test suites for the browser, with node:test, node:assert
 # and the package name left external for the import map the CLI serves,
 # which points all three at the minified build.
-$(BROWSER_TEST_DST): $(BROWSER_TEST_CONFIG) $(SRC) $(BUILDER_SRC) $(TEST_SRC) $(TYPES) $(JS_DST)
+$(BROWSER_TEST_DST): $(BROWSER_TEST_CONFIG) $(SRC) $(BUILDER_SRC) $(TEST_SRC) $(TYPES) $(MJS_DST)
 	@mkdir -p $(dir $@)
 	../node_modules/.bin/rollup -c $<
 	@# An inlined copy of the library would be a second harness beside the
@@ -114,7 +114,7 @@ $(BROWSER_TEST_DST): $(BROWSER_TEST_CONFIG) $(SRC) $(BUILDER_SRC) $(TEST_SRC) $(
 # Bundle of the test suites with node:test and node:assert left as
 # written: the CLI's resolve hook points both at this package, so the
 # suites exercise the library with the library.
-$(BUILDER_TEST_DST): $(BUILDER_TEST_CONFIG) $(SRC) $(BUILDER_SRC) $(TEST_SRC) $(TYPES) $(JS_DST)
+$(BUILDER_TEST_DST): $(BUILDER_TEST_CONFIG) $(SRC) $(BUILDER_SRC) $(TEST_SRC) $(TYPES) $(MJS_DST)
 	@mkdir -p $(dir $@)
 	../node_modules/.bin/rollup -c $<
 	@# An alias that misses a relative import inlines the sources instead,

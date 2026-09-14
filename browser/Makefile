@@ -9,7 +9,7 @@ SHELL := bash
 
 PLAYWRIGHT_VERSION := 1.62.1
 
-JS_DST := ../dist/test-assert-lite.js
+MJS_DST := ../dist/test-assert-lite.js
 MINJS_DST := ../dist/test-assert-lite.min.js
 EXTRAS_DST := ../dist/test-assert-lite.extras.js
 BROWSER_TEST_DST := ../browser/tests/bundled.mjs
@@ -21,7 +21,7 @@ all: bundled
 # Build tools come from the package's own npm install; `serve` must not
 # pull Playwright in, so the bundle does not depend on install-playwright.
 bundled:
-	$(MAKE) -C ../builder $(JS_DST) $(MINJS_DST) $(EXTRAS_DST) $(BROWSER_TEST_DST)
+	$(MAKE) -C ../builder $(MJS_DST) $(MINJS_DST) $(EXTRAS_DST) $(BROWSER_TEST_DST)
 
 # Keep Playwright out of package.json. CI installs it transiently alongside
 # the project's build dependencies, then downloads only the headless shell.
