@@ -88,11 +88,15 @@ const capture = (harness: HarnessState, target: EventTarget): (() => void) => {
     }
 }
 
+// What takes a listener: a window has it, Node's global does not.
+const isEventTarget = (value: unknown): value is EventTarget =>
+    "function" === typeof (value as Partial<EventTarget> | null | undefined)?.addEventListener
+
 // true is the window, where there is one; under Node, whose errors nothing
 // takes yet, true means nothing. Anything else is listened on as given.
 const targetOf = (capture: SessionOptions["capture"]): EventTarget | undefined => {
-    const target = capture === true ? (globalThis as Partial<EventTarget>) : capture
-    return target && "function" === typeof target.addEventListener ? (target as EventTarget) : undefined
+    const target = capture === true ? globalThis : capture
+    return isEventTarget(target) ? target : undefined
 }
 
 export const createSessions = (harness: HarnessState): SessionControl => {
