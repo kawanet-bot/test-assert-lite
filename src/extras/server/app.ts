@@ -80,7 +80,7 @@ export const createApp = (options: AppOptions): App => {
     // The map goes ahead of the page's first script, so the page's own
     // module imports the package by name; the scripts and the suites go
     // at the end of the head, the suites in the order given as under Node,
-    // ahead of the page's module in the body that calls run().
+    // ahead of the page's module in the body that calls end().
     const importmap = `<script type="importmap">\n${JSON.stringify({imports: imports.addresses(file => served.urlOf(file))}, null, 4)}\n</script>\n`
     const tags = scriptUrls.map(url => `<script src="${url}"></script>\n`).join("")
         + suites.map(suite => `<script type="module" src="${served.urlOf(suite)}"></script>\n`).join("")

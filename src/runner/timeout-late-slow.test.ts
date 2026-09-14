@@ -1,7 +1,7 @@
 import {strict as assert} from "node:assert"
 import {it} from "node:test"
 import {createTAL} from "./../index.ts"
-import {capture, names, ofType} from "./../test-utils/capture.ts"
+import {capture, names, ofType, summaryOf} from "./../test-utils/capture.ts"
 import {describeSlow, slow} from "./../test-utils/slow.ts"
 
 const TITLE = "runner/timeout-late-slow.test.ts"
@@ -38,7 +38,8 @@ describeSlow(TITLE, () => {
             })
         })
         keepOpen(local)
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         assert.equal(ran, 2)
         const late = ofType(events, "test:fail").filter(e => e.data.name.startsWith("late"))
@@ -60,7 +61,8 @@ describeSlow(TITLE, () => {
             })
         })
         keepOpen(local)
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         const late = ofType(events, "test:fail").find(e => e.data.name === "late")?.data
         assert.equal(late?.skip, "why")
@@ -70,7 +72,7 @@ describeSlow(TITLE, () => {
     // What a late subtest starts and does not await settles before the summary too.
     it("a late subtest's unawaited subtest settles before the summary", async () => {
         const local = createTAL()
-        local.session({output: () => undefined})
+        const events = capture(local)
         let settled = false
         local.it("slow", {timeout: slow(30)}, async (t) => {
             await new Promise(r => setTimeout(r, slow(40)))
@@ -82,7 +84,8 @@ describeSlow(TITLE, () => {
             })
         })
         keepOpen(local)
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         assert.equal(settled, true)
         assert.equal(summary.counts.tests, 4)
@@ -100,7 +103,7 @@ describeSlow(TITLE, () => {
             })
         })
         keepOpen(local)
-        await local.run()
+        await local.end()
 
         assert.deepEqual(names(events, "test:start"), ["slow", "keep", "late", "grandchild"])
     })
@@ -125,7 +128,7 @@ describeSlow(TITLE, () => {
             await t.test("late2", () => undefined)
         })
         keepOpen(local)
-        await local.run()
+        await local.end()
 
         assert.deepEqual(order, ["released"])
         const grandchild = ofType(events, "test:fail").find(e => e.data.name === "grandchild")?.data
@@ -144,7 +147,8 @@ describeSlow(TITLE, () => {
             })
         })
         keepOpen(local)
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         const late = ofType(events, "test:fail").find(e => e.data.name === "late")?.data
         assert.equal((late?.details.error as {failureType?: string}).failureType, "parentAlreadyFinished")
@@ -164,7 +168,8 @@ describeSlow(TITLE, () => {
             })
         })
         keepOpen(local)
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         const late = ofType(events, "test:fail").find(e => e.data.name === "late")?.data
         assert.equal(late?.skip, "why")
@@ -184,7 +189,8 @@ describeSlow(TITLE, () => {
             })
         })
         keepOpen(local)
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         assert.equal(ran, false)
         const late = ofType(events, "test:fail").find(e => e.data.name === "late skip")?.data
@@ -205,7 +211,7 @@ describeSlow(TITLE, () => {
             await new Promise(r => setTimeout(r, slow(80)))
         })
         local.it("third", () => undefined)
-        await local.run()
+        await local.end()
 
         const results = events
             .filter(e => e.type === "test:pass" || e.type === "test:fail")

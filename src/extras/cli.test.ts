@@ -5,7 +5,7 @@ import {tmpdir} from "node:os"
 import {join, relative} from "node:path"
 import {after, before, describe, it} from "node:test"
 import type {TAL} from "test-assert-lite"
-import {end, session} from "test-assert-lite"
+import {session} from "test-assert-lite"
 import {CLI} from "./cli.ts"
 
 const TITLE = "extras/cli.test.ts"
@@ -48,11 +48,7 @@ describe(TITLE, () => {
             },
         })
 
-        try {
-            assert.equal(await CLI({args: [broken, fine]}), 1)
-        } finally {
-            await end(false)
-        }
+        assert.equal(await CLI({args: [broken, fine]}), 1)
         const results = events.filter(e => e.type === "test:pass" || e.type === "test:fail").map(e => `${e.type} ${e.data.name}`)
         assert.deepEqual(results, ["test:pass declared before the throw", `test:fail ${relative(process.cwd(), broken)}`, "test:pass in the other suite"])
         const failed = events.find(e => e.type === "test:fail")

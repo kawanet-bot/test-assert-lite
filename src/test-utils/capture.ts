@@ -14,6 +14,13 @@ export const capture = (harness: declared.TAL.TestHarness, options: Omit<declare
     return events
 }
 
+// The run's counts, from the summary event: what end() no longer returns.
+export const summaryOf = (events: declared.TAL.TestEvent[]): declared.TAL.TestSummary => {
+    const summary = events.find(e => e.type === "test:summary")
+    if (summary?.type !== "test:summary") throw new Error("no test:summary event")
+    return summary.data
+}
+
 export const names = (events: declared.TAL.TestEvent[], type: string): string[] =>
     events.filter(e => e.type === type).map(e => (e.data as {name: string}).name)
 

@@ -1,6 +1,7 @@
 import {strict as assert} from "node:assert"
 import {describe, it} from "node:test"
 import {createTAL} from "./index.ts"
+import {capture, names, summaryOf} from "./test-utils/capture.ts"
 
 const TITLE = "reporter.test.ts"
 
@@ -15,7 +16,7 @@ const caught = async (promise: Promise<unknown>): Promise<unknown> => {
 
 describe(TITLE, () => {
 
-    it("rejects run() when the formatter throws", async () => {
+    it("rejects end() when the formatter throws", async () => {
         const local = createTAL()
         const failure = new Error("formatter failed")
         local.session({
@@ -25,10 +26,10 @@ describe(TITLE, () => {
         })
         local.it("one", () => undefined)
 
-        assert.equal(await caught(local.run()), failure)
+        assert.equal(await caught(local.end()), failure)
     })
 
-    it("rejects run() when async formatter work rejects", async () => {
+    it("rejects end() when async formatter work rejects", async () => {
         const local = createTAL()
         const failure = new Error("async formatter failed")
         local.session({
@@ -38,7 +39,7 @@ describe(TITLE, () => {
         })
         local.it("one", () => undefined)
 
-        assert.equal(await caught(local.run()), failure)
+        assert.equal(await caught(local.end()), failure)
     })
 
     it("preserves an undefined reporter rejection reason", async () => {
@@ -52,7 +53,7 @@ describe(TITLE, () => {
         let rejected = false
 
         try {
-            await local.run()
+            await local.end()
         } catch (error) {
             rejected = true
             assert.equal(error, undefined)
@@ -60,7 +61,7 @@ describe(TITLE, () => {
         assert.equal(rejected, true)
     })
 
-    it("rejects run() when sync or async output fails", async () => {
+    it("rejects end() when sync or async output fails", async () => {
         for (const asyncOutput of [false, true]) {
             const local = createTAL()
             const failure = new Error(asyncOutput ? "async output failed" : "output failed")
@@ -73,7 +74,7 @@ describe(TITLE, () => {
             })
             local.it("one", () => undefined)
 
-            assert.equal(await caught(local.run()), failure)
+            assert.equal(await caught(local.end()), failure)
         }
     })
 
@@ -87,7 +88,7 @@ describe(TITLE, () => {
         })
         local.it("one", () => undefined)
 
-        const error = await caught(local.run())
+        const error = await caught(local.end())
         assert.match(String(error), /formatter ended before its input/i)
     })
 
@@ -105,7 +106,7 @@ describe(TITLE, () => {
         })
         local.it("one", () => undefined)
 
-        const error = await caught(local.run())
+        const error = await caught(local.end())
         assert.match(String(error), /formatter ended before its input/i)
     })
 
@@ -122,7 +123,7 @@ describe(TITLE, () => {
         })
         local.it("one", () => undefined)
 
-        const summary = await local.run()
+        const summary = await local.end()
         assert.equal(summary.success, true)
     })
 
@@ -143,13 +144,15 @@ describe(TITLE, () => {
             t.diagnostic("from body")
         })
 
-        assert.equal(await caught(local.run()), failure)
+        assert.equal(await caught(local.end()), failure)
     })
 
-    it("keeps format and output settings for later runs", async () => {
+    // end() closes the session, settings and all: the next run opens one of
+    // its own, with the defaults unless session() is called again.
+    it("a session ends with end(), and the next run opens another", async () => {
         const local = createTAL()
         const output: string[] = []
-        local.session({
+        const settings: NonNullable<Parameters<typeof local.session>[0]> = {
             format: async function* (source) {
                 for await (const event of source) {
                     if (event.type === "test:pass") yield `${event.data.name}\n`
@@ -158,12 +161,13 @@ describe(TITLE, () => {
             output: text => {
                 output.push(text)
             },
-        })
-
+        }
+        local.session(settings)
         local.it("first", () => undefined)
-        await local.run()
+        await local.end()
+        local.session(settings)
         local.it("second", () => undefined)
-        await local.run()
+        await local.end()
 
         assert.equal(output.join(""), "first\nsecond\n")
     })
@@ -177,46 +181,41 @@ describe(TITLE, () => {
         assert.throws(() => local.session({output: () => undefined}), /before the first test is declared/)
     })
 
-    it("session() twice throws until end() closes the first", async () => {
+    it("session() twice throws until end() has closed the first", async () => {
         const local = createTAL()
         local.session({output: () => undefined})
 
         assert.throws(() => local.session({output: () => undefined}), /already open/)
-        await local.end(true)
+        await local.end()
         local.session({output: () => undefined})
     })
 
-    it("end() without a session does nothing", async () => {
+    // end() alone opens the default session and closes it again.
+    it("end() with nothing declared reports an empty run", async () => {
         const local = createTAL()
-        await local.end(true)
+        const events = capture(local)
+        const result = await local.end()
+
+        assert.equal(result.success, true)
+        assert.equal(summaryOf(events).counts.tests, 0)
     })
 
-    it("starts a fresh reporter session after a failed run", async () => {
+    it("a failed end() closes the session too, and the next run starts clean", async () => {
         const local = createTAL()
-        const failure = new Error("first formatter failed")
-        const output: string[] = []
-        let invocation = 0
+        const failure = new Error("formatter failed")
         local.session({
-            format: (source) => {
-                invocation++
-                if (invocation === 1) throw failure
-                return (async function* () {
-                    for await (const event of source) {
-                        if (event.type === "test:pass") yield event.data.name
-                    }
-                })()
-            },
-            output: text => {
-                output.push(text)
+            format: () => {
+                throw failure
             },
         })
-
         local.it("discarded", () => undefined)
-        assert.equal(await caught(local.run()), failure)
-        local.it("recovered", () => undefined)
-        const summary = await local.run()
+        assert.equal(await caught(local.end()), failure)
 
-        assert.equal(summary.counts.tests, 1)
-        assert.equal(output.join(""), "recovered")
+        const events = capture(local)
+        local.it("recovered", () => undefined)
+        const result = await local.end()
+
+        assert.equal(result.success, true)
+        assert.deepEqual(names(events, "test:pass"), ["recovered"])
     })
 })

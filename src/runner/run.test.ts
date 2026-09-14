@@ -1,11 +1,11 @@
 import {strict as assert} from "node:assert"
 import {describe, it} from "node:test"
 import {createTAL} from "./../index.ts"
-import {capture, names, ofType} from "./../test-utils/capture.ts"
+import {capture, names, ofType, summaryOf} from "./../test-utils/capture.ts"
 
 const TITLE = "runner/run.test.ts"
 
-// run() as a whole: what it counts, in what order it runs and reports, and
+// end() as a whole: what it counts, in what order it runs and reports, and
 // how one harness behaves across calls.
 
 // Every test builds its own harness, so the default one stays clean and
@@ -13,16 +13,17 @@ const TITLE = "runner/run.test.ts"
 describe(TITLE, () => {
     it("runs registered tests and counts them", async () => {
         const local = createTAL()
-        local.session({output: () => undefined})
+        const events = capture(local)
         local.it("a", () => undefined)
         local.it("b", () => undefined)
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         assert.deepEqual(summary.counts, {tests: 2, suites: 0, passed: 2, failed: 0, cancelled: 0, skipped: 0, todo: 0})
         assert.equal(summary.success, true)
     })
 
-    it("nothing runs until run() is called", async () => {
+    it("nothing runs until end() is called", async () => {
         const local = createTAL()
         const events = capture(local)
         let ran = false
@@ -32,11 +33,11 @@ describe(TITLE, () => {
 
         assert.equal(ran, false)
         assert.equal(events.length, 0)
-        await local.run()
+        await local.end()
         assert.equal(ran, true)
     })
 
-    // A suite may declare on either side of a top-level await; run() takes
+    // A suite may declare on either side of a top-level await; end() takes
     // both, as node --test does once every file has loaded.
     it("a test declared after an await is run with the earlier ones", async () => {
         const local = createTAL()
@@ -50,7 +51,8 @@ describe(TITLE, () => {
         local.it("second", () => {
             order.push("second")
         })
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         assert.deepEqual(order, ["first", "second"])
         assert.deepEqual(names(events, "test:pass"), ["first", "second"])
@@ -59,11 +61,12 @@ describe(TITLE, () => {
 
     it("reports a failing test and flips success", async () => {
         const local = createTAL()
-        local.session({output: () => undefined})
+        const events = capture(local)
         local.it("bad", () => {
             throw new Error("boom")
         })
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         assert.equal(summary.counts.failed, 1)
         assert.equal(summary.counts.passed, 0)
@@ -81,37 +84,27 @@ describe(TITLE, () => {
         local.it("2", () => {
             order.push("2")
         })
-        await local.run()
+        await local.end()
 
         assert.deepEqual(order, ["1", "2"])
     })
 
-    it("summary is emitted last and matches the return value", async () => {
+    it("the summary is emitted last, and end() resolves with its verdict", async () => {
         const local = createTAL()
         const events = capture(local)
         local.it("only", () => undefined)
-        const summary = await local.run()
+        const result = await local.end()
 
         const last = events.at(-1)
         assert.equal(last?.type, "test:summary")
-        assert.deepEqual(last?.data, summary)
-    })
-
-    // The caller can read tests to tell an empty run from a successful one.
-    it("an empty run resolves with zero counts", async () => {
-        const local = createTAL()
-        local.session({output: () => undefined})
-        const summary = await local.run()
-
-        assert.equal(summary.counts.tests, 0)
-        assert.equal(summary.success, true)
+        assert.deepEqual(result, {success: true})
     })
 
     it("the summary diagnostics precede the summary event", async () => {
         const local = createTAL()
         const events = capture(local)
         local.it("one", () => undefined)
-        await local.run()
+        await local.end()
 
         const messages = events
             .filter(e => e.type === "test:diagnostic")
@@ -125,7 +118,7 @@ describe(TITLE, () => {
         const local = createTAL()
         const events = capture(local)
         local.it("one", () => undefined)
-        await local.run()
+        await local.end()
 
         const messages = events.filter(e => e.type === "test:diagnostic").map(e => String(e.data.message))
         assert.ok(messages.some(message => /^test-assert-lite \d+\.\d+\.\d+/.test(message)), messages.join(", "))
@@ -134,20 +127,21 @@ describe(TITLE, () => {
     })
 
     // Registrations are consumed, while reporter settings belong to the harness.
-    it("run() resets the registry", async () => {
+    it("end() resets the registry", async () => {
         const local = createTAL()
-        local.session({output: () => undefined})
+        const first = capture(local)
         local.it("first", () => undefined)
-        const first = await local.run()
-        assert.equal(first.counts.tests, 1)
+        await local.end()
+        assert.equal(summaryOf(first).counts.tests, 1)
 
-        const second = await local.run()
-        assert.equal(second.counts.tests, 0)
+        const second = capture(local)
+        await local.end()
+        assert.equal(summaryOf(second).counts.tests, 0)
     })
 
-    it("rejects a concurrent run without running the test twice", async () => {
+    it("rejects a concurrent end() without running the test twice", async () => {
         const local = createTAL()
-        local.session({output: () => undefined})
+        const events = capture(local)
         let release!: () => void
         const waiting = new Promise<void>(resolve => {
             release = resolve
@@ -158,21 +152,21 @@ describe(TITLE, () => {
             await waiting
         })
 
-        const first = local.run()
+        const first = local.end()
         const secondError = await (async () => {
             try {
-                await local.run()
+                await local.end()
                 return undefined
             } catch (error) {
                 return error
             }
         })()
         release()
-        const summary = await first
+        await first
 
         assert.match(String(secondError), /already running/)
         assert.equal(executions, 1)
-        assert.equal(summary.counts.tests, 1)
+        assert.equal(summaryOf(events).counts.tests, 1)
     })
 
     it("an anonymous test falls back to the function name", async () => {
@@ -182,7 +176,7 @@ describe(TITLE, () => {
             // With no name the function name is used, as in node:test.
         })
         local.it(() => undefined)
-        await local.run()
+        await local.end()
 
         assert.deepEqual(names(events, "test:pass"), ["namedFn", "<anonymous>"])
     })
@@ -199,7 +193,7 @@ describe(TITLE, () => {
         local.it("string", () => {
             throw "just text"
         })
-        await local.run()
+        await local.end()
 
         const [first, second] = ofType(events, "test:fail").map(e => e.data.details.error as Error & {cause?: unknown, failureType?: string})
         assert.equal(first, thrown)

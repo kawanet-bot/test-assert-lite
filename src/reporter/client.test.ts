@@ -22,10 +22,11 @@ const stub: typeof fetch = (input, init) => {
     return Promise.resolve(new Response(null, {status: 204}))
 }
 
-// A harness per session, since a session stays open until its end().
+// A harness per session, since a session stays open until its end(); the
+// report itself is kept off the channel, so what is seen is what is sent.
 const connect = (base: string | URL) => {
     const local = createTAL()
-    return {...local.session({base}), end: local.end}
+    return {...local.session({base, output: () => undefined}), end: local.end, it: local.it}
 }
 
 const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms))
@@ -45,7 +46,7 @@ describe(TITLE, () => {
         client.stdout("one\n")
         client.stderr("warned\n")
         client.stdout("two\n")
-        await client.end(true)
+        await client.end()
         assert.deepEqual(seen.map(({path}) => path), [
             "/@tal/run/abc/begin",
             "/@tal/run/abc/stdout",
@@ -61,10 +62,10 @@ describe(TITLE, () => {
         seen.length = 0
         const client = connect(RUN)
         for (let i = 0; i < 100; i++) client.stdout(`line ${i}\n`)
-        await client.end(false)
+        await client.end()
         assert.deepEqual(seen.map(({path}) => path), ["/@tal/run/abc/begin", "/@tal/run/abc/stdout", "/@tal/run/abc/end"])
         assert.equal((seen[1]?.body ?? "").split("\n").length - 1, 100)
-        assert.equal(seen[2]?.body, "false")
+        assert.equal(seen[2]?.body, "true")
     })
 
     it("flushes on its own while the run goes on", async () => {
@@ -74,16 +75,19 @@ describe(TITLE, () => {
         await sleep(200)
         assert.deepEqual(seen.map(({path, body}) => `${path} ${JSON.stringify(body)}`), ['/@tal/run/abc/begin ""', '/@tal/run/abc/stdout "early\\n"'])
         client.stdout("late\n")
-        await client.end(true)
+        await client.end()
         assert.equal(seen.length, 4)
         assert.equal(seen[2]?.body, "late\n")
     })
 
-    it("sends anything but true as a failure", async () => {
+    it("sends the run's verdict: false once a test failed", async () => {
         seen.length = 0
         const client = connect(RUN)
-        await client.end("yes" as unknown as boolean)
-        assert.equal(seen[1]?.body, "false")
+        client.it("fails", () => {
+            throw new Error("no")
+        })
+        await client.end()
+        assert.equal(seen.at(-1)?.body, "false")
     })
 
     it("keeps stderr in lines: an Error by its text, a newline where one lacks", async () => {
@@ -92,7 +96,7 @@ describe(TITLE, () => {
         client.stderr("bare")
         client.stderr("ended\n")
         client.stderr(new TypeError("typed"))
-        await client.end(true)
+        await client.end()
         const lines = (seen[1]?.body ?? "").split("\n")
         assert.equal(lines[0], "bare")
         assert.equal(lines[1], "ended")
@@ -103,14 +107,14 @@ describe(TITLE, () => {
     it("takes a URL for the base as well as a string", async () => {
         seen.length = 0
         const client = connect(new URL(RUN))
-        await client.end(true)
+        await client.end()
         assert.deepEqual(seen.map(({path}) => path), ["/@tal/run/abc/begin", "/@tal/run/abc/end"])
     })
 
     it("does not reject when a request fails", async () => {
         const client = connect(GONE)
         client.stdout("lost\n")
-        await client.end(true)
+        await client.end()
     })
 
     // A base outside a run's URL opens no channel: the session reports as
@@ -119,7 +123,7 @@ describe(TITLE, () => {
         seen.length = 0
         const client = connect("http://127.0.0.1:1/")
         client.stdout("")
-        await client.end(true)
+        await client.end()
         assert.equal(seen.length, 0)
     })
 })

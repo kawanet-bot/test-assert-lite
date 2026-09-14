@@ -16,7 +16,7 @@ describe(TITLE, () => {
         local.it("noisy", (t) => {
             t.diagnostic("hello")
         })
-        await local.run()
+        await local.end()
 
         const found = events.find(e => e.type === "test:diagnostic" && e.data.message === "hello")
         assert.ok(found)
@@ -35,7 +35,7 @@ describe(TITLE, () => {
                 caught = e
             }
         })
-        await local.run()
+        await local.end()
 
         assert.ok(caught instanceof Error)
         assert.equal((caught as Error & {code?: string}).code, "ERR_ASSERTION")
@@ -62,7 +62,7 @@ describe(TITLE, () => {
             attempt("strictEqual", () => t.assert.strictEqual(1, "1"))
             attempt("deepStrictEqual", () => t.assert.deepStrictEqual({a: 1}, {a: "1"}))
         })
-        await local.run()
+        await local.end()
 
         assert.deepEqual(outcome, {equal: true, deepEqual: true, strictEqual: false, deepStrictEqual: false})
     })
@@ -74,7 +74,7 @@ describe(TITLE, () => {
         local.it("named", (t) => {
             seen = t.name
         })
-        await local.run()
+        await local.end()
 
         assert.equal(seen, "named")
     })

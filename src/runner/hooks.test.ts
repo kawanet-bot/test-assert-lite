@@ -1,7 +1,7 @@
 import {strict as assert} from "node:assert"
 import {describe, it} from "node:test"
 import {createTAL} from "./../index.ts"
-import {capture, names, ofType} from "./../test-utils/capture.ts"
+import {capture, names, ofType, summaryOf} from "./../test-utils/capture.ts"
 
 const TITLE = "runner/hooks.test.ts"
 
@@ -24,7 +24,7 @@ describe(TITLE, () => {
         local.it("middle", () => {
             order.push("test")
         })
-        await local.run()
+        await local.end()
 
         assert.deepEqual(order, ["before", "test", "after"])
     })
@@ -48,7 +48,7 @@ describe(TITLE, () => {
         local.it("outside", () => {
             order.push("outside")
         })
-        await local.run()
+        await local.end()
 
         assert.deepEqual(order, ["S:before", "inside", "S:after", "outside"])
     })
@@ -74,7 +74,8 @@ describe(TITLE, () => {
                 order.push("b")
             })
         })
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         assert.deepEqual(order, ["after"])
         const fails = ofType(events, "test:fail")
@@ -104,7 +105,7 @@ describe(TITLE, () => {
             })
             throw broken
         })
-        const summary = await local.run()
+        const summary = await local.end()
 
         assert.deepEqual(order, ["before", "after"])
         const fails = ofType(events, "test:fail")
@@ -149,7 +150,7 @@ describe(TITLE, () => {
         local.it("c", () => {
             order.push("c")
         })
-        await local.run()
+        await local.end()
 
         assert.deepEqual(order, ["before1", "before2", "a", "after(A)", "b", "c", "after1", "after2"])
     })
@@ -164,7 +165,8 @@ describe(TITLE, () => {
             })
             local.it("a", () => undefined)
         })
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         assert.deepEqual(names(events, "test:pass"), ["a"])
         const fail = ofType(events, "test:fail")[0]?.data
@@ -196,7 +198,8 @@ describe(TITLE, () => {
                 ran++
             })
         })
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         assert.equal(ran, 0)
         const fails = ofType(events, "test:fail")
@@ -215,7 +218,8 @@ describe(TITLE, () => {
         local.before(() => {
             throw new Error("root setup")
         })
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         assert.deepEqual(names(events, "test:fail"), ["root before hook"])
         assert.equal(summary.counts.tests, 0)
@@ -230,7 +234,7 @@ describe(TITLE, () => {
         local.after(() => {
             throw new Error("root teardown")
         })
-        const summary = await local.run()
+        const summary = await local.end()
 
         assert.deepEqual(names(events, "test:fail"), ["root after hook"])
         assert.equal(summary.success, false)
@@ -243,7 +247,8 @@ describe(TITLE, () => {
             throw new Error("root teardown")
         })
         local.it("a", () => undefined)
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         assert.equal(names(events, "test:fail").length, 1)
         assert.deepEqual(summary.counts, {tests: 1, suites: 0, passed: 1, failed: 0, cancelled: 0, skipped: 0, todo: 0})
@@ -262,7 +267,8 @@ describe(TITLE, () => {
             local.it("skipped", {skip: true}, () => undefined)
             local.it("plain", () => undefined)
         })
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         const skipped = ofType(events, "test:fail").find(e => e.data.name === "skipped")?.data
         assert.equal(skipped?.skip, true)
@@ -284,7 +290,8 @@ describe(TITLE, () => {
         local.describe.skip("SK", () => {
             local.it("x", () => undefined)
         })
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         const fails = ofType(events, "test:fail")
         assert.deepEqual(fails.map(e => `${e.data.name}:${String(e.data.skip)}`), ["skipped:why", "SK:true"])
@@ -305,7 +312,7 @@ describe(TITLE, () => {
             await new Promise(r => setTimeout(r, 20))
             local.it("x", () => undefined)
         })
-        await local.run()
+        await local.end()
 
         const suite = ofType(events, "test:fail").find(e => e.data.name === "S")?.data
         assert.ok((suite?.details.duration_ms ?? -1) >= 10)
@@ -323,7 +330,8 @@ describe(TITLE, () => {
             })
             local.it("p1", () => undefined)
         })
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         assert.deepEqual(names(events, "test:start"), ["P", "C", "g", "p1"])
         assert.deepEqual(names(events, "test:fail"), ["g", "C", "p1", "P"])

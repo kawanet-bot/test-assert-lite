@@ -8,7 +8,7 @@ SHELL := bash
 .NOTPARALLEL:
 
 # Documented runtime named export every consumer shape must expose.
-NAMED_EXPORTS := after assert before createTAL describe end it run session strict suite test
+NAMED_EXPORTS := after assert before createTAL describe end it session strict suite test
 
 # Root of the copy under test: the installed package after `unpack`, or
 # the checkout itself (PKG_ROOT=.) for the publish gate, which runs the
@@ -45,7 +45,7 @@ unpack:
 
 test: test-bundled test-bin test-cli test-esm
 
-# The bundle only registers tests and never calls run() itself, so it
+# The bundle only registers tests and never calls end() itself, so it
 # needs a runner -- $(PKG_ROOT)'s own CLI, matching whichever copy the
 # bundle's own self-reference resolves to. The slow suites, skipped in a
 # plain run, are wanted here: this is the packed copy on every Node line.

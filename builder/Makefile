@@ -136,7 +136,7 @@ test:
 # The suites run twice: once under node:test, then again under the library
 # itself, so a regression in the runner cannot hide behind the real one.
 # The second run goes through the CLI: the bundle only registers tests as
-# a side effect and never calls run() itself.
+# a side effect and never calls end() itself.
 test-full: test-quick
 	cd .. && node --test 'src/**/*.test.ts'
 	cd .. && ./bin/cli.mjs $(BUILDER_TEST_DST:./%=builder/%)

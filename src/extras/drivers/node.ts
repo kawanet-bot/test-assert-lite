@@ -1,12 +1,12 @@
-// Node mode of the CLI. Mocha's CLI loads every test file first and calls
-// run() once at the end, since run() only reports whatever has been
+// Node mode of the CLI. Mocha's CLI loads every test file first and ends
+// the run once at the end, since that only reports whatever has been
 // registered by then; this follows the same two-phase shape.
 
 import {register} from "node:module"
 import {relative, resolve} from "node:path"
 import {pathToFileURL} from "node:url"
 import type {TAL} from "test-assert-lite"
-import {it, run} from "test-assert-lite"
+import {end, it} from "test-assert-lite"
 import type {Imports} from "../imports.ts"
 
 /** What the hook is handed at registration, and the only place its source and this file meet. */
@@ -29,9 +29,9 @@ export const resolve = (specifier, context, next) => {
  * Loads the suites into this process, in the order given, and runs them.
  * The files the hook resolves to are decided here, this package's own
  * from this copy of it, so a suite outside any project, or beside another
- * copy, still lands on the instance run() reads.
+ * copy, still lands on the instance end() reads.
  */
-export const runInNode = async (suites: string[], imports: Imports): Promise<TAL.TestSummary> => {
+export const runInNode = async (suites: string[], imports: Imports): Promise<TAL.SessionResult> => {
     // A Map, so a specifier named like an Object property finds no alias.
     // Every item left for Node is a file: the reading of the options saw to it.
     const aliases = new Map([...imports.entries()].map(([specifier, item]) => [specifier, pathToFileURL(item.getPath() as string).href]))
@@ -50,5 +50,5 @@ export const runInNode = async (suites: string[], imports: Imports): Promise<TAL
         }
     }
 
-    return run()
+    return end()
 }

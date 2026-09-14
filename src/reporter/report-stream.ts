@@ -12,7 +12,7 @@ interface QueueItem {
 
 // Bridges emit() to an async generator formatter. A request for the next
 // event means the previous one has been written, and that is when emit()'s
-// promise settles, so run() stays in step by awaiting emit alone. Until
+// promise settles, so end() stays in step by awaiting emit alone. Until
 // attach() the events are only kept, and emit() settles at once.
 export class ReportStream {
     private format: FormatFn | null = null
@@ -85,7 +85,7 @@ export class ReportStream {
             throw error
         })
         // close() observes the rejection. This handler only prevents an
-        // unhandledRejection in the interval before run() reaches close().
+        // unhandledRejection in the interval before end() reaches close().
         void this.loop.catch(() => undefined)
     }
 

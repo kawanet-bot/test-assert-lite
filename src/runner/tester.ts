@@ -23,13 +23,13 @@ interface Verdict {
     outcome: Outcome
 }
 
-// What one run() shares with every test in it.
+// What one run shares with every test in it.
 export interface Run {
     counters: Counters
     success: boolean
     emit: (type: string, data: declared.TAL.TestEvent["data"]) => Promise<void>
     // t.assert uses the harness's assert, so once it takes options, what a
-    // body sees stays consistent within one run().
+    // body sees stays consistent within one run.
     assert: declared.TAL.AssertMethods
     // Set once the root has nothing left to run. A body that outlived its
     // verdict is not waited for; what it does after this is dropped.

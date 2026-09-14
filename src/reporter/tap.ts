@@ -39,7 +39,7 @@ export const tap = (): FormatFn => async function* (source: AsyncIterable<TestEv
             continue
         }
 
-        // Forwarded as is, run() count and all: TAP has no standard summary
+        // Forwarded as is, the run's counts and all: TAP has no standard summary
         // syntax of its own, so there is no fixed shape here to duplicate.
         if (event.type === "test:diagnostic") {
             yield `# ${escapeText(event.data.message)}\n`

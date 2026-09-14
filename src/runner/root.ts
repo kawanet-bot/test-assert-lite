@@ -5,7 +5,7 @@ import {Test} from "./tester.ts"
 // What the top level declares into. The root has no body and no result of
 // its own, and runs on the scheduler's clock rather than in a parent's
 // turn: each walk takes the hooks and the children declared since the
-// last one, and run() asks for the teardown once nothing is left.
+// last one, and end() asks for the teardown once nothing is left.
 export class Root extends Test {
     private beforeNext = 0
     private afterNext = 0
