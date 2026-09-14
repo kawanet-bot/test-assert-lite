@@ -226,29 +226,34 @@ export declare namespace TAL {
         colors?: boolean
     }
 
+    // The formatters the package ships; `format` in session() takes one.
     interface Reporter {
-        format(fn: FormatFn): void
-        output(fn: OutputFn): void
         spec(options?: SpecOptions): FormatFn
         tap(): FormatFn
         html(): FormatFn
-        /**
-         * The page's side of the channel to the CLI at `base`, the run's URL
-         * ending in "/". Sending never rejects: the page can do nothing
-         * about a CLI that went away.
-         */
-        client(base: string | URL): Client
     }
 
-    interface Client {
-        /** Tells the CLI the page is up; it waits for this with a timeout. */
-        begin(): Promise<void>
-        /** Text for the CLI's stdout, buffered. */
+    // --- session ---
+
+    interface SessionOptions {
+        /** What the run's events are formatted with; `reporter.spec()` unless given. */
+        format?: FormatFn
+        /** Where the formatted text goes; console.log unless given, or the CLI's stdout under a run's URL. */
+        output?: OutputFn
+        /**
+         * The run's URL, ending in "/", when the CLI drives the page: the
+         * session reports to the CLI through it. Any other base means nothing.
+         */
+        base?: string | URL
+    }
+
+    // Where the console goes: the CLI under a run's URL, Node's own streams,
+    // the browser's console otherwise. Sending to the CLI never rejects.
+    interface Session {
+        /** Text for stdout, buffered. */
         stdout(text: string): void
-        /** A line for the CLI's stderr, buffered: an Error by its text, and a newline added when the line lacks one. */
+        /** A line for stderr, buffered: an Error by its text, and a newline added when the line lacks one. */
         stderr(item: string | Error): void
-        /** The verdict, sent once the buffers have drained; true alone passes. */
-        end(success: boolean): Promise<void>
     }
 
     // --- harness ---
@@ -260,9 +265,11 @@ export declare namespace TAL {
         assert: Assert
         before: typeof before
         describe: SuiteAPI
+        end: typeof end
         it: TestAPI
         reporter: Reporter
         run: typeof run
+        session: typeof session
         strict: Assert
         suite: SuiteAPI
         test: TestAPI
@@ -287,11 +294,25 @@ export declare const strict: TAL.Assert
 
 export declare const reporter: TAL.Reporter
 
+/**
+ * Opens the session the tests report in: the format and the output the
+ * run is written with, and where the console goes. Comes before the first
+ * test is declared; a test declared first opens the default session, and
+ * session() throws until end() closes it.
+ */
+export declare function session(options?: TAL.SessionOptions): TAL.Session
+
+/**
+ * Closes the session: under the CLI, sends the verdict once the buffers
+ * have drained. Without a session open, does nothing.
+ */
+export declare function end(success: boolean): Promise<void>
+
 export declare function createTAL(): TAL.TestHarness
 
 /**
- * Runs every registered test, then resets the registry. Reporter format and
- * output settings remain installed for later runs.
+ * Runs every registered test, then resets the registry. The session, its
+ * format and output included, stays open for later runs until end().
  * Resolves once all tests and hooks have finished, the formatter has ended
  * and any asynchronous output has completed. Reporter failures and a
  * formatter that ends before its input reject the returned promise.

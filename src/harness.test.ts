@@ -33,8 +33,8 @@ describe(TITLE, () => {
     it("each harness keeps its own registry", async () => {
         const a = createTAL()
         const b = createTAL()
-        a.reporter.output(() => undefined)
-        b.reporter.output(() => undefined)
+        a.session({output: () => undefined})
+        b.session({output: () => undefined})
 
         a.it("only on a", () => undefined)
         b.it("only on b", () => undefined)
@@ -47,8 +47,8 @@ describe(TITLE, () => {
     it("two harnesses do not share hooks", async () => {
         const a = createTAL()
         const b = createTAL()
-        a.reporter.output(() => undefined)
-        b.reporter.output(() => undefined)
+        a.session({output: () => undefined})
+        b.session({output: () => undefined})
         const order: string[] = []
 
         a.before(() => {
@@ -69,7 +69,7 @@ describe(TITLE, () => {
 
     it("run() resets only its own harness", async () => {
         const local = createTAL()
-        local.reporter.output(() => undefined)
+        local.session({output: () => undefined})
         local.it("once", () => undefined)
 
         assert.equal((await local.run()).counts.tests, 1)
@@ -77,14 +77,14 @@ describe(TITLE, () => {
         assert.equal((await local.run()).counts.tests, 0)
     })
 
-    // The reporter belongs to the harness too, so output cannot leak across.
-    it("each harness owns its reporter", async () => {
+    // The session belongs to the harness too, so output cannot leak across.
+    it("each harness owns its session", async () => {
         const a = createTAL()
         const b = createTAL()
-        const seenByA = capture(a.reporter)
-        const seenByB = capture(b.reporter)
+        const seenByA = capture(a)
+        const seenByB = capture(b)
 
-        assert.notEqual(a.reporter, b.reporter)
+        assert.notEqual(a.session, b.session)
 
         b.it("only on b", () => undefined)
         await b.run()
@@ -96,9 +96,11 @@ describe(TITLE, () => {
     it("output set on one harness does not reach the other", async () => {
         const local = createTAL()
         const lines: string[] = []
-        local.reporter.format(local.reporter.spec({colors: false}))
-        local.reporter.output(text => {
-            lines.push(text)
+        local.session({
+            format: local.reporter.spec({colors: false}),
+            output: text => {
+                lines.push(text)
+            },
         })
 
         local.it("visible", () => undefined)
@@ -121,7 +123,7 @@ describe(TITLE, () => {
 
     it("t.assert comes from the same harness", async () => {
         const local = createTAL()
-        const seen = capture(local.reporter)
+        const seen = capture(local)
         let same = false
         local.it("check", (t) => {
             // t.assert is the loose set, so its equal is the harness's plain

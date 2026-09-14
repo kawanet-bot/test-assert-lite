@@ -1,6 +1,6 @@
 import type * as declared from "test-assert-lite"
-import type {ReporterControl} from "../reporter.ts"
-import type {ReportStream} from "../reporter/report-stream.ts"
+import {ReportStream} from "../reporter/report-stream.ts"
+import type {SessionControl} from "../session.ts"
 import {VERSION} from "../utils/version.ts"
 import type {HarnessState} from "./suite.ts"
 import {resetHarnessState} from "./suite.ts"
@@ -31,14 +31,15 @@ export interface Scheduler {
 
 export const createScheduler = (
     harness: HarnessState,
-    control: ReporterControl,
+    sessions: SessionControl,
     assert: declared.TAL.AssertMethods,
 ): Scheduler => {
     let cycle: Cycle | null = null
     let running = false
 
     const open = (): Cycle => {
-        const stream = control.open()
+        sessions.open()
+        const stream = new ReportStream()
         const run: Run = {
             counters: {tests: 0, suites: 0, passed: 0, failed: 0, cancelled: 0, skipped: 0, todo: 0},
             success: true,
@@ -77,8 +78,7 @@ export const createScheduler = (
         let failed = false
         let failure: unknown
         try {
-            // The reporter takes the settings as they are now.
-            control.attach(current.stream)
+            sessions.attach(current.stream)
             while (current.walk != null) await current.walk
             if (current.failure != null) throw current.failure.error
             // Hooks declared since the last walk, or with no test at all.

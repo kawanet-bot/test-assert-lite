@@ -102,7 +102,7 @@ describe(TITLE, () => {
         assert.match(app.page, /^\/@tal\/run\/[0-9a-z]{9}\/run\.html$/)
         const res = await get(url(app.page))
         assert.equal(res.status, 200)
-        assert.match(res.body, /reporter\.client/)
+        assert.match(res.body, /\bsession\(\{/)
         assert.ok(res.body.includes("<title>fixture-pkg</title>"))
         assert.ok(res.body.includes(`<script type="module" src="${tests}my%20suite.mjs"></script>\n<script type="module" src="${tests}second.mjs"></script>\n</head>`))
         assert.equal((await get(url("/run.html"))).status, 404)

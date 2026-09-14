@@ -12,7 +12,7 @@ const TITLE = "runner/context.test.ts"
 describe(TITLE, () => {
     it("t.diagnostic() emits an info event", async () => {
         const local = createTAL()
-        const events = capture(local.reporter)
+        const events = capture(local)
         local.it("noisy", (t) => {
             t.diagnostic("hello")
         })
@@ -25,7 +25,7 @@ describe(TITLE, () => {
 
     it("t.assert is available on the context", async () => {
         const local = createTAL()
-        local.reporter.output(() => undefined)
+        local.session({output: () => undefined})
         let caught: unknown
         local.it("asserting", (t) => {
             t.assert.equal(1, 1)
@@ -46,7 +46,7 @@ describe(TITLE, () => {
     // *StrictEqual names.
     it("t.assert compares loosely under the plain names, strictly under the strict ones", async () => {
         const local = createTAL()
-        local.reporter.output(() => undefined)
+        local.session({output: () => undefined})
         const outcome: Record<string, boolean> = {}
         const attempt = (name: string, fn: () => void): void => {
             try {
@@ -69,7 +69,7 @@ describe(TITLE, () => {
 
     it("the context carries the test name", async () => {
         const local = createTAL()
-        local.reporter.output(() => undefined)
+        local.session({output: () => undefined})
         let seen = ""
         local.it("named", (t) => {
             seen = t.name

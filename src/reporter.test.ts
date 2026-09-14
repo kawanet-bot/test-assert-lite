@@ -18,8 +18,10 @@ describe(TITLE, () => {
     it("rejects run() when the formatter throws", async () => {
         const local = createTAL()
         const failure = new Error("formatter failed")
-        local.reporter.format(() => {
-            throw failure
+        local.session({
+            format: () => {
+                throw failure
+            },
         })
         local.it("one", () => undefined)
 
@@ -29,8 +31,10 @@ describe(TITLE, () => {
     it("rejects run() when async formatter work rejects", async () => {
         const local = createTAL()
         const failure = new Error("async formatter failed")
-        local.reporter.format(async function* (source) {
-            for await (const _event of source) throw failure
+        local.session({
+            format: async function* (source) {
+                for await (const _event of source) throw failure
+            },
         })
         local.it("one", () => undefined)
 
@@ -39,8 +43,10 @@ describe(TITLE, () => {
 
     it("preserves an undefined reporter rejection reason", async () => {
         const local = createTAL()
-        local.reporter.format(() => {
-            throw undefined
+        local.session({
+            format: () => {
+                throw undefined
+            },
         })
         local.it("one", () => undefined)
         let rejected = false
@@ -58,11 +64,13 @@ describe(TITLE, () => {
         for (const asyncOutput of [false, true]) {
             const local = createTAL()
             const failure = new Error(asyncOutput ? "async output failed" : "output failed")
-            local.reporter.output(asyncOutput
-                ? async () => Promise.reject(failure)
-                : () => {
-                    throw failure
-                })
+            local.session({
+                output: asyncOutput
+                    ? async () => Promise.reject(failure)
+                    : () => {
+                        throw failure
+                    },
+            })
             local.it("one", () => undefined)
 
             assert.equal(await caught(local.run()), failure)
@@ -71,10 +79,12 @@ describe(TITLE, () => {
 
     it("rejects when a formatter ends before consuming its input", async () => {
         const local = createTAL()
-        local.reporter.format(async function* () {
-            yield "stopped\n"
+        local.session({
+            format: async function* () {
+                yield "stopped\n"
+            },
+            output: () => undefined,
         })
-        local.reporter.output(() => undefined)
         local.it("one", () => undefined)
 
         const error = await caught(local.run())
@@ -83,14 +93,16 @@ describe(TITLE, () => {
 
     it("rejects a manual iterator that returns after the summary without reading done", async () => {
         const local = createTAL()
-        local.reporter.format(async function* (source) {
-            const iterator = source[Symbol.asyncIterator]()
-            for (;;) {
-                const result = await iterator.next()
-                if (result.done || result.value.type === "test:summary") return
-            }
+        local.session({
+            format: async function* (source) {
+                const iterator = source[Symbol.asyncIterator]()
+                for (;;) {
+                    const result = await iterator.next()
+                    if (result.done || result.value.type === "test:summary") return
+                }
+            },
+            output: () => undefined,
         })
-        local.reporter.output(() => undefined)
         local.it("one", () => undefined)
 
         const error = await caught(local.run())
@@ -99,13 +111,15 @@ describe(TITLE, () => {
 
     it("allows a manual iterator to finish by reading done", async () => {
         const local = createTAL()
-        local.reporter.format(async function* (source) {
-            const iterator = source[Symbol.asyncIterator]()
-            while (!(await iterator.next()).done) {
-                // Reading until done is the formatter's completion contract.
-            }
+        local.session({
+            format: async function* (source) {
+                const iterator = source[Symbol.asyncIterator]()
+                while (!(await iterator.next()).done) {
+                    // Reading until done is the formatter's completion contract.
+                }
+            },
+            output: () => undefined,
         })
-        local.reporter.output(() => undefined)
         local.it("one", () => undefined)
 
         const summary = await local.run()
@@ -115,13 +129,15 @@ describe(TITLE, () => {
     it("propagates output failure from a synchronous diagnostic()", async () => {
         const local = createTAL()
         const failure = new Error("diagnostic output failed")
-        local.reporter.format(async function* (source) {
-            for await (const event of source) {
-                if (event.type === "test:diagnostic") yield event.data.message
-            }
-        })
-        local.reporter.output(text => {
-            if (text === "from body") throw failure
+        local.session({
+            format: async function* (source) {
+                for await (const event of source) {
+                    if (event.type === "test:diagnostic") yield event.data.message
+                }
+            },
+            output: text => {
+                if (text === "from body") throw failure
+            },
         })
         local.it("one", t => {
             t.diagnostic("from body")
@@ -133,13 +149,15 @@ describe(TITLE, () => {
     it("keeps format and output settings for later runs", async () => {
         const local = createTAL()
         const output: string[] = []
-        local.reporter.format(async function* (source) {
-            for await (const event of source) {
-                if (event.type === "test:pass") yield `${event.data.name}\n`
-            }
-        })
-        local.reporter.output(text => {
-            output.push(text)
+        local.session({
+            format: async function* (source) {
+                for await (const event of source) {
+                    if (event.type === "test:pass") yield `${event.data.name}\n`
+                }
+            },
+            output: text => {
+                output.push(text)
+            },
         })
 
         local.it("first", () => undefined)
@@ -150,26 +168,27 @@ describe(TITLE, () => {
         assert.equal(output.join(""), "first\nsecond\n")
     })
 
-    it("applies configuration changed during a run to the next run", async () => {
+    // A test declared first opens the default session; session() then has
+    // nothing to configure, and says so rather than take settings late.
+    it("session() after a declaration throws", () => {
         const local = createTAL()
-        const firstOutput: string[] = []
-        const secondOutput: string[] = []
-        local.reporter.output(text => {
-            firstOutput.push(text)
-        })
-        local.it("first", () => {
-            local.reporter.output(text => {
-                secondOutput.push(text)
-            })
-        })
-        await local.run()
+        local.it("first", () => undefined)
 
-        local.it("second", () => undefined)
-        await local.run()
+        assert.throws(() => local.session({output: () => undefined}), /before the first test is declared/)
+    })
 
-        assert.match(firstOutput.join(""), /first/)
-        assert.equal(/second/.test(firstOutput.join("")), false)
-        assert.match(secondOutput.join(""), /second/)
+    it("session() twice throws until end() closes the first", async () => {
+        const local = createTAL()
+        local.session({output: () => undefined})
+
+        assert.throws(() => local.session({output: () => undefined}), /already open/)
+        await local.end(true)
+        local.session({output: () => undefined})
+    })
+
+    it("end() without a session does nothing", async () => {
+        const local = createTAL()
+        await local.end(true)
     })
 
     it("starts a fresh reporter session after a failed run", async () => {
@@ -177,17 +196,19 @@ describe(TITLE, () => {
         const failure = new Error("first formatter failed")
         const output: string[] = []
         let invocation = 0
-        local.reporter.format((source) => {
-            invocation++
-            if (invocation === 1) throw failure
-            return (async function* () {
-                for await (const event of source) {
-                    if (event.type === "test:pass") yield event.data.name
-                }
-            })()
-        })
-        local.reporter.output(text => {
-            output.push(text)
+        local.session({
+            format: (source) => {
+                invocation++
+                if (invocation === 1) throw failure
+                return (async function* () {
+                    for await (const event of source) {
+                        if (event.type === "test:pass") yield event.data.name
+                    }
+                })()
+            },
+            output: text => {
+                output.push(text)
+            },
         })
 
         local.it("discarded", () => undefined)

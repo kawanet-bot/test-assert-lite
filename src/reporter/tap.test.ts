@@ -126,9 +126,11 @@ describe(TITLE, () => {
     it("reports a suite failure that has no failing child", async () => {
         const local = createTAL()
         const lines: string[] = []
-        local.reporter.format(local.reporter.tap())
-        local.reporter.output(text => {
-            lines.push(text)
+        local.session({
+            format: local.reporter.tap(),
+            output: text => {
+                lines.push(text)
+            },
         })
         local.describe("outer", () => {
             local.it("child passes", () => undefined)

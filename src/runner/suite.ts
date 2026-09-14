@@ -42,8 +42,8 @@ interface Registrar {
 }
 
 // Binds the four registration functions to one state. A declaration at
-// the root is what starts the walk, as under node:test, so the two that
-// declare tell the scheduler; a hook alone waits for run().
+// the root is what starts the walk, as under node:test, so each of them
+// tells the scheduler.
 export const createRegistrar = (state: HarnessState, schedule: () => void): Registrar => {
     const fromTestBody = (): boolean => state.openBodies > 0 && state.openSuites === 0
 
@@ -91,11 +91,13 @@ export const createRegistrar = (state: HarnessState, schedule: () => void): Regi
     const before: typeof declared.before = (fn) => {
         if (fromTestBody()) throw new Error("before() cannot be called from inside a test body")
         state.current.before.push(fn)
+        if (state.current === state.root) schedule()
     }
 
     const after: typeof declared.after = (fn) => {
         if (fromTestBody()) throw new Error("after() cannot be called from inside a test body")
         state.current.after.push(fn)
+        if (state.current === state.root) schedule()
     }
 
     return {suite, test, before, after}
