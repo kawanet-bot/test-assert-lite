@@ -35,9 +35,8 @@ BUILDER_TEST_CONFIG := ./rollup-builder-test.config.ts
 # over the actual size (round 10KB) it will settle on once published.
 MJS_MAX_BYTES := 100000
 
-# Minified build of the same sources, so the cap tracks the mjs one at the
-# ratio the two currently show (about a third).
-MINJS_MAX_BYTES := 35000
+# Minified build of the same sources. The cap size is noted on README.md
+MINJS_MAX_BYTES := 30720
 
 # The extras bundle externalizes the library, Node builtins and Playwright
 # (see rollup-extras.config.ts) but carries the loopback server, the watch

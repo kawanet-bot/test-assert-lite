@@ -1,9 +1,9 @@
 import {strict as assert} from "node:assert"
 import {describe, it} from "node:test"
-import {createTAL} from "./../index.ts"
-import {capture, names, ofType, summaryOf} from "./../test-utils/capture.ts"
+import {createTAL} from "../index.ts"
+import {capture, names, ofType, summaryOf} from "../test-utils/capture.ts"
 
-const TITLE = "runner/run.test.ts"
+const TITLE = "session/scheduler.test.ts"
 
 // end() as a whole: what it counts, in what order it runs and reports, and
 // how one harness behaves across calls.

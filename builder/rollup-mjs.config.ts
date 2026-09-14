@@ -29,7 +29,7 @@ const rollupConfig: RollupOptions = {
             transforms: ["typescript"],
         }),
 
-        showFiles(),
+        showFiles({deny: /\W(extras|test)\W/}),
     ],
 }
 

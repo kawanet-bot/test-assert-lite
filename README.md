@@ -8,11 +8,11 @@ Run your `node:test` and `node:assert` test files in browsers, as they are.
 
 - The test file stays as written, imports included: the CLI maps `node:test` and `node:assert` to this package
 - From `node:test`: `describe` / `it`, `test` with `t.test()` subtests, `before` / `after`, `skip` and `todo`
-- From `node:assert`: `assert` and `assert.strict`, with `ok`, `equal`, `deepStrictEqual`, `throws`, `rejects`, `match` and the rest
+- From `node:assert`: `assert` and `strict`, with `ok`, `equal`, `deepStrictEqual`, `throws`, `rejects`, `match` and the rest
 - One command per target: this Node.js process, headless Chromium, Firefox and WebKit, or Safari and others over WebDriver
 - `--import-map` works in Node too, which has no import maps of its own: one map file for Node and browsers
-- `--alias node:crypto=...` puts your own implementation under a builtin's name, so one suite tests both
-- One 25 KB script, 9 KB gzipped, no dependencies
+- `--alias node:crypto=sha256-uint8array` puts your own implementation under a builtin's name, so one suite tests both
+- Under 30KB script, under 10KB gzipped, no dependencies
 
 ## SYNOPSIS
 
@@ -41,7 +41,7 @@ describe("buildQuery() from an object", () => {
 })
 ```
 
-The same file runs with Node.js or `test-assert`:
+The same file runs with `node --test` or `test-assert`:
 
 ```sh
 node --test test/query.test.mjs

@@ -1,8 +1,8 @@
 import type * as declared from "test-assert-lite"
-import {client, line} from "./reporter/client.ts"
-import type {ReportStream} from "./reporter/report-stream.ts"
-import {spec} from "./reporter/spec.ts"
-import type {HarnessState} from "./runner/suite.ts"
+import {spec} from "../reporter/spec.ts"
+import {client, line} from "./client.ts"
+import type {ReportStream} from "./report-stream.ts"
+import type {HarnessState} from "./state.ts"
 
 type FormatFn = declared.TAL.FormatFn
 type OutputFn = declared.TAL.OutputFn

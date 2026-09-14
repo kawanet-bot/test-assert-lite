@@ -1,10 +1,10 @@
 import {strict as assert} from "node:assert"
 import {describe, it} from "node:test"
 import type * as declared from "test-assert-lite"
-import {createTAL} from "./index.ts"
-import {capture, names, ofType, summaryOf} from "./test-utils/capture.ts"
+import {createTAL} from "../index.ts"
+import {capture, names, ofType, summaryOf} from "../test-utils/capture.ts"
 
-const TITLE = "session.test.ts"
+const TITLE = "session/session.test.ts"
 
 // capture listens on what it is given: a window in a page, and here an
 // EventTarget of the test's own, so nothing reaches the real one, which

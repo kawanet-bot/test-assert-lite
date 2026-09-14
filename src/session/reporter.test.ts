@@ -1,9 +1,9 @@
 import {strict as assert} from "node:assert"
 import {describe, it} from "node:test"
-import {createTAL} from "./index.ts"
-import {capture, names, summaryOf} from "./test-utils/capture.ts"
+import {createTAL} from "../index.ts"
+import {capture, names, summaryOf} from "../test-utils/capture.ts"
 
-const TITLE = "reporter.test.ts"
+const TITLE = "session/reporter.test.ts"
 
 const caught = async (promise: Promise<unknown>): Promise<unknown> => {
     try {
