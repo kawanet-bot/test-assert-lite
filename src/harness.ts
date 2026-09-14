@@ -1,6 +1,8 @@
 import type * as declared from "test-assert-lite"
 import {createAssert} from "./assert.ts"
-import {reporter} from "./reporter.ts"
+import {html} from "./reporter/html.ts"
+import {spec} from "./reporter/spec.ts"
+import {tap} from "./reporter/tap.ts"
 import {createRegistrar} from "./runner/registrar.ts"
 import {createScheduler} from "./session/scheduler.ts"
 import {createSessions} from "./session/session.ts"
@@ -13,6 +15,7 @@ export const createTAL: typeof declared.createTAL = () => {
     const {assert, methods, strict} = createAssert()
     const {schedule, end} = createScheduler(state, sessions, methods)
     const {suite, test, before, after} = createRegistrar(state, schedule)
+    const reporter: declared.TAL.Reporter = {spec, tap, html}
 
     return {
         after,
