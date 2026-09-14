@@ -62,7 +62,7 @@ describe(TITLE, () => {
             assert.match(item.getPath()!, /exports.test\.mjs$/)
             assert.equal(item.getAddress(serveFor(item)), "/@tal/exports/test.mjs")
             assert.match(alias("x=test-assert-lite").getPath()!, /esm.test-assert-lite\.mjs$/)
-            assert.equal(alias("x=test-assert-lite").getAddress(serveFor()), "/@tal/exports/global.mjs")
+            assert.equal(alias("x=test-assert-lite").getAddress(serveFor()), "/@tal/dist/test-assert-lite.min.js")
             assert.equal(item.refusal("node"), undefined)
             assert.equal(item.refusal("browser"), undefined)
         })
@@ -161,7 +161,7 @@ describe(TITLE, () => {
         it("gives a page this package's names and each specifier's address", () => {
             const items = [alias("a=./one.mjs"), mapped("r", "/r.js")]
             const addresses = new Imports(items).addresses(serveFor(...items))
-            assert.equal(addresses["test-assert-lite"], "/@tal/exports/global.mjs")
+            assert.equal(addresses["test-assert-lite"], "/@tal/dist/test-assert-lite.min.js")
             assert.equal(addresses["node:assert"], "/@tal/exports/assert.mjs")
             assert.equal(unhash(addresses["a"]), "/@tal/files/xxxxxxxxx/one.mjs")
             assert.equal(addresses["r"], "/r.js")

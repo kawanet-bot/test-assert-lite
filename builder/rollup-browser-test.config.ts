@@ -8,10 +8,10 @@ import {showFiles} from "./show-files.ts"
 // Bundles the test suites for the browser as one ES module. node:test and
 // node:assert stay as written: the page the CLI serves
 // carries an import map that points them, and the package name, at the
-// ESM build, so no glue module is inlined here.
+// minified build, so no glue module is inlined here.
 const rollupConfig: RollupOptions = {
     // 90.entrypoint pins the Node entry surface; the browser one is checked
-    // by builder/pack test-iife, so the negative pattern keeps it out here.
+    // by builder/pack test-esm, so the negative pattern keeps it out here.
     // src/extras/ tests exercise Node-only code such as the HTTP server.
     input: ["../src/**/*.test.ts", "!../src/90.*", "!../src/extras/*"],
 

@@ -10,9 +10,7 @@ const rollupConfig: RollupOptions = {
 
     output: {
         file: "../dist/test-assert-lite.min.js",
-        format: "iife",
-        name: "TAL",
-        outro: "if (typeof module !== 'undefined') { module.exports = exports }",
+        format: "es",
     },
 
     plugins: [
