@@ -1,9 +1,10 @@
 import type * as declared from "test-assert-lite"
 import {createAssert} from "./assert.ts"
 import {reporter} from "./reporter.ts"
-import {createHarnessState, createRegistrar} from "./runner/suite.ts"
+import {createRegistrar} from "./runner/suite.ts"
 import {createScheduler} from "./session/scheduler.ts"
 import {createSessions} from "./session/session.ts"
+import {createHarnessState} from "./session/state.ts"
 
 // Binds everything the package exposes to one tree.
 export const createTAL: typeof declared.createTAL = () => {

@@ -1,4 +1,4 @@
-import type {HarnessState} from "./suite.ts"
+import type {HarnessState} from "../session/state.ts"
 import type {Run} from "./tester.ts"
 import {Test} from "./tester.ts"
 
