@@ -51,7 +51,7 @@ describe(TITLE, () => {
         try {
             assert.equal(await CLI({args: [broken, fine]}), 1)
         } finally {
-            await end(true)
+            await end(false)
         }
         const results = events.filter(e => e.type === "test:pass" || e.type === "test:fail").map(e => `${e.type} ${e.data.name}`)
         assert.deepEqual(results, ["test:pass declared before the throw", `test:fail ${relative(process.cwd(), broken)}`, "test:pass in the other suite"])
