@@ -1,12 +1,12 @@
 import type * as declared from "test-assert-lite"
-import {AssertionError} from "./assert/assertion-error.ts"
-import {deepEqualPair} from "./assert/deep-equal.ts"
-import {equalPair} from "./assert/equal.ts"
-import {doesNotMatch, match} from "./assert/match.ts"
-import {doesNotReject, rejects} from "./assert/rejects.ts"
-import {doesNotThrow, throws} from "./assert/throws.ts"
-import {isError} from "./utils/is-error.ts"
-import {messageOf, stringify} from "./utils/stringify.ts"
+import {isError} from "../utils/is-error.ts"
+import {messageOf, stringify} from "../utils/stringify.ts"
+import {AssertionError} from "./assertion-error.ts"
+import {deepEqualPair} from "./deep-equal.ts"
+import {equalPair} from "./equal.ts"
+import {doesNotMatch, match} from "./match.ts"
+import {doesNotReject, rejects} from "./rejects.ts"
+import {doesNotThrow, throws} from "./throws.ts"
 
 // An Error passed as the message is thrown as it is. node:assert applies
 // that rule to every assertion, not only to fail().

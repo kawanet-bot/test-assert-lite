@@ -1,5 +1,5 @@
 import type * as declared from "test-assert-lite"
-import {createAssert} from "./assert.ts"
+import {createAssert} from "./assert/assert.ts"
 import {html} from "./reporter/html.ts"
 import {spec} from "./reporter/spec.ts"
 import {tap} from "./reporter/tap.ts"

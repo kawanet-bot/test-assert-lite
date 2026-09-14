@@ -1,8 +1,8 @@
 import {strict as assert} from "node:assert"
 import {describe, it} from "node:test"
-import * as TAL from "./index.ts"
+import * as TAL from "../index.ts"
 
-const TITLE = "assert.test.ts"
+const TITLE = "assert/assert.test.ts"
 
 const catchError = (fn: () => unknown): Error | undefined => {
     try {
