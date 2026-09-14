@@ -283,13 +283,20 @@ test-assert --webdriver htdocs/scripts/bundled-tests.mjs
 
 Or skip the build: tests can go straight into a page.
 
-The minified build is an ES module, so a page imports the package from a CDN.
+The minified build is an ES module: an import map leads the package's name to it on a CDN.
 
 ```html
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/test-assert-lite/htdocs/styles/test-assert-lite.css">
+<script type="importmap">
+{
+    "imports": {
+        "test-assert-lite": "https://cdn.jsdelivr.net/npm/test-assert-lite/dist/test-assert-lite.min.js"
+    }
+}
+</script>
 <div id="output"></div>
 <script type="module">
-    import {describe, it, strict as assert, reporter, run, session} from "https://cdn.jsdelivr.net/npm/test-assert-lite/dist/test-assert-lite.min.js"
+    import {describe, it, strict as assert, reporter, run, session} from "test-assert-lite"
 
     // The report goes to console.log by default; render it as HTML in the page instead.
     // session() comes before the first test is declared.
