@@ -1,9 +1,9 @@
 import {strict as assert} from "node:assert"
 import {describe, it} from "node:test"
-import {createTAL} from "./../index.ts"
-import {capture, names, ofType, summaryOf} from "./../test-utils/capture.ts"
+import {createTAL} from "../index.ts"
+import {capture, names, ofType, summaryOf} from "../test-utils/capture.ts"
 
-const TITLE = "runner/subtest.test.ts"
+const TITLE = "suite/subtest.test.ts"
 
 // t.test(): the order subtests run in, awaited or not, how a subtest's
 // verdict reaches its parent, and what a parent that throws does to the

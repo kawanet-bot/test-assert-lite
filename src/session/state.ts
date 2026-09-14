@@ -1,5 +1,5 @@
-import {Root} from "../runner/root.ts"
-import type {Test} from "../runner/tester.ts"
+import {Root} from "../suite/root.ts"
+import type {Test} from "../suite/tester.ts"
 
 // The registration state of one harness: the tree declared so far and the
 // suite whose body is running, which is where a declaration lands. Wrapping

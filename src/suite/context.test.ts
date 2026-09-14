@@ -1,9 +1,9 @@
 import {strict as assert} from "node:assert"
 import {describe, it} from "node:test"
-import {createTAL} from "./../index.ts"
-import {capture} from "./../test-utils/capture.ts"
+import {createTAL} from "../index.ts"
+import {capture} from "../test-utils/capture.ts"
 
-const TITLE = "runner/context.test.ts"
+const TITLE = "suite/context.test.ts"
 
 // The test context beyond t.test(): t.diagnostic(), t.assert and t.name.
 

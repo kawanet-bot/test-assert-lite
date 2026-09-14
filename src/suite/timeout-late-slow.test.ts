@@ -1,10 +1,10 @@
 import {strict as assert} from "node:assert"
 import {it} from "node:test"
-import {createTAL} from "./../index.ts"
-import {capture, names, ofType, summaryOf} from "./../test-utils/capture.ts"
-import {describeSlow, slow} from "./../test-utils/slow.ts"
+import {createTAL} from "../index.ts"
+import {capture, names, ofType, summaryOf} from "../test-utils/capture.ts"
+import {describeSlow, slow} from "../test-utils/slow.ts"
 
-const TITLE = "runner/timeout-late-slow.test.ts"
+const TITLE = "suite/timeout-late-slow.test.ts"
 
 // Late subtests: what a body declares after its timeout goes to the root
 // as parentAlreadyFinished, numbered, skipped or timed out on its own. Every
