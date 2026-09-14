@@ -61,7 +61,7 @@ describe(TITLE, () => {
             assert.equal(item.isPath(), false)
             assert.match(item.getPath()!, /exports.test\.mjs$/)
             assert.equal(item.getAddress(serveFor(item)), "/@tal/exports/test.mjs")
-            assert.match(alias("x=test-assert-lite").getPath()!, /esm.test-assert-lite\.mjs$/)
+            assert.match(alias("x=test-assert-lite").getPath()!, /dist.test-assert-lite\.mjs$/)
             assert.equal(alias("x=test-assert-lite").getAddress(serveFor()), "/@tal/dist/test-assert-lite.min.js")
             assert.equal(item.refusal("node"), undefined)
             assert.equal(item.refusal("browser"), undefined)

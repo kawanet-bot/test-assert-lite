@@ -12,7 +12,6 @@
 browser/tests/
 builder/tests/
 dist/
-esm/
 node_modules
 nohup.out
 npm-debug.log*

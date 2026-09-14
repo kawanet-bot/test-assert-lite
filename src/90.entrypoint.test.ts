@@ -33,10 +33,10 @@ test("require entry", () => {
 })
 
 // The exports map has no "require" condition below module-sync, so reach
-// the minified bundle by its path instead: dist/, beside the esm/ the
-// entry resolves into. An ES module, so this is require(esm) too.
+// the minified bundle by its path instead: beside the entry the package
+// resolves to. An ES module, so this is require(esm) too.
 test("minified entry (.min.js)", () => {
-    const m: typeof declared = require(path.join(path.dirname(require.resolve("test-assert-lite")), "..", "dist", "test-assert-lite.min.js"))
+    const m: typeof declared = require(path.join(path.dirname(require.resolve("test-assert-lite")), "test-assert-lite.min.js"))
     assert.equal(typeof m.after, "function")
     assert.equal(typeof m.assert, "function")
     assert.equal(typeof m.before, "function")

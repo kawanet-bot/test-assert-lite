@@ -17,9 +17,9 @@ EXTRAS_SRC := $(shell find ../src/extras -name '*.ts' -or -name '*.mjs')
 TYPES := $(wildcard ../types/*.d.ts)
 BUILDER_SRC := $(wildcard ./*.ts)
 
-MJS_DST := ../esm/test-assert-lite.mjs
+MJS_DST := ../dist/test-assert-lite.mjs
 MINJS_DST := ../dist/test-assert-lite.min.js
-EXTRAS_DST := ../esm/test-assert-lite.extras.mjs
+EXTRAS_DST := ../dist/test-assert-lite.extras.mjs
 BROWSER_TEST_DST := ../browser/tests/bundled.mjs
 BUILDER_TEST_DST := ./tests/bundled.mjs
 
@@ -80,7 +80,7 @@ $(MJS_DST): $(MJS_CONFIG) $(SRC) $(BUILDER_SRC)
 	@echo ""
 
 # The extras (the CLI as a function) import the library by the package's
-# own name, which resolves from esm/. The executable bin/cli.mjs is
+# own name, which resolves from dist/. The executable bin/cli.mjs is
 # hand-written and reaches this by subpath.
 $(EXTRAS_DST): $(EXTRAS_CONFIG) $(EXTRAS_SRC) $(BUILDER_SRC) $(MJS_DST)
 	@mkdir -p $(dir $@)

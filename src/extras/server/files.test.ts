@@ -51,14 +51,14 @@ describe(TITLE, () => {
         assert.deepEqual(apart.dirs.map(({root}) => under(root)), ["lib", "src/sub"])
     })
 
-    it("serves this package's own dist/ and exports/ at the paths of their names, the minified build in place of the ESM entry", () => {
+    it("serves this package's own dist/ and exports/ at the paths of their names, the minified build in place of the entry", () => {
         const files = createFiles([join(dir, "src", "a.mjs")])
         assert.deepEqual(files.own.map(({path}) => path), ["/@tal/dist/", "/@tal/exports/"])
         assert.equal(files.dirs.length, 1)
         assert.equal(files.urlOf(resolve("exports", "test.mjs")), "/@tal/exports/test.mjs")
         assert.equal(files.urlOf(resolve("exports", "assert", "strict.mjs")), "/@tal/exports/assert/strict.mjs")
         assert.equal(files.urlOf(resolve("dist", "test-assert-lite.min.js")), "/@tal/dist/test-assert-lite.min.js")
-        assert.equal(files.urlOf(resolve("esm", "test-assert-lite.mjs")), "/@tal/dist/test-assert-lite.min.js")
+        assert.equal(files.urlOf(resolve("dist", "test-assert-lite.mjs")), "/@tal/dist/test-assert-lite.min.js")
     })
 
     it("takes a symlink for its target, and a file that is not there as given", () => {

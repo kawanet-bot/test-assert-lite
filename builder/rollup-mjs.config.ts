@@ -8,7 +8,7 @@ const rollupConfig: RollupOptions = {
     input: "../src/index.ts",
 
     output: {
-        file: "../esm/test-assert-lite.mjs",
+        file: "../dist/test-assert-lite.mjs",
         format: "esm",
     },
 
