@@ -10,7 +10,7 @@ export const createTAL: typeof declared.createTAL = () => {
     const state = createHarnessState()
     const sessions = createSessions(state)
     const assert = createAssert()
-    const {schedule, run} = createScheduler(state, sessions, assert.methods)
+    const {schedule, end} = createScheduler(state, sessions, assert.methods)
     const {suite, test, before, after} = createRegistrar(state, schedule)
 
     return {
@@ -18,10 +18,9 @@ export const createTAL: typeof declared.createTAL = () => {
         assert: assert.assert,
         before,
         describe: suite,
-        end: sessions.end,
+        end,
         it: test,
         reporter,
-        run,
         session: sessions.session,
         strict: assert.strict,
         suite,

@@ -11,7 +11,8 @@ type Session = declared.TAL.Session
 type EventTarget = declared.TAL.EventTarget
 
 // What a run reports with and where the page's console goes: opened by
-// session(), or with the defaults on the first declaration, until end().
+// session(), or with the defaults on the first declaration, until end()
+// closes it with the verdict.
 interface Open {
     format: FormatFn
     output: OutputFn
@@ -25,7 +26,8 @@ interface Open {
 
 export interface SessionControl {
     session: typeof declared.session
-    end: typeof declared.end
+    // Closes the session with the run's verdict; nothing to close is fine.
+    close: (success: boolean) => Promise<void>
     // Opens the default session unless one is open already.
     open: () => void
     // Gives a run's stream the settings of the session.
@@ -138,7 +140,7 @@ export const createSessions = (harness: HarnessState): SessionControl => {
         return current.session
     }
 
-    const end: typeof declared.end = async (success) => {
+    const close = async (success: boolean): Promise<void> => {
         const open = current
         if (open == null) return
         current = null
@@ -148,7 +150,7 @@ export const createSessions = (harness: HarnessState): SessionControl => {
 
     return {
         session,
-        end,
+        close,
         open: () => {
             current ??= create({}, true)
         },

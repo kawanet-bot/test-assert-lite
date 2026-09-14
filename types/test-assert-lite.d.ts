@@ -262,6 +262,11 @@ export declare namespace TAL {
         capture?: boolean | EventTarget
     }
 
+    // What end() resolves with: whether every test passed.
+    interface SessionResult {
+        success: boolean
+    }
+
     // Where the console goes: the CLI under a run's URL, Node's own streams,
     // the browser's console otherwise. Sending to the CLI never rejects.
     interface Session {
@@ -283,7 +288,6 @@ export declare namespace TAL {
         end: typeof end
         it: TestAPI
         reporter: Reporter
-        run: typeof run
         session: typeof session
         strict: Assert
         suite: SuiteAPI
@@ -313,24 +317,19 @@ export declare const reporter: TAL.Reporter
  * Opens the session the tests report in: the format and the output the
  * run is written with, and where the console goes. Comes before the first
  * test is declared; a test declared first opens the default session, and
- * session() throws until end() closes it.
+ * session() throws until end() has closed it.
  */
 export declare function session(options?: TAL.SessionOptions): TAL.Session
 
 /**
- * Closes the session: under the CLI, sends the verdict once the buffers
- * have drained. Without a session open, does nothing.
+ * Runs every registered test, reports, and closes the session: under the
+ * CLI, the verdict is sent once the buffers have drained. Resolves once
+ * all tests and hooks have finished, the formatter has ended and any
+ * asynchronous output has completed, with whether every test passed.
+ * Reporter failures and a formatter that ends before its input reject the
+ * returned promise; a concurrent call on the same harness also rejects.
+ * The registry is reset; a test declared afterwards opens a new session.
  */
-export declare function end(success: boolean): Promise<void>
+export declare function end(): Promise<TAL.SessionResult>
 
 export declare function createTAL(): TAL.TestHarness
-
-/**
- * Runs every registered test, then resets the registry. The session, its
- * format and output included, stays open for later runs until end().
- * Resolves once all tests and hooks have finished, the formatter has ended
- * and any asynchronous output has completed. Reporter failures and a
- * formatter that ends before its input reject the returned promise.
- * A concurrent call on the same harness also rejects.
- */
-export declare function run(): Promise<TAL.TestSummary>

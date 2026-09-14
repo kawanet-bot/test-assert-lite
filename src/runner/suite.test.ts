@@ -1,7 +1,7 @@
 import {strict as assert} from "node:assert"
 import {describe, it} from "node:test"
 import {createTAL} from "./../index.ts"
-import {capture, names, ofType} from "./../test-utils/capture.ts"
+import {capture, names, ofType, summaryOf} from "./../test-utils/capture.ts"
 
 const TITLE = "runner/suite.test.ts"
 
@@ -30,7 +30,7 @@ describe(TITLE, () => {
         local.it("top2", () => {
             order.push("top2")
         })
-        await local.run()
+        await local.end()
 
         assert.deepEqual(order, ["top1", "suite body", "child", "top2"])
     })
@@ -43,7 +43,7 @@ describe(TITLE, () => {
                 local.it("deep", () => undefined)
             })
         })
-        await local.run()
+        await local.end()
 
         const pass = events.find(e => e.type === "test:pass")
         assert.equal((pass?.data as {nesting: number}).nesting, 2)
@@ -61,7 +61,7 @@ describe(TITLE, () => {
                 order.push("late child body")
             })
         })
-        await local.run()
+        await local.end()
 
         assert.deepEqual(order, ["registered late", "late child body"])
     })
@@ -72,7 +72,7 @@ describe(TITLE, () => {
         local.describe("broken", () => {
             throw new Error("bad suite")
         })
-        const summary = await local.run()
+        const summary = await local.end()
 
         assert.equal(summary.success, false)
         const fail = events.find(e => e.type === "test:fail")
@@ -81,13 +81,14 @@ describe(TITLE, () => {
 
     it("describe.skip does not run the body", async () => {
         const local = createTAL()
-        local.session({output: () => undefined})
+        const events = capture(local)
         let ran = false
         local.describe.skip("skipped suite", () => {
             ran = true
             local.it("never", () => undefined)
         })
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         assert.equal(ran, false)
         assert.equal(summary.counts.tests, 0)
@@ -115,7 +116,7 @@ describe(TITLE, () => {
             attempt(() => local.before(() => undefined))
             attempt(() => local.after(() => undefined))
         })
-        await local.run()
+        await local.end()
 
         assert.equal(caught.join("\n"), [
             "describe() cannot be called from inside a test body",
@@ -149,7 +150,7 @@ describe(TITLE, () => {
             local.it("s1b", mark("s1b"))
         })
         local.it("t2", mark("t2"))
-        await local.run()
+        await local.end()
 
         assert.equal(order.join(" "), [
             "root:before", "t1",
@@ -166,7 +167,7 @@ describe(TITLE, () => {
         local.describe("S", () => {
             local.it("a", () => undefined)
         })
-        await local.run()
+        await local.end()
 
         const results = ofType(events, "test:pass").map(e => `${e.data.name}:${e.data.details.type}:${e.data.nesting}`)
         assert.deepEqual(results, ["a:test:1", "S:suite:0"])
@@ -184,7 +185,8 @@ describe(TITLE, () => {
                 throw new Error("boom")
             })
         })
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         const results = events.filter(e => e.type === "test:pass" || e.type === "test:fail")
         assert.deepEqual(results.map(e => `${e.type}:${e.data.name}:${String(e.data.todo)}`), [
@@ -200,7 +202,8 @@ describe(TITLE, () => {
         local.describe.skip("S", () => {
             local.it("never", () => undefined)
         })
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         const pass = ofType(events, "test:pass")[0]?.data
         assert.equal(pass?.name, "S")
@@ -221,7 +224,8 @@ describe(TITLE, () => {
             })
             local.it("ok", () => undefined)
         })
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         const fails = ofType(events, "test:fail")
         assert.deepEqual(fails.map(e => e.data.name), ["bad", "S"])
@@ -243,7 +247,8 @@ describe(TITLE, () => {
                 throw new Error("boom")
             })
         })
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         const suite = ofType(events, "test:fail").find(e => e.data.name === "S")?.data
         assert.equal((suite?.details.error as {failureType?: string}).failureType, "subtestsFailed")
@@ -259,7 +264,8 @@ describe(TITLE, () => {
             local.it("a", () => undefined)
             throw body
         })
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         const fails = ofType(events, "test:fail")
         assert.deepEqual(fails.map(e => e.data.name), ["a", "S"])
@@ -279,7 +285,7 @@ describe(TITLE, () => {
                 local.it("x", () => undefined)
             })
         })
-        await local.run()
+        await local.end()
 
         const s2 = ofType(events, "test:fail").find(e => e.data.name === "S2")?.data
         assert.equal(s2?.nesting, 1)
@@ -295,7 +301,7 @@ describe(TITLE, () => {
             local.it("b", () => undefined)
         })
         local.it("x", () => undefined)
-        await local.run()
+        await local.end()
 
         const numbered = ofType(events, "test:pass").map(e => `${e.data.name}#${e.data.testNumber}`)
         assert.deepEqual(numbered, ["a#1", "b#2", "S#1", "x#2"])

@@ -1,7 +1,7 @@
 import {strict as assert} from "node:assert"
 import {it} from "node:test"
 import {createTAL} from "./../index.ts"
-import {capture, names, ofType} from "./../test-utils/capture.ts"
+import {capture, names, ofType, summaryOf} from "./../test-utils/capture.ts"
 import {describeSlow, slow} from "./../test-utils/slow.ts"
 
 const TITLE = "runner/timeout-report-slow.test.ts"
@@ -12,6 +12,22 @@ const TITLE = "runner/timeout-report-slow.test.ts"
 
 // Every test builds its own harness, so the default one stays clean and
 // nothing re-enters when TAL is itself the runner.
+// The events, through a reporter kept slow: each is written, and the
+// write waits, so the cases below find the report still going on.
+const captureSlowly = (local: ReturnType<typeof createTAL>): ReturnType<typeof capture> => {
+    const events: ReturnType<typeof capture> = []
+    local.session({
+        format: async function* (source) {
+            for await (const event of source) {
+                events.push(event)
+                yield "."
+            }
+        },
+        output: () => new Promise(r => setTimeout(r, slow(30))),
+    })
+    return events
+}
+
 describeSlow(TITLE, () => {
     // A child that settled on its own but is still reporting when the
     // parent throws is waited for: its results come before the parent's
@@ -38,7 +54,8 @@ describeSlow(TITLE, () => {
             await new Promise(r => setTimeout(r, slow(40)))
             throw new Error("boom")
         })
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         assert.deepEqual(names(events, "test:fail"), ["grandchild", "child", "parent"])
         assert.equal(summary.counts.tests, 3)
@@ -70,7 +87,8 @@ describeSlow(TITLE, () => {
             })
             await new Promise(r => setTimeout(r, slow(200)))
         })
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         assert.deepEqual(names(events, "test:start"), ["parent", "child", "g1", "g2"])
         assert.deepEqual(names(events, "test:fail"), ["g1", "g2", "child", "parent"])
@@ -100,7 +118,8 @@ describeSlow(TITLE, () => {
             await new Promise(r => setTimeout(r, slow(20)))
             throw new Error("boom")
         })
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         assert.deepEqual(names(events, "test:start"), ["parent", "child", "grandchild"])
         const results = events.filter(e => e.type === "test:pass" || e.type === "test:fail").map(e => e.data.name)
@@ -116,7 +135,7 @@ describeSlow(TITLE, () => {
     // treated as late, not as an ordinary nested subtest.
     it("a t.test() during a slow cancellation report is treated as late", async () => {
         const local = createTAL()
-        local.session({output: () => new Promise(r => setTimeout(r, slow(30)))})
+        const events = captureSlowly(local)
         let ran = false
         local.it("parent", {timeout: slow(10)}, async (t) => {
             void t.test("in flight", async () => {
@@ -127,7 +146,8 @@ describeSlow(TITLE, () => {
                 ran = true
             })
         })
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         assert.equal(ran, true)
         assert.deepEqual(summary.counts, {tests: 3, suites: 0, passed: 0, failed: 1, cancelled: 2, skipped: 0, todo: 0})
@@ -138,12 +158,13 @@ describeSlow(TITLE, () => {
     // a window to see it as still unreported and cancel it a second time.
     it("a skipped child settling during a slow report is not double counted", async () => {
         const local = createTAL()
-        local.session({output: () => new Promise(r => setTimeout(r, slow(30)))})
+        const events = captureSlowly(local)
         local.it("parent", {timeout: slow(10)}, async (t) => {
             void t.test("quick skip", {skip: "why"}, () => undefined)
             await new Promise(r => setTimeout(r, slow(40)))
         })
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         assert.deepEqual(summary.counts, {tests: 2, suites: 0, passed: 0, failed: 0, cancelled: 1, skipped: 1, todo: 0})
     })
@@ -154,7 +175,7 @@ describeSlow(TITLE, () => {
         const local = createTAL()
         // Slow, so the read below waits behind cancelChildren's reporter
         // calls, giving the body time to call skip() before that read.
-        local.session({output: () => new Promise(r => setTimeout(r, slow(30)))})
+        const events = captureSlowly(local)
         local.it("parent", {timeout: slow(10)}, async (t) => {
             void t.test("child", async () => {
                 await new Promise(r => setTimeout(r, slow(40)))
@@ -163,7 +184,8 @@ describeSlow(TITLE, () => {
             t.skip("too late")
             await new Promise(r => setTimeout(r, slow(100)))
         })
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         assert.deepEqual(summary.counts, {tests: 2, suites: 0, passed: 0, failed: 0, cancelled: 2, skipped: 0, todo: 0})
     })
@@ -173,7 +195,7 @@ describeSlow(TITLE, () => {
     // an earlier one's cancellation is still being reported.
     it("a queued sibling does not run while an earlier cancellation is reported", async () => {
         const local = createTAL()
-        local.session({output: () => new Promise(r => setTimeout(r, slow(30)))})
+        const events = captureSlowly(local)
         let ran = false
         local.it("parent", {timeout: slow(10)}, async (t) => {
             void t.test("in flight", async () => {
@@ -184,7 +206,8 @@ describeSlow(TITLE, () => {
             })
             await new Promise(r => setTimeout(r, slow(100)))
         })
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         assert.equal(ran, false)
         assert.deepEqual(summary.counts, {tests: 3, suites: 0, passed: 0, failed: 0, cancelled: 3, skipped: 0, todo: 0})
@@ -207,7 +230,8 @@ describeSlow(TITLE, () => {
             })
             await new Promise(r => setTimeout(r, slow(100)))
         })
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         assert.equal(ran, 0)
         const fails = ofType(events, "test:fail").map(e => `${e.data.name}${e.data.skip != null ? " skip=" + String(e.data.skip) : ""}`)

@@ -1,7 +1,7 @@
 import {strict as assert} from "node:assert"
 import {describe, it} from "node:test"
 import {createTAL} from "./../index.ts"
-import {capture, names, ofType} from "./../test-utils/capture.ts"
+import {capture, names, ofType, summaryOf} from "./../test-utils/capture.ts"
 
 const TITLE = "runner/subtest.test.ts"
 
@@ -14,7 +14,7 @@ const TITLE = "runner/subtest.test.ts"
 describe(TITLE, () => {
     it("t.test() runs the subtest ahead of the rest of the parent", async () => {
         const local = createTAL()
-        local.session({output: () => undefined})
+        const events = capture(local)
         const order: string[] = []
         local.it("parent", async (t) => {
             order.push("parent start")
@@ -23,7 +23,8 @@ describe(TITLE, () => {
             })
             order.push("parent end")
         })
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         assert.deepEqual(order, ["parent start", "child", "parent end"])
         assert.equal(summary.counts.tests, 2)
@@ -33,7 +34,7 @@ describe(TITLE, () => {
     // so this errs on the safer side.
     it("an unawaited subtest still finishes before the parent is reported", async () => {
         const local = createTAL()
-        local.session({output: () => undefined})
+        const events = capture(local)
         const order: string[] = []
         local.it("parent", async (t) => {
             void t.test("child", async () => {
@@ -42,7 +43,8 @@ describe(TITLE, () => {
             })
             order.push("parent body")
         })
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         assert.deepEqual(order, ["parent body", "child"])
         assert.equal(summary.counts.tests, 2)
@@ -58,7 +60,8 @@ describe(TITLE, () => {
                 throw new Error("boom")
             })
         })
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         assert.equal(summary.counts.tests, 2)
         assert.equal(summary.counts.failed, 2)
@@ -70,13 +73,14 @@ describe(TITLE, () => {
 
     it("an unawaited failing subtest still fails the parent", async () => {
         const local = createTAL()
-        local.session({output: () => undefined})
+        const events = capture(local)
         local.it("parent", async (t) => {
             void t.test("bad child", () => {
                 throw new Error("boom")
             })
         })
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         assert.equal(summary.counts.failed, 2)
         assert.equal(summary.success, false)
@@ -95,7 +99,7 @@ describe(TITLE, () => {
             order.push("after call")
             await pending
         })
-        await local.run()
+        await local.end()
 
         assert.deepEqual(order, ["child body", "after call"])
     })
@@ -117,7 +121,7 @@ describe(TITLE, () => {
                 order.push("fast")
             })
         })
-        await local.run()
+        await local.end()
 
         assert.deepEqual(order, ["slow start", "slow end", "fast"])
         assert.deepEqual(names(events, "test:start"), ["parent", "slow", "fast"])
@@ -139,7 +143,8 @@ describe(TITLE, () => {
             throw new Error("boom")
         })
         local.it("next", () => undefined)
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         const results = events
             .filter(e => e.type === "test:pass" || e.type === "test:fail")
@@ -167,7 +172,8 @@ describe(TITLE, () => {
             })
             throw new Error("boom")
         })
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         assert.equal(ran, false)
         assert.deepEqual(names(events, "test:fail"), ["running", "queued", "parent"])
@@ -190,7 +196,8 @@ describe(TITLE, () => {
         local.it("keep", async () => {
             await new Promise(r => setTimeout(r, 60))
         })
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         const grandchild = ofType(events, "test:fail").find(e => e.data.name === "grandchild")?.data
         assert.equal(grandchild?.nesting, 0)
@@ -206,7 +213,7 @@ describe(TITLE, () => {
             await t.test("c1", () => undefined)
             await t.test("c2", () => undefined)
         })
-        await local.run()
+        await local.end()
 
         const numbered = ofType(events, "test:pass").map(e => `${e.data.name}#${e.data.testNumber}`)
         assert.deepEqual(numbered, ["c1#1", "c2#2", "parent#1"])

@@ -1,7 +1,7 @@
 import {strict as assert} from "node:assert"
 import {describe, it} from "node:test"
 import {createTAL} from "./../index.ts"
-import {capture, names, ofType} from "./../test-utils/capture.ts"
+import {capture, names, ofType, summaryOf} from "./../test-utils/capture.ts"
 
 const TITLE = "runner/skip-todo.test.ts"
 
@@ -18,7 +18,8 @@ describe(TITLE, () => {
         local.it("skipped", {skip: "why"}, () => {
             ran = true
         })
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         assert.equal(ran, false)
         assert.equal(summary.counts.skipped, 1)
@@ -29,12 +30,13 @@ describe(TITLE, () => {
 
     it("it.skip is the static form of the skip option", async () => {
         const local = createTAL()
-        local.session({output: () => undefined})
+        const events = capture(local)
         let ran = false
         local.it.skip("static", () => {
             ran = true
         })
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         assert.equal(ran, false)
         assert.equal(summary.counts.skipped, 1)
@@ -42,13 +44,14 @@ describe(TITLE, () => {
 
     it("t.skip() does not abort the body", async () => {
         const local = createTAL()
-        local.session({output: () => undefined})
+        const events = capture(local)
         let reached = false
         local.it("runtime skip", (t) => {
             t.skip("later")
             reached = true
         })
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         assert.equal(reached, true)
         assert.equal(summary.counts.skipped, 1)
@@ -65,7 +68,8 @@ describe(TITLE, () => {
                 throw new Error("child failed")
             })
         })
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         const parent = ofType(events, "test:fail").find(e => e.data.name === "parent")?.data
         assert.equal(parent?.skip, "why")
@@ -89,7 +93,8 @@ describe(TITLE, () => {
         local.it("broken", {todo: true}, () => {
             throw new Error("boom")
         })
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         assert.equal(ran, 2)
         const results = events.filter(e => e.type === "test:pass" || e.type === "test:fail")
@@ -107,7 +112,8 @@ describe(TITLE, () => {
             t.todo("later")
         })
         local.it("it.todo", () => undefined)
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         const later = ofType(events, "test:pass").find(e => e.data.name === "later")?.data
         assert.equal(later?.todo, "later")
@@ -123,7 +129,8 @@ describe(TITLE, () => {
             t.todo("t")
             t.skip("s")
         })
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         const passes = ofType(events, "test:pass").map(e => `${e.data.name}:${String(e.data.skip)}:${String(e.data.todo)}`)
         assert.deepEqual(passes, ["declared:true:undefined", "called:s:undefined"])
@@ -140,7 +147,8 @@ describe(TITLE, () => {
                 throw new Error("boom")
             })
         })
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         const child = ofType(events, "test:fail").find(e => e.data.name === "child")?.data
         assert.equal(child?.todo, true)
@@ -161,7 +169,8 @@ describe(TITLE, () => {
                 throw new Error("boom")
             })
         })
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         const child = ofType(events, "test:fail").find(e => e.data.name === "child")?.data
         assert.equal(child?.skip, "why")

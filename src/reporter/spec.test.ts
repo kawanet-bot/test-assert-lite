@@ -35,7 +35,7 @@ describe(TITLE, () => {
                 },
             })
             local.it("colored", () => undefined)
-            await local.run()
+            await local.end()
 
             assert.match(lines.join(""), /\u001b\[32m/)
         } finally {
@@ -58,7 +58,7 @@ describe(TITLE, () => {
             },
         })
         local.it("plain", () => undefined)
-        await local.run()
+        await local.end()
 
         assert.equal(lines.join("").includes("\u001b["), false)
     })
@@ -195,7 +195,7 @@ describe(TITLE, () => {
             })
             local.it("a", () => undefined)
         })
-        await local.run()
+        await local.end()
 
         const out = lines.join("").replace(/\(\d+\.\d{3}ms\)/g, "(ms)")
         assert.match(out, /^▶ S\n {2}✖ a \(ms\)\n✖ S \(ms\)\n/)

@@ -138,7 +138,7 @@ describe(TITLE, () => {
                 throw new Error("after hook exploded")
             })
         })
-        const summary = await local.run()
+        const summary = await local.end()
 
         const out = lines.join("")
         assert.match(out, /^ok 1 - child passes$/m)

@@ -6,8 +6,8 @@ import type {HarnessState} from "./suite.ts"
 import {resetHarnessState} from "./suite.ts"
 import type {Run} from "./tester.ts"
 
-// One cycle of the harness: from the first declaration to the run() that
-// reports it. The tests are held until run() lets them go, so a suite
+// One cycle of the harness: from the first declaration to the end() that
+// reports it. The tests are held until end() lets them go, so a suite
 // still loading cannot declare into one already running.
 interface Cycle {
     run: Run
@@ -16,17 +16,17 @@ interface Cycle {
     held: boolean
     // The walk under way, or null while idle between declarations.
     walk: Promise<void> | null
-    // run() is closing the cycle and drives the rest itself.
+    // end() is closing the cycle and drives the rest itself.
     closing: boolean
-    // What the walk failed with, kept for run() to reject with.
+    // What the walk failed with, kept for end() to reject with.
     failure: {error: unknown} | undefined
 }
 
 export interface Scheduler {
-    // Called on a declaration at the root: starts the walk, once run() has
+    // Called on a declaration at the root: starts the walk, once end() has
     // let it, unless one is under way.
     schedule: () => void
-    run: typeof declared.run
+    end: typeof declared.end
 }
 
 export const createScheduler = (
@@ -65,8 +65,10 @@ export const createScheduler = (
             })
     }
 
-    const run: typeof declared.run = async () => {
-        if (running) throw new Error("run() is already running")
+    // Waits for the tests, reports, closes the session with the verdict, and
+    // resets; a failure on the way still tells the session the run failed.
+    const end: typeof declared.end = async () => {
+        if (running) throw new Error("end() is already running")
         running = true
         // An empty run still reports, and root hooks alone still run.
         const current = cycle ??= open()
@@ -96,19 +98,27 @@ export const createScheduler = (
                 failed = true
                 failure = error
             }
+        }
+
+        try {
+            await sessions.close(!failed && result!.success)
+        } catch (error) {
+            if (!failed) {
+                failed = true
+                failure = error
+            }
         } finally {
-            // A partially executed registry is unsafe to retry. Configuration
-            // lives outside the per-run ReportStream and remains installed.
+            // A partially executed registry is unsafe to retry.
             resetHarnessState(harness)
             cycle = null
             running = false
         }
 
         if (failed) throw failure
-        return result!
+        return {success: result!.success}
     }
 
-    return {schedule, run}
+    return {schedule, end}
 }
 
 // The root's teardown, then the summary. The root has no result of its

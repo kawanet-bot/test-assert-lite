@@ -1,7 +1,7 @@
 import {strict as assert} from "node:assert"
 import {it} from "node:test"
 import {createTAL} from "./../index.ts"
-import {capture, names, ofType} from "./../test-utils/capture.ts"
+import {capture, names, ofType, summaryOf} from "./../test-utils/capture.ts"
 import {describeSlow, slow} from "./../test-utils/slow.ts"
 
 const TITLE = "runner/timeout-slow.test.ts"
@@ -20,7 +20,8 @@ describeSlow(TITLE, () => {
         local.it("slow", {timeout: slow(10)}, async () => {
             await new Promise(r => setTimeout(r, slow(200)))
         })
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         assert.equal(summary.counts.cancelled, 1)
         assert.equal(summary.counts.failed, 0)
@@ -35,13 +36,14 @@ describeSlow(TITLE, () => {
     // The child is filed under cancelled, the parent under failed.
     it("a timed out subtest fails the parent", async () => {
         const local = createTAL()
-        local.session({output: () => undefined})
+        const events = capture(local)
         local.it("parent", async (t) => {
             await t.test("slow child", {timeout: slow(10)}, async () => {
                 await new Promise(r => setTimeout(r, slow(200)))
             })
         })
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         assert.equal(summary.counts.cancelled, 1)
         assert.equal(summary.counts.failed, 1)
@@ -60,7 +62,8 @@ describeSlow(TITLE, () => {
             await new Promise(r => setTimeout(r, slow(50)))
         })
         local.it("next", () => undefined)
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         const results = events
             .filter(e => e.type === "test:pass" || e.type === "test:fail")
@@ -82,7 +85,8 @@ describeSlow(TITLE, () => {
             })
             await new Promise(r => setTimeout(r, slow(100)))
         })
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         assert.deepEqual(names(events, "test:fail"), ["child", "parent"])
         assert.deepEqual(summary.counts, {tests: 2, suites: 0, passed: 0, failed: 0, cancelled: 2, skipped: 0, todo: 0})
@@ -100,7 +104,8 @@ describeSlow(TITLE, () => {
             })
             await new Promise(r => setTimeout(r, slow(100)))
         })
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         const child = ofType(events, "test:fail").find(e => e.data.name === "child")?.data
         assert.equal(child?.skip, "why")
@@ -110,15 +115,16 @@ describeSlow(TITLE, () => {
     // node:test ends its run only when nothing keeps the process alive,
     // which a library cannot see. The timeout is the verdict, and the run
     // does not wait on the body: one that never settles cannot hold it open.
-    it("run() does not wait for a timed out body", async () => {
+    it("end() does not wait for a timed out body", async () => {
         const local = createTAL()
-        local.session({output: () => undefined})
+        const events = capture(local)
         let settled = false
         local.it("slow", {timeout: slow(10)}, async () => {
             await new Promise(r => setTimeout(r, slow(40)))
             settled = true
         })
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         assert.equal(settled, false)
         assert.deepEqual(summary.counts, {tests: 1, suites: 0, passed: 0, failed: 0, cancelled: 1, skipped: 0, todo: 0})
@@ -135,7 +141,8 @@ describeSlow(TITLE, () => {
             t.diagnostic("late")
             void t.test("late", () => undefined)
         })
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
         assert.equal(settled, false)
         assert.deepEqual(summary.counts, {tests: 1, suites: 0, passed: 0, failed: 0, cancelled: 1, skipped: 0, todo: 0})
 
@@ -153,7 +160,7 @@ describeSlow(TITLE, () => {
             await new Promise(r => setTimeout(r, slow(40)))
             t.diagnostic("late")
         })
-        await local.run()
+        await local.end()
 
         const messages = ofType(events, "test:diagnostic").map(e => e.data.message)
         assert.ok(messages.includes("in time"))
@@ -178,7 +185,7 @@ describeSlow(TITLE, () => {
             })
             order.push("resumed")
         })
-        await local.run()
+        await local.end()
         assert.deepEqual(order, ["after"])
 
         await new Promise(r => setTimeout(r, slow(80)))
@@ -200,12 +207,13 @@ describeSlow(TITLE, () => {
                 caught = (e as Error).message
             }
         })
-        await local.run()
+        await local.end()
         await new Promise(r => setTimeout(r, slow(60)))
 
         assert.equal(caught, "it() cannot be called from inside a test body; use t.test() instead")
-        const second = await local.run()
-        assert.equal(second.counts.tests, 0)
+        const second = capture(local)
+        await local.end()
+        assert.equal(summaryOf(second).counts.tests, 0)
     })
 
     // A suite body runs when the walk reaches it, which may be while an
@@ -213,7 +221,7 @@ describeSlow(TITLE, () => {
     // are the suite's own and must be taken.
     it("a suite after a timed out test still declares its tests", async () => {
         const local = createTAL()
-        local.session({output: () => undefined})
+        const events = capture(local)
         local.it("slow", {timeout: slow(10)}, async () => {
             await new Promise(r => setTimeout(r, slow(60)))
         })
@@ -221,7 +229,8 @@ describeSlow(TITLE, () => {
             local.it("a", () => undefined)
             local.it("b", () => undefined)
         })
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         assert.deepEqual(summary.counts, {tests: 3, suites: 1, passed: 2, failed: 0, cancelled: 1, skipped: 0, todo: 0})
     })

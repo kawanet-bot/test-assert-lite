@@ -1,7 +1,7 @@
 import {strict as assert} from "node:assert"
 import {describe, it} from "node:test"
 import {createTAL} from "./index.ts"
-import {capture, names} from "./test-utils/capture.ts"
+import {capture, names, summaryOf} from "./test-utils/capture.ts"
 
 const TITLE = "harness.test.ts"
 
@@ -15,7 +15,6 @@ describe(TITLE, () => {
         assert.equal(typeof local.it, "function")
         assert.equal(typeof local.before, "function")
         assert.equal(typeof local.after, "function")
-        assert.equal(typeof local.run, "function")
         assert.equal(typeof local.reporter, "object")
         assert.equal(typeof local.assert, "function")
         assert.equal(typeof local.strict, "function")
@@ -29,19 +28,21 @@ describe(TITLE, () => {
     })
 
     // Isolation is the whole point of the factory, so hold the line that a
-    // test registered on one harness never joins another harness's run().
+    // test registered on one harness never joins another harness's end().
     it("each harness keeps its own registry", async () => {
         const a = createTAL()
         const b = createTAL()
-        a.session({output: () => undefined})
-        b.session({output: () => undefined})
+        const seenA = capture(a)
+        const seenB = capture(b)
 
         a.it("only on a", () => undefined)
         b.it("only on b", () => undefined)
         b.it("also on b", () => undefined)
 
-        assert.equal((await b.run()).counts.tests, 2)
-        assert.equal((await a.run()).counts.tests, 1)
+        await b.end()
+        await a.end()
+        assert.equal(summaryOf(seenB).counts.tests, 2)
+        assert.equal(summaryOf(seenA).counts.tests, 1)
     })
 
     it("two harnesses do not share hooks", async () => {
@@ -61,20 +62,22 @@ describe(TITLE, () => {
             order.push("b-test")
         })
 
-        await b.run()
-        await a.run()
+        await b.end()
+        await a.end()
 
         assert.deepEqual(order, ["b-test", "a:before", "a-test"])
     })
 
-    it("run() resets only its own harness", async () => {
+    it("end() resets only its own harness", async () => {
         const local = createTAL()
-        local.session({output: () => undefined})
+        const first = capture(local)
         local.it("once", () => undefined)
+        await local.end()
+        assert.equal(summaryOf(first).counts.tests, 1)
 
-        assert.equal((await local.run()).counts.tests, 1)
-
-        assert.equal((await local.run()).counts.tests, 0)
+        const second = capture(local)
+        await local.end()
+        assert.equal(summaryOf(second).counts.tests, 0)
     })
 
     // The session belongs to the harness too, so output cannot leak across.
@@ -87,7 +90,7 @@ describe(TITLE, () => {
         assert.notEqual(a.session, b.session)
 
         b.it("only on b", () => undefined)
-        await b.run()
+        await b.end()
 
         assert.ok(names(seenByB, "test:pass").includes("only on b"))
         assert.equal(seenByA.length, 0)
@@ -104,7 +107,7 @@ describe(TITLE, () => {
         })
 
         local.it("visible", () => undefined)
-        await local.run()
+        await local.end()
 
         assert.ok(lines.join("").includes("visible"))
     })
@@ -130,7 +133,7 @@ describe(TITLE, () => {
             // assert.equal, and its strictEqual the strict one.
             same = t.assert.equal === local.assert.equal && t.assert.strictEqual === local.strict.equal
         })
-        await local.run()
+        await local.end()
 
         assert.equal(same, true)
         assert.equal(names(seen, "test:pass").join(""), "check")

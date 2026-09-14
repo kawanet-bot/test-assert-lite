@@ -32,15 +32,9 @@
 <body>
 <pre id="output"></pre>
 <script type="module">
-    import {end, run} from "test-assert-lite";
+    import {end} from "test-assert-lite";
 
-    try {
-        const summary = await run();
-        await end(summary.success);
-    } catch (error) {
-        console.error(error || "Error");
-        await end(false);
-    }
+    await end().catch(console.error);
 </script>
 </body>
 </html>

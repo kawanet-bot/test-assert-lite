@@ -2,7 +2,7 @@ import {strict as assert} from "node:assert"
 import {describe, it} from "node:test"
 import type * as declared from "test-assert-lite"
 import {createTAL} from "./index.ts"
-import {capture, names, ofType} from "./test-utils/capture.ts"
+import {capture, names, ofType, summaryOf} from "./test-utils/capture.ts"
 
 const TITLE = "session.test.ts"
 
@@ -31,7 +31,8 @@ describe(TITLE, () => {
         fire(on, "error", {target: {src: "http://127.0.0.1:1/@tal/files/012345678/missing.mjs"}})
         fire(on, "unhandledrejection", {reason: new Error("leaked")})
         local.it("declared", () => undefined)
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         assert.deepEqual(names(events, "test:fail"), ["suite.mjs", "missing.mjs", "unhandled rejection"])
         const [first, second] = ofType(events, "test:fail").map(e => e.data.details.error)
@@ -50,7 +51,8 @@ describe(TITLE, () => {
             fire(on, "unhandledrejection", {reason: new Error("meanwhile")})
             await new Promise(r => setTimeout(r, 0))
         })
-        const summary = await local.run()
+        await local.end()
+        const summary = summaryOf(events)
 
         assert.deepEqual(names(events, "test:pass"), ["open"])
         assert.deepEqual(names(events, "test:fail"), ["unhandled rejection"])
@@ -60,14 +62,13 @@ describe(TITLE, () => {
     it("end() lets go of the events, and a session without capture takes none", async () => {
         const local = createTAL()
         const on = target()
-        const events = capture(local, {capture: on})
-        await local.end(true)
+        capture(local, {capture: on})
+        await local.end()
         fire(on, "unhandledrejection", {reason: new Error("after the end")})
-        local.session({output: () => undefined})
+        const again = capture(local)
         fire(on, "unhandledrejection", {reason: new Error("without capture")})
-        const summary = await local.run()
+        await local.end()
 
-        assert.equal(events.length, 0)
-        assert.equal(summary.counts.tests, 0)
+        assert.equal(summaryOf(again).counts.tests, 0)
     })
 })

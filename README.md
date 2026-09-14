@@ -296,7 +296,7 @@ The minified build is an ES module: an import map leads the package's name to it
 </script>
 <div id="output"></div>
 <script type="module">
-    import {describe, it, strict as assert, reporter, run, session} from "test-assert-lite"
+    import {describe, it, strict as assert, reporter, end, session} from "test-assert-lite"
 
     // The report goes to console.log by default; render it as HTML in the page instead.
     // session() comes before the first test is declared.
@@ -311,8 +311,8 @@ The minified build is an ES module: an import map leads the package's name to it
         })
     })
 
-    // run() runs every test registered so far and resolves with the summary
-    run().then(summary => console.log(summary.success ? "PASS" : "FAIL"))
+    // end() runs every test registered so far and resolves once they are reported
+    end().then(result => console.log(result.success ? "PASS" : "FAIL"))
 </script>
 ```
 
@@ -349,8 +349,8 @@ export default {
 </script>
 <script type="module" src="./scripts/bundled-tests.js"></script>
 <script type="module">
-    import {run} from "test-assert-lite"
-    run()
+    import {end} from "test-assert-lite"
+    end()
 </script>
 ```
 
