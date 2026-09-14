@@ -1,9 +1,9 @@
 import {strict as assert} from "node:assert"
 import {describe, it} from "node:test"
-import {createTAL} from "./../index.ts"
-import {capture, names, ofType, summaryOf} from "./../test-utils/capture.ts"
+import {createTAL} from "../index.ts"
+import {capture, names, ofType, summaryOf} from "../test-utils/capture.ts"
 
-const TITLE = "runner/hooks.test.ts"
+const TITLE = "suite/hooks.test.ts"
 
 // before and after: their scope, and how a failing hook or suite body is
 // charged and cancels what it covers.

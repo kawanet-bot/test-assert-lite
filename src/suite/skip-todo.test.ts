@@ -1,9 +1,9 @@
 import {strict as assert} from "node:assert"
 import {describe, it} from "node:test"
-import {createTAL} from "./../index.ts"
-import {capture, names, ofType, summaryOf} from "./../test-utils/capture.ts"
+import {createTAL} from "../index.ts"
+import {capture, names, ofType, summaryOf} from "../test-utils/capture.ts"
 
-const TITLE = "runner/skip-todo.test.ts"
+const TITLE = "suite/skip-todo.test.ts"
 
 // skip and todo: as an option, as it.skip(), and as t.skip() / t.todo()
 // from the body; which of the two wins, and how a subtest inherits them.

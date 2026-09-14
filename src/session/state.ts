@@ -1,13 +1,13 @@
-import {Root} from "../runner/root.ts"
-import type {Test} from "../runner/tester.ts"
+import {Root} from "../suite/root.ts"
+import type {Tester} from "../suite/tester.ts"
 
 // The registration state of one harness: the tree declared so far and the
 // suite whose body is running, which is where a declaration lands. Wrapping
 // it in a factory lets the self-tests build an isolated tree.
 export interface HarnessState {
     root: Root
-    current: Test
-    // Test bodies not yet settled, a timed out one included, and suite
+    current: Tester
+    // Tester bodies not yet settled, a timed out one included, and suite
     // bodies being run. A declaration is taken while a suite body runs, and
     // rejected while only a test body is open: from inside one, or from a
     // timed out one, which would otherwise land it in a later run.

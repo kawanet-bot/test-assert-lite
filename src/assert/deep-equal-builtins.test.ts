@@ -1,6 +1,6 @@
 import {strict as assert} from "node:assert"
 import {describe, it} from "node:test"
-import {strict as TAL} from "./../index.ts"
+import {strict as TAL} from "../index.ts"
 
 const TITLE = "assert/deep-equal-builtins.test.ts"
 

@@ -3,10 +3,10 @@ import {createAssert} from "./assert/assert.ts"
 import {html} from "./reporter/html.ts"
 import {spec} from "./reporter/spec.ts"
 import {tap} from "./reporter/tap.ts"
-import {createRegistrar} from "./runner/registrar.ts"
 import {createScheduler} from "./session/scheduler.ts"
 import {createSessions} from "./session/session.ts"
 import {createHarnessState} from "./session/state.ts"
+import {createRegistrar} from "./suite/registrar.ts"
 
 // Binds everything the package exposes to one tree.
 export const createTAL: typeof declared.createTAL = () => {
