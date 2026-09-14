@@ -1,38 +1,35 @@
 import {strict as assert} from "node:assert"
-import {after, before, describe, it} from "node:test"
+import {describe, it} from "node:test"
+import type * as declared from "test-assert-lite"
 import {createTAL} from "./index.ts"
 import {capture, names, ofType} from "./test-utils/capture.ts"
 
 const TITLE = "session.test.ts"
 
-// capture takes a window's error and unhandledrejection events, which Node
-// has no global for: a stand-in keeps the listeners so a test can fire an
-// event at them, and see them go with end().
-type Listener = (event: Event) => void
-const listeners = new Map<string, Listener>()
-const stand = {
-    addEventListener: (type: string, listener: Listener) => listeners.set(type, listener),
-    removeEventListener: (type: string) => listeners.delete(type),
+// capture listens on what it is given: a window in a page, and here an
+// EventTarget of the test's own, so nothing reaches the real one, which
+// the page running these suites in a browser listens on itself.
+const target = (): EventTarget => new EventTarget()
+// Defined rather than assigned: target, for one, is a getter on an Event.
+const fire = (on: EventTarget, type: string, fields: object): void => {
+    const event = new Event(type)
+    for (const [key, value] of Object.entries(fields)) Object.defineProperty(event, key, {value})
+    on.dispatchEvent(event)
 }
-const fire = (type: string, event: object): void => listeners.get(type)?.(event as Event)
+
+// The window's own type satisfies what capture asks for.
+const check: typeof globalThis extends declared.TAL.EventTarget ? true : never = true
+void check
 
 describe(TITLE, () => {
-    before(() => {
-        Object.assign(globalThis, stand)
-    })
-
-    after(() => {
-        delete (globalThis as {addEventListener?: unknown}).addEventListener
-        delete (globalThis as {removeEventListener?: unknown}).removeEventListener
-    })
-
     it("an uncaught error is one failed test, named after the script by its served path", async () => {
         const local = createTAL()
-        const events = capture(local, {capture: true})
+        const on = target()
+        const events = capture(local, {capture: on})
         const thrown = new Error("at the top level")
-        fire("error", {error: thrown, filename: "http://127.0.0.1:1/@tal/files/012345678/suite.mjs"})
-        fire("error", {target: {src: "http://127.0.0.1:1/@tal/files/012345678/missing.mjs"}})
-        fire("unhandledrejection", {reason: new Error("leaked")})
+        fire(on, "error", {error: thrown, filename: "http://127.0.0.1:1/@tal/files/012345678/suite.mjs"})
+        fire(on, "error", {target: {src: "http://127.0.0.1:1/@tal/files/012345678/missing.mjs"}})
+        fire(on, "unhandledrejection", {reason: new Error("leaked")})
         local.it("declared", () => undefined)
         const summary = await local.run()
 
@@ -47,9 +44,10 @@ describe(TITLE, () => {
     // rule; the failure is declared on the root all the same, and runs after.
     it("an error while a test body is open is a failed test after it", async () => {
         const local = createTAL()
-        const events = capture(local, {capture: true})
+        const on = target()
+        const events = capture(local, {capture: on})
         local.it("open", async () => {
-            fire("unhandledrejection", {reason: new Error("meanwhile")})
+            fire(on, "unhandledrejection", {reason: new Error("meanwhile")})
             await new Promise(r => setTimeout(r, 0))
         })
         const summary = await local.run()
@@ -61,14 +59,15 @@ describe(TITLE, () => {
 
     it("end() lets go of the events, and a session without capture takes none", async () => {
         const local = createTAL()
-        local.session({capture: true, output: () => undefined})
-        assert.deepEqual([...listeners.keys()].sort(), ["error", "unhandledrejection"])
+        const on = target()
+        const events = capture(local, {capture: on})
         await local.end(true)
-        assert.equal(listeners.size, 0)
+        fire(on, "unhandledrejection", {reason: new Error("after the end")})
+        local.session({output: () => undefined})
+        fire(on, "unhandledrejection", {reason: new Error("without capture")})
+        const summary = await local.run()
 
-        const plain = createTAL()
-        plain.session({output: () => undefined})
-        assert.equal(listeners.size, 0)
-        await plain.end(true)
+        assert.equal(events.length, 0)
+        assert.equal(summary.counts.tests, 0)
     })
 })

@@ -8,6 +8,7 @@ type FormatFn = declared.TAL.FormatFn
 type OutputFn = declared.TAL.OutputFn
 type SessionOptions = declared.TAL.SessionOptions
 type Session = declared.TAL.Session
+type EventTarget = declared.TAL.EventTarget
 
 // What a run reports with and where the page's console goes: opened by
 // session(), or with the defaults on the first declaration, until end().
@@ -52,11 +53,12 @@ const writer = (name: "stdout" | "stderr"): ((text: string) => void) => {
 // person knows is what follows it.
 const SERVED = /^\/@tal\/files\/[0-9a-f]{9}\//
 
-// A window's uncaught errors and unhandled rejections, each one failed
-// test at the root, named after the script it came from where the event
-// says, as a suite that threw is under Node. Declared on the root itself,
-// since one may arrive while a test body is open, and the walk takes it.
-const capture = (harness: HarnessState): (() => void) => {
+// The uncaught errors and unhandled rejections of a window, or of what
+// stands in for one, each one failed test at the root, named after the
+// script it came from where the event says, as a suite that threw is
+// under Node. Declared on the root itself, since one may arrive while a
+// test body is open, and the walk takes it.
+const capture = (harness: HarnessState, target: EventTarget): (() => void) => {
     const take = (name: string, error: unknown): void => {
         harness.root.declare("test", name, {}, () => {
             throw error
@@ -69,21 +71,28 @@ const capture = (harness: HarnessState): (() => void) => {
             return url
         }
     }
-    const onError = (event: Event): void => {
-        const {error, message, filename} = event as Partial<ErrorEvent>
-        const src = (event.target as {src?: string} | null)?.src
+    const onError = (event: unknown): void => {
+        const {error, message, filename, target} = event as Partial<ErrorEvent>
+        const src = (target as {src?: string} | null | undefined)?.src
         const name = nameOf(filename || src) ?? "error"
         take(name, error ?? new Error(message || `failed to load ${name}`))
     }
-    const onRejection = (event: Event): void => {
+    const onRejection = (event: unknown): void => {
         take("unhandled rejection", (event as Partial<PromiseRejectionEvent>).reason)
     }
-    globalThis.addEventListener("error", onError, true)
-    globalThis.addEventListener("unhandledrejection", onRejection)
+    target.addEventListener("error", onError, true)
+    target.addEventListener("unhandledrejection", onRejection)
     return () => {
-        globalThis.removeEventListener("error", onError, true)
-        globalThis.removeEventListener("unhandledrejection", onRejection)
+        target.removeEventListener("error", onError, true)
+        target.removeEventListener("unhandledrejection", onRejection)
     }
+}
+
+// true is the window, where there is one; under Node, whose errors nothing
+// takes yet, true means nothing. Anything else is listened on as given.
+const targetOf = (capture: SessionOptions["capture"]): EventTarget | undefined => {
+    const target = capture === true ? (globalThis as Partial<EventTarget>) : capture
+    return target && "function" === typeof target.addEventListener ? (target as EventTarget) : undefined
 }
 
 export const createSessions = (harness: HarnessState): SessionControl => {
@@ -93,10 +102,8 @@ export const createSessions = (harness: HarnessState): SessionControl => {
         const {format = spec(), base} = options
         const url = base == null ? null : new URL(base)
         const opened = (open: Omit<Open, "release" | "auto">): Open => {
-            // Nothing takes the process's errors yet, so under Node the option means nothing.
-            const release = options.capture && "function" === typeof globalThis.addEventListener
-                ? capture(harness)
-                : () => undefined
+            const target = targetOf(options.capture)
+            const release = target == null ? () => undefined : capture(harness, target)
             return {...open, auto, release}
         }
         if (url != null && CHANNEL.test(url.pathname)) {
