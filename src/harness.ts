@@ -1,11 +1,11 @@
 import type * as declared from "test-assert-lite"
 import {createAssert} from "./assert.ts"
 import {reporter} from "./reporter.ts"
-import {createHarnessState, createRegistrar, createScheduler} from "./runner.ts"
+import {createScheduler} from "./runner/run.ts"
+import {createHarnessState, createRegistrar} from "./runner/suite.ts"
 import {createSessions} from "./session.ts"
 
-// Binds everything the package exposes to one tree. The pieces meet here
-// because suite.ts reaching for runner.ts would close a cycle.
+// Binds everything the package exposes to one tree.
 export const createTAL: typeof declared.createTAL = () => {
     const state = createHarnessState()
     const sessions = createSessions(state)
