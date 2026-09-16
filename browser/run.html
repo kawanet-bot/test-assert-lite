@@ -3,40 +3,36 @@
 <head>
     <meta charset="utf-8"/>
     <title>{{title}}</title>
-    <script type="module">
-        import {session} from "test-assert-lite";
-
-        // The CLI puts its config into the head as JSON, ahead of this script.
-        const config = document.querySelector(`script[type="application/vnd.config+json"]`)?.textContent
-        const options = config && JSON.parse(config)?.options || {}
-
-        // The run's URL is this page's own directory: the session reports
-        // there, takes the errors outside the tests, and the console goes
-        // the same way.
-        const {stdout, stderr} = session({
-            base: new URL("./", import.meta.url),
-            capture: true,
-            reporter: options.reporter,
-            output: text => {
-                document.querySelector("#output")?.append(text);
-                stdout(text);
-            },
-        });
-        for (const level of ["log", "info", "debug"]) console[level] = (...args) => stdout(`${args.join(" ")}\n`);
-        for (const level of ["warn", "error"]) console[level] = (...args) => stderr(args.join(" "));
-    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 </head>
 <body>
 <pre id="output"></pre>
 <script type="module">
-    import {end, it} from "test-assert-lite";
+    import {end, it, session} from "test-assert-lite";
 
-    // The config's files, imported in order as the Node driver imports
-    // them; one that fails to load is one failed test, named by its file
-    // name, and the rest still load.
+    // The CLI puts its config into the head as JSON, ahead of this script.
     const config = document.querySelector(`script[type="application/vnd.config+json"]`)?.textContent
     const options = config && JSON.parse(config)?.options || {}
-    for (const file of options.files ?? []) {
+
+    // The run's URL is this page's own directory: the session reports
+    // there, takes the errors outside the tests, and the console goes
+    // the same way.
+    const {stdout, stderr} = session({
+        base: new URL("./", import.meta.url),
+        capture: true,
+        reporter: options.reporter,
+        output: text => {
+            document.querySelector("#output")?.append(text);
+            stdout(text);
+        },
+    });
+
+    for (const level of ["log", "info", "debug"]) console[level] = (...args) => stdout(`${args.join(" ")}\n`);
+    for (const level of ["warn", "error"]) console[level] = (...args) => stderr(args.join(" "));
+
+    const files = (options?.files ?? [])
+
+    const run = async (file) => {
         try {
             await import(file);
         } catch (error) {
@@ -44,6 +40,10 @@
                 throw error;
             });
         }
+    }
+
+    for (const file of files) {
+        await run(file)
     }
 
     await end().catch(console.error);

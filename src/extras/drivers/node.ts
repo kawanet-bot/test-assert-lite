@@ -3,7 +3,7 @@
 // registered by then; this follows the same two-phase shape.
 
 import {register} from "node:module"
-import {relative, resolve} from "node:path"
+import {resolve} from "node:path"
 import {pathToFileURL} from "node:url"
 import type {TAL} from "test-assert-lite"
 import {end, it, session} from "test-assert-lite"
@@ -41,16 +41,20 @@ export const runInNode = async (imports: Imports, options: DriverOptions): Promi
 
     session({reporter: options.reporter})
 
-    for (const file of options.files ?? []) {
+    const files = (options?.files ?? []).map(file => pathToFileURL(resolve(file)).href)
+
+    const run = async (file: string) => {
         try {
-            await import(pathToFileURL(resolve(file)).href)
+            await import(file)
         } catch (error) {
-            // A suite that threw while loading is one failed test named
-            // after it, as node --test files it; the rest still run.
-            it(relative(process.cwd(), file), () => {
+            it(file.replace(/^[^?]*\//, ""), () => {
                 throw error
             })
         }
+    }
+
+    for (const file of files) {
+        await run(file)
     }
 
     return end()
