@@ -32,15 +32,15 @@
     import {end, it} from "test-assert-lite";
 
     // The config's files, imported in order as the Node driver imports
-    // them; one that fails to load is one failed test, named by its
-    // served path, and the rest still load.
+    // them; one that fails to load is one failed test, named by its file
+    // name, and the rest still load.
     const config = document.querySelector(`script[type="application/vnd.config+json"]`)?.textContent
     const options = config && JSON.parse(config)?.options || {}
     for (const file of options.files ?? []) {
         try {
             await import(file);
         } catch (error) {
-            it(file.replace(/^\/@tal\/files\/[0-9a-f]{9}\//, ""), () => {
+            it(file.replace(/^[^?]*\//, ""), () => {
                 throw error;
             });
         }
