@@ -28,6 +28,19 @@ const refused = (fn: () => unknown, reason: RegExp): void => {
     })
 }
 
+const DEFAULTS = [
+    "test-assert-lite",
+    "test-assert-lite/test",
+    "test-assert-lite/assert",
+    "test-assert-lite/assert/strict",
+    "test-assert-lite/reporter/html",
+    "test-assert-lite/reporter/spec",
+    "test-assert-lite/reporter/tap",
+    "node:test",
+    "node:assert",
+    "node:assert/strict",
+] as const
+
 describe(TITLE, () => {
     describe("an --alias item", () => {
         it("takes a relative, bare or absolute path against the working directory, in both modes", () => {
@@ -146,16 +159,21 @@ describe(TITLE, () => {
     describe("the list", () => {
         it("starts with this package's defaults, which a later item takes over", () => {
             const list = new Imports([alias("node:test=./my-test.mjs")])
-            assert.deepEqual([...list.entries().keys()], ["test-assert-lite", "test-assert-lite/test", "test-assert-lite/assert", "test-assert-lite/assert/strict", "node:test", "node:assert", "node:assert/strict"])
+            assert.deepEqual([...list.entries().keys()], DEFAULTS)
             assert.equal(list.entries().get("node:test")?.target, "./my-test.mjs")
             assert.equal(new Imports([]).entries().get("node:test")?.getAddress(serveFor()), "/@tal/exports/test.js")
         })
 
         it("names every path item's file once, losers included, and resolves each specifier to its last item", () => {
-            const list = new Imports([alias("a=./one.mjs"), mapped("a", "./two.js"), alias("b=./one.mjs"), alias("c=https://cdn.example/c.js")])
+            const list = new Imports([
+                alias("a=./one.mjs"),
+                mapped("a", "./two.js"),
+                alias("b=./one.mjs"),
+                alias("c=https://cdn.example/c.js"),
+            ])
             assert.deepEqual(list.paths(), [resolve("one.mjs"), resolve("maps", "two.js")])
             assert.equal(list.entries().get("a")?.target, "./two.js")
-            assert.equal(list.entries().size, 7 + 3)
+            assert.equal(list.entries().size, DEFAULTS.length + 3)
         })
 
         it("gives a page this package's names and each specifier's address", () => {
