@@ -240,7 +240,7 @@ export declare namespace TAL {
 
     interface SessionOptions {
         /** What the run's events are formatted with; `reporter.spec()` unless given. */
-        reporter?: ReporterFn
+        reporter?: ReporterFn | string
         /** Where the formatted text goes; console.log unless given, or the CLI's stdout under a run's URL. */
         output?: OutputFn
         /**

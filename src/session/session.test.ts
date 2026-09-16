@@ -22,6 +22,23 @@ const check: typeof globalThis extends declared.TAL.EventTargetLike ? true : nev
 void check
 
 describe(TITLE, () => {
+    it("takes a reporter by name; a name it has none for runs with spec and is one failed test", async () => {
+        const local = createTAL()
+        const out: string[] = []
+        local.session({reporter: "tap", output: text => {out.push(text)}})
+        local.it("named", () => undefined)
+        await local.end()
+        assert.equal(out[0], "TAP version 13\n")
+
+        const other = createTAL()
+        const text: string[] = []
+        other.session({reporter: "nope", output: t => {text.push(t)}})
+        other.it("still runs", () => undefined)
+        assert.equal((await other.end()).success, false)
+        assert.match(text.join(""), /unsupported reporter: nope/)
+        assert.match(text.join(""), /still runs/)
+    })
+
     it("an uncaught error is one failed test, named after the script by its served path", async () => {
         const local = createTAL()
         const on = target()

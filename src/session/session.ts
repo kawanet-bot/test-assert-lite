@@ -1,5 +1,7 @@
 import type * as declared from "test-assert-lite"
+import {html} from "../reporter/html.ts"
 import {spec} from "../reporter/spec.ts"
+import {tap} from "../reporter/tap.ts"
 import {client, line} from "./client.ts"
 import type {ReportStream} from "./report-stream.ts"
 import type {HarnessState} from "./state.ts"
@@ -103,11 +105,31 @@ const targetOf = (capture: SessionOptions["capture"]): EventTargetLike | undefin
     return isEventTarget(target) ? target : undefined
 }
 
+const reporterMap = new Map<string, () => ReporterFn>([
+    ["html", html],
+    ["spec", spec],
+    ["tap", tap],
+])
+
 export const createSessions = (harness: HarnessState): SessionControl => {
     let current: Open | null = null
 
+    // A name with no reporter behind it runs with spec, and is one failed
+    // test at the root, filed as capture files a window's errors.
+    const reporterOf = (v: ReporterFn | string | undefined): ReporterFn => {
+        if (v == null) return spec()
+        if ("function" === typeof v) return v
+        const init = reporterMap.get(v)
+        if (init != null) return init()
+        harness.root.declareTest(`unsupported reporter: ${v}`, {}, () => {
+            throw new Error(`unsupported reporter: ${v}`)
+        })
+        return spec()
+    }
+
     const create = (options: SessionOptions, auto: boolean): Open => {
-        const {reporter = spec(), base} = options
+        const {base} = options
+        const reporter = reporterOf(options.reporter)
         const url = base == null ? null : new URL(base)
         const opened = (open: Omit<Open, "release" | "auto">): Open => {
             const target = targetOf(options.capture)

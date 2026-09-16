@@ -81,13 +81,15 @@ describe(TITLE, () => {
             return i
         }
         const map = at('<script type="importmap">')
+        const config = at('<script type="application/vnd.config+json">')
         const own = at('<script type="module">')
         assert.match(tests, /^\/@tal\/files\/[0-9a-f]{9}\/$/)
         const script = at(`<script src="${tests}setup.js"></script>`)
         const second = at(`<script src="${tests}set%2Bup%232.js"></script>`)
         const suite = at(`<script type="module" src="${tests}my%20suite.mjs"></script>`)
         const other = at(`<script type="module" src="${tests}second.mjs"></script>`)
-        assert.ok(map < own && own < script && script < second && second < suite && suite < other)
+        assert.ok(map < config && config < own && own < script && script < second && second < suite && suite < other)
+        assert.deepEqual(JSON.parse(head.slice(head.indexOf("{", config), head.indexOf("</script>", config))), {options: {}})
         const {imports} = JSON.parse(head.slice(head.indexOf("{", map), head.indexOf("</script>", map)))
         assert.equal(imports["node:test"], "/@tal/exports/test.js")
         assert.equal(imports["test-assert-lite"], "/@tal/dist/test-assert-lite.min.js")
@@ -96,6 +98,21 @@ describe(TITLE, () => {
         assert.equal(imports["cdn"], "https://cdn.example/lib.js")
         assert.equal(imports["mine"], "/mine.js")
         assert.equal((await get(url("/index.html"))).body, res.body)
+    })
+
+    it("escapes a < in the config, so a name cannot close the tag, and reads it back", async () => {
+        const odd = createApp({config: {options: {reporter: "</script><b>"}}, stdout: () => undefined})
+        const server = await serve({handler: odd.handler})
+        try {
+            const head = (await get(server.origin + "/")).body.split("</head>")[0] as string
+            const config = head.indexOf('<script type="application/vnd.config+json">')
+            const json = head.slice(head.indexOf("{", config), head.indexOf("</script>", config))
+            assert.equal(json.includes("</script>"), false)
+            assert.deepEqual(JSON.parse(json), {options: {reporter: "</script><b>"}})
+        } finally {
+            odd.close()
+            server.close()
+        }
     })
 
     it("serves the run page under the run's path alone", async () => {
