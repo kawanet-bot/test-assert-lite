@@ -70,7 +70,7 @@ describe(TITLE, () => {
         await rm(dir, {recursive: true, force: true})
     })
 
-    it("serves the index page at the root, the map ahead of its own script and the tags at the end of its head", async () => {
+    it("serves the index page at the root, the map and the config ahead of its own script, the scripts at the end of its head", async () => {
         const res = await get(url("/"))
         assert.equal(res.status, 200)
         assert.equal(res.type, "text/html; charset=utf-8")
@@ -86,10 +86,10 @@ describe(TITLE, () => {
         assert.match(tests, /^\/@tal\/files\/[0-9a-f]{9}\/$/)
         const script = at(`<script src="${tests}setup.js"></script>`)
         const second = at(`<script src="${tests}set%2Bup%232.js"></script>`)
-        const suite = at(`<script type="module" src="${tests}my%20suite.mjs"></script>`)
-        const other = at(`<script type="module" src="${tests}second.mjs"></script>`)
-        assert.ok(map < config && config < own && own < script && script < second && second < suite && suite < other)
-        assert.deepEqual(JSON.parse(head.slice(head.indexOf("{", config), head.indexOf("</script>", config))), {options: {}})
+        assert.ok(map < config && config < own && own < script && script < second)
+        assert.equal(head.includes('<script type="module" src='), false)
+        const {options} = JSON.parse(head.slice(head.indexOf("{", config), head.indexOf("</script>", config)))
+        assert.deepEqual(options, {files: [`${tests}my%20suite.mjs`, `${tests}second.mjs`]})
         const {imports} = JSON.parse(head.slice(head.indexOf("{", map), head.indexOf("</script>", map)))
         assert.equal(imports["node:test"], "/@tal/exports/test.js")
         assert.equal(imports["test-assert-lite"], "/@tal/dist/test-assert-lite.min.js")
@@ -108,7 +108,7 @@ describe(TITLE, () => {
             const config = head.indexOf('<script type="application/vnd.config+json">')
             const json = head.slice(head.indexOf("{", config), head.indexOf("</script>", config))
             assert.equal(json.includes("</script>"), false)
-            assert.deepEqual(JSON.parse(json), {options: {reporter: "</script><b>"}})
+            assert.deepEqual(JSON.parse(json), {options: {reporter: "</script><b>", files: []}})
         } finally {
             odd.close()
             server.close()
@@ -122,7 +122,7 @@ describe(TITLE, () => {
         assert.match(res.body, /\bsession\(\{/)
         assert.ok(res.body.indexOf('<script type="importmap">') < res.body.indexOf('<script type="module">'))
         assert.ok(res.body.includes("<title>fixture-pkg</title>"))
-        assert.ok(res.body.includes(`<script type="module" src="${tests}my%20suite.mjs"></script>\n<script type="module" src="${tests}second.mjs"></script>\n</head>`))
+        assert.ok(res.body.includes(`"files": [\n            "${tests}my%20suite.mjs",\n            "${tests}second.mjs"\n        ]`))
         assert.equal((await get(url("/run.html"))).status, 404)
         assert.equal((await get(url("/@tal/run/000000000/run.html"))).status, 404)
     })
