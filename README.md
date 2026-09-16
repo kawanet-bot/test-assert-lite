@@ -113,9 +113,10 @@ test-assert --webdriver test/browser.test.mjs
 test-assert --playwright chromium test/browser.test.mjs
 ```
 
-- Name files directly; the shell expands globs. CommonJS suites are not supported.
-- Browser modes take JavaScript suites from one directory.
-- `--serve`, `--playwright`, and `--webdriver` are exclusive. `--serve` takes no suite.
+- Name files directly; the shell expands globs. CommonJS test files are not supported.
+- `--webdriver` runs the test files in the browser a WebDriver server drives; JavaScript, from one directory.
+- `--playwright <browser>` does the same through Playwright.
+- `--serve` serves for a browser, with auto reload, and takes no test file. The three are exclusive.
 - A run exits 0 when all tests pass and 1 otherwise. Reports go to stdout; server messages and access logs go to stderr.
 - Each report ends with the package version and the user agent that ran the suite.
 

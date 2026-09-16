@@ -14,7 +14,7 @@ export const USAGE = `Usage: test-assert [options] <file...>
   -v, --version               print this package's version
   --alias <specifier>=<file>  what a specifier resolves to: a file, a URL for the page, or this package's own name (repeatable)
   --import-map <file>         JSON import map: a relative address is a file beside it, / and http(s):// go to the page as they are
-  --serve                     serve for a browser and print the URL; a page reloads on a change
+  --serve                     serve for a browser and print the URL, with auto reload
   --host <address>            address the server listens on (browser modes, default: 127.0.0.1)
   --port <number>             port the server listens on (browser modes, default: a free one)
   --origin <url>              what the browser reaches the server as, http(s)://host[:port] (browser modes, default: from --host)
@@ -171,7 +171,7 @@ export const readOptions = (args: string[]): Options => {
     // browser strips no types either, so TypeScript is refused there too.
     const commonjs = files.filter(file => /\.c[jt]s$/.test(file))
     if (commonjs.length) {
-        throw new UsageError(`CommonJS suites are not supported: ${commonjs.join(", ")}`)
+        throw new UsageError(`CommonJS test files are not supported: ${commonjs.join(", ")}`)
     }
     if (browsing) {
         const typescript = [...files, ...values.script].filter(file => /\.[cm]?ts$/.test(file))
@@ -191,7 +191,7 @@ export const readOptions = (args: string[]): Options => {
     // per directory. One under another counts as served from the latter.
     const served = createFiles([...suites, ...scripts, ...imports.paths()])
     if (new Set(suites.map(file => served.dirOf(file))).size > 1) {
-        throw new UsageError("--playwright and --webdriver take the suites from one directory")
+        throw new UsageError("--playwright and --webdriver take the test files from one directory")
     }
 
     const shared: BrowserOptions = {

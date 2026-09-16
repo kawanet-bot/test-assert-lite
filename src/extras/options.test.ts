@@ -82,9 +82,9 @@ describe(TITLE, () => {
 
         it("refuses Node mode without a file, and a CommonJS suite in every mode", () => {
             assert.throws(() => readOptions([]))
-            assert.throws(() => readOptions(["a.test.ts", "b.cjs", "c.cts"]), /CommonJS suites are not supported: b\.cjs, c\.cts$/)
-            assert.throws(() => readOptions(["--playwright", "chromium", "b.cjs"]), /CommonJS suites are not supported: b\.cjs$/)
-            assert.throws(() => readOptions(["--playwright", "chromium", "c.cts"]), /CommonJS suites are not supported: c\.cts$/)
+            assert.throws(() => readOptions(["a.test.ts", "b.cjs", "c.cts"]), /CommonJS test files are not supported: b\.cjs, c\.cts$/)
+            assert.throws(() => readOptions(["--playwright", "chromium", "b.cjs"]), /CommonJS test files are not supported: b\.cjs$/)
+            assert.throws(() => readOptions(["--playwright", "chromium", "c.cts"]), /CommonJS test files are not supported: c\.cts$/)
         })
 
         it("refuses TypeScript in the browser modes, for a suite and for a --script, and takes it in Node mode", () => {
@@ -191,7 +191,7 @@ describe(TITLE, () => {
             assert.equal(options.mode, "playwright")
             if (options.mode !== "playwright") return
             assert.deepEqual(options.suites, [resolve("test/b.mjs"), resolve("test/a.mjs"), resolve("test/b.mjs"), resolve("test/sub/c.mjs")])
-            assert.throws(() => readOptions(["--playwright", "chromium", "test/a.mjs", "other/b.mjs"]), /--playwright and --webdriver take the suites from one directory$/)
+            assert.throws(() => readOptions(["--playwright", "chromium", "test/a.mjs", "other/b.mjs"]), /--playwright and --webdriver take the test files from one directory$/)
             assert.throws(() => readOptions(["--playwright", "chromium", "x/a.mjs", "test/b.mjs"]), /from one directory$/)
             assert.throws(() => readOptions(["--playwright", "chromium", "test/a/x.mjs", "test/b/y.mjs"]), /from one directory$/)
         })
