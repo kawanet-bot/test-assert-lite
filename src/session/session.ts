@@ -91,8 +91,10 @@ const capture = (harness: HarnessState, target: EventTargetLike): (() => void) =
 }
 
 // What takes a listener: a window has it, Node's global does not.
-const isEventTarget = (value: unknown): value is EventTargetLike =>
-    "function" === typeof (value as Partial<EventTargetLike> | null | undefined)?.addEventListener
+const isEventTarget = (value: unknown): value is EventTargetLike => {
+    const v = value as Partial<EventTargetLike> | null | undefined
+    return "function" === typeof v?.addEventListener && "function" === typeof v?.removeEventListener
+}
 
 // true is the window, where there is one; under Node, whose errors nothing
 // takes yet, true means nothing. Anything else is listened on as given.
