@@ -23,7 +23,7 @@ const thrown = async (value: unknown): Promise<string> => {
     const local = createTAL()
     const lines: string[] = []
     local.session({
-        format: local.reporter.spec({colors: false}),
+        reporter: local.reporter.spec({colors: false}),
         output: text => {
             lines.push(text)
         },

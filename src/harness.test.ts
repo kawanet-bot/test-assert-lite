@@ -100,7 +100,7 @@ describe(TITLE, () => {
         const local = createTAL()
         const lines: string[] = []
         local.session({
-            format: local.reporter.spec({colors: false}),
+            reporter: local.reporter.spec({colors: false}),
             output: text => {
                 lines.push(text)
             },

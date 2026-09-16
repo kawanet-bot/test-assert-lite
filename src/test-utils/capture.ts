@@ -1,13 +1,13 @@
 import type * as declared from "test-assert-lite"
 
 // Collects the events that reached the reporter, through a session whose
-// format yields nothing, so the output falls silent as a side effect.
+// reporter yields nothing, so the output falls silent as a side effect.
 // Where silence is all that is wanted, open the session with an output.
-export const capture = (harness: declared.TAL.TestHarness, options: Omit<declared.TAL.SessionOptions, "format"> = {}): declared.TAL.TestEvent[] => {
+export const capture = (harness: declared.TAL.TestHarness, options: Omit<declared.TAL.SessionOptions, "reporter"> = {}): declared.TAL.TestEvent[] => {
     const events: declared.TAL.TestEvent[] = []
     harness.session({
         ...options,
-        format: async function* (source) {
+        reporter: async function* (source) {
             for await (const event of source) events.push(event)
         },
     })

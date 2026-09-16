@@ -2,7 +2,7 @@ import type * as declared from "test-assert-lite"
 import {errorText} from "../utils/tester-error.ts"
 
 type TestEvent = declared.TAL.TestEvent
-type FormatFn = declared.TAL.FormatFn
+type ReporterFn = declared.TAL.ReporterFn
 
 // A bare "#" starts a TAP directive and a raw newline starts a new TAP
 // line, so both need escaping to keep one test point on one line.
@@ -25,7 +25,7 @@ const resultLine = (data: declared.TAL.TestPass | declared.TAL.TestFail, isPass:
 const diagnostic = (error: Error): string =>
     errorText(error).split("\n").map((line) => `# ${line}`).join("\n") + "\n"
 
-export const tap = (): FormatFn => async function* (source: AsyncIterable<TestEvent>): AsyncIterable<string> {
+export const tap = (): ReporterFn => async function* (source: AsyncIterable<TestEvent>): AsyncIterable<string> {
     // Mirrors spec()/html(): stack up test:start and, once a result
     // arrives, emit the parents still pending as headings.
     const stack: declared.TAL.TestStart[] = []

@@ -4,7 +4,7 @@ import {client, line} from "./client.ts"
 import type {ReportStream} from "./report-stream.ts"
 import type {HarnessState} from "./state.ts"
 
-type FormatFn = declared.TAL.FormatFn
+type ReporterFn = declared.TAL.ReporterFn
 type OutputFn = declared.TAL.OutputFn
 type SessionOptions = declared.TAL.SessionOptions
 type Session = declared.TAL.Session
@@ -14,7 +14,7 @@ type EventTarget = declared.TAL.EventTarget
 // session(), or with the defaults on the first declaration, until end()
 // closes it with the verdict.
 interface Open {
-    format: FormatFn
+    reporter: ReporterFn
     output: OutputFn
     session: Session
     end: (success: boolean) => Promise<void>
@@ -105,7 +105,7 @@ export const createSessions = (harness: HarnessState): SessionControl => {
     let current: Open | null = null
 
     const create = (options: SessionOptions, auto: boolean): Open => {
-        const {format = spec(), base} = options
+        const {reporter = spec(), base} = options
         const url = base == null ? null : new URL(base)
         const opened = (open: Omit<Open, "release" | "auto">): Open => {
             const target = targetOf(options.capture)
@@ -116,7 +116,7 @@ export const createSessions = (harness: HarnessState): SessionControl => {
             const channel = client(url)
             void channel.begin()
             return opened({
-                format,
+                reporter,
                 output: options.output ?? (text => channel.stdout(text)),
                 session: {stdout: channel.stdout, stderr: channel.stderr},
                 end: channel.end,
@@ -125,7 +125,7 @@ export const createSessions = (harness: HarnessState): SessionControl => {
         const stdout = writer("stdout")
         const stderr = writer("stderr")
         return opened({
-            format,
+            reporter,
             output: options.output ?? defaultOutput,
             session: {stdout, stderr: item => stderr(line(item))},
             end: async () => undefined,
@@ -156,7 +156,7 @@ export const createSessions = (harness: HarnessState): SessionControl => {
         },
         attach: (stream) => {
             current ??= create({}, true)
-            stream.attach(current.format, current.output)
+            stream.attach(current.reporter, current.output)
         },
     }
 }

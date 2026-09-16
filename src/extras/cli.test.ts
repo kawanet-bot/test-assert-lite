@@ -43,7 +43,7 @@ describe(TITLE, () => {
         await writeFile(fine, `import {it} from "node:test"\nit("in the other suite", () => undefined)\n`)
         const events: TAL.TestEvent[] = []
         session({
-            format: async function* (source) {
+            reporter: async function* (source) {
                 for await (const event of source) events.push(event)
             },
         })

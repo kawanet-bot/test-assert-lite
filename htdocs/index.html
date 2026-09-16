@@ -17,7 +17,7 @@
         import {reporter, session} from "test-assert-lite";
 
         session({
-            format: reporter.html(),
+            reporter: reporter.html(),
             output: text => document.querySelector("#output")?.insertAdjacentHTML("beforeend", text),
         });
     </script>
