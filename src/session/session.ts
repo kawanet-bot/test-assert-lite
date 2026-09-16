@@ -117,14 +117,30 @@ export const createSessions = (harness: HarnessState): SessionControl => {
     // A name with no reporter behind it runs with spec, and is one failed
     // test at the root, filed as capture files a window's errors.
     const reporterOf = (v: ReporterFn | string | undefined): ReporterFn => {
-        if (v == null) return spec()
+        if (!v) return spec()
         if ("function" === typeof v) return v
         const init = reporterMap.get(v)
-        if (init != null) return init()
-        harness.root.declareTest(`unsupported reporter: ${v}`, {}, () => {
-            throw new Error(`unsupported reporter: ${v}`)
-        })
-        return spec()
+        if (init) return init()
+        return lazyReporter(v)
+    }
+
+    // A module name is imported when the run starts reporting, its default
+    // export the reporter, as node --test-reporter takes one. A name that
+    // does not import, or starts with "." and would resolve against this
+    // module, is a failed test at the root, and the run goes on with spec.
+    const lazyReporter = (v: string): ReporterFn => {
+        return async function* (source) {
+            let error: Error | null = null
+            const module = /^\./.test(v) ? null : await import(v).catch((e: Error) => (void (error = e)))
+            let reporter: unknown = module?.default
+            if (error || "function" !== typeof reporter) {
+                harness.root.declareTest(`import(${JSON.stringify(v)})`, {}, () => {
+                    throw error || new Error(`unsupported reporter: ${v}`)
+                })
+                reporter = spec()
+            }
+            yield* (reporter as ReporterFn)(source)
+        }
     }
 
     const create = (options: SessionOptions, auto: boolean): Open => {

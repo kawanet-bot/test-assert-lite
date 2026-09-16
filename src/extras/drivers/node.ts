@@ -8,7 +8,7 @@ import {pathToFileURL} from "node:url"
 import type {TAL} from "test-assert-lite"
 import {end, it, session} from "test-assert-lite"
 import type {Imports} from "../imports.ts"
-import type {DriverConfig} from "./driver-config.ts"
+import type {DriverOptions} from "./driver-config.ts"
 
 /** What the hook is handed at registration, and the only place its source and this file meet. */
 interface HookData {
@@ -32,14 +32,14 @@ export const resolve = (specifier, context, next) => {
  * from this copy of it, so a suite outside any project, or beside another
  * copy, still lands on the instance end() reads.
  */
-export const runInNode = async (suites: string[], imports: Imports, config: DriverConfig): Promise<TAL.SessionResult> => {
+export const runInNode = async (suites: string[], imports: Imports, options: DriverOptions): Promise<TAL.SessionResult> => {
     // A Map, so a specifier named like an Object property finds no alias.
     // Every item left for Node is a file: the reading of the options saw to it.
     const aliases = new Map([...imports.entries()].map(([specifier, item]) => [specifier, pathToFileURL(item.getPath() as string).href]))
     const data: HookData = {aliases}
     register(`data:text/javascript,${encodeURIComponent(HOOK)}`, {data})
 
-    session({reporter: config.options.reporter})
+    session({reporter: options.reporter})
 
     for (const file of suites) {
         try {
