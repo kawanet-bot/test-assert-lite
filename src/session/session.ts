@@ -117,14 +117,25 @@ export const createSessions = (harness: HarnessState): SessionControl => {
     // A name with no reporter behind it runs with spec, and is one failed
     // test at the root, filed as capture files a window's errors.
     const reporterOf = (v: ReporterFn | string | undefined): ReporterFn => {
-        if (v == null) return spec()
+        if (!v) return spec()
         if ("function" === typeof v) return v
         const init = reporterMap.get(v)
-        if (init != null) return init()
-        harness.root.declareTest(`unsupported reporter: ${v}`, {}, () => {
-            throw new Error(`unsupported reporter: ${v}`)
-        })
-        return spec()
+        if (init) return init()
+        return lazyReporter(v)
+    }
+
+    const lazyReporter = (v: string): ReporterFn => {
+        return async function* (source) {
+            let error: Error | null = null
+            let reporter: ReporterFn | void = await import(v).catch((e) => (void (error = e)))
+            if (error || "function" !== typeof reporter) {
+                harness.root.declareTest(`import(${JSON.stringify(v)})`, {}, () => {
+                    throw error || new Error(`unsupported reporter: ${v}`)
+                })
+                reporter = spec()
+            }
+            return reporter(source)
+        }
     }
 
     const create = (options: SessionOptions, auto: boolean): Open => {
