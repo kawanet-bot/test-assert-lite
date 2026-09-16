@@ -139,7 +139,7 @@ test-assert --playwright chromium test/browser.test.mjs
 
 ### `--reporter <name>`
 
-- How the run is reported: `spec` (default), `tap` or `html`. In every mode: a browser run reports the same way, the page taking the name from its head.
+- How the run is reported: `spec` (default), `tap` or `html`.
 
 ### `--serve`
 

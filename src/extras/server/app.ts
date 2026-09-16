@@ -51,6 +51,10 @@ export interface App {
 // are served from there whatever the suite's location.
 const root = fileURLToPath(packageRoot())
 
+// JSON for a script tag: a "<" in a value, "</script>" say, is escaped so
+// it cannot close the tag, and reads back as the same string.
+const safeJSON = (value: unknown): string => JSON.stringify(value, null, 4).replace(/</g, "\\u003c")
+
 /**
  * Builds the application for the suites: its middleware, and the promise
  * of the verdict the page at `page` reports back through it.
@@ -84,10 +88,10 @@ export const createApp = (options: AppOptions): App => {
     // module imports the package by name; the scripts and the suites go
     // at the end of the head, the suites in the order given as under Node,
     // ahead of the page's module in the body that calls end().
-    const importmap = `<script type="importmap">\n${JSON.stringify({imports: imports.addresses(file => served.urlOf(file))}, null, 4)}\n</script>\n`
+    const importmap = `<script type="importmap">\n${safeJSON({imports: imports.addresses(file => served.urlOf(file))})}\n</script>\n`
     // The config goes in beside the map, JSON in a tag of its own type,
     // for the page's module to read before its session opens.
-    const configTag = `<script type="application/vnd.config+json">\n${JSON.stringify(config, null, 4)}\n</script>\n`
+    const configTag = `<script type="application/vnd.config+json">\n${safeJSON(config)}\n</script>\n`
     const tags = scriptUrls.map(url => `<script src="${url}"></script>\n`).join("")
         + suites.map(suite => `<script type="module" src="${served.urlOf(suite)}"></script>\n`).join("")
     // A page with an import map of its own goes out as it is: a second map

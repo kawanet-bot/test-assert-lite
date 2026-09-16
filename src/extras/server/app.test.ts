@@ -100,6 +100,21 @@ describe(TITLE, () => {
         assert.equal((await get(url("/index.html"))).body, res.body)
     })
 
+    it("escapes a < in the config, so a name cannot close the tag, and reads it back", async () => {
+        const odd = createApp({config: {options: {reporter: "</script><b>"}}, stdout: () => undefined})
+        const server = await serve({handler: odd.handler})
+        try {
+            const head = (await get(server.origin + "/")).body.split("</head>")[0] as string
+            const config = head.indexOf('<script type="application/vnd.config+json">')
+            const json = head.slice(head.indexOf("{", config), head.indexOf("</script>", config))
+            assert.equal(json.includes("</script>"), false)
+            assert.deepEqual(JSON.parse(json), {options: {reporter: "</script><b>"}})
+        } finally {
+            odd.close()
+            server.close()
+        }
+    })
+
     it("serves the run page under the run's path alone", async () => {
         assert.match(app.page, /^\/@tal\/run\/[0-9a-z]{9}\/run\.html$/)
         const res = await get(url(app.page))
