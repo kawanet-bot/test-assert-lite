@@ -14,6 +14,7 @@ export const USAGE = `Usage: test-assert [options] <file...>
   -v, --version               print this package's version
   --alias <specifier>=<file>  what a specifier resolves to: a file, a URL for the page, or this package's own name (repeatable)
   --import-map <file>         JSON import map: a relative address is a file beside it, / and http(s):// go to the page as they are
+  --reporter <name>           how the run is reported: spec, tap or html (default: spec)
   --serve                     serve for a browser and print the URL, with auto reload
   --host <address>            address the server listens on (browser modes, default: 127.0.0.1)
   --port <number>             port the server listens on (browser modes, default: a free one)
@@ -34,6 +35,8 @@ export type Browser = typeof BROWSERS[number]
 export interface BrowserOptions {
     /** The suites, absolute, all served from one directory; none under --serve. */
     suites: string[]
+    /** The reporter named, as given; the run says whether it knows it. */
+    reporter?: string
     /** Classic scripts to run first, absolute, in order. */
     scripts: string[]
     /** From --import-map then --alias, a later item over an earlier one of the same specifier. */
@@ -48,7 +51,7 @@ export interface BrowserOptions {
 export type Options =
     | {mode: "help"}
     | {mode: "version"}
-    | {mode: "node", suites: string[], imports: Imports}
+    | {mode: "node", suites: string[], imports: Imports, reporter?: string}
     | BrowserOptions & {mode: "serve"}
     | BrowserOptions & {mode: "playwright", browser: Browser}
     | BrowserOptions & {mode: "webdriver", session?: string, endpoint: string}
@@ -119,6 +122,7 @@ const parse = (args: string[]) => {
                 origin: {type: "string"},
                 alias: {type: "string", multiple: true, default: []},
                 "import-map": {type: "string"},
+                reporter: {type: "string"},
                 script: {type: "string", multiple: true, default: []},
                 mount: {type: "string"},
                 playwright: {type: "string"},
@@ -181,7 +185,7 @@ export const readOptions = (args: string[]): Options => {
     }
 
     const imports = importsOf(values["import-map"], values.alias, browsing ? "browser" : "node")
-    if (!browsing) return {mode: "node", suites: files.map(file => resolve(file)), imports}
+    if (!browsing) return {mode: "node", suites: files.map(file => resolve(file)), imports, reporter: values.reporter}
 
     const suites = files.map(file => resolve(file))
     const scripts = values.script.map(script => resolve(script))
@@ -196,6 +200,7 @@ export const readOptions = (args: string[]): Options => {
 
     const shared: BrowserOptions = {
         suites: suites,
+        reporter: values.reporter,
         scripts,
         imports,
         mount: values.mount == null ? undefined : mountOf(values.mount),

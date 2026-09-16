@@ -101,6 +101,7 @@ describe(TITLE, () => {
             assert.deepEqual({...options, imports: null}, {
                 mode: "serve",
                 suites: [],
+                reporter: undefined,
                 scripts: [],
                 imports: null,
                 mount: undefined,
@@ -129,6 +130,13 @@ describe(TITLE, () => {
             assert.deepEqual(options.imports.paths(), [resolve("m.mjs")])
             assert.equal(options.imports.entries().get("mod")?.getPath(), resolve("m.mjs"))
             assert.throws(() => readOptions(["--serve", "--alias", "mod"]), /--alias takes/)
+        })
+
+        it("reads --reporter as given, in every mode", () => {
+            const named = (args: string[]): string | undefined => (readOptions(args) as {reporter?: string}).reporter
+            assert.equal(named(["--reporter", "tap", "a.test.ts"]), "tap")
+            assert.equal(named(["--reporter", "html", "--serve"]), "html")
+            assert.equal(named(["a.test.ts"]), undefined)
         })
 
         it("reads --alias in Node mode too", () => {
