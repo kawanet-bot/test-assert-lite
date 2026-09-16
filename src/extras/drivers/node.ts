@@ -6,8 +6,9 @@ import {register} from "node:module"
 import {relative, resolve} from "node:path"
 import {pathToFileURL} from "node:url"
 import type {TAL} from "test-assert-lite"
-import {end, it} from "test-assert-lite"
+import {end, it, session} from "test-assert-lite"
 import type {Imports} from "../imports.ts"
+import type {DriverOptions} from "./driver-config.ts"
 
 /** What the hook is handed at registration, and the only place its source and this file meet. */
 interface HookData {
@@ -37,6 +38,14 @@ export const runInNode = async (suites: string[], imports: Imports): Promise<TAL
     const aliases = new Map([...imports.entries()].map(([specifier, item]) => [specifier, pathToFileURL(item.getPath() as string).href]))
     const data: HookData = {aliases}
     register(`data:text/javascript,${encodeURIComponent(HOOK)}`, {data})
+
+    const options: DriverOptions = {
+        reporter: "spec", // TODO
+    }
+
+    session({
+        reporter: options.reporter,
+    })
 
     for (const file of suites) {
         try {
