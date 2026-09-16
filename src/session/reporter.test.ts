@@ -16,9 +16,9 @@ const caught = async (promise: Promise<unknown>): Promise<unknown> => {
 
 describe(TITLE, () => {
 
-    it("rejects end() when the formatter throws", async () => {
+    it("rejects end() when the reporter throws", async () => {
         const local = createTAL()
-        const failure = new Error("formatter failed")
+        const failure = new Error("reporter failed")
         local.session({
             reporter: () => {
                 throw failure
@@ -29,9 +29,9 @@ describe(TITLE, () => {
         assert.equal(await caught(local.end()), failure)
     })
 
-    it("rejects end() when async formatter work rejects", async () => {
+    it("rejects end() when async reporter work rejects", async () => {
         const local = createTAL()
-        const failure = new Error("async formatter failed")
+        const failure = new Error("async reporter failed")
         local.session({
             reporter: async function* (source) {
                 for await (const _event of source) throw failure
@@ -78,7 +78,7 @@ describe(TITLE, () => {
         }
     })
 
-    it("rejects when a formatter ends before consuming its input", async () => {
+    it("rejects when a reporter ends before consuming its input", async () => {
         const local = createTAL()
         local.session({
             reporter: async function* () {
@@ -89,7 +89,7 @@ describe(TITLE, () => {
         local.it("one", () => undefined)
 
         const error = await caught(local.end())
-        assert.match(String(error), /formatter ended before its input/i)
+        assert.match(String(error), /reporter ended before its input/i)
     })
 
     it("rejects a manual iterator that returns after the summary without reading done", async () => {
@@ -107,7 +107,7 @@ describe(TITLE, () => {
         local.it("one", () => undefined)
 
         const error = await caught(local.end())
-        assert.match(String(error), /formatter ended before its input/i)
+        assert.match(String(error), /reporter ended before its input/i)
     })
 
     it("allows a manual iterator to finish by reading done", async () => {
@@ -116,7 +116,7 @@ describe(TITLE, () => {
             reporter: async function* (source) {
                 const iterator = source[Symbol.asyncIterator]()
                 while (!(await iterator.next()).done) {
-                    // Reading until done is the formatter's completion contract.
+                    // Reading until done is the reporter's completion contract.
                 }
             },
             output: () => undefined,
@@ -202,7 +202,7 @@ describe(TITLE, () => {
 
     it("a failed end() closes the session too, and the next run starts clean", async () => {
         const local = createTAL()
-        const failure = new Error("formatter failed")
+        const failure = new Error("reporter failed")
         local.session({
             reporter: () => {
                 throw failure

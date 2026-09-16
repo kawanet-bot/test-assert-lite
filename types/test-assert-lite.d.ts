@@ -224,7 +224,7 @@ export declare namespace TAL {
         colors?: boolean
     }
 
-    // The formatters the package ships; `format` in session() takes one.
+    // The reporters the package ships; `format` in session() takes one.
     interface Reporter {
         spec(options?: SpecOptions): ReporterFn
         tap(): ReporterFn
@@ -322,9 +322,9 @@ export declare function session(options?: TAL.SessionOptions): TAL.Session
 /**
  * Runs every registered test, reports, and closes the session: under the
  * CLI, the verdict is sent once the buffers have drained. Resolves once
- * all tests and hooks have finished, the formatter has ended and any
+ * all tests and hooks have finished, the reporter has ended and any
  * asynchronous output has completed, with whether every test passed.
- * Reporter failures and a formatter that ends before its input reject the
+ * Reporter failures and a reporter that ends before its input reject the
  * returned promise; a concurrent call on the same harness also rejects.
  * The registry is reset; a test declared afterwards opens a new session.
  */

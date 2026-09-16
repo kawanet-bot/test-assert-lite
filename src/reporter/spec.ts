@@ -2,7 +2,7 @@ import type * as declared from "test-assert-lite"
 import {errorText, isSubtestsFailed} from "../utils/tester-error.ts"
 
 type TestEvent = declared.TAL.TestEvent
-type FormatFn = declared.TAL.ReporterFn
+type ReporterFn = declared.TAL.ReporterFn
 
 const SYMBOL = {
     pass: "✔ ",
@@ -65,7 +65,7 @@ const formatFailures = (failed: declared.TAL.TestFail[], colors: boolean): strin
     return out
 }
 
-export const spec = (options?: declared.TAL.SpecOptions): FormatFn => {
+export const spec = (options?: declared.TAL.SpecOptions): ReporterFn => {
     const colors = options?.colors ?? defaultColors()
 
     return async function* (source: AsyncIterable<TestEvent>): AsyncIterable<string> {

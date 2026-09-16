@@ -1,7 +1,7 @@
 import type * as declared from "test-assert-lite"
 
 type TestEvent = declared.TAL.TestEvent
-type FormatFn = declared.TAL.ReporterFn
+type ReporterFn = declared.TAL.ReporterFn
 type OutputFn = declared.TAL.OutputFn
 
 interface QueueItem {
@@ -10,12 +10,12 @@ interface QueueItem {
     reject: (error: unknown) => void
 }
 
-// Bridges emit() to an async generator formatter. A request for the next
+// Bridges emit() to an async generator reporter. A request for the next
 // event means the previous one has been written, and that is when emit()'s
 // promise settles, so end() stays in step by awaiting emit alone. Until
 // attach() the events are only kept, and emit() settles at once.
 export class ReportStream {
-    private format: FormatFn | null = null
+    private reporter: ReporterFn | null = null
     private output: OutputFn | null = null
     private pending: QueueItem[] = []
     private active: QueueItem | null = null
@@ -26,8 +26,8 @@ export class ReportStream {
     private loop: Promise<void> | null = null
 
     // Takes the settings and starts writing, what was kept going first.
-    attach(format: FormatFn, output: OutputFn): void {
-        this.format = format
+    attach(reporter: ReporterFn, output: OutputFn): void {
+        this.reporter = reporter
         this.output = output
         this.start()
     }
@@ -38,7 +38,7 @@ export class ReportStream {
 
         const promise = new Promise<void>((resolve, reject) => {
             this.pending.push({event, resolve, reject})
-            if (this.format == null) resolve()
+            if (this.reporter == null) resolve()
             const wake = this.wake
             this.wake = null
             wake?.()
@@ -47,7 +47,7 @@ export class ReportStream {
         // deliberately synchronous. Mark every rejection handled here while
         // preserving it for awaiters and close().
         void promise.catch(() => undefined)
-        if (this.format != null) this.start()
+        if (this.reporter != null) this.start()
         return promise
     }
 
@@ -90,11 +90,11 @@ export class ReportStream {
     }
 
     private async consume(): Promise<void> {
-        for await (const chunk of this.format!(this.source())) {
+        for await (const chunk of this.reporter!(this.source())) {
             if (chunk) await this.output!(chunk)
         }
         if (!this.closed) {
-            throw new Error("Reporter formatter ended before its input")
+            throw new Error("Reporter ended before its input")
         }
     }
 

@@ -4,7 +4,7 @@ import {errorText, isSubtestsFailed} from "../utils/tester-error.ts"
 import {directive} from "./spec.ts"
 
 type TestEvent = declared.TAL.TestEvent
-type FormatFn = declared.TAL.ReporterFn
+type ReporterFn = declared.TAL.ReporterFn
 
 const indentClass = (indent: number): string => (indent > 0 ? `tal-i${indent > 5 ? 5 : indent}` : "")
 
@@ -31,7 +31,7 @@ const formatFailures = (failed: declared.TAL.TestFail[]): string => {
 
 // Produces list items only, leaving the surrounding list and output target
 // to the page so applications can place the report in their own layout.
-export const html = (): FormatFn => async function* (source: AsyncIterable<TestEvent>): AsyncIterable<string> {
+export const html = (): ReporterFn => async function* (source: AsyncIterable<TestEvent>): AsyncIterable<string> {
     const stack: declared.TAL.TestStart[] = []
     const failed: declared.TAL.TestFail[] = []
 
