@@ -18,7 +18,7 @@ const fire = (on: EventTarget, type: string, fields: object): void => {
 }
 
 // The window's own type satisfies what capture asks for.
-const check: typeof globalThis extends declared.TAL.EventTarget ? true : never = true
+const check: typeof globalThis extends declared.TAL.EventTargetLike ? true : never = true
 void check
 
 describe(TITLE, () => {
