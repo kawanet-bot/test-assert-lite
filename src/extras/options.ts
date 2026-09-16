@@ -14,7 +14,7 @@ export const USAGE = `Usage: test-assert [options] <file...>
   -v, --version               print this package's version
   --alias <specifier>=<file>  what a specifier resolves to: a file, a URL for the page, or this package's own name (repeatable)
   --import-map <file>         JSON import map: a relative address is a file beside it, / and http(s):// go to the page as they are
-  --serve                     serve the suite for a browser and print the URL; the page reloads on a change
+  --serve                     serve for a browser and print the URL, with auto reload
   --host <address>            address the server listens on (browser modes, default: 127.0.0.1)
   --port <number>             port the server listens on (browser modes, default: a free one)
   --origin <url>              what the browser reaches the server as, http(s)://host[:port] (browser modes, default: from --host)
@@ -30,10 +30,9 @@ const BROWSERS = ["chromium", "firefox", "webkit"] as const
 export type Browser = typeof BROWSERS[number]
 
 // What the three browser modes share: the suites, what the page is made
-// of, and where the server sits. --serve with --mount may go without a
-// suite: the mounted pages carry the library then, and whatever they run.
+// of, and where the server sits. --serve takes no suite.
 export interface BrowserOptions {
-    /** The suites, absolute, all served from one directory; none only under --serve with --mount. */
+    /** The suites, absolute, all served from one directory; none under --serve. */
     suites: string[]
     /** Classic scripts to run first, absolute, in order. */
     scripts: string[]
@@ -158,8 +157,11 @@ export const readOptions = (args: string[]): Options => {
     if (!webdriver && (values["webdriver-session"] != null || values.endpoint != null)) {
         throw new UsageError("--webdriver-session and --endpoint apply to --webdriver only")
     }
-    const optional = serve && values.mount != null
-    if (!files.length && !(browsing && optional)) {
+    // --serve is a web server, not a run: a page imports what it runs.
+    if (serve && files.length) {
+        throw new UsageError(`--serve takes no test file: ${files.join(", ")}`)
+    }
+    if (!serve && !files.length) {
         throw new UsageError("no test files specified")
     }
 
@@ -169,7 +171,7 @@ export const readOptions = (args: string[]): Options => {
     // browser strips no types either, so TypeScript is refused there too.
     const commonjs = files.filter(file => /\.c[jt]s$/.test(file))
     if (commonjs.length) {
-        throw new UsageError(`CommonJS suites are not supported: ${commonjs.join(", ")}`)
+        throw new UsageError(`CommonJS test files are not supported: ${commonjs.join(", ")}`)
     }
     if (browsing) {
         const typescript = [...files, ...values.script].filter(file => /\.[cm]?ts$/.test(file))
@@ -189,7 +191,7 @@ export const readOptions = (args: string[]): Options => {
     // per directory. One under another counts as served from the latter.
     const served = createFiles([...suites, ...scripts, ...imports.paths()])
     if (new Set(suites.map(file => served.dirOf(file))).size > 1) {
-        throw new UsageError("--playwright, --webdriver and --serve take the suites from one directory")
+        throw new UsageError("--playwright and --webdriver take the test files from one directory")
     }
 
     const shared: BrowserOptions = {

@@ -6,13 +6,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <link rel="stylesheet" href="/styles/test-assert-lite.css"/>
     <!-- The page people open, from the CLI's --serve mode. It shows the
-         HTML reporter for whatever the CLI mounted; browser/run.html, served
-         under each run's URL, is the one the CLI drives itself. The CLI
-         serves this page with the import map, the classic scripts and the
-         suites added at the end of the head. -->
+         HTML reporter for index.js, whatever an --alias names by that;
+         browser/run.html, served under each run's URL, is the one the CLI
+         drives itself. The CLI serves this page with the import map and
+         the classic scripts added at the end of the head. -->
     <script type="module">
         // Module scripts run once the page is parsed, in order: this one
-        // first, the suites the CLI adds after it. The import map the CLI
+        // first, the one in the body after it. The import map the CLI
         // puts ahead of this script gives the package's name.
         import {reporter, session} from "test-assert-lite";
 
@@ -27,6 +27,9 @@
 <div id="output"></div>
 <script type="module">
     import {end} from "test-assert-lite";
+
+    // --serve --alias index.js=path/to/index.js
+    import "index.js";
 
     await end().catch(console.error);
 </script>
