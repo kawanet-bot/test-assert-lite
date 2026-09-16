@@ -6,6 +6,7 @@
 
 import {basename, resolve} from "node:path"
 import {fileURLToPath} from "node:url"
+import type {DriverConfig} from "../drivers/driver-config.ts"
 import {Imports} from "../imports.ts"
 import {packageNameOf, packageRoot} from "../package-root.ts"
 import type {ChannelOptions} from "./channel.ts"
@@ -29,6 +30,8 @@ export interface AppOptions extends ChannelOptions {
     imports?: Imports
     /** What the root serves in place of htdocs: an absolute directory, or an http(s) URL ending in "/" to proxy. */
     mount?: string
+    /** What the command line hands the page, as JSON in its head; empty options unless given. */
+    config?: DriverConfig
     /** Reloads the page people open when a suite, a script or an imported file changes; off where it cannot watch. */
     watch?: boolean
 }
@@ -53,7 +56,7 @@ const root = fileURLToPath(packageRoot())
  * of the verdict the page at `page` reports back through it.
  */
 export const createApp = (options: AppOptions): App => {
-    const {suites = [], scripts = [], imports = new Imports([]), mount: mounted, stderr = text => process.stderr.write(text)} = options
+    const {suites = [], scripts = [], imports = new Imports([]), mount: mounted, config = {options: {}}, stderr = text => process.stderr.write(text)} = options
     const channel = createChannel(options)
 
     // Watching is a convenience of --serve, not what it is for: where the
@@ -82,13 +85,16 @@ export const createApp = (options: AppOptions): App => {
     // at the end of the head, the suites in the order given as under Node,
     // ahead of the page's module in the body that calls end().
     const importmap = `<script type="importmap">\n${JSON.stringify({imports: imports.addresses(file => served.urlOf(file))}, null, 4)}\n</script>\n`
+    // The config goes in beside the map, JSON in a tag of its own type,
+    // for the page's module to read before its session opens.
+    const configTag = `<script type="application/vnd.config+json">\n${JSON.stringify(config, null, 4)}\n</script>\n`
     const tags = scriptUrls.map(url => `<script src="${url}"></script>\n`).join("")
         + suites.map(suite => `<script type="module" src="${served.urlOf(suite)}"></script>\n`).join("")
     // A page with an import map of its own goes out as it is: a second map
     // is not for a browser, and without this one the suites cannot load,
     // so the scripts and the suites stay out too. stderr says so.
     const head = withHead((html, path) => {
-        if (!hasImportMap(html)) return {ahead: importmap, end: tags}
+        if (!hasImportMap(html)) return {ahead: importmap + configTag, end: tags}
         stderr(`import map of its own, left as it is: ${path}\n`)
         return ""
     })

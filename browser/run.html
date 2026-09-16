@@ -3,16 +3,10 @@
 <head>
     <meta charset="utf-8"/>
     <title>{{title}}</title>
-    <script type="application/vnd.config+json">
-        {
-            "options": {
-                "reporter": "spec"
-            }
-        }
-    </script>
     <script type="module">
         import {session} from "test-assert-lite";
 
+        // The CLI puts its config into the head as JSON, ahead of this script.
         const config = document.querySelector(`script[type="application/vnd.config+json"]`)?.textContent
         const options = config && JSON.parse(config)?.options || {}
 

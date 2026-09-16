@@ -81,13 +81,15 @@ describe(TITLE, () => {
             return i
         }
         const map = at('<script type="importmap">')
+        const config = at('<script type="application/vnd.config+json">')
         const own = at('<script type="module">')
         assert.match(tests, /^\/@tal\/files\/[0-9a-f]{9}\/$/)
         const script = at(`<script src="${tests}setup.js"></script>`)
         const second = at(`<script src="${tests}set%2Bup%232.js"></script>`)
         const suite = at(`<script type="module" src="${tests}my%20suite.mjs"></script>`)
         const other = at(`<script type="module" src="${tests}second.mjs"></script>`)
-        assert.ok(map < own && own < script && script < second && second < suite && suite < other)
+        assert.ok(map < config && config < own && own < script && script < second && second < suite && suite < other)
+        assert.deepEqual(JSON.parse(head.slice(head.indexOf("{", config), head.indexOf("</script>", config))), {options: {}})
         const {imports} = JSON.parse(head.slice(head.indexOf("{", map), head.indexOf("</script>", map)))
         assert.equal(imports["node:test"], "/@tal/exports/test.js")
         assert.equal(imports["test-assert-lite"], "/@tal/dist/test-assert-lite.min.js")
