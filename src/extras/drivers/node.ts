@@ -32,7 +32,7 @@ export const resolve = (specifier, context, next) => {
  * from this copy of it, so a suite outside any project, or beside another
  * copy, still lands on the instance end() reads.
  */
-export const runInNode = async (suites: string[], imports: Imports, options: DriverOptions): Promise<TAL.SessionResult> => {
+export const runInNode = async (imports: Imports, options: DriverOptions): Promise<TAL.SessionResult> => {
     // A Map, so a specifier named like an Object property finds no alias.
     // Every item left for Node is a file: the reading of the options saw to it.
     const aliases = new Map([...imports.entries()].map(([specifier, item]) => [specifier, pathToFileURL(item.getPath() as string).href]))
@@ -41,7 +41,7 @@ export const runInNode = async (suites: string[], imports: Imports, options: Dri
 
     session({reporter: options.reporter})
 
-    for (const file of suites) {
+    for (const file of options.files ?? []) {
         try {
             await import(pathToFileURL(resolve(file)).href)
         } catch (error) {
