@@ -103,8 +103,8 @@ See [test-assert-lite.d.ts](https://github.com/kawanet/test-assert-lite/blob/mai
 # Run in this Node.js process
 test-assert test/*.test.mjs
 
-# Serve the suite at http://127.0.0.1:3000/
-test-assert --serve --port 3000 test/browser.test.mjs
+# Serve the suite at http://127.0.0.1:3000/ as index.js
+test-assert --serve --port 3000 --alias index.js=test/browser.test.mjs
 
 # Run in Safari, Chrome, or another WebDriver browser
 test-assert --webdriver test/browser.test.mjs
@@ -115,7 +115,7 @@ test-assert --playwright chromium test/browser.test.mjs
 
 - Name files directly; the shell expands globs. CommonJS suites are not supported.
 - Browser modes take JavaScript suites from one directory.
-- `--serve`, `--playwright`, and `--webdriver` are exclusive. `--serve --mount` may omit the suite.
+- `--serve`, `--playwright`, and `--webdriver` are exclusive. `--serve` takes no suite: its page imports `index.js`.
 - A run exits 0 when all tests pass and 1 otherwise. Reports go to stdout; server messages and access logs go to stderr.
 - Each report ends with the package version and the user agent that ran the suite.
 
@@ -138,9 +138,9 @@ test-assert --playwright chromium test/browser.test.mjs
 
 ### `--serve`
 
-- Serves the suite for a browser, prints the URL to open, and keeps serving until Ctrl-C. The page is titled after the package the suites belong to, or after the suites where there is none.
-- Auto reload: the page reloads itself when the suite, a `--script` or an imported file changes.
-- With `--mount`, the suite may be left out.
+- Serves a page for a browser, prints the URL to open, and keeps serving until Ctrl-C. No suite on the command line: the page imports `index.js`, so name the suite as `--alias index.js=test/browser.test.mjs`.
+- Auto reload: the page reloads itself when a `--script` or an aliased file changes.
+- With `--mount`, the mounted pages get the import map, and run whatever they import.
 
 ### `--host <address>`
 
@@ -167,7 +167,7 @@ test-assert --playwright chromium test/browser.test.mjs
 ### `--mount <dir|url>`
 
 - What the root serves in place of `htdocs/`: a directory, or an origin to proxy, `http://127.0.0.1:8080` say, so the suite runs in a page of the app under test.
-- Its HTML pages get the import map and the suite, when there is one, in their head, so a page the app makes runs the suite.
+- Its HTML pages get the import map and the scripts in their head, so a page the app makes imports the library, and a suite, by name.
 - A page with its own `<script type="importmap">` is served as it is: no import map, no script or suite tags. stderr says so.
 
 ### `--webdriver`
