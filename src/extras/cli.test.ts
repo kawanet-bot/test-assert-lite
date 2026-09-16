@@ -19,7 +19,7 @@ const watching = async (): Promise<number> => {
 }
 
 describe(TITLE, () => {
-    // A suite of its own, so that --serve has a file to watch whatever was built.
+    // A file of its own for --serve to watch, as index.js, whatever was built.
     let dir: string
     let suite: string
 
@@ -62,7 +62,7 @@ describe(TITLE, () => {
         const port = typeof address === "object" && address != null ? address.port : 0
         const before = await watching()
         try {
-            await assert.rejects(CLI({args: ["--serve", "--port", String(port), suite]}), /EADDRINUSE/)
+            await assert.rejects(CLI({args: ["--serve", "--port", String(port), "--alias", `index.js=${suite}`]}), /EADDRINUSE/)
             assert.equal(await watching(), before)
         } finally {
             taken.close()
