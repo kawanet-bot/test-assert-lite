@@ -58,11 +58,11 @@ test-bundled:
 test-bin:
 	[ -x ../../node_modules/.bin/test-assert ]
 
-# The CLI end to end against the copy under test. sample/ is a package
-# scope of its own, so its bare import reaches that copy through a symlink
-# in sample/node_modules, remade each run as the copy differs by lane.
-# The alias run shows the resolve hook of that copy at work. Only the
-# exit codes matter here.
+# The CLI end to end against the copy under test. The fixtures import
+# node:test, which the CLI's hook points at its own copy, so the symlink
+# in sample/node_modules is not on that path: it is there, remade per
+# lane, so a `node --test` run from sample/ reaches the same copy by
+# its package name. Only the exit codes matter here.
 test-cli:
 	mkdir -p ../../sample/node_modules
 	[ -L ../../sample/node_modules/test-assert-lite ] || rm -rf ../../sample/node_modules/test-assert-lite
