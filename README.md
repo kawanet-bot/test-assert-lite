@@ -140,6 +140,7 @@ test-assert --playwright chromium test/browser.test.mjs
 ### `--reporter <name>`
 
 - How the run is reported: `spec` (default), `tap` or `html`.
+- Or a module to import, `--reporter test-assert-lite/reporter/tap` say: its default export is the reporter, as `node --test-reporter` takes one. A name that does not import is one failed test, and the run reports with `spec`.
 
 ### `--serve`
 
