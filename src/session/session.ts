@@ -105,7 +105,7 @@ export const createSessions = (harness: HarnessState): SessionControl => {
     let current: Open | null = null
 
     const create = (options: SessionOptions, auto: boolean): Open => {
-        const {reporter: format = spec(), base} = options
+        const {reporter = spec(), base} = options
         const url = base == null ? null : new URL(base)
         const opened = (open: Omit<Open, "release" | "auto">): Open => {
             const target = targetOf(options.capture)
@@ -116,7 +116,7 @@ export const createSessions = (harness: HarnessState): SessionControl => {
             const channel = client(url)
             void channel.begin()
             return opened({
-                reporter: format,
+                reporter,
                 output: options.output ?? (text => channel.stdout(text)),
                 session: {stdout: channel.stdout, stderr: channel.stderr},
                 end: channel.end,
@@ -125,7 +125,7 @@ export const createSessions = (harness: HarnessState): SessionControl => {
         const stdout = writer("stdout")
         const stderr = writer("stderr")
         return opened({
-            reporter: format,
+            reporter,
             output: options.output ?? defaultOutput,
             session: {stdout, stderr: item => stderr(line(item))},
             end: async () => undefined,
