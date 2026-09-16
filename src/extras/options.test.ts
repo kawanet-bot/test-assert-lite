@@ -190,8 +190,6 @@ describe(TITLE, () => {
         it("refuses a runner with no suite, and --serve with one", () => {
             assert.throws(() => readOptions(["--playwright", "chromium", "--mount", "site"]), /no test files specified$/)
             assert.throws(() => readOptions(["--webdriver"]), /no test files specified$/)
-            assert.throws(() => readOptions(["--serve", "a.mjs", "b.mjs"]), /--serve takes no test file: a\.mjs, b\.mjs$/)
-            assert.throws(() => readOptions(["--serve", "--mount", "site", "a.mjs"]), /--serve takes no test file/)
         })
 
         it("reads several suites in a browser mode from one directory, in order, and refuses them from two", () => {

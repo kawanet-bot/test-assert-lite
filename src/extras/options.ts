@@ -161,10 +161,6 @@ export const readOptions = (args: string[]): Options => {
     if (!webdriver && (values["webdriver-session"] != null || values.endpoint != null)) {
         throw new UsageError("--webdriver-session and --endpoint apply to --webdriver only")
     }
-    // --serve is a web server, not a run: a page imports what it runs.
-    if (serve && files.length) {
-        throw new UsageError(`--serve takes no test file: ${files.join(", ")}`)
-    }
     if (!serve && !files.length) {
         throw new UsageError("no test files specified")
     }

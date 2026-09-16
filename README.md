@@ -116,7 +116,7 @@ test-assert --playwright chromium test/browser.test.mjs
 - Name files directly; the shell expands globs. CommonJS test files are not supported.
 - `--webdriver` runs the test files in the browser a WebDriver server drives; JavaScript, from one directory.
 - `--playwright <browser>` does the same through Playwright.
-- `--serve` serves for a browser, with auto reload, and takes no test file. The three are exclusive.
+- `--serve` serves for a browser, with auto reload. The three are exclusive.
 - A run exits 0 when all tests pass and 1 otherwise. Reports go to stdout; server messages and access logs go to stderr.
 - Each report ends with the package version and the user agent that ran the suite.
 
@@ -144,7 +144,7 @@ test-assert --playwright chromium test/browser.test.mjs
 
 ### `--serve`
 
-- Serves `htdocs/`, or what `--mount` names, with the import map; prints the URL to open and keeps serving until Ctrl-C. No suite: a page imports what it runs.
+- Serves `htdocs/`, or what `--mount` names, with the import map; prints the URL to open and keeps serving until Ctrl-C.
 - `htdocs/index.html` imports `index.js`, so `--alias index.js=test/browser.test.mjs` runs that suite in it.
 - Auto reload: a page reloads itself when a `--script` or an aliased file changes.
 
