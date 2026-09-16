@@ -137,6 +137,10 @@ test-assert --playwright chromium test/browser.test.mjs
 - A JSON import map, for the specifiers too many to give as `--alias`. Its `imports` come first, each `--alias` after, so the command line has the last word.
 - Relative paths start from the map file. See Import Maps below for an example.
 
+### `--reporter <name>`
+
+- How the run is reported: `spec` (default), `tap` or `html`. In every mode: a browser run reports the same way, the page taking the name from its head.
+
 ### `--serve`
 
 - Serves `htdocs/`, or what `--mount` names, with the import map; prints the URL to open and keeps serving until Ctrl-C. No suite: a page imports what it runs.
