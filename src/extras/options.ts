@@ -14,7 +14,7 @@ export const USAGE = `Usage: test-assert [options] <file...>
   -v, --version               print this package's version
   --alias <specifier>=<file>  what a specifier resolves to: a file, a URL for the page, or this package's own name (repeatable)
   --import-map <file>         JSON import map: a relative address is a file beside it, / and http(s):// go to the page as they are
-  --serve                     serve the page for a browser and print the URL; the page reloads on a change
+  --serve                     serve for a browser and print the URL; a page reloads on a change
   --host <address>            address the server listens on (browser modes, default: 127.0.0.1)
   --port <number>             port the server listens on (browser modes, default: a free one)
   --origin <url>              what the browser reaches the server as, http(s)://host[:port] (browser modes, default: from --host)
@@ -30,8 +30,7 @@ const BROWSERS = ["chromium", "firefox", "webkit"] as const
 export type Browser = typeof BROWSERS[number]
 
 // What the three browser modes share: the suites, what the page is made
-// of, and where the server sits. --serve takes no suite: its pages import
-// what they run, index.js by an --alias say.
+// of, and where the server sits. --serve takes no suite.
 export interface BrowserOptions {
     /** The suites, absolute, all served from one directory; none under --serve. */
     suites: string[]
@@ -158,10 +157,9 @@ export const readOptions = (args: string[]): Options => {
     if (!webdriver && (values["webdriver-session"] != null || values.endpoint != null)) {
         throw new UsageError("--webdriver-session and --endpoint apply to --webdriver only")
     }
-    // --serve is a server for a person's browser, not a run: the page says
-    // what it imports, and a suite on the command line would have no page.
+    // --serve is a web server, not a run: a page imports what it runs.
     if (serve && files.length) {
-        throw new UsageError(`--serve takes no test file, the page imports index.js: ${files.join(", ")}`)
+        throw new UsageError(`--serve takes no test file: ${files.join(", ")}`)
     }
     if (!serve && !files.length) {
         throw new UsageError("no test files specified")

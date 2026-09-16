@@ -103,7 +103,7 @@ See [test-assert-lite.d.ts](https://github.com/kawanet/test-assert-lite/blob/mai
 # Run in this Node.js process
 test-assert test/*.test.mjs
 
-# Serve the suite at http://127.0.0.1:3000/ as index.js
+# Serve at http://127.0.0.1:3000/; index.html there runs index.js
 test-assert --serve --port 3000 --alias index.js=test/browser.test.mjs
 
 # Run in Safari, Chrome, or another WebDriver browser
@@ -115,7 +115,7 @@ test-assert --playwright chromium test/browser.test.mjs
 
 - Name files directly; the shell expands globs. CommonJS suites are not supported.
 - Browser modes take JavaScript suites from one directory.
-- `--serve`, `--playwright`, and `--webdriver` are exclusive. `--serve` takes no suite: its page imports `index.js`.
+- `--serve`, `--playwright`, and `--webdriver` are exclusive. `--serve` takes no suite.
 - A run exits 0 when all tests pass and 1 otherwise. Reports go to stdout; server messages and access logs go to stderr.
 - Each report ends with the package version and the user agent that ran the suite.
 
@@ -138,9 +138,9 @@ test-assert --playwright chromium test/browser.test.mjs
 
 ### `--serve`
 
-- Serves a page for a browser, prints the URL to open, and keeps serving until Ctrl-C. No suite on the command line: the page imports `index.js`, so name the suite as `--alias index.js=test/browser.test.mjs`.
-- Auto reload: the page reloads itself when a `--script` or an aliased file changes.
-- With `--mount`, the mounted pages get the import map, and run whatever they import.
+- Serves `htdocs/`, or what `--mount` names, with the import map; prints the URL to open and keeps serving until Ctrl-C. No suite: a page imports what it runs.
+- `htdocs/index.html` imports `index.js`, so `--alias index.js=test/browser.test.mjs` runs that suite in it.
+- Auto reload: a page reloads itself when a `--script` or an aliased file changes.
 
 ### `--host <address>`
 
