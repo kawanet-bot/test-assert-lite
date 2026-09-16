@@ -80,7 +80,7 @@ test-playwright: install-all test-chromium test-firefox test-webkit
 
 # The same bundle for a person: prints the URL and serves until Ctrl-C.
 serve: all
-	cd .. && node bin/cli.mjs --serve browser/tests/bundled.mjs
+	cd .. && node bin/cli.mjs --serve --alias index.js=browser/tests/bundled.mjs
 
 # Browser bundle cleanup remains owned by builder/Makefile.
 clean:
