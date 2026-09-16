@@ -233,10 +233,7 @@ export declare namespace TAL {
 
     // --- session ---
 
-    // What capture listens on: a window, or anything that takes a listener
-    // the same way, an iframe's or a worker's global say. The DOM's own
-    // EventTarget fits; only these two are asked of it.
-    interface EventTarget {
+    interface EventTargetLike {
         addEventListener(type: string, listener: (event: unknown) => void, capture?: boolean): void
         removeEventListener(type: string, listener: (event: unknown) => void, capture?: boolean): void
     }
@@ -257,7 +254,7 @@ export declare namespace TAL {
          * the target given, each one failed test at the top level. Under
          * Node `true` means nothing yet.
          */
-        capture?: boolean | EventTarget
+        capture?: boolean | EventTargetLike
     }
 
     // What end() resolves with: whether every test passed.

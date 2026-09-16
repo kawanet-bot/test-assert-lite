@@ -24,8 +24,8 @@ export const summaryOf = (events: declared.TAL.TestEvent[]): declared.TAL.TestSu
 export const names = (events: declared.TAL.TestEvent[], type: string): string[] =>
     events.filter(e => e.type === type).map(e => (e.data as {name: string}).name)
 
-type Event = declared.TAL.TestEvent
+type TestEvent = declared.TAL.TestEvent
 
 // Narrows to one event type so a test can read its data without casting.
-export const ofType = <T extends Event["type"]>(events: Event[], type: T): Extract<Event, {type: T}>[] =>
-    events.filter((e): e is Extract<Event, {type: T}> => e.type === type)
+export const ofType = <T extends TestEvent["type"]>(events: TestEvent[], type: T): Extract<TestEvent, {type: T}>[] =>
+    events.filter((e): e is Extract<TestEvent, {type: T}> => e.type === type)

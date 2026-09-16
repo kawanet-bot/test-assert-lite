@@ -8,7 +8,7 @@ type ReporterFn = declared.TAL.ReporterFn
 type OutputFn = declared.TAL.OutputFn
 type SessionOptions = declared.TAL.SessionOptions
 type Session = declared.TAL.Session
-type EventTarget = declared.TAL.EventTarget
+type EventTargetLike = declared.TAL.EventTargetLike
 
 // What a run reports with and where the page's console goes: opened by
 // session(), or with the defaults on the first declaration, until end()
@@ -60,7 +60,7 @@ const SERVED = /^\/@tal\/files\/[0-9a-f]{9}\//
 // script it came from where the event says, as a suite that threw is
 // under Node. Declared on the root itself, since one may arrive while a
 // test body is open, and the walk takes it.
-const capture = (harness: HarnessState, target: EventTarget): (() => void) => {
+const capture = (harness: HarnessState, target: EventTargetLike): (() => void) => {
     const take = (name: string, error: unknown): void => {
         harness.root.declareTest(name, {}, () => {
             throw error
@@ -91,12 +91,12 @@ const capture = (harness: HarnessState, target: EventTarget): (() => void) => {
 }
 
 // What takes a listener: a window has it, Node's global does not.
-const isEventTarget = (value: unknown): value is EventTarget =>
-    "function" === typeof (value as Partial<EventTarget> | null | undefined)?.addEventListener
+const isEventTarget = (value: unknown): value is EventTargetLike =>
+    "function" === typeof (value as Partial<EventTargetLike> | null | undefined)?.addEventListener
 
 // true is the window, where there is one; under Node, whose errors nothing
 // takes yet, true means nothing. Anything else is listened on as given.
-const targetOf = (capture: SessionOptions["capture"]): EventTarget | undefined => {
+const targetOf = (capture: SessionOptions["capture"]): EventTargetLike | undefined => {
     const target = capture === true ? globalThis : capture
     return isEventTarget(target) ? target : undefined
 }
