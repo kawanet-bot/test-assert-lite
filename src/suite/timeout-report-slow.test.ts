@@ -17,7 +17,7 @@ const TITLE = "suite/timeout-report-slow.test.ts"
 const captureSlowly = (local: ReturnType<typeof createTAL>): ReturnType<typeof capture> => {
     const events: ReturnType<typeof capture> = []
     local.session({
-        format: async function* (source) {
+        reporter: async function* (source) {
             for await (const event of source) {
                 events.push(event)
                 yield "."
@@ -36,7 +36,7 @@ describeSlow(TITLE, () => {
         const local = createTAL()
         const events: ReturnType<typeof capture> = []
         local.session({
-            format: async function* (source) {
+            reporter: async function* (source) {
                 for await (const event of source) {
                     events.push(event)
                     yield "."
@@ -69,7 +69,7 @@ describeSlow(TITLE, () => {
         const local = createTAL()
         const events: ReturnType<typeof capture> = []
         local.session({
-            format: async function* (source) {
+            reporter: async function* (source) {
                 for await (const event of source) {
                     events.push(event)
                     yield "."
@@ -102,7 +102,7 @@ describeSlow(TITLE, () => {
         const local = createTAL()
         const events: ReturnType<typeof capture> = []
         local.session({
-            format: async function* (source) {
+            reporter: async function* (source) {
                 for await (const event of source) {
                     events.push(event)
                     yield "."

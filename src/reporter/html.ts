@@ -4,7 +4,7 @@ import {errorText, isSubtestsFailed} from "../utils/tester-error.ts"
 import {directive} from "./spec.ts"
 
 type TestEvent = declared.TAL.TestEvent
-type FormatFn = declared.TAL.FormatFn
+type FormatFn = declared.TAL.ReporterFn
 
 const indentClass = (indent: number): string => (indent > 0 ? `tal-i${indent > 5 ? 5 : indent}` : "")
 

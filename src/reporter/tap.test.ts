@@ -127,7 +127,7 @@ describe(TITLE, () => {
         const local = createTAL()
         const lines: string[] = []
         local.session({
-            format: local.reporter.tap(),
+            reporter: local.reporter.tap(),
             output: text => {
                 lines.push(text)
             },

@@ -215,9 +215,7 @@ export declare namespace TAL {
 
     // --- reporter ---
 
-    // Compatible with a `node:test` reporter, so the same function can be
-    // passed to `--test-reporter`. Each chunk yielded is a complete line.
-    type FormatFn = (source: AsyncIterable<TestEvent>) => AsyncIterable<string>
+    type ReporterFn = (source: AsyncIterable<TestEvent>) => AsyncIterable<string>
 
     type OutputFn = (text: string) => void | Promise<void>
 
@@ -228,9 +226,9 @@ export declare namespace TAL {
 
     // The formatters the package ships; `format` in session() takes one.
     interface Reporter {
-        spec(options?: SpecOptions): FormatFn
-        tap(): FormatFn
-        html(): FormatFn
+        spec(options?: SpecOptions): ReporterFn
+        tap(): ReporterFn
+        html(): ReporterFn
     }
 
     // --- session ---
@@ -245,7 +243,7 @@ export declare namespace TAL {
 
     interface SessionOptions {
         /** What the run's events are formatted with; `reporter.spec()` unless given. */
-        format?: FormatFn
+        reporter?: ReporterFn
         /** Where the formatted text goes; console.log unless given, or the CLI's stdout under a run's URL. */
         output?: OutputFn
         /**

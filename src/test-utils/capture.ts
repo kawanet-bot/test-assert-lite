@@ -7,7 +7,7 @@ export const capture = (harness: declared.TAL.TestHarness, options: Omit<declare
     const events: declared.TAL.TestEvent[] = []
     harness.session({
         ...options,
-        format: async function* (source) {
+        reporter: async function* (source) {
             for await (const event of source) events.push(event)
         },
     })

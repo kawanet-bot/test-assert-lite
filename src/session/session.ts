@@ -4,7 +4,7 @@ import {client, line} from "./client.ts"
 import type {ReportStream} from "./report-stream.ts"
 import type {HarnessState} from "./state.ts"
 
-type FormatFn = declared.TAL.FormatFn
+type FormatFn = declared.TAL.ReporterFn
 type OutputFn = declared.TAL.OutputFn
 type SessionOptions = declared.TAL.SessionOptions
 type Session = declared.TAL.Session
@@ -105,7 +105,7 @@ export const createSessions = (harness: HarnessState): SessionControl => {
     let current: Open | null = null
 
     const create = (options: SessionOptions, auto: boolean): Open => {
-        const {format = spec(), base} = options
+        const {reporter: format = spec(), base} = options
         const url = base == null ? null : new URL(base)
         const opened = (open: Omit<Open, "release" | "auto">): Open => {
             const target = targetOf(options.capture)

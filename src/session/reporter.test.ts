@@ -20,7 +20,7 @@ describe(TITLE, () => {
         const local = createTAL()
         const failure = new Error("formatter failed")
         local.session({
-            format: () => {
+            reporter: () => {
                 throw failure
             },
         })
@@ -33,7 +33,7 @@ describe(TITLE, () => {
         const local = createTAL()
         const failure = new Error("async formatter failed")
         local.session({
-            format: async function* (source) {
+            reporter: async function* (source) {
                 for await (const _event of source) throw failure
             },
         })
@@ -45,7 +45,7 @@ describe(TITLE, () => {
     it("preserves an undefined reporter rejection reason", async () => {
         const local = createTAL()
         local.session({
-            format: () => {
+            reporter: () => {
                 throw undefined
             },
         })
@@ -81,7 +81,7 @@ describe(TITLE, () => {
     it("rejects when a formatter ends before consuming its input", async () => {
         const local = createTAL()
         local.session({
-            format: async function* () {
+            reporter: async function* () {
                 yield "stopped\n"
             },
             output: () => undefined,
@@ -95,7 +95,7 @@ describe(TITLE, () => {
     it("rejects a manual iterator that returns after the summary without reading done", async () => {
         const local = createTAL()
         local.session({
-            format: async function* (source) {
+            reporter: async function* (source) {
                 const iterator = source[Symbol.asyncIterator]()
                 for (;;) {
                     const result = await iterator.next()
@@ -113,7 +113,7 @@ describe(TITLE, () => {
     it("allows a manual iterator to finish by reading done", async () => {
         const local = createTAL()
         local.session({
-            format: async function* (source) {
+            reporter: async function* (source) {
                 const iterator = source[Symbol.asyncIterator]()
                 while (!(await iterator.next()).done) {
                     // Reading until done is the formatter's completion contract.
@@ -131,7 +131,7 @@ describe(TITLE, () => {
         const local = createTAL()
         const failure = new Error("diagnostic output failed")
         local.session({
-            format: async function* (source) {
+            reporter: async function* (source) {
                 for await (const event of source) {
                     if (event.type === "test:diagnostic") yield event.data.message
                 }
@@ -153,7 +153,7 @@ describe(TITLE, () => {
         const local = createTAL()
         const output: string[] = []
         const settings: NonNullable<Parameters<typeof local.session>[0]> = {
-            format: async function* (source) {
+            reporter: async function* (source) {
                 for await (const event of source) {
                     if (event.type === "test:pass") yield `${event.data.name}\n`
                 }
@@ -204,7 +204,7 @@ describe(TITLE, () => {
         const local = createTAL()
         const failure = new Error("formatter failed")
         local.session({
-            format: () => {
+            reporter: () => {
                 throw failure
             },
         })

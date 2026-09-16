@@ -1,7 +1,7 @@
 import type * as declared from "test-assert-lite"
 
 type TestEvent = declared.TAL.TestEvent
-type FormatFn = declared.TAL.FormatFn
+type FormatFn = declared.TAL.ReporterFn
 type OutputFn = declared.TAL.OutputFn
 
 interface QueueItem {

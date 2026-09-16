@@ -2,7 +2,7 @@ import type * as declared from "test-assert-lite"
 import {errorText} from "../utils/tester-error.ts"
 
 type TestEvent = declared.TAL.TestEvent
-type FormatFn = declared.TAL.FormatFn
+type FormatFn = declared.TAL.ReporterFn
 
 // A bare "#" starts a TAP directive and a raw newline starts a new TAP
 // line, so both need escaping to keep one test point on one line.
