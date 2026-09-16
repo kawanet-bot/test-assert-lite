@@ -37,6 +37,12 @@ describe(TITLE, () => {
         assert.equal((await other.end()).success, false)
         assert.match(text.join(""), /^✖ import\("nope"\)/m)
         assert.match(text.join(""), /still runs/)
+
+        const dotted = createTAL()
+        const lines: string[] = []
+        dotted.session({reporter: "./nope.mjs", output: t => {lines.push(t)}})
+        assert.equal((await dotted.end()).success, false)
+        assert.match(lines.join(""), /unsupported reporter: \.\/nope\.mjs/)
     })
 
     it("takes a reporter by its module name: the default export, as node --test-reporter has it", async () => {
