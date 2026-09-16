@@ -58,6 +58,21 @@
       "types": "./exports/assert/strict.d.ts",
       "module-sync": "./exports/assert/strict.js",
       "import": "./exports/assert/strict.js"
+    },
+    "./reporter/html": {
+      "types": "./exports/reporter/html.d.ts",
+      "module-sync": "./exports/reporter/html.js",
+      "import": "./exports/reporter/html.js"
+    },
+    "./reporter/spec": {
+      "types": "./exports/reporter/spec.d.ts",
+      "module-sync": "./exports/reporter/spec.js",
+      "import": "./exports/reporter/spec.js"
+    },
+    "./reporter/tap": {
+      "types": "./exports/reporter/tap.d.ts",
+      "module-sync": "./exports/reporter/tap.js",
+      "import": "./exports/reporter/tap.js"
     }
   },
   "files": [

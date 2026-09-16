@@ -7,6 +7,9 @@ import {test} from "node:test"
 import * as root from "test-assert-lite"
 import * as assertEntry from "test-assert-lite/assert"
 import * as strictEntry from "test-assert-lite/assert/strict"
+import * as htmlEntry from "test-assert-lite/reporter/html"
+import * as specEntry from "test-assert-lite/reporter/spec"
+import * as tapEntry from "test-assert-lite/reporter/tap"
 import * as testEntry from "test-assert-lite/test"
 
 const named = (entry: object): string[] => Object.keys(entry).filter(key => key !== "default").sort()
@@ -41,4 +44,16 @@ test("test-assert-lite/assert/strict", () => {
     for (const key of named(strictEntry)) {
         assert.equal(strictEntry[key as keyof typeof strictEntry], root.strict[key as keyof typeof root.strict], key)
     }
+})
+
+test("test-assert-lite/reporter/html", () => {
+    assert.equal(typeof htmlEntry.default, "function")
+})
+
+test("test-assert-lite/reporter/spec", () => {
+    assert.equal(typeof specEntry.default, "function")
+})
+
+test("test-assert-lite/reporter/tap", () => {
+    assert.equal(typeof tapEntry.default, "function")
 })
