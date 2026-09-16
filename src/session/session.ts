@@ -111,15 +111,11 @@ const reporterMap = new Map<string, () => ReporterFn>([
     ["tap", tap],
 ])
 
+// A name with no reporter behind it runs with spec; session() files it
+// as a failed test, so the report itself says so.
 const reporterOf = (v: ReporterFn | string | undefined): ReporterFn => {
-    if (v == null) return spec()
-    if ("string" === typeof v) {
-        const init = reporterMap.get(v)
-        if (init) return init()
-    }
     if ("function" === typeof v) return v
-
-    throw new Error(`unsupported reporter: ${v}`)
+    return (v == null ? undefined : reporterMap.get(v)?.()) ?? spec()
 }
 
 export const createSessions = (harness: HarnessState): SessionControl => {
@@ -159,6 +155,13 @@ export const createSessions = (harness: HarnessState): SessionControl => {
             throw new Error(current.auto ? "session() must come before the first test is declared" : "session() is already open")
         }
         current = create(options, false)
+        // Declared once the session is in place, where capture's failures go.
+        const {reporter} = options
+        if ("string" === typeof reporter && !reporterMap.has(reporter)) {
+            harness.root.declareTest(`unsupported reporter: ${reporter}`, {}, () => {
+                throw new Error(`unsupported reporter: ${reporter}`)
+            })
+        }
         return current.session
     }
 
