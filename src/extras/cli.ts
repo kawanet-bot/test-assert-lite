@@ -33,9 +33,9 @@ const runCLI = async (options: Options): Promise<number> => {
         return 0
     }
 
-    const config: DriverConfig = {options: {reporter: options.reporter}}
+    const config: DriverConfig = {options: {reporter: options.reporter, files: options.suites}}
     if (options.mode === "node") {
-        return (await runInNode(options.suites, options.imports, config.options)).success ? 0 : 1
+        return (await runInNode(options.imports, config.options)).success ? 0 : 1
     }
 
     // The application is the middleware, the server runs it; every request

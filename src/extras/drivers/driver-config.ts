@@ -8,4 +8,6 @@ export interface DriverConfig {
 export interface DriverOptions {
     /** The reporter named on the command line; spec unless given. */
     reporter?: string
+    /** The test files to import, in order: paths under Node, served URLs in a page. */
+    files?: string[]
 }
