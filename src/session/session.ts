@@ -124,17 +124,22 @@ export const createSessions = (harness: HarnessState): SessionControl => {
         return lazyReporter(v)
     }
 
+    // A module name is imported when the run starts reporting, its default
+    // export the reporter, as node --test-reporter takes one; a name that
+    // does not import, or has no function there, is a failed test at the
+    // root and the run goes on with spec.
     const lazyReporter = (v: string): ReporterFn => {
         return async function* (source) {
             let error: Error | null = null
-            let reporter: ReporterFn | void = await import(v).catch((e) => (void (error = e)))
+            const module = await import(v).catch((e: Error) => (void (error = e)))
+            let reporter: unknown = module?.default
             if (error || "function" !== typeof reporter) {
                 harness.root.declareTest(`import(${JSON.stringify(v)})`, {}, () => {
                     throw error || new Error(`unsupported reporter: ${v}`)
                 })
                 reporter = spec()
             }
-            return reporter(source)
+            yield* (reporter as ReporterFn)(source)
         }
     }
 

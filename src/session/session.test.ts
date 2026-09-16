@@ -22,7 +22,7 @@ const check: typeof globalThis extends declared.TAL.EventTargetLike ? true : nev
 void check
 
 describe(TITLE, () => {
-    it("takes a reporter by name; a name it has none for runs with spec and is one failed test", async () => {
+    it("takes a reporter by name; a name that is no module either runs with spec and is one failed test", async () => {
         const local = createTAL()
         const out: string[] = []
         local.session({reporter: "tap", output: text => {out.push(text)}})
@@ -35,8 +35,18 @@ describe(TITLE, () => {
         other.session({reporter: "nope", output: t => {text.push(t)}})
         other.it("still runs", () => undefined)
         assert.equal((await other.end()).success, false)
-        assert.match(text.join(""), /unsupported reporter: nope/)
+        assert.match(text.join(""), /^✖ import\("nope"\)/m)
         assert.match(text.join(""), /still runs/)
+    })
+
+    it("takes a reporter by its module name: the default export, as node --test-reporter has it", async () => {
+        const local = createTAL()
+        const out: string[] = []
+        local.session({reporter: "test-assert-lite/reporter/tap", output: text => {out.push(text)}})
+        local.it("imported", () => undefined)
+        assert.equal((await local.end()).success, true)
+        assert.equal(out[0], "TAP version 13\n")
+        assert.match(out.join(""), /^ok 1 - imported$/m)
     })
 
     it("an uncaught error is one failed test, named after the script by its served path", async () => {
