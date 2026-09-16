@@ -1,9 +1,11 @@
-import type {TAL} from "test-assert-lite"
+// What the command line hands the run, in Node and in a page alike: JSON,
+// so a page can take it from a script tag, and no function crosses over.
 
 export interface DriverConfig {
     options: DriverOptions
 }
 
 export interface DriverOptions {
-    reporter: keyof TAL.Reporter
+    /** The reporter named on the command line; spec unless given. */
+    reporter?: string
 }

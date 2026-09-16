@@ -8,6 +8,7 @@
 import {readFileSync} from "node:fs"
 import {stringify} from "../utils/stringify.ts"
 import {VERSION} from "../utils/version.ts"
+import type {DriverConfig} from "./drivers/driver-config.ts"
 import {runInNode} from "./drivers/node.ts"
 import {runInPlaywright} from "./drivers/playwright.mjs"
 import {runInWebDriver} from "./drivers/webdriver.ts"
@@ -32,8 +33,9 @@ const runCLI = async (options: Options): Promise<number> => {
         return 0
     }
 
+    const config: DriverConfig = {options: {reporter: options.reporter}}
     if (options.mode === "node") {
-        return (await runInNode(options.suites, options.imports)).success ? 0 : 1
+        return (await runInNode(options.suites, options.imports, config)).success ? 0 : 1
     }
 
     // The application is the middleware, the server runs it; every request
