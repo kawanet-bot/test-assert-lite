@@ -134,24 +134,30 @@ const finish = async (harness: HarnessState, current: Cycle): Promise<declared.T
         success: run.success,
     }
 
-    // node:test's summary, then what node:test never says: which package
-    // ran the suites, and where, as the browser or Node names itself.
-    const userAgent = globalThis.navigator?.userAgent
-    for (const [label, value] of [
-        ["tests", run.counters.tests],
-        ["suites", run.counters.suites],
-        ["pass", run.counters.passed],
-        ["fail", run.counters.failed],
-        ["cancelled", run.counters.cancelled],
-        ["skipped", run.counters.skipped],
-        ["todo", run.counters.todo],
-        ["duration_ms", duration_ms],
-        ["test-assert-lite", VERSION],
-        ...(userAgent == null ? [] : [["user-agent", userAgent]]),
-    ] as [string, number | string][]) {
+    const info = async (label: string, value: number | string) => {
         await run.emit("test:diagnostic", {
             message: `${label} ${value}`, nesting: 0, level: "info",
         })
+    }
+
+    let summaryInfo: (boolean | undefined) = undefined // TODO
+
+    // node:test's summary, then what node:test never says: which package
+    // ran the suites, and where, as the browser or Node names itself.
+    if (summaryInfo !== false) {
+        await info("tests", run.counters.tests)
+        await info("suites", run.counters.suites)
+        await info("pass", run.counters.passed)
+        await info("fail", run.counters.failed)
+        await info("cancelled", run.counters.cancelled)
+        await info("skipped", run.counters.skipped)
+        await info("todo", run.counters.todo)
+        await info("duration_ms", duration_ms)
+        await info("test-assert-lite", VERSION)
+        const userAgent = globalThis.navigator?.userAgent
+        if (userAgent) {
+            await info("user-agent", userAgent)
+        }
     }
 
     await run.emit("test:summary", summary)
