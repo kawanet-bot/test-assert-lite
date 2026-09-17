@@ -1,4 +1,4 @@
-// Declarations for strict.js: the shared harness's `strict`, and each
+// Declarations for strict.js: the shared harness's `assert.strict`, and each
 // method typed off the Assert interface so it cannot drift from it.
 import type {TAL} from "test-assert-lite"
 

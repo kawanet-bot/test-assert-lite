@@ -7,7 +7,7 @@ const TITLE = "assert/deep-equal-loose.test.ts"
 // The loose pair is what `assert` hands out, the strict one `strict`.
 const local = createTAL()
 const loose = local.assert
-const strict = local.strict
+const strict = local.assert.strict
 
 describe(TITLE, () => {
     it("compares primitives with ==, keeping NaN equal to itself", () => {

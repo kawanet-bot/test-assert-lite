@@ -17,7 +17,7 @@ describe(TITLE, () => {
         assert.equal(typeof local.test.after, "function")
         assert.equal(typeof local.reporter, "object")
         assert.equal(typeof local.assert, "function")
-        assert.equal(typeof local.strict, "function")
+        assert.equal(typeof local.assert.strict, "function")
     })
 
     it("describe aliases suite and it aliases test", () => {
@@ -118,10 +118,10 @@ describe(TITLE, () => {
         const a = createTAL()
         const b = createTAL()
 
-        assert.notEqual(a.strict, b.strict)
-        assert.equal(typeof a.strict.equal, "function")
-        a.strict.equal(1, 1)
-        assert.throws(() => b.strict.equal(1, 2), /expected 2, got 1/)
+        assert.notEqual(a.assert.strict, b.assert.strict)
+        assert.equal(typeof a.assert.strict.equal, "function")
+        a.assert.strict.equal(1, 1)
+        assert.throws(() => b.assert.strict.equal(1, 2), /expected 2, got 1/)
     })
 
     it("t.assert comes from the same harness", async () => {
@@ -131,7 +131,7 @@ describe(TITLE, () => {
         local.test.it("check", (t) => {
             // t.assert is the loose set, so its equal is the harness's plain
             // assert.equal, and its strictEqual the strict one.
-            same = t.assert.equal === local.assert.equal && t.assert.strictEqual === local.strict.equal
+            same = t.assert.equal === local.assert.equal && t.assert.strictEqual === local.assert.strict.equal
         })
         await local.session.end()
 

@@ -42,10 +42,7 @@ const ifError: declared.TAL.Assert["ifError"] = (value) => {
 // The assertions hold no state, so they sit at module level and the factory
 // only assembles them. Options such as a diff mode would enter here.
 export interface AssertControl {
-    // node's `assert`: equal / deepEqual are the loose ones.
     assert: declared.TAL.Assert
-    // node's `assert.strict`: the same names, all strict.
-    strict: declared.TAL.Assert
     methods: declared.TAL.AssertMethods
 }
 
@@ -87,5 +84,5 @@ export const createAssert = (): AssertControl => {
     assert.strict = strict
     strict.strict = strict
 
-    return {assert, strict, methods}
+    return {assert, methods}
 }

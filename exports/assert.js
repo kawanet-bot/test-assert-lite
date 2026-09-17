@@ -4,10 +4,10 @@
 // function itself as it would from node:assert.
 import {sharedTAL} from "test-assert-lite"
 
-const {assert, strict} = sharedTAL
+const assert = sharedTAL.assert
 
 export default assert
-export {strict}
+export const {strict} = assert
 export const {
     deepEqual,
     deepStrictEqual,

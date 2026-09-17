@@ -29,7 +29,7 @@ test("test-assert-lite/assert", () => {
     const typed: typeof root.assert = assertEntry.default
     void typed
     assert.equal(assertEntry.default, root.assert)
-    assert.equal(assertEntry.strict, root.strict)
+    assert.equal(assertEntry.strict, root.assert.strict)
     assert.deepEqual(named(assertEntry), Object.keys(root.assert).sort())
     for (const key of named(assertEntry)) {
         assert.equal(assertEntry[key as keyof typeof assertEntry], root.assert[key as keyof typeof root.assert], key)
@@ -37,13 +37,13 @@ test("test-assert-lite/assert", () => {
 })
 
 test("test-assert-lite/assert/strict", () => {
-    const typed: typeof root.strict = strictEntry.default
+    const typed: typeof root.assert.strict = strictEntry.default
     void typed
-    assert.equal(strictEntry.default, root.strict)
-    assert.equal(strictEntry.strict, root.strict)
-    assert.deepEqual(named(strictEntry), Object.keys(root.strict).sort())
+    assert.equal(strictEntry.default, root.assert.strict)
+    assert.equal(strictEntry.strict, root.assert.strict)
+    assert.deepEqual(named(strictEntry), Object.keys(root.assert.strict).sort())
     for (const key of named(strictEntry)) {
-        assert.equal(strictEntry[key as keyof typeof strictEntry], root.strict[key as keyof typeof root.strict], key)
+        assert.equal(strictEntry[key as keyof typeof strictEntry], root.assert.strict[key as keyof typeof root.assert.strict], key)
     }
 })
 
