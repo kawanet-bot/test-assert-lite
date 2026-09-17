@@ -8,7 +8,7 @@ const TITLE = "suite/hooks.test.ts"
 // before and after: their scope, and how a failing hook or suite body is
 // charged and cancels what it covers.
 
-// Every test builds its own harness, so the default one stays clean and
+// Every test builds its own harness, so sharedTAL stays clean and
 // nothing re-enters when TAL is itself the runner.
 describe(TITLE, () => {
     it("before and after wrap the run", async () => {

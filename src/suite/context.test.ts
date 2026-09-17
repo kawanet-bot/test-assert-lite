@@ -7,7 +7,7 @@ const TITLE = "suite/context.test.ts"
 
 // The test context beyond t.test(): t.diagnostic(), t.assert and t.name.
 
-// Every test builds its own harness, so the default one stays clean and
+// Every test builds its own harness, so sharedTAL stays clean and
 // nothing re-enters when TAL is itself the runner.
 describe(TITLE, () => {
     it("t.diagnostic() emits an info event", async () => {

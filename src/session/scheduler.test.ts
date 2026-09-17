@@ -8,7 +8,7 @@ const TITLE = "session/scheduler.test.ts"
 // end() as a whole: what it counts, in what order it runs and reports, and
 // how one harness behaves across calls.
 
-// Every test builds its own harness, so the default one stays clean and
+// Every test builds its own harness, so sharedTAL stays clean and
 // nothing re-enters when TAL is itself the runner.
 describe(TITLE, () => {
     it("runs registered tests and counts them", async () => {
