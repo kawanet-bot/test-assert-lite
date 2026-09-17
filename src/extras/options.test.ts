@@ -87,10 +87,10 @@ describe(TITLE, () => {
             assert.throws(() => readOptions(["--playwright", "chromium", "c.cts"]), /CommonJS test files are not supported: c\.cts$/)
         })
 
-        it("refuses TypeScript in the browser modes, for a suite and for a --script, and takes it in Node mode", () => {
-            assert.throws(() => readOptions(["--playwright", "chromium", "a.test.ts"]), /a browser runs no TypeScript: a\.test\.ts$/)
-            assert.throws(() => readOptions(["--webdriver", "a.mts"]), /a browser runs no TypeScript: a\.mts$/)
-            assert.throws(() => readOptions(["--serve", "--script", "setup.ts", "--script", "setup.cjs"]), /a browser runs no TypeScript: setup\.ts$/)
+        it("takes TypeScript in the browser modes, for a suite and for a --script, and in Node mode", () => {
+            assert.equal(readOptions(["--playwright", "chromium", "a.test.ts"]).mode, "playwright")
+            assert.equal(readOptions(["--webdriver", "a.mts"]).mode, "webdriver")
+            assert.equal(readOptions(["--serve", "--script", "setup.ts", "--script", "setup.cjs"]).mode, "serve")
             assert.equal(readOptions(["--serve", "--script", "setup.cjs"]).mode, "serve")
             assert.equal(readOptions(["a.test.ts", "b.mts"]).mode, "node")
         })

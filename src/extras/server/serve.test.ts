@@ -93,6 +93,7 @@ describe(TITLE, () => {
         await writeFile(join(dir, "dist", "nested", "deep.mjs"), "export const deep = 1")
         await writeFile(join(dir, "dist", "legacy.cjs"), "module.exports = {}")
         await writeFile(join(dir, "dist", "source.ts"), "export const source: number = 1")
+        await writeFile(join(dir, "dist", "notes.txt"), "notes")
         await writeFile(join(dir, "dist", "data.json"), "{}")
         await symlink("..", join(dir, "dist", "up"))
         await symlink("lib.mjs", join(dir, "dist", "alias.js"))
@@ -196,8 +197,15 @@ describe(TITLE, () => {
     })
 
     it("refuses a kind it does not serve with 403, when the file is there", async () => {
-        assert.equal((await get(server.origin, "/dist/source.ts")).status, 403)
-        assert.equal((await get(server.origin, "/dist/missing.ts")).status, 404)
+        assert.equal((await get(server.origin, "/dist/notes.txt")).status, 403)
+        assert.equal((await get(server.origin, "/dist/missing.txt")).status, 404)
+    })
+
+    it("serves a .ts as text/typescript, as it is on disk", async () => {
+        const res = await get(server.origin, "/dist/source.ts")
+        assert.equal(res.status, 200)
+        assert.equal(res.type, "text/typescript; charset=utf-8")
+        assert.equal(res.body, "export const source: number = 1")
     })
 
     it("refuses to leave the root or a mount", async () => {
@@ -322,11 +330,11 @@ describe(TITLE, () => {
         const from = lines.length
         await get(server.origin, "/dist/lib.mjs")
         await get(server.origin, "/missing.html")
-        await get(server.origin, "/dist/source.ts")
+        await get(server.origin, "/dist/notes.txt")
         assert.deepEqual(lines.slice(from).map(line => line.replace(/ \d+\.\d{3} ms$/, " N ms")), [
             "GET /dist/lib.mjs 200 20 - N ms",
             "GET /missing.html 404 - - N ms",
-            "GET /dist/source.ts 403 - - N ms",
+            "GET /dist/notes.txt 403 - - N ms",
         ])
     })
 })

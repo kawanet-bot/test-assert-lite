@@ -18,6 +18,7 @@ import {compose, scoped} from "./middleware.ts"
 import {proxy} from "./proxy.ts"
 import {serveStatic} from "./static.ts"
 import {withTitle} from "./title.ts"
+import {withStrippedTypes} from "./typestrip.ts"
 import type {Watcher} from "./watch.ts"
 import {createWatcher} from "./watch.ts"
 
@@ -121,7 +122,10 @@ export const createApp = (options: AppOptions): App => {
         channel.handler,
         ...M(watcher?.handler),
         scoped(compose([...M(watcher?.inject), head, title, atRun])),
-        ...[...served.own, ...served.dirs].map(dir => serveStatic(dir)),
+        ...served.own.map(dir => serveStatic(dir)),
+        // A .ts among the files given goes out as JavaScript; the root
+        // mount is served as it is.
+        scoped(compose([withStrippedTypes(), ...served.dirs.map(dir => serveStatic(dir))])),
         // /@tal/ is the CLI's: what none of the mounts above answered ends
         // here, whatever a mount or an upstream at the root would say to it.
         async (c, next) => (c.req.path.startsWith("/@tal/") ? c.notFound() : next()),

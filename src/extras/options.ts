@@ -169,17 +169,10 @@ export const readOptions = (args: string[]): Options => {
 
     // Suites are ES modules: under Node a require() bypasses the hook and
     // lands on Node's own runner, and a browser has no require at all, so
-    // the extensions that can only be CommonJS are refused in both. A
-    // browser strips no types either, so TypeScript is refused there too.
+    // the extensions that can only be CommonJS are refused in both.
     const commonjs = files.filter(file => /\.c[jt]s$/.test(file))
     if (commonjs.length) {
         throw new UsageError(`CommonJS test files are not supported: ${commonjs.join(", ")}`)
-    }
-    if (browsing) {
-        const typescript = [...files, ...values.script].filter(file => /\.[cm]?ts$/.test(file))
-        if (typescript.length) {
-            throw new UsageError(`a browser runs no TypeScript: ${typescript.join(", ")}`)
-        }
     }
 
     const imports = importsOf(values["import-map"], values.alias, browsing ? "browser" : "node")

@@ -43,6 +43,7 @@ describe(TITLE, () => {
         await writeFile(join(dir, "tests", "nested", "dep.mjs"), "export const dep = 1")
         await writeFile(join(dir, "tests", "setup.js"), "globalThis.setup = 1")
         await writeFile(join(dir, "tests", "set+up#2.js"), "globalThis.setup = 2")
+        await writeFile(join(dir, "tests", "typed.ts"), "export const typed: number = 1\n")
         await writeFile(join(dir, "lib", "mod.mjs"), "export const mod = 1")
         await writeFile(join(dir, "secret.json"), "{}")
         await writeFile(join(dir, "package.json"), '{"name": "fixture-pkg"}')
@@ -136,6 +137,20 @@ describe(TITLE, () => {
         assert.equal((await get(url(`${lib}my%20suite.mjs`))).status, 404)
         assert.equal((await get(url(`${lib}secret.json`))).status, 404)
         assert.equal((await get(url("/@tal/files/000000000/mod.mjs"))).status, 404)
+    })
+
+    it("serves a .ts from a directory as JavaScript, the types stripped by this Node", async t => {
+        if (!process.features.typescript) return t.skip()
+        const res = await get(url(`${tests}typed.ts`))
+        assert.equal(res.status, 200)
+        assert.equal(res.type, "text/javascript; charset=utf-8")
+        assert.match(res.body, /^export const typed\s*=\s*1\n$/)
+        assert.ok(!res.body.includes(":"))
+    })
+
+    it("refuses a .ts with 422 where this Node strips no types", async t => {
+        if (process.features.typescript) return t.skip()
+        assert.equal((await get(url(`${tests}typed.ts`))).status, 422)
     })
 
     it("serves the package's minified build, the bridges and the document root", async () => {
