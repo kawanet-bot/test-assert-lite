@@ -14,7 +14,7 @@ export const createTAL: typeof declared.createTAL = () => {
     const sessions = createSessions(state)
     const {assert, methods, strict} = createAssert()
     const {schedule, end} = createScheduler(state, sessions, methods)
-    const {suite, test, before, after} = createRegistrar(state, schedule)
+    const registrar = createRegistrar(state, schedule)
     const reporter: declared.TAL.Reporter = {spec, tap, html}
 
     // A suite that does not load is one failed test named after the file,
@@ -23,27 +23,18 @@ export const createTAL: typeof declared.createTAL = () => {
         try {
             await import(file)
         } catch (error) {
-            test(file.replace(/^[^?]*\//, ""), () => {
+            registrar.test(file.replace(/^[^?]*\//, ""), () => {
                 throw error
             })
         }
     }
     const session: declared.TAL.SessionAPI = {session: sessions.session, load, end}
 
-    const testSuite: declared.TAL.RegistrarAPI = {
-        after,
-        before,
-        describe: suite,
-        it: test,
-        suite,
-        test,
-    }
-
     return {
         assert,
         reporter,
         session,
         strict,
-        test: testSuite,
+        test: registrar,
     }
 }
