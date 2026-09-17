@@ -20,6 +20,8 @@ interface Cycle {
     closing: boolean
     // What the walk failed with, kept for end() to reject with.
     failure: {error: unknown} | undefined
+    // Whether the report ends with the counts and the like; the session's say.
+    summary: boolean
 }
 
 export interface Scheduler {
@@ -47,7 +49,7 @@ export const createScheduler = (
             assert,
             closed: false,
         }
-        return {run, stream, startedAt: performance.now(), held: true, walk: null, closing: false, failure: undefined}
+        return {run, stream, startedAt: performance.now(), held: true, walk: null, closing: false, failure: undefined, summary: true}
     }
 
     // A walk that ends picks up what was declared while it wound down.
@@ -80,7 +82,7 @@ export const createScheduler = (
         let failed = false
         let failure: unknown
         try {
-            sessions.attach(current.stream)
+            current.summary = sessions.attach(current.stream).summary
             while (current.walk != null) await current.walk
             if (current.failure != null) throw current.failure.error
             // Hooks declared since the last walk, or with no test at all.
@@ -140,11 +142,10 @@ const finish = async (harness: HarnessState, current: Cycle): Promise<declared.T
         })
     }
 
-    let summaryInfo: (boolean | undefined) = undefined // TODO
-
     // node:test's summary, then what node:test never says: which package
-    // ran the suites, and where, as the browser or Node names itself.
-    if (summaryInfo !== false) {
+    // ran the suites, and where, as the browser or Node names itself. A
+    // script that is no suite leaves them off, and reports nothing at all.
+    if (current.summary) {
         await info("tests", run.counters.tests)
         await info("suites", run.counters.suites)
         await info("pass", run.counters.passed)

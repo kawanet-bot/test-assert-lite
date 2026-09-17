@@ -255,7 +255,7 @@ export declare namespace TAL {
          * Node `true` means nothing yet.
          */
         capture?: boolean | EventTargetLike
-        /** TBD */
+        /** false leaves the counts, the version and the user agent off the report; the summary event still comes. */
         summary?: boolean
     }
 

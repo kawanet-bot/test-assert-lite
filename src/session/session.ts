@@ -18,6 +18,8 @@ type EventTargetLike = declared.TAL.EventTargetLike
 interface Open {
     reporter: ReporterFn
     output: OutputFn
+    // Whether end() reports the counts and the like; the session's say.
+    summary: boolean
     session: Session
     end: (success: boolean) => Promise<void>
     // Opened by a declaration rather than by session(): the refusal differs.
@@ -32,8 +34,8 @@ export interface SessionControl {
     close: (success: boolean) => Promise<void>
     // Opens the default session unless one is open already.
     open: () => void
-    // Gives a run's stream the settings of the session.
-    attach: (stream: ReportStream) => void
+    // Gives a run's stream the settings of the session, and the run what the session says of its end.
+    attach: (stream: ReportStream) => {summary: boolean}
 }
 
 // A base under a run's own URL connects the page to the CLI; any other
@@ -147,10 +149,10 @@ export const createSessions = (harness: HarnessState): SessionControl => {
         const {base} = options
         const reporter = reporterOf(options.reporter)
         const url = base == null ? null : new URL(base)
-        const opened = (open: Omit<Open, "release" | "auto">): Open => {
+        const opened = (open: Omit<Open, "release" | "auto" | "summary">): Open => {
             const target = targetOf(options.capture)
             const release = target == null ? () => undefined : capture(harness, target)
-            return {...open, auto, release}
+            return {...open, auto, release, summary: options.summary !== false}
         }
         if (url != null && CHANNEL.test(url.pathname)) {
             const channel = client(url)
@@ -197,6 +199,7 @@ export const createSessions = (harness: HarnessState): SessionControl => {
         attach: (stream) => {
             current ??= create({}, true)
             stream.attach(current.reporter, current.output)
+            return {summary: current.summary}
         },
     }
 }
