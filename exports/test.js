@@ -1,8 +1,7 @@
-// node:test's shape on this package: the root entry's functions, re-exported
-// from the one library instance with `test` as the default. `run` stays on
-// the root, since node:test's run() is a file runner, a different thing
-// under the same name.
-import {after, before, describe, it, suite, test} from "test-assert-lite"
+// node:test's shape on this package: the shared harness's functions, with
+// `test` as the default. `run` is left out, since node:test's run() is a
+// file runner, a different thing under the same name.
+import {sharedTAL} from "test-assert-lite"
 
+export const {after, before, describe, it, suite, test} = sharedTAL
 export default test
-export {after, before, describe, it, suite, test}

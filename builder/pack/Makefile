@@ -8,7 +8,7 @@ SHELL := bash
 .NOTPARALLEL:
 
 # Documented runtime named export every consumer shape must expose.
-NAMED_EXPORTS := after assert before createTAL describe end it session strict suite test
+NAMED_EXPORTS := createTAL
 
 # Root of the copy under test: the installed package after `unpack`, or
 # the checkout itself (PKG_ROOT=.) for the publish gate, which runs the

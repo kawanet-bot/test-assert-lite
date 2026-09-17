@@ -10,7 +10,9 @@
 <h1>{{title}}</h1>
 <div id="output"></div>
 <script type="module">
-    import {end, reporter, session} from "test-assert-lite"
+    import {sharedTAL} from "test-assert-lite"
+
+    const {end, reporter, session} = sharedTAL
 
     session({
         reporter: reporter.html(),

@@ -1,12 +1,11 @@
-// Declarations for strict.js: the root entry's `strict`, and each method
-// typed off the Assert interface so it cannot drift from it.
+// Declarations for strict.js: the shared harness's `strict`, and each
+// method typed off the Assert interface so it cannot drift from it.
 import type {TAL} from "test-assert-lite"
-import {strict} from "test-assert-lite"
 
 type Assert = TAL.Assert
 
+export declare const strict: Assert
 export default strict
-export {strict} from "test-assert-lite"
 export declare const deepEqual: Assert["deepEqual"]
 export declare const deepStrictEqual: Assert["deepStrictEqual"]
 export declare const doesNotMatch: Assert["doesNotMatch"]
