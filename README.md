@@ -114,7 +114,8 @@ test-assert --playwright chromium test/browser.test.mjs
 ```
 
 - Name files directly; the shell expands globs. CommonJS test files are not supported.
-- `--webdriver` runs the test files in the browser a WebDriver server drives; JavaScript, from one directory.
+- TypeScript test files run as they are, in a browser too: the server strips the types with Node.js's own `stripTypeScriptTypes`, so the Node.js running the CLI has to run `.ts` files itself (22.18 and later).
+- `--webdriver` runs the test files in the browser a WebDriver server drives, from one directory.
 - `--playwright <browser>` does the same through Playwright.
 - `--serve` serves for a browser, with auto reload. The three are exclusive.
 - A run exits 0 when all tests pass and 1 otherwise. Reports go to stdout; server messages and access logs go to stderr.
