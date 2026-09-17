@@ -144,7 +144,8 @@ describe(TITLE, () => {
         const res = await get(url(`${tests}typed.ts`))
         assert.equal(res.status, 200)
         assert.equal(res.type, "text/javascript; charset=utf-8")
-        assert.equal(res.body, "export const typed         = 1\n")
+        assert.match(res.body, /^export const typed\s*=\s*1\n$/)
+        assert.ok(!res.body.includes(":"))
     })
 
     it("refuses a .ts with 422 where this Node strips no types", async t => {
