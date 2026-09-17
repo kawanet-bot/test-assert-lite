@@ -1,6 +1,7 @@
 {
   "include": [
     "exports/",
+    "sample/typescript",
     "src/",
     "types/"
   ],
