@@ -102,6 +102,7 @@ describe(TITLE, () => {
                 mode: "serve",
                 suites: [],
                 reporter: undefined,
+                summary: undefined,
                 scripts: [],
                 imports: null,
                 mount: undefined,
@@ -137,6 +138,13 @@ describe(TITLE, () => {
             assert.equal(named(["--reporter", "tap", "a.test.ts"]), "tap")
             assert.equal(named(["--reporter", "html", "--serve"]), "html")
             assert.equal(named(["a.test.ts"]), undefined)
+        })
+
+        it("reads --no-summary as summary false, and leaves it unset otherwise", () => {
+            const summary = (args: string[]): boolean | undefined => (readOptions(args) as {summary?: boolean}).summary
+            assert.equal(summary(["--no-summary", "a.test.ts"]), false)
+            assert.equal(summary(["--no-summary", "--serve"]), false)
+            assert.equal(summary(["a.test.ts"]), undefined)
         })
 
         it("reads --alias in Node mode too", () => {

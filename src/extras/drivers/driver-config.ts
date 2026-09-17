@@ -10,6 +10,6 @@ export interface DriverOptions {
     reporter?: string
     /** The test files to import, in order: paths under Node, served URLs in a page. */
     files?: string[]
-    /** TBD */
+    /** false leaves the counts, the version and the user agent off the report. */
     summary?: boolean
 }
