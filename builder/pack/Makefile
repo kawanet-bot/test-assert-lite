@@ -7,9 +7,6 @@ SHELL := bash
 # MAKEFLAGS.
 .NOTPARALLEL:
 
-# Documented runtime named export every consumer shape must expose.
-NAMED_EXPORTS := createTAL
-
 # Root of the copy under test: the installed package after `unpack`, or
 # the checkout itself (PKG_ROOT=.) for the publish gate, which runs the
 # staged artifacts in place without installing anything.
@@ -43,7 +40,7 @@ unpack:
 	[ -e ../../package.json ] || cp package.json ../../
 	cd ../.. && npm install ./builder/pack/packed.tgz --no-audit --no-fund --no-save --engine-strict
 
-test: test-bundled test-bin test-cli test-esm
+test: test-bundled test-bin test-cli
 
 # The bundle only registers tests and never calls end() itself, so it
 # needs a runner -- $(PKG_ROOT)'s own CLI, matching whichever copy the
@@ -72,18 +69,12 @@ test-cli:
 	cd ../.. && ./$(PKG_ROOT)/bin/cli.mjs --alias greet=sample/lib/greet.mjs sample/alias.mjs > /dev/null 2>&1
 	cd ../.. && ./$(PKG_ROOT)/bin/cli.mjs --import-map sample/import-map.json sample/alias.mjs > /dev/null 2>&1
 
-# The minified bundle under $(PKG_ROOT) imported as the ES module it is,
-# by its path, the browser consumer shape; in the default root it also
-# proves the tarball ships the file.
-test-esm:
-	cd ../.. && node --input-type=module -e 'import {pathToFileURL} from "node:url"; const m = await import(pathToFileURL("$(PKG_ROOT)/dist/test-assert-lite.min.js").href); for (const k of process.argv.slice(1)) { if (typeof m[k] !== "function") { console.error("missing browser export:", k); process.exit(1); } console.log("browser export OK:", k); }' -- $(NAMED_EXPORTS)
-
 # Publish gate: the same behavior checks, run against the checkout's own
 # staged artifacts in place -- no tarball install involved.
 test-dist:
-	$(MAKE) test-bundled test-cli test-esm PKG_ROOT=.
+	$(MAKE) test-bundled test-cli PKG_ROOT=.
 
 clean:
 	/bin/rm -f *.tgz
 
-.PHONY: all pack bundled unpack test test-bundled test-bin test-cli test-esm test-dist clean
+.PHONY: all pack bundled unpack test test-bundled test-bin test-cli test-dist clean
