@@ -34,7 +34,7 @@ describe(TITLE, () => {
                     lines.push(text)
                 },
             })
-            local.it("colored", () => undefined)
+            local.test.it("colored", () => undefined)
             await local.session.end()
 
             assert.match(lines.join(""), /\u001b\[32m/)
@@ -57,7 +57,7 @@ describe(TITLE, () => {
                 lines.push(text)
             },
         })
-        local.it("plain", () => undefined)
+        local.test.it("plain", () => undefined)
         await local.session.end()
 
         assert.equal(lines.join("").includes("\u001b["), false)
@@ -189,11 +189,11 @@ describe(TITLE, () => {
                 lines.push(text)
             },
         })
-        local.describe("S", () => {
-            local.before(() => {
+        local.test.describe("S", () => {
+            local.test.before(() => {
                 throw new Error("setup")
             })
-            local.it("a", () => undefined)
+            local.test.it("a", () => undefined)
         })
         await local.session.end()
 

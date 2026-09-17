@@ -15,13 +15,13 @@ describe(TITLE, () => {
         const local = createTAL()
         local.session.session({output: () => undefined})
         const order: string[] = []
-        local.before(() => {
+        local.test.before(() => {
             order.push("before")
         })
-        local.after(() => {
+        local.test.after(() => {
             order.push("after")
         })
-        local.it("middle", () => {
+        local.test.it("middle", () => {
             order.push("test")
         })
         await local.session.end()
@@ -34,18 +34,18 @@ describe(TITLE, () => {
         const local = createTAL()
         local.session.session({output: () => undefined})
         const order: string[] = []
-        local.describe("S", () => {
-            local.before(() => {
+        local.test.describe("S", () => {
+            local.test.before(() => {
                 order.push("S:before")
             })
-            local.after(() => {
+            local.test.after(() => {
                 order.push("S:after")
             })
-            local.it("inside", () => {
+            local.test.it("inside", () => {
                 order.push("inside")
             })
         })
-        local.it("outside", () => {
+        local.test.it("outside", () => {
             order.push("outside")
         })
         await local.session.end()
@@ -60,17 +60,17 @@ describe(TITLE, () => {
         const events = capture(local)
         const order: string[] = []
         const setup = new Error("setup")
-        local.describe("S", () => {
-            local.before(() => {
+        local.test.describe("S", () => {
+            local.test.before(() => {
                 throw setup
             })
-            local.after(() => {
+            local.test.after(() => {
                 order.push("after")
             })
-            local.it("a", () => {
+            local.test.it("a", () => {
                 order.push("a")
             })
-            local.it("b", () => {
+            local.test.it("b", () => {
                 order.push("b")
             })
         })
@@ -93,14 +93,14 @@ describe(TITLE, () => {
         const events = capture(local)
         const order: string[] = []
         const broken = new Error("body")
-        local.describe("S", () => {
-            local.before(() => {
+        local.test.describe("S", () => {
+            local.test.before(() => {
                 order.push("before")
             })
-            local.after(() => {
+            local.test.after(() => {
                 order.push("after")
             })
-            local.it("a", () => {
+            local.test.it("a", () => {
                 order.push("a")
             })
             throw broken
@@ -121,33 +121,33 @@ describe(TITLE, () => {
         const local = createTAL()
         local.session.session({output: () => undefined})
         const order: string[] = []
-        local.before(() => {
+        local.test.before(() => {
             order.push("before1")
         })
-        local.describe("A", () => {
-            local.it("a", () => {
+        local.test.describe("A", () => {
+            local.test.it("a", () => {
                 order.push("a")
             })
-            local.after(() => {
+            local.test.after(() => {
                 order.push("after(A)")
             })
         })
-        local.after(() => {
+        local.test.after(() => {
             order.push("after1")
         })
         await new Promise(r => setTimeout(r, 0))
-        local.describe("B", () => {
-            local.it("b", () => {
+        local.test.describe("B", () => {
+            local.test.it("b", () => {
                 order.push("b")
             })
         })
-        local.after(() => {
+        local.test.after(() => {
             order.push("after2")
         })
-        local.before(() => {
+        local.test.before(() => {
             order.push("before2")
         })
-        local.it("c", () => {
+        local.test.it("c", () => {
             order.push("c")
         })
         await local.session.end()
@@ -159,11 +159,11 @@ describe(TITLE, () => {
         const local = createTAL()
         const events = capture(local)
         const teardown = new Error("teardown")
-        local.describe("S", () => {
-            local.after(() => {
+        local.test.describe("S", () => {
+            local.test.after(() => {
                 throw teardown
             })
-            local.it("a", () => undefined)
+            local.test.it("a", () => undefined)
         })
         await local.session.end()
         const summary = summaryOf(events)
@@ -184,17 +184,17 @@ describe(TITLE, () => {
         const events = capture(local)
         const setup = new Error("root setup")
         let ran = 0
-        local.before(() => {
+        local.test.before(() => {
             throw setup
         })
-        local.it("a", () => {
+        local.test.it("a", () => {
             ran++
         })
-        local.it("b", () => {
+        local.test.it("b", () => {
             ran++
         })
-        local.describe("S", () => {
-            local.it("c", () => {
+        local.test.describe("S", () => {
+            local.test.it("c", () => {
                 ran++
             })
         })
@@ -215,7 +215,7 @@ describe(TITLE, () => {
     it("a failing root before hook with no children still fails the run", async () => {
         const local = createTAL()
         const events = capture(local)
-        local.before(() => {
+        local.test.before(() => {
             throw new Error("root setup")
         })
         await local.session.end()
@@ -231,7 +231,7 @@ describe(TITLE, () => {
     it("a failing root after hook with no children is reported once", async () => {
         const local = createTAL()
         const events = capture(local)
-        local.after(() => {
+        local.test.after(() => {
             throw new Error("root teardown")
         })
         const summary = await local.session.end()
@@ -243,10 +243,10 @@ describe(TITLE, () => {
     it("a failing root after hook is reported without being counted", async () => {
         const local = createTAL()
         const events = capture(local)
-        local.after(() => {
+        local.test.after(() => {
             throw new Error("root teardown")
         })
-        local.it("a", () => undefined)
+        local.test.it("a", () => undefined)
         await local.session.end()
         const summary = summaryOf(events)
 
@@ -260,12 +260,12 @@ describe(TITLE, () => {
     it("a skipped test under a failing before hook stays skipped", async () => {
         const local = createTAL()
         const events = capture(local)
-        local.describe("S", () => {
-            local.before(() => {
+        local.test.describe("S", () => {
+            local.test.before(() => {
                 throw new Error("setup")
             })
-            local.it("skipped", {skip: true}, () => undefined)
-            local.it("plain", () => undefined)
+            local.test.it("skipped", {skip: true}, () => undefined)
+            local.test.it("plain", () => undefined)
         })
         await local.session.end()
         const summary = summaryOf(events)
@@ -283,12 +283,12 @@ describe(TITLE, () => {
         const local = createTAL()
         const events = capture(local)
         const setup = new Error("root setup")
-        local.before(() => {
+        local.test.before(() => {
             throw setup
         })
-        local.it("skipped", {skip: "why"}, () => undefined)
-        local.describe.skip("SK", () => {
-            local.it("x", () => undefined)
+        local.test.it("skipped", {skip: "why"}, () => undefined)
+        local.test.describe.skip("SK", () => {
+            local.test.it("x", () => undefined)
         })
         await local.session.end()
         const summary = summaryOf(events)
@@ -305,12 +305,12 @@ describe(TITLE, () => {
     it("a cancelled suite reports the time its body took", async () => {
         const local = createTAL()
         const events = capture(local)
-        local.before(() => {
+        local.test.before(() => {
             throw new Error("root setup")
         })
-        local.describe("S", async () => {
+        local.test.describe("S", async () => {
             await new Promise(r => setTimeout(r, 20))
-            local.it("x", () => undefined)
+            local.test.it("x", () => undefined)
         })
         await local.session.end()
 
@@ -321,14 +321,14 @@ describe(TITLE, () => {
     it("cancellation reaches the grandchildren", async () => {
         const local = createTAL()
         const events = capture(local)
-        local.describe("P", () => {
-            local.before(() => {
+        local.test.describe("P", () => {
+            local.test.before(() => {
                 throw new Error("setup")
             })
-            local.describe("C", () => {
-                local.it("g", () => undefined)
+            local.test.describe("C", () => {
+                local.test.it("g", () => undefined)
             })
-            local.it("p1", () => undefined)
+            local.test.it("p1", () => undefined)
         })
         await local.session.end()
         const summary = summaryOf(events)

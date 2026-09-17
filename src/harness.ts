@@ -30,16 +30,20 @@ export const createTAL: typeof declared.createTAL = () => {
     }
     const session: declared.TAL.SessionAPI = {session: sessions.session, load, end}
 
-    return {
+    const testSuite: declared.TAL.RegistrarAPI = {
         after,
-        assert,
         before,
         describe: suite,
         it: test,
+        suite,
+        test,
+    }
+
+    return {
+        assert,
         reporter,
         session,
         strict,
-        suite,
-        test,
+        test: testSuite,
     }
 }

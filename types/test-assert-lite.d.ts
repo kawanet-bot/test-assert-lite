@@ -15,6 +15,17 @@ export declare namespace TAL {
 
     type HookFn = () => void | Promise<void>
 
+    interface RegistrarAPI {
+        after(fn: HookFn): void
+
+        before(fn: HookFn): void
+
+        describe: SuiteAPI
+        it: TestAPI
+        suite: SuiteAPI
+        test: TestAPI
+    }
+
     interface TestOptions {
         skip?: boolean | string
         // A todo runs and is reported, but is counted as todo whatever the
@@ -289,16 +300,11 @@ export declare namespace TAL {
     // One isolated set of everything the package offers: the tests, the
     // assertions, the reporters and the session that reports them.
     interface TestHarness {
-        after(fn: HookFn): void
         assert: Assert
-        before(fn: HookFn): void
-        describe: SuiteAPI
-        it: TestAPI
         reporter: Reporter
         session: SessionAPI
         strict: Assert
-        suite: SuiteAPI
-        test: TestAPI
+        test: RegistrarAPI
     }
 }
 

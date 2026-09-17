@@ -16,7 +16,7 @@ describe(TITLE, () => {
         const local = createTAL()
         const events = capture(local)
         const order: string[] = []
-        local.it("parent", async (t) => {
+        local.test.it("parent", async (t) => {
             order.push("parent start")
             await t.test("child", () => {
                 order.push("child")
@@ -36,7 +36,7 @@ describe(TITLE, () => {
         const local = createTAL()
         const events = capture(local)
         const order: string[] = []
-        local.it("parent", async (t) => {
+        local.test.it("parent", async (t) => {
             void t.test("child", async () => {
                 await new Promise(r => setTimeout(r, 20))
                 order.push("child")
@@ -55,7 +55,7 @@ describe(TITLE, () => {
     it("a failing subtest fails the parent as well", async () => {
         const local = createTAL()
         const events = capture(local)
-        local.it("parent", async (t) => {
+        local.test.it("parent", async (t) => {
             await t.test("bad child", () => {
                 throw new Error("boom")
             })
@@ -74,7 +74,7 @@ describe(TITLE, () => {
     it("an unawaited failing subtest still fails the parent", async () => {
         const local = createTAL()
         const events = capture(local)
-        local.it("parent", async (t) => {
+        local.test.it("parent", async (t) => {
             void t.test("bad child", () => {
                 throw new Error("boom")
             })
@@ -92,7 +92,7 @@ describe(TITLE, () => {
         const local = createTAL()
         local.session.session({output: () => undefined})
         const order: string[] = []
-        local.it("parent", async (t) => {
+        local.test.it("parent", async (t) => {
             const pending = t.test("child", () => {
                 order.push("child body")
             })
@@ -111,7 +111,7 @@ describe(TITLE, () => {
         const local = createTAL()
         const events = capture(local)
         const order: string[] = []
-        local.it("parent", async (t) => {
+        local.test.it("parent", async (t) => {
             void t.test("slow", async () => {
                 order.push("slow start")
                 await new Promise(r => setTimeout(r, 20))
@@ -135,14 +135,14 @@ describe(TITLE, () => {
         const local = createTAL()
         const events = capture(local)
         let settled = false
-        local.it("parent", async (t) => {
+        local.test.it("parent", async (t) => {
             void t.test("child", async () => {
                 await new Promise(r => setTimeout(r, 20))
                 settled = true
             })
             throw new Error("boom")
         })
-        local.it("next", () => undefined)
+        local.test.it("next", () => undefined)
         await local.session.end()
         const summary = summaryOf(events)
 
@@ -163,7 +163,7 @@ describe(TITLE, () => {
         const local = createTAL()
         const events = capture(local)
         let ran = false
-        local.it("parent", async (t) => {
+        local.test.it("parent", async (t) => {
             void t.test("running", async () => {
                 await new Promise(r => setTimeout(r, 20))
             })
@@ -186,14 +186,14 @@ describe(TITLE, () => {
     it("a subtest declared by a cancelled child goes to the root", async () => {
         const local = createTAL()
         const events = capture(local)
-        local.it("parent", async (t) => {
+        local.test.it("parent", async (t) => {
             void t.test("child", async (inner) => {
                 await new Promise(r => setTimeout(r, 20))
                 void inner.test("grandchild", () => undefined)
             })
             throw new Error("boom")
         })
-        local.it("keep", async () => {
+        local.test.it("keep", async () => {
             await new Promise(r => setTimeout(r, 60))
         })
         await local.session.end()
@@ -209,7 +209,7 @@ describe(TITLE, () => {
     it("subtests are numbered within their parent", async () => {
         const local = createTAL()
         const events = capture(local)
-        local.it("parent", async (t) => {
+        local.test.it("parent", async (t) => {
             await t.test("c1", () => undefined)
             await t.test("c2", () => undefined)
         })

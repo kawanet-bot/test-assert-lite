@@ -19,7 +19,10 @@ test("require entry", () => {
     const m: typeof declared = require("test-assert-lite")
     assert.equal(typeof m.createTAL, "function")
     assert.equal(typeof m.sharedTAL, "object")
-    assert.equal(typeof m.sharedTAL.test, "function")
+    assert.equal(typeof m.sharedTAL.assert, "function")
+    assert.equal(typeof m.sharedTAL.reporter, "object")
+    assert.equal(typeof m.sharedTAL.session, "object")
+    assert.equal(typeof m.sharedTAL.test, "object")
 })
 
 // The exports map has no "require" condition below module-sync, so reach
@@ -29,22 +32,34 @@ test("minified entry (.min.js)", () => {
     const m: typeof declared = require(path.join(path.dirname(require.resolve("test-assert-lite")), "test-assert-lite.min.js"))
     assert.equal(typeof m.createTAL, "function")
     assert.equal(typeof m.sharedTAL, "object")
-    assert.equal(typeof m.sharedTAL.test, "function")
+    assert.equal(typeof m.sharedTAL.assert, "function")
+    assert.equal(typeof m.sharedTAL.reporter, "object")
+    assert.equal(typeof m.sharedTAL.session, "object")
+    assert.equal(typeof m.sharedTAL.test, "object")
 })
 
 test("import entry (.js)", () => {
     assert.equal(typeof m.createTAL, "function")
     assert.equal(typeof m.sharedTAL, "object")
-    assert.equal(typeof m.sharedTAL.test, "function")
+    assert.equal(typeof m.sharedTAL.assert, "function")
+    assert.equal(typeof m.sharedTAL.reporter, "object")
+    assert.equal(typeof m.sharedTAL.session, "object")
+    assert.equal(typeof m.sharedTAL.test, "object")
 })
 
-// The static variants hang off the callable, so they need their own check:
-// a missing `it.skip` would still satisfy the declaration assignment above.
-test("static variants", () => {
-    assert.equal(typeof m.sharedTAL.describe.skip, "function")
-    assert.equal(typeof m.sharedTAL.it.skip, "function")
-    assert.equal(typeof m.sharedTAL.suite.skip, "function")
-    assert.equal(typeof m.sharedTAL.test.skip, "function")
+test("test surface", () => {
+    assert.equal(typeof m.sharedTAL.test.after, "function")
+    assert.equal(typeof m.sharedTAL.test.before, "function")
+    assert.equal(typeof m.sharedTAL.test.describe, "function")
+    assert.equal(typeof m.sharedTAL.test.it, "function")
+    assert.equal(typeof m.sharedTAL.test.suite, "function")
+    assert.equal(typeof m.sharedTAL.test.test, "function")
+
+    // The static variants hang off the callable, so they need their own check
+    assert.equal(typeof m.sharedTAL.test.describe.skip, "function")
+    assert.equal(typeof m.sharedTAL.test.it.skip, "function")
+    assert.equal(typeof m.sharedTAL.test.suite.skip, "function")
+    assert.equal(typeof m.sharedTAL.test.test.skip, "function")
 })
 
 // `strict` doubles as `ok`, so the assertion helpers hang off the function.
@@ -79,23 +94,15 @@ test("reporter surface", () => {
 
 // createTAL() hands out the same surface as the shared harness.
 test("createTAL returns the same shape", () => {
-    const h = m.createTAL()
-    assert.equal(typeof h.suite, "function")
-    assert.equal(typeof h.describe, "function")
-    assert.equal(typeof h.test, "function")
-    assert.equal(typeof h.it, "function")
-    assert.equal(typeof h.before, "function")
-    assert.equal(typeof h.after, "function")
-    assert.equal(typeof h.assert, "function")
-    assert.equal(typeof h.reporter, "object")
-    assert.equal(typeof h.session.session, "function")
-    assert.equal(typeof h.session.load, "function")
-    assert.equal(typeof h.session.end, "function")
-    assert.equal(typeof h.strict, "function")
+    const local = m.createTAL()
+    assert.equal(typeof local.assert, "function")
+    assert.equal(typeof local.reporter, "object")
+    assert.equal(typeof local.session, "object")
+    assert.equal(typeof local.test, "object")
 })
 
 // describe / it are aliases, not separate implementations.
 test("aliases point at the same function", () => {
-    assert.equal(m.sharedTAL.describe, m.sharedTAL.suite)
-    assert.equal(m.sharedTAL.it, m.sharedTAL.test)
+    assert.equal(m.sharedTAL.test.describe, m.sharedTAL.test.suite)
+    assert.equal(m.sharedTAL.test.it, m.sharedTAL.test.test)
 })

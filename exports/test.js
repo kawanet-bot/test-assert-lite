@@ -3,5 +3,5 @@
 // file runner, a different thing under the same name.
 import {sharedTAL} from "test-assert-lite"
 
-export const {after, before, describe, it, suite, test} = sharedTAL
+export const {after, before, describe, it, suite, test} = sharedTAL.test
 export default test

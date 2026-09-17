@@ -16,12 +16,12 @@ import * as testEntry from "test-assert-lite/test"
 const named = (entry: object): string[] => Object.keys(entry).filter(key => key !== "default").sort()
 
 test("test-assert-lite/test", () => {
-    const typed: typeof root.test = testEntry.default
+    const typed: typeof root.test.test = testEntry.default
     void typed
-    assert.equal(testEntry.default, root.test)
+    assert.equal(testEntry.default, root.test.test)
     assert.deepEqual(named(testEntry), ["after", "before", "describe", "it", "suite", "test"])
     for (const key of named(testEntry)) {
-        assert.equal(testEntry[key as keyof typeof testEntry], root[key as keyof typeof root], key)
+        assert.equal(testEntry[key as keyof typeof testEntry], root.test[key as keyof typeof root.test], key)
     }
 })
 

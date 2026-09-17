@@ -24,7 +24,7 @@ describe(TITLE, () => {
                 throw failure
             },
         })
-        local.it("one", () => undefined)
+        local.test.it("one", () => undefined)
 
         assert.equal(await caught(local.session.end()), failure)
     })
@@ -37,7 +37,7 @@ describe(TITLE, () => {
                 for await (const _event of source) throw failure
             },
         })
-        local.it("one", () => undefined)
+        local.test.it("one", () => undefined)
 
         assert.equal(await caught(local.session.end()), failure)
     })
@@ -49,7 +49,7 @@ describe(TITLE, () => {
                 throw undefined
             },
         })
-        local.it("one", () => undefined)
+        local.test.it("one", () => undefined)
         let rejected = false
 
         try {
@@ -72,7 +72,7 @@ describe(TITLE, () => {
                         throw failure
                     },
             })
-            local.it("one", () => undefined)
+            local.test.it("one", () => undefined)
 
             assert.equal(await caught(local.session.end()), failure)
         }
@@ -86,7 +86,7 @@ describe(TITLE, () => {
             },
             output: () => undefined,
         })
-        local.it("one", () => undefined)
+        local.test.it("one", () => undefined)
 
         const error = await caught(local.session.end())
         assert.match(String(error), /reporter ended before its input/i)
@@ -104,7 +104,7 @@ describe(TITLE, () => {
             },
             output: () => undefined,
         })
-        local.it("one", () => undefined)
+        local.test.it("one", () => undefined)
 
         const error = await caught(local.session.end())
         assert.match(String(error), /reporter ended before its input/i)
@@ -121,7 +121,7 @@ describe(TITLE, () => {
             },
             output: () => undefined,
         })
-        local.it("one", () => undefined)
+        local.test.it("one", () => undefined)
 
         const summary = await local.session.end()
         assert.equal(summary.success, true)
@@ -140,7 +140,7 @@ describe(TITLE, () => {
                 if (text === "from body") throw failure
             },
         })
-        local.it("one", t => {
+        local.test.it("one", t => {
             t.diagnostic("from body")
         })
 
@@ -163,10 +163,10 @@ describe(TITLE, () => {
             },
         }
         local.session.session(settings)
-        local.it("first", () => undefined)
+        local.test.it("first", () => undefined)
         await local.session.end()
         local.session.session(settings)
-        local.it("second", () => undefined)
+        local.test.it("second", () => undefined)
         await local.session.end()
 
         assert.equal(output.join(""), "first\nsecond\n")
@@ -176,7 +176,7 @@ describe(TITLE, () => {
     // nothing to configure, and says so rather than take settings late.
     it("session() after a declaration throws", () => {
         const local = createTAL()
-        local.it("first", () => undefined)
+        local.test.it("first", () => undefined)
 
         assert.throws(() => local.session.session({output: () => undefined}), /before the first test is declared/)
     })
@@ -208,11 +208,11 @@ describe(TITLE, () => {
                 throw failure
             },
         })
-        local.it("discarded", () => undefined)
+        local.test.it("discarded", () => undefined)
         assert.equal(await caught(local.session.end()), failure)
 
         const events = capture(local)
-        local.it("recovered", () => undefined)
+        local.test.it("recovered", () => undefined)
         const result = await local.session.end()
 
         assert.equal(result.success, true)

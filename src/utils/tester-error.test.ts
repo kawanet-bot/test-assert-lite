@@ -28,7 +28,7 @@ const thrown = async (value: unknown): Promise<string> => {
             lines.push(text)
         },
     })
-    local.it("bad", () => {
+    local.test.it("bad", () => {
         throw value
     })
     await local.session.end()

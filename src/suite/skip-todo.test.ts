@@ -15,7 +15,7 @@ describe(TITLE, () => {
         const local = createTAL()
         const events = capture(local)
         let ran = false
-        local.it("skipped", {skip: "why"}, () => {
+        local.test.it("skipped", {skip: "why"}, () => {
             ran = true
         })
         await local.session.end()
@@ -32,7 +32,7 @@ describe(TITLE, () => {
         const local = createTAL()
         const events = capture(local)
         let ran = false
-        local.it.skip("static", () => {
+        local.test.it.skip("static", () => {
             ran = true
         })
         await local.session.end()
@@ -46,7 +46,7 @@ describe(TITLE, () => {
         const local = createTAL()
         const events = capture(local)
         let reached = false
-        local.it("runtime skip", (t) => {
+        local.test.it("runtime skip", (t) => {
             t.skip("later")
             reached = true
         })
@@ -62,7 +62,7 @@ describe(TITLE, () => {
     it("a runtime skip outranks a failing subtest in the count", async () => {
         const local = createTAL()
         const events = capture(local)
-        local.it("parent", async (t) => {
+        local.test.it("parent", async (t) => {
             t.skip("why")
             await t.test("c", () => {
                 throw new Error("child failed")
@@ -84,13 +84,13 @@ describe(TITLE, () => {
         const local = createTAL()
         const events = capture(local)
         let ran = 0
-        local.it("bare", {todo: true}, () => {
+        local.test.it("bare", {todo: true}, () => {
             ran++
         })
-        local.it("reason", {todo: "later"}, () => {
+        local.test.it("reason", {todo: "later"}, () => {
             ran++
         })
-        local.it("broken", {todo: true}, () => {
+        local.test.it("broken", {todo: true}, () => {
             throw new Error("boom")
         })
         await local.session.end()
@@ -108,10 +108,10 @@ describe(TITLE, () => {
     it("t.todo() marks the test from the body", async () => {
         const local = createTAL()
         const events = capture(local)
-        local.it("later", (t) => {
+        local.test.it("later", (t) => {
             t.todo("later")
         })
-        local.it("it.todo", () => undefined)
+        local.test.it("it.todo", () => undefined)
         await local.session.end()
         const summary = summaryOf(events)
 
@@ -124,8 +124,8 @@ describe(TITLE, () => {
     it("a skip outranks a todo", async () => {
         const local = createTAL()
         const events = capture(local)
-        local.it("declared", {skip: true, todo: true}, () => undefined)
-        local.it("called", (t) => {
+        local.test.it("declared", {skip: true, todo: true}, () => undefined)
+        local.test.it("called", (t) => {
             t.todo("t")
             t.skip("s")
         })
@@ -142,7 +142,7 @@ describe(TITLE, () => {
     it("subtests inherit todo, and a failing todo subtest does not fail its parent", async () => {
         const local = createTAL()
         const events = capture(local)
-        local.it("parent", {todo: true}, async (t) => {
+        local.test.it("parent", {todo: true}, async (t) => {
             await t.test("child", () => {
                 throw new Error("boom")
             })
@@ -163,7 +163,7 @@ describe(TITLE, () => {
     it("a todo that skips and then fails still does not fail the run or its parent", async () => {
         const local = createTAL()
         const events = capture(local)
-        local.it("parent", {todo: true}, async (t) => {
+        local.test.it("parent", {todo: true}, async (t) => {
             await t.test("child", (inner) => {
                 inner.skip("why")
                 throw new Error("boom")

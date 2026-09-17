@@ -17,7 +17,7 @@ describeSlow(TITLE, () => {
     it("timeout option cancels the test", async () => {
         const local = createTAL()
         const events = capture(local)
-        local.it("slow", {timeout: slow(10)}, async () => {
+        local.test.it("slow", {timeout: slow(10)}, async () => {
             await new Promise(r => setTimeout(r, slow(200)))
         })
         await local.session.end()
@@ -37,7 +37,7 @@ describeSlow(TITLE, () => {
     it("a timed out subtest fails the parent", async () => {
         const local = createTAL()
         const events = capture(local)
-        local.it("parent", async (t) => {
+        local.test.it("parent", async (t) => {
             await t.test("slow child", {timeout: slow(10)}, async () => {
                 await new Promise(r => setTimeout(r, slow(200)))
             })
@@ -55,13 +55,13 @@ describeSlow(TITLE, () => {
     it("a parent's timeout cancels the subtest still running", async () => {
         const local = createTAL()
         const events = capture(local)
-        local.it("parent", {timeout: slow(10)}, async (t) => {
+        local.test.it("parent", {timeout: slow(10)}, async (t) => {
             void t.test("child", async () => {
                 await new Promise(r => setTimeout(r, slow(40)))
             })
             await new Promise(r => setTimeout(r, slow(50)))
         })
-        local.it("next", () => undefined)
+        local.test.it("next", () => undefined)
         await local.session.end()
         const summary = summaryOf(events)
 
@@ -79,7 +79,7 @@ describeSlow(TITLE, () => {
     it("a child's own timeout after its parent's does not report it again", async () => {
         const local = createTAL()
         const events = capture(local)
-        local.it("parent", {timeout: slow(10)}, async (t) => {
+        local.test.it("parent", {timeout: slow(10)}, async (t) => {
             void t.test("child", {timeout: slow(30)}, async () => {
                 await new Promise(r => setTimeout(r, slow(100)))
             })
@@ -97,7 +97,7 @@ describeSlow(TITLE, () => {
     it("a running child's own skip is kept when its parent times out", async () => {
         const local = createTAL()
         const events = capture(local)
-        local.it("parent", {timeout: slow(10)}, async (t) => {
+        local.test.it("parent", {timeout: slow(10)}, async (t) => {
             void t.test("child", async (t2) => {
                 t2.skip("why")
                 await new Promise(r => setTimeout(r, slow(40)))
@@ -119,7 +119,7 @@ describeSlow(TITLE, () => {
         const local = createTAL()
         const events = capture(local)
         let settled = false
-        local.it("slow", {timeout: slow(10)}, async () => {
+        local.test.it("slow", {timeout: slow(10)}, async () => {
             await new Promise(r => setTimeout(r, slow(40)))
             settled = true
         })
@@ -135,7 +135,7 @@ describeSlow(TITLE, () => {
         const local = createTAL()
         const events = capture(local)
         let settled = false
-        local.it("slow", {timeout: slow(10)}, async (t) => {
+        local.test.it("slow", {timeout: slow(10)}, async (t) => {
             await new Promise(r => setTimeout(r, slow(60)))
             settled = true
             t.diagnostic("late")
@@ -155,7 +155,7 @@ describeSlow(TITLE, () => {
     it("a diagnostic after the timeout is dropped", async () => {
         const local = createTAL()
         const events = capture(local)
-        local.it("slow", {timeout: slow(10)}, async (t) => {
+        local.test.it("slow", {timeout: slow(10)}, async (t) => {
             t.diagnostic("in time")
             await new Promise(r => setTimeout(r, slow(40)))
             t.diagnostic("late")
@@ -174,10 +174,10 @@ describeSlow(TITLE, () => {
         const local = createTAL()
         local.session.session({output: () => undefined})
         const order: string[] = []
-        local.after(() => {
+        local.test.after(() => {
             order.push("after")
         })
-        local.it("slow", {timeout: slow(10)}, async (t) => {
+        local.test.it("slow", {timeout: slow(10)}, async (t) => {
             await new Promise(r => setTimeout(r, slow(40)))
             order.push("settled")
             await t.test("late", () => {
@@ -199,10 +199,10 @@ describeSlow(TITLE, () => {
         const local = createTAL()
         local.session.session({output: () => undefined})
         let caught: string | undefined
-        local.it("slow", {timeout: slow(10)}, async () => {
+        local.test.it("slow", {timeout: slow(10)}, async () => {
             await new Promise(r => setTimeout(r, slow(40)))
             try {
-                local.it("stray", () => undefined)
+                local.test.it("stray", () => undefined)
             } catch (e) {
                 caught = (e as Error).message
             }
@@ -222,12 +222,12 @@ describeSlow(TITLE, () => {
     it("a suite after a timed out test still declares its tests", async () => {
         const local = createTAL()
         const events = capture(local)
-        local.it("slow", {timeout: slow(10)}, async () => {
+        local.test.it("slow", {timeout: slow(10)}, async () => {
             await new Promise(r => setTimeout(r, slow(60)))
         })
-        local.describe("S", () => {
-            local.it("a", () => undefined)
-            local.it("b", () => undefined)
+        local.test.describe("S", () => {
+            local.test.it("a", () => undefined)
+            local.test.it("b", () => undefined)
         })
         await local.session.end()
         const summary = summaryOf(events)
