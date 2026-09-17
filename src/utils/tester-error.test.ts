@@ -1,13 +1,13 @@
 import {strict as assert} from "node:assert"
 import {describe, it} from "node:test"
-import {createTAL, reporter} from "../index.ts"
+import {createTAL, sharedTAL} from "../index.ts"
 import {formatEvents} from "../test-utils/format.ts"
 
 const TITLE = "utils/tester-error.test.ts"
 
 // What the spec reporter prints for a test that failed with `error`.
 // Typed as an Error, though a runner may hand over any thrown value.
-const output = (error: unknown): Promise<string> => formatEvents(reporter.spec({colors: false}), emit =>
+const output = (error: unknown): Promise<string> => formatEvents(sharedTAL.reporter.spec({colors: false}), emit =>
     emit("test:fail", {name: "bad", nesting: 0, testNumber: 1, details: {duration_ms: 1, type: "test", error: error as Error}}))
 
 const withStack = (error: Error, stack: string | undefined): Error => Object.assign(error, {stack})

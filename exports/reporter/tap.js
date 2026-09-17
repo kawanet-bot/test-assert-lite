@@ -1,3 +1,3 @@
-import {reporter} from "test-assert-lite"
+import {sharedTAL} from "test-assert-lite"
 
-export default reporter.tap()
+export default sharedTAL.reporter.tap()

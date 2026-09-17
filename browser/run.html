@@ -8,7 +8,9 @@
 <body>
 <pre id="output"></pre>
 <script type="module">
-    import {end, it, session} from "test-assert-lite"
+    import {sharedTAL} from "test-assert-lite"
+
+    const {end, it, session} = sharedTAL
 
     // The CLI puts its config into the head as JSON, ahead of this script.
     const config = document.querySelector(`script[type="application/vnd.config+json"]`)?.textContent

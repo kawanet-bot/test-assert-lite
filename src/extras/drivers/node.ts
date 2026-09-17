@@ -6,7 +6,7 @@ import {register} from "node:module"
 import {resolve} from "node:path"
 import {pathToFileURL} from "node:url"
 import type {TAL} from "test-assert-lite"
-import {end, it, session} from "test-assert-lite"
+import {sharedTAL} from "test-assert-lite"
 import type {Imports} from "../imports.ts"
 import type {DriverOptions} from "./driver-config.ts"
 
@@ -33,6 +33,7 @@ export const resolve = (specifier, context, next) => {
  * copy, still lands on the instance end() reads.
  */
 export const runInNode = async (imports: Imports, options: DriverOptions): Promise<TAL.SessionResult> => {
+    const {end, it, session} = sharedTAL
     const {reporter, summary} = options
 
     // A Map, so a specifier named like an Object property finds no alias.

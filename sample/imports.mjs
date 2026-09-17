@@ -1,7 +1,8 @@
 // Fixture for the browser CLI: a suite that reaches a sibling module and
 // one in a subdirectory by relative import, the way a project's tests
 // reach their own code. Both resolve under the suite's mounted directory.
-import {strict as assert, test} from "test-assert-lite"
+import {strict as assert} from "test-assert-lite/assert"
+import {test} from "test-assert-lite/test"
 import {answer} from "./helper.mjs"
 import {greet} from "./lib/greet.mjs"
 

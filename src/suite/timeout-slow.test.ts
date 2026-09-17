@@ -10,7 +10,7 @@ const TITLE = "suite/timeout-slow.test.ts"
 // do afterwards, and what a parent's timeout does to its subtests. Every
 // case waits on real time, so the suite runs only with TAL_SLOW_TESTS set.
 
-// Every test builds its own harness, so the default one stays clean and
+// Every test builds its own harness, so sharedTAL stays clean and
 // nothing re-enters when TAL is itself the runner.
 describeSlow(TITLE, () => {
     // node:test files a timeout under cancelled, not failed.

@@ -8,7 +8,7 @@ const TITLE = "suite/skip-todo.test.ts"
 // skip and todo: as an option, as it.skip(), and as t.skip() / t.todo()
 // from the body; which of the two wins, and how a subtest inherits them.
 
-// Every test builds its own harness, so the default one stays clean and
+// Every test builds its own harness, so sharedTAL stays clean and
 // nothing re-enters when TAL is itself the runner.
 describe(TITLE, () => {
     it("skip option marks the test skipped without running it", async () => {

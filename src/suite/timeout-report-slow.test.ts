@@ -10,7 +10,7 @@ const TITLE = "suite/timeout-report-slow.test.ts"
 // declared while an earlier cancellation is still being reported. Every
 // case waits on real time, so the suite runs only with TAL_SLOW_TESTS set.
 
-// Every test builds its own harness, so the default one stays clean and
+// Every test builds its own harness, so sharedTAL stays clean and
 // nothing re-enters when TAL is itself the runner.
 // The events, through a reporter kept slow: each is written, and the
 // write waits, so the cases below find the report still going on.

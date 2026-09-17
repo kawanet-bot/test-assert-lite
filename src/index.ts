@@ -1,4 +1,7 @@
 import {createTAL} from "./harness.ts"
 
 export {createTAL}
-export const {after, assert, before, describe, end, it, reporter, session, strict, suite, test} = createTAL()
+
+// The one harness the package's own entries and pages share; createTAL()
+// hands out another, apart from it.
+export const sharedTAL = createTAL()

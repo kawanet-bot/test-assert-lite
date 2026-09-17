@@ -306,7 +306,10 @@ The minified build is an ES module: an import map leads the package's name to it
 </script>
 <div id="output"></div>
 <script type="module">
-    import {describe, it, strict as assert, reporter, end, session} from "test-assert-lite"
+    import {sharedTAL} from "test-assert-lite"
+
+    const {describe, it, reporter, end, session} = sharedTAL
+    const assert = sharedTAL.strict
 
     // The report goes to console.log by default; render it as HTML in the page instead.
     // session() comes before the first test is declared.
@@ -359,8 +362,8 @@ export default {
 </script>
 <script type="module" src="./scripts/bundled-tests.js"></script>
 <script type="module">
-    import {end} from "test-assert-lite"
-    end()
+    import {sharedTAL} from "test-assert-lite"
+    sharedTAL.end()
 </script>
 ```
 

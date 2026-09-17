@@ -1,10 +1,10 @@
-// Pins the subpath entries. Each is a re-export of the root entry's objects,
-// so the checks are identity against the root as the package resolves it,
-// and the named lists must not drift from what the root exposes. The
+// Pins the subpath entries. Each takes its objects from the shared harness,
+// so the checks are identity against it as the package resolves it, and
+// the named lists must not drift from what the harness exposes. The
 // declaration assignments make tsc read the bridges' .d.ts too.
 import {strict as assert} from "node:assert"
 import {test} from "node:test"
-import * as root from "test-assert-lite"
+import {sharedTAL as root} from "test-assert-lite"
 import * as assertEntry from "test-assert-lite/assert"
 import * as strictEntry from "test-assert-lite/assert/strict"
 import * as htmlEntry from "test-assert-lite/reporter/html"

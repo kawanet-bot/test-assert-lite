@@ -9,7 +9,7 @@ const TITLE = "suite/subtest.test.ts"
 // verdict reaches its parent, and what a parent that throws does to the
 // subtests still open.
 
-// Every test builds its own harness, so the default one stays clean and
+// Every test builds its own harness, so sharedTAL stays clean and
 // nothing re-enters when TAL is itself the runner.
 describe(TITLE, () => {
     it("t.test() runs the subtest ahead of the rest of the parent", async () => {

@@ -10,7 +10,7 @@ const TITLE = "suite/timeout-late-slow.test.ts"
 // as parentAlreadyFinished, numbered, skipped or timed out on its own. Every
 // case waits on real time, so the suite runs only with TAL_SLOW_TESTS set.
 
-// Every test builds its own harness, so the default one stays clean and
+// Every test builds its own harness, so sharedTAL stays clean and
 // nothing re-enters when TAL is itself the runner.
 describeSlow(TITLE, () => {
     // Keeps the run open past a timed out body, as something else still

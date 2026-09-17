@@ -9,8 +9,8 @@ type SuiteFn = declared.TAL.SuiteFn
 interface Registrar {
     suite: declared.TAL.SuiteAPI
     test: declared.TAL.TestAPI
-    before: typeof declared.before
-    after: typeof declared.after
+    before: declared.TAL.TestHarness["before"]
+    after: declared.TAL.TestHarness["after"]
 }
 
 // Binds the four registration functions to one state. A declaration at
@@ -60,13 +60,13 @@ export const createRegistrar = (state: HarnessState, schedule: () => void): Regi
     // A hook belongs to the suite that declares it. before runs once when
     // that suite starts, after once everything below it has finished,
     // grandchildren included.
-    const before: typeof declared.before = (fn) => {
+    const before: declared.TAL.TestHarness["before"] = (fn) => {
         if (fromTestBody()) throw new Error("before() cannot be called from inside a test body")
         state.current.before.push(fn)
         if (state.current === state.root) schedule()
     }
 
-    const after: typeof declared.after = (fn) => {
+    const after: declared.TAL.TestHarness["after"] = (fn) => {
         if (fromTestBody()) throw new Error("after() cannot be called from inside a test body")
         state.current.after.push(fn)
         if (state.current === state.root) schedule()

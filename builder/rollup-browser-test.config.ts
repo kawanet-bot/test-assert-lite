@@ -10,8 +10,8 @@ import {showFiles} from "./show-files.ts"
 // carries an import map that points them, and the package name, at the
 // minified build, so no glue module is inlined here.
 const rollupConfig: RollupOptions = {
-    // 90.entrypoint pins the Node entry surface; the browser one is checked
-    // by builder/pack test-esm, so the negative pattern keeps it out here.
+    // 90.* pin the entries through require() and the package paths, Node
+    // APIs a page has none of, so the negative pattern keeps them out here.
     // src/extras/ tests exercise Node-only code such as the HTTP server.
     input: ["../src/**/*.test.ts", "!../src/90.*", "!../src/extras/*"],
 

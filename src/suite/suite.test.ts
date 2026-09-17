@@ -8,7 +8,7 @@ const TITLE = "suite/suite.test.ts"
 // describe and it: declaration order, nesting, numbering, and how a suite
 // carries the verdict of its children.
 
-// Every test builds its own harness, so the default one stays clean and
+// Every test builds its own harness, so sharedTAL stays clean and
 // nothing re-enters when TAL is itself the runner.
 describe(TITLE, () => {
     // children is one queue mixing describe and it in declaration order,
