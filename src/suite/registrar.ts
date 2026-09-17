@@ -6,9 +6,8 @@ import {nameOf, normalize} from "./declare.ts"
 type TestFn = TAL.TestFn
 type SuiteFn = TAL.SuiteFn
 
-// Binds the four registration functions to one state. A declaration at
-// the root is what starts the walk, as under node:test, so each of them
-// tells the scheduler.
+// The declaring functions, bound to one state. A declaration at the root
+// starts the walk, as under node:test, so each one tells the scheduler.
 export const createRegistrar = (state: HarnessState, schedule: () => void): TAL.RegistrarAPI => {
     const fromTestBody = (): boolean => state.openBodies > 0 && state.openSuites === 0
 

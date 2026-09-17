@@ -1,4 +1,4 @@
-// Declarations for test.js, each typed off the harness so it cannot drift.
+// Declarations for test.js, typed off RegistrarAPI so they cannot drift.
 import type {TAL} from "test-assert-lite"
 
 export declare const after: TAL.RegistrarAPI["after"]

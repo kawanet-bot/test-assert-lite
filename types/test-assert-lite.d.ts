@@ -15,6 +15,7 @@ export declare namespace TAL {
 
     type HookFn = () => void | Promise<void>
 
+    // The test entry, `test-assert-lite/test`: what declares suites, tests and hooks.
     interface RegistrarAPI {
         after(fn: HookFn): void
 

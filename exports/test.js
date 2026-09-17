@@ -1,6 +1,5 @@
-// node:test's shape on this package: the shared harness's functions, with
-// `test` as the default. `run` is left out, since node:test's run() is a
-// file runner, a different thing under the same name.
+// node:test's shape: the test entry of sharedTAL, with `test` as the
+// default. No `run`: node:test's run() is a file runner, another thing.
 import {sharedTAL} from "test-assert-lite"
 
 export const {after, before, describe, it, suite, test} = sharedTAL.test
