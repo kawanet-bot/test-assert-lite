@@ -189,7 +189,7 @@ export const readOptions = (args: string[]): Options => {
     // per directory. One under another counts as served from the latter.
     const served = createFiles([...suites, ...scripts, ...imports.paths()])
     if (new Set(suites.map(file => served.dirOf(file))).size > 1) {
-        throw new UsageError("--playwright and --webdriver take the test files from one directory")
+        throw new UsageError("--playwright, --webdriver and --serve take the test files from one directory")
     }
 
     const shared: BrowserOptions = {

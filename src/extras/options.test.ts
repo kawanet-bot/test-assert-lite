@@ -198,9 +198,9 @@ describe(TITLE, () => {
             assert.equal(options.mode, "playwright")
             if (options.mode !== "playwright") return
             assert.deepEqual(options.suites, [resolve("test/b.mjs"), resolve("test/a.mjs"), resolve("test/b.mjs"), resolve("test/sub/c.mjs")])
-            assert.throws(() => readOptions(["--playwright", "chromium", "test/a.mjs", "other/b.mjs"]), /--playwright and --webdriver take the test files from one directory$/)
-            assert.throws(() => readOptions(["--playwright", "chromium", "x/a.mjs", "test/b.mjs"]), /from one directory$/)
-            assert.throws(() => readOptions(["--playwright", "chromium", "test/a/x.mjs", "test/b/y.mjs"]), /from one directory$/)
+            assert.throws(() => readOptions(["--playwright", "chromium", "test/a.mjs", "other/b.mjs"]), /from one directory$/)
+            assert.throws(() => readOptions(["--webdriver", "x/a.mjs", "test/b.mjs"]), /from one directory$/)
+            assert.throws(() => readOptions(["--serve", "test/a/x.mjs", "test/b/y.mjs"]), /from one directory$/)
         })
 
         it("counts a suite's directory under a script's or an alias's as that one", () => {

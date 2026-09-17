@@ -100,16 +100,16 @@ See [test-assert-lite.d.ts](https://github.com/kawanet/test-assert-lite/blob/mai
 `test-assert` runs suites that use the supported `node:test` and `node:assert` APIs. The test files and their import lines stay unchanged.
 
 ```sh
-# Run in this Node.js process
+# Run suites in the local Node.js with the library instead of node:test
 test-assert test/*.test.mjs
 
-# Serve at http://127.0.0.1:3000/; index.html there runs index.js
-test-assert --serve --port 3000 --alias index.js=test/browser.test.mjs
+# Serve suites at http://127.0.0.1:3000/ for your browser
+test-assert --serve --port 3000 test/browser.test.mjs
 
-# Run in Safari, Chrome, or another WebDriver browser
+# Run suites in Safari, Chrome, or another WebDriver browser for CI
 test-assert --webdriver test/browser.test.mjs
 
-# Run in headless Chromium through Playwright
+# Run suites in headless Chromium through Playwright for CI
 test-assert --playwright chromium test/browser.test.mjs
 ```
 
