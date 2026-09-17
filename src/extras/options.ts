@@ -174,14 +174,6 @@ export const readOptions = (args: string[]): Options => {
     if (commonjs.length) {
         throw new UsageError(`CommonJS test files are not supported: ${commonjs.join(", ")}`)
     }
-    // A browser gets TypeScript with the types stripped by this Node; where
-    // it strips none, the server would refuse the file, so this refuses first.
-    if (browsing && !process.features.typescript) {
-        const typescript = [...files, ...values.script].filter(file => /\.[cm]?ts$/.test(file))
-        if (typescript.length) {
-            throw new UsageError(`this Node strips no TypeScript: ${typescript.join(", ")}`)
-        }
-    }
 
     const imports = importsOf(values["import-map"], values.alias, browsing ? "browser" : "node")
     // Only the flag given makes a value: the run's default stands otherwise.

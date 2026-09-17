@@ -87,19 +87,10 @@ describe(TITLE, () => {
             assert.throws(() => readOptions(["--playwright", "chromium", "c.cts"]), /CommonJS test files are not supported: c\.cts$/)
         })
 
-        it("takes TypeScript in the browser modes, for a suite and for a --script, where this Node strips types", t => {
-            if (!process.features.typescript) return t.skip()
+        it("takes TypeScript in the browser modes, for a suite and for a --script, and in Node mode", () => {
             assert.equal(readOptions(["--playwright", "chromium", "a.test.ts"]).mode, "playwright")
             assert.equal(readOptions(["--webdriver", "a.mts"]).mode, "webdriver")
             assert.equal(readOptions(["--serve", "--script", "setup.ts", "--script", "setup.cjs"]).mode, "serve")
-            assert.equal(readOptions(["a.test.ts", "b.mts"]).mode, "node")
-        })
-
-        it("refuses TypeScript in the browser modes where this Node strips no types, and takes it in Node mode", t => {
-            if (process.features.typescript) return t.skip()
-            assert.throws(() => readOptions(["--playwright", "chromium", "a.test.ts"]), /this Node strips no TypeScript: a\.test\.ts$/)
-            assert.throws(() => readOptions(["--webdriver", "a.mts"]), /this Node strips no TypeScript: a\.mts$/)
-            assert.throws(() => readOptions(["--serve", "--script", "setup.ts", "--script", "setup.cjs"]), /this Node strips no TypeScript: setup\.ts$/)
             assert.equal(readOptions(["--serve", "--script", "setup.cjs"]).mode, "serve")
             assert.equal(readOptions(["a.test.ts", "b.mts"]).mode, "node")
         })
