@@ -64,10 +64,10 @@ test-cli:
 	mkdir -p ../../sample/node_modules
 	[ -L ../../sample/node_modules/test-assert-lite ] || rm -rf ../../sample/node_modules/test-assert-lite
 	cd ../.. && target=$$(cd $(PKG_ROOT) && pwd -P) && ln -sfn "$$target" sample/node_modules/test-assert-lite
-	cd ../.. && ./$(PKG_ROOT)/bin/cli.mjs sample/pass.mjs > /dev/null 2>&1
-	cd ../.. && ! ./$(PKG_ROOT)/bin/cli.mjs sample/fail.mjs > /dev/null 2>&1
-	cd ../.. && ./$(PKG_ROOT)/bin/cli.mjs --alias greet=sample/lib/greet.mjs sample/alias.mjs > /dev/null 2>&1
-	cd ../.. && ./$(PKG_ROOT)/bin/cli.mjs --import-map sample/import-map.json sample/alias.mjs > /dev/null 2>&1
+	cd ../.. && ./$(PKG_ROOT)/bin/cli.mjs sample/pass.js > /dev/null 2>&1
+	cd ../.. && ! ./$(PKG_ROOT)/bin/cli.mjs sample/fail.js > /dev/null 2>&1
+	cd ../.. && ./$(PKG_ROOT)/bin/cli.mjs --alias greet=sample/lib/greet.js sample/alias.js > /dev/null 2>&1
+	cd ../.. && ./$(PKG_ROOT)/bin/cli.mjs --import-map sample/import-map.json sample/alias.js > /dev/null 2>&1
 
 # Publish gate: the same behavior checks, run against the checkout's own
 # staged artifacts in place -- no tarball install involved.
