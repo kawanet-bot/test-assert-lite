@@ -304,7 +304,6 @@ export declare namespace TAL {
         assert: Assert
         reporter: Reporter
         session: SessionAPI
-        strict: Assert
         test: RegistrarAPI
     }
 }

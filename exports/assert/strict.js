@@ -3,7 +3,7 @@
 // one, as in node. From the shared harness; ES modules only.
 import {sharedTAL} from "test-assert-lite"
 
-export const {strict} = sharedTAL
+export const strict = sharedTAL.assert.strict
 export default strict
 export const {
     deepEqual,
