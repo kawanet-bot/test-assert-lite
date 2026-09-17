@@ -44,6 +44,11 @@
       "module-sync": "./dist/test-assert-lite.extras.js",
       "import": "./dist/test-assert-lite.extras.js"
     },
+    "./session": {
+      "types": "./exports/session.d.ts",
+      "module-sync": "./exports/session.js",
+      "import": "./exports/session.js"
+    },
     "./test": {
       "types": "./exports/test.d.ts",
       "module-sync": "./exports/test.js",

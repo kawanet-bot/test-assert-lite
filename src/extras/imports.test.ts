@@ -36,6 +36,7 @@ const DEFAULTS = [
     "test-assert-lite/reporter/html",
     "test-assert-lite/reporter/spec",
     "test-assert-lite/reporter/tap",
+    "test-assert-lite/session",
     "node:test",
     "node:assert",
     "node:assert/strict",
