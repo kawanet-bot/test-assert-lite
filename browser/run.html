@@ -21,6 +21,7 @@
         base: new URL("./", import.meta.url),
         capture: true,
         reporter: options.reporter,
+        summary: options.summary,
         output: text => {
             document.querySelector("#output")?.append(text)
             stdout(text)

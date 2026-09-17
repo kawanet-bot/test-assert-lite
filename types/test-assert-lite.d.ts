@@ -255,6 +255,8 @@ export declare namespace TAL {
          * Node `true` means nothing yet.
          */
         capture?: boolean | EventTargetLike
+        /** TBD */
+        summary?: boolean
     }
 
     // What end() resolves with: whether every test passed.
