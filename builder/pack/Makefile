@@ -47,7 +47,7 @@ test: test-bundled test-bin test-cli
 # bundle's own self-reference resolves to. The slow suites, skipped in a
 # plain run, are wanted here: this is the packed copy on every Node line.
 test-bundled:
-	cd ../.. && TAL_SLOW_TESTS=1 ./$(PKG_ROOT)/bin/cli.mjs builder/tests/bundled.mjs
+	cd ../.. && TAL_SLOW_TESTS=1 ./$(PKG_ROOT)/bin/cli.js builder/tests/bundled.mjs
 
 # npm accepts a broken bin mapping silently -- the .bin link is just
 # never created -- so assert the link exists, resolves and is executable.
@@ -64,10 +64,10 @@ test-cli:
 	mkdir -p ../../sample/node_modules
 	[ -L ../../sample/node_modules/test-assert-lite ] || rm -rf ../../sample/node_modules/test-assert-lite
 	cd ../.. && target=$$(cd $(PKG_ROOT) && pwd -P) && ln -sfn "$$target" sample/node_modules/test-assert-lite
-	cd ../.. && ./$(PKG_ROOT)/bin/cli.mjs sample/pass.js > /dev/null 2>&1
-	cd ../.. && ! ./$(PKG_ROOT)/bin/cli.mjs sample/fail.js > /dev/null 2>&1
-	cd ../.. && ./$(PKG_ROOT)/bin/cli.mjs --alias greet=sample/lib/greet.js sample/alias.js > /dev/null 2>&1
-	cd ../.. && ./$(PKG_ROOT)/bin/cli.mjs --import-map sample/import-map.json sample/alias.js > /dev/null 2>&1
+	cd ../.. && ./$(PKG_ROOT)/bin/cli.js sample/pass.js > /dev/null 2>&1
+	cd ../.. && ! ./$(PKG_ROOT)/bin/cli.js sample/fail.js > /dev/null 2>&1
+	cd ../.. && ./$(PKG_ROOT)/bin/cli.js --alias greet=sample/lib/greet.js sample/alias.js > /dev/null 2>&1
+	cd ../.. && ./$(PKG_ROOT)/bin/cli.js --import-map sample/import-map.json sample/alias.js > /dev/null 2>&1
 
 # Publish gate: the same behavior checks, run against the checkout's own
 # staged artifacts in place -- no tarball install involved.

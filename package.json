@@ -4,7 +4,7 @@
   "version": "0.0.1",
   "author": "Kawanet",
   "bin": {
-    "test-assert": "./bin/cli.mjs"
+    "test-assert": "./bin/cli.js"
   },
   "bugs": {
     "url": "https://github.com/kawanet/test-assert-lite/issues"
@@ -81,7 +81,7 @@
     }
   },
   "files": [
-    "bin/cli.mjs",
+    "bin/cli.js",
     "browser/run.html",
     "browser/session/",
     "dist/test-assert-lite.extras.js",
