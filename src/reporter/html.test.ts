@@ -1,13 +1,13 @@
 import {strict as assert} from "node:assert"
 import {describe, it} from "node:test"
-import {reporter} from "../index.ts"
+import {sharedTAL} from "../index.ts"
 import type {Emit} from "../test-utils/format.ts"
 import {formatEvents} from "../test-utils/format.ts"
 
 const TITLE = "reporter/html.test.ts"
 
 const render = (send: (emit: Emit) => Promise<void>): Promise<string> =>
-    formatEvents(reporter.html(), send)
+    formatEvents(sharedTAL.reporter.html(), send)
 
 const pass = (name: string, extra: object = {}) => ({
     name, nesting: 0, testNumber: 1,

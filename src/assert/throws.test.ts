@@ -1,6 +1,8 @@
 import {strict as assert} from "node:assert"
 import {describe, it} from "node:test"
-import {strict as TAL} from "../index.ts"
+import {sharedTAL} from "../index.ts"
+
+const {strict: TAL} = sharedTAL
 
 const TITLE = "assert/throws.test.ts"
 
