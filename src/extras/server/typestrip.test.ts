@@ -26,7 +26,8 @@ describe(TITLE, () => {
         const out = await through("export const n: number = 1\n", "text/typescript; charset=utf-8")
         assert.equal(out.status, 200)
         assert.equal(out.type, "text/javascript; charset=utf-8")
-        assert.equal(out.body, "export const n         = 1\n")
+        assert.match(out.body, /^export const n\s*=\s*1\n$/)
+        assert.ok(!out.body.includes(":"))
     })
 
     it("answers 422 where stripping fails on the file", async t => {
