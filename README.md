@@ -144,9 +144,9 @@ test-assert --playwright chromium test/browser.test.mjs
 
 ### `--serve`
 
-- Serves `htdocs/`, or what `--mount` names, with the import map; prints the URL to open and keeps serving until Ctrl-C.
-- `htdocs/index.html` imports `index.js`, so `--alias index.js=test/browser.test.mjs` runs that suite in it.
-- Auto reload: a page reloads itself when a `--script` or an aliased file changes.
+- With test files, serves the run page; without them, serves `htdocs/`, or what `--mount` names. Prints the URL to open and keeps serving until Ctrl-C.
+- Without test files, `htdocs/index.html` imports `index.js`, so `--alias index.js=test/browser.test.mjs` runs that suite in it.
+- Auto reloads when a test file, a `--script` file or a locally mapped file changes.
 
 ### `--host <address>`
 

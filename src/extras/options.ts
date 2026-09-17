@@ -10,7 +10,7 @@ import {ImportAliasItem, Imports, cwdURL, readImportMap} from "./imports.ts"
 import {createFiles} from "./server/files.ts"
 import {UsageError} from "./usage-error.ts"
 
-export const USAGE = `Usage: test-assert [options] <file...>
+export const USAGE = `Usage: test-assert [options] [file...]
   -v, --version               print this package's version
   --alias <specifier>=<file>  what a specifier resolves to: a file, a URL for the page, or this package's own name (repeatable)
   --import-map <file>         JSON import map: a relative address is a file beside it, / and http(s):// go to the page as they are

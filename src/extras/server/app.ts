@@ -103,10 +103,7 @@ export const createApp = (options: AppOptions): App => {
         return ""
     })
 
-    // Two pages get the head: the root's HTML, with the reload ask under
-    // watch, and the run's page, without it. Each is a scoped chain so the
-    // head touches nothing served after it, /@tal/ least of all: the build
-    // and the bridges have to stay as the package ships them.
+    // Add the generated head only to the root and run pages.
     const atRoot = mounted == null
         ? serveStatic({path: "/", root: resolve(root, "htdocs")})
         : /^https?:\/\//i.test(mounted)

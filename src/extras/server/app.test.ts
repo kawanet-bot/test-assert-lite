@@ -160,7 +160,7 @@ describe(TITLE, () => {
         assert.equal(await app.done, true)
     })
 
-    it("asks about changes from the page people open alone, and only with watch on", async () => {
+    it("asks about changes from both pages, and only with watch on", async () => {
         assert.equal((await get(url("/"))).body.includes("/@tal/watch?after="), false)
         assert.equal((await get(url("/@tal/watch?after=0"))).status, 404)
         const watching = createApp({suites: [join(dir, "tests", "my suite.mjs")], watch: true, stdout: () => undefined})
