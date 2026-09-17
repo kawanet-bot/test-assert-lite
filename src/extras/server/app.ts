@@ -18,6 +18,7 @@ import {compose, scoped} from "./middleware.ts"
 import {proxy} from "./proxy.ts"
 import {serveStatic} from "./static.ts"
 import {withTitle} from "./title.ts"
+import {withStrippedTypes} from "./typestrip.ts"
 import type {Watcher} from "./watch.ts"
 import {createWatcher} from "./watch.ts"
 
@@ -117,7 +118,10 @@ export const createApp = (options: AppOptions): App => {
     // suite belongs to, or the suite's own name where there is none.
     const names = suites.map(suite => packageNameOf(suite) ?? basename(suite))
     const title = withTitle([...new Set(names)].join(" ") || "test-assert-lite")
+    // A .ts from any mount, the root and a proxied one included, goes out
+    // as JavaScript; the one wrapper ahead of them all sees every answer.
     const handler = compose([
+        withStrippedTypes(),
         channel.handler,
         ...M(watcher?.handler),
         scoped(compose([...M(watcher?.inject), head, title, atRun])),

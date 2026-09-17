@@ -23,8 +23,10 @@ const TYPES: Record<string, string> = {
     ".js": "text/javascript",
     ".json": "application/json",
     ".mjs": "text/javascript",
+    ".mts": "text/typescript",
     ".png": "image/png",
     ".svg": "image/svg+xml",
+    ".ts": "text/typescript",
 }
 
 const withCharset = (type: string): string => (/^text\/|[/+]json$/.test(type) ? `${type}; charset=utf-8` : type)
@@ -61,7 +63,7 @@ const realWithin = async ({base, path}: Located): Promise<string> => {
  * and HEAD; a directory's index.html answers for the directory. A path that
  * is not a file there goes on to the next middleware;
  * any other method on one is a 405, and a file of a kind a test page is not
- * made of, a .ts say, is a 403 rather than handed out as bytes.
+ * made of, a .txt say, is a 403 rather than handed out as bytes.
  */
 export const serveStatic = ({path: at, root}: ServeStaticOptions): MiddlewareHandler => async (c, next) => {
     if (c.finalized) return next()
