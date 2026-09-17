@@ -118,14 +118,14 @@ export const createApp = (options: AppOptions): App => {
     // suite belongs to, or the suite's own name where there is none.
     const names = suites.map(suite => packageNameOf(suite) ?? basename(suite))
     const title = withTitle([...new Set(names)].join(" ") || "test-assert-lite")
-    // A .ts from any mount, the root and a proxied one included, goes out
-    // as JavaScript; the one wrapper ahead of them all sees every answer.
     const handler = compose([
-        withStrippedTypes(),
         channel.handler,
         ...M(watcher?.handler),
         scoped(compose([...M(watcher?.inject), head, title, atRun])),
-        ...[...served.own, ...served.dirs].map(dir => serveStatic(dir)),
+        ...served.own.map(dir => serveStatic(dir)),
+        // A .ts among the files given goes out as JavaScript; the root
+        // mount is served as it is.
+        scoped(compose([withStrippedTypes(), ...served.dirs.map(dir => serveStatic(dir))])),
         // /@tal/ is the CLI's: what none of the mounts above answered ends
         // here, whatever a mount or an upstream at the root would say to it.
         async (c, next) => (c.req.path.startsWith("/@tal/") ? c.notFound() : next()),

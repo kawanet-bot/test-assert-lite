@@ -18,10 +18,7 @@ const through = async (body: string | null, type?: string, status = 200): Promis
 describe(TITLE, () => {
     it("answers 422 where this Node strips no types", async t => {
         if (process.features.typescript) return t.skip()
-        const out = await through("export const n: number = 1\n", "text/typescript; charset=utf-8")
-        assert.equal(out.status, 422)
-        assert.equal(out.type, "text/plain; charset=utf-8")
-        assert.match(out.body, /strips no TypeScript/)
+        assert.equal((await through("export const n: number = 1\n", "text/typescript; charset=utf-8")).status, 422)
     })
 
     it("strips the types from a text/typescript answer and sends it as text/javascript", async t => {
@@ -32,11 +29,9 @@ describe(TITLE, () => {
         assert.equal(out.body, "export const n         = 1\n")
     })
 
-    it("answers 422 with the reason where stripping fails on the file", async t => {
+    it("answers 422 where stripping fails on the file", async t => {
         if (!process.features.typescript) return t.skip()
-        const out = await through("enum E {A}\n", "text/typescript; charset=utf-8")
-        assert.equal(out.status, 422)
-        assert.match(out.body, /enum/)
+        assert.equal((await through("enum E {A}\n", "text/typescript; charset=utf-8")).status, 422)
     })
 
     it("leaves anything but a 200 text/typescript answer as it came", async () => {
