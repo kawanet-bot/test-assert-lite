@@ -43,7 +43,7 @@ const ifError: declared.TAL.Assert["ifError"] = (value) => {
 // only assembles them. Options such as a diff mode would enter here.
 export interface AssertControl {
     assert: declared.TAL.Assert
-    methods: declared.TAL.AssertMethods
+    tca: declared.TAL.TestContextAssert
 }
 
 export const createAssert = (): AssertControl => {
@@ -67,7 +67,7 @@ export const createAssert = (): AssertControl => {
     // For t.assert, which in node:test carries the loose equal / deepEqual
     // like the plain assert. ok / ifError are plain checks here, not
     // assertion signatures.
-    const methods: declared.TAL.AssertMethods = {...shared, ...looseOnly, ok, ifError}
+    const tca: declared.TAL.TestContextAssert = {...shared, ...looseOnly, ok, ifError}
 
     // The node:assert shape, where the module itself works as ok.
     const callable = (own: ReturnType<typeof flavour>): declared.TAL.Assert => Object.assign(
@@ -84,5 +84,5 @@ export const createAssert = (): AssertControl => {
     assert.strict = strict
     strict.strict = strict
 
-    return {assert, methods}
+    return {assert, tca}
 }

@@ -22,7 +22,7 @@ export interface Run {
     emit: (type: string, data: declared.TAL.TestEvent["data"]) => Promise<void>
     // t.assert uses the harness's assert, so once it takes options, what a
     // body sees stays consistent within one run.
-    assert: declared.TAL.AssertMethods
+    assert: declared.TAL.TestContextAssert
     // Set once the root has nothing left to run. A body that outlived its
     // verdict is not waited for; what it does after this is dropped.
     closed: boolean

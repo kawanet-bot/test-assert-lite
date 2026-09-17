@@ -31,7 +31,7 @@ export interface Scheduler {
 export const createScheduler = (
     harness: HarnessState,
     sessions: SessionControl,
-    assert: declared.TAL.AssertMethods,
+    assert: declared.TAL.TestContextAssert,
 ): Scheduler => {
     let cycle: Cycle | null = null
     let running = false
