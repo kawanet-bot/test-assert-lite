@@ -8,9 +8,7 @@
 <body>
 <pre id="output"></pre>
 <script type="module">
-    import {sharedTAL} from "test-assert-lite"
-
-    const {end, it, session} = sharedTAL
+    import {end, load, session} from "test-assert-lite/session"
 
     // The CLI puts its config into the head as JSON, ahead of this script.
     const config = document.querySelector(`script[type="application/vnd.config+json"]`)?.textContent
@@ -35,18 +33,8 @@
 
     const files = (options?.files ?? [])
 
-    const run = async (file) => {
-        try {
-            await import(file)
-        } catch (error) {
-            it(file.replace(/^[^?]*\//, ""), () => {
-                throw error
-            })
-        }
-    }
-
     for (const file of files) {
-        await run(file)
+        await load(file)
     }
 
     await end().catch(console.error)

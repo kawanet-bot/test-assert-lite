@@ -10,12 +10,10 @@
 <h1>{{title}}</h1>
 <div id="output"></div>
 <script type="module">
-    import {sharedTAL} from "test-assert-lite"
-
-    const {end, reporter, session} = sharedTAL
+    import {end, session} from "test-assert-lite/session"
 
     session({
-        reporter: reporter.html(),
+        reporter: "html",
         output: text => document.querySelector("#output")?.insertAdjacentHTML("beforeend", text),
     })
 

@@ -28,7 +28,7 @@ interface Open {
 }
 
 export interface SessionControl {
-    session: declared.TAL.TestHarness["session"]
+    session: declared.TAL.SessionAPI["session"]
     // Closes the session with the run's verdict; nothing to close is fine.
     close: (success: boolean) => Promise<void>
     // Opens the default session unless one is open already.
@@ -175,7 +175,7 @@ export const createSessions = (harness: HarnessState): SessionControl => {
         })
     }
 
-    const session: declared.TAL.TestHarness["session"] = (options = {}) => {
+    const session: declared.TAL.SessionAPI["session"] = (options = {}) => {
         if (current != null) {
             throw new Error(current.auto ? "session() must come before the first test is declared" : "session() is already open")
         }

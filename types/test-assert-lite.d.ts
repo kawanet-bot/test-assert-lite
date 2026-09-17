@@ -273,6 +273,20 @@ export declare namespace TAL {
         stderr(item: string | Error): void
     }
 
+    // The session's own entry, `test-assert-lite/session`: opening it,
+    // loading the suites into it, and ending it.
+    interface SessionAPI {
+        /** Opens a new session for the following tests. */
+        session(options?: SessionOptions): Session
+        /**
+         * Imports a suite, a URL, so its tests are declared; one that does
+         * not load is one failed test named after the file. Never rejects.
+         */
+        load(file: string): Promise<void>
+        /** Runs every registered test, and closes the session. */
+        end(): Promise<SessionResult>
+    }
+
     // --- harness ---
 
     // One isolated set of everything the package offers: the tests, the
@@ -282,12 +296,9 @@ export declare namespace TAL {
         assert: Assert
         before(fn: HookFn): void
         describe: SuiteAPI
-        /** Runs every registered test, and closes the session. */
-        end(): Promise<SessionResult>
         it: TestAPI
         reporter: Reporter
-        /** Opens a new session for the following tests. */
-        session(options?: SessionOptions): Session
+        session: SessionAPI
         strict: Assert
         suite: SuiteAPI
         test: TestAPI
