@@ -278,10 +278,7 @@ export declare namespace TAL {
     interface SessionAPI {
         /** Opens a new session for the following tests. */
         session(options?: SessionOptions): Session
-        /**
-         * Imports a suite, a URL, so its tests are declared; one that does
-         * not load is one failed test named after the file. Never rejects.
-         */
+        /** Imports a suite, by URL or absolute path, so its tests are declared. */
         load(file: string): Promise<void>
         /** Runs every registered test, and closes the session. */
         end(): Promise<SessionResult>
@@ -305,8 +302,8 @@ export declare namespace TAL {
     }
 }
 
-/** The harness the package's own entries share, `test-assert-lite/test` and the rest. */
+/** The shared harness behind the subpaths: `test-assert-lite/test`, `/assert`, `/session` and the reporters. */
 export declare const sharedTAL: TAL.TestHarness
 
-/** A harness of its own, apart from the shared one. */
+/** Creates a local harness apart from `sharedTAL`. */
 export declare function createTAL(): TAL.TestHarness
