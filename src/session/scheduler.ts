@@ -25,7 +25,7 @@ export interface Scheduler {
     // Called on a declaration at the root: starts the walk, once end() has
     // let it, unless one is under way.
     schedule: () => void
-    end: typeof declared.end
+    end: declared.TAL.TestHarness["end"]
 }
 
 export const createScheduler = (
@@ -66,7 +66,7 @@ export const createScheduler = (
 
     // Waits for the tests, reports, closes the session with the verdict, and
     // resets; a failure on the way still tells the session the run failed.
-    const end: typeof declared.end = async () => {
+    const end: declared.TAL.TestHarness["end"] = async () => {
         if (running) throw new Error("end() is already running")
         running = true
         // An empty run still reports, and root hooks alone still run.

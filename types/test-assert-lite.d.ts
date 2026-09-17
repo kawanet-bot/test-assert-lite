@@ -275,49 +275,27 @@ export declare namespace TAL {
 
     // --- harness ---
 
-    // One isolated set of everything the package exports. The named exports
-    // below are the default one; `createTAL()` hands out another.
+    // One isolated set of everything the package offers: the tests, the
+    // assertions, the reporters and the session that reports them.
     interface TestHarness {
-        after: typeof after
+        after(fn: HookFn): void
         assert: Assert
-        before: typeof before
+        before(fn: HookFn): void
         describe: SuiteAPI
-        end: typeof end
+        /** Runs every registered test, and closes the session. */
+        end(): Promise<SessionResult>
         it: TestAPI
         reporter: Reporter
-        session: typeof session
+        /** Opens a new session for the following tests. */
+        session(options?: SessionOptions): Session
         strict: Assert
         suite: SuiteAPI
         test: TestAPI
     }
 }
 
-export declare const suite: TAL.SuiteAPI
+/** The harness the package's own entries share, `test-assert-lite/test` and the rest. */
+export declare const sharedTAL: TAL.TestHarness
 
-export declare const describe: TAL.SuiteAPI
-
-export declare const test: TAL.TestAPI
-
-export declare const it: TAL.TestAPI
-
-export declare function before(fn: TAL.HookFn): void
-
-export declare function after(fn: TAL.HookFn): void
-
-export declare const assert: TAL.Assert
-
-export declare const strict: TAL.Assert
-
-export declare const reporter: TAL.Reporter
-
-/**
- * Opens a new session for the following tests.
- */
-export declare function session(options?: TAL.SessionOptions): TAL.Session
-
-/**
- * Runs every registered tests, and closes the session.
- */
-export declare function end(): Promise<TAL.SessionResult>
-
+/** A harness of its own, apart from the shared one. */
 export declare function createTAL(): TAL.TestHarness
