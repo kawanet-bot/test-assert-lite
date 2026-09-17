@@ -1,6 +1,5 @@
 import type * as declared from "test-assert-lite"
 import type {Run} from "../suite/job.ts"
-import {VERSION} from "../utils/version.ts"
 import {ReportStream} from "./report-stream.ts"
 import type {SessionControl} from "./session.ts"
 import type {HarnessState} from "./state.ts"
@@ -20,8 +19,6 @@ interface Cycle {
     closing: boolean
     // What the walk failed with, kept for end() to reject with.
     failure: {error: unknown} | undefined
-    // Whether the report ends with the counts and the like; the session's say.
-    summary: boolean
 }
 
 export interface Scheduler {
@@ -49,7 +46,7 @@ export const createScheduler = (
             assert,
             closed: false,
         }
-        return {run, stream, startedAt: performance.now(), held: true, walk: null, closing: false, failure: undefined, summary: true}
+        return {run, stream, startedAt: performance.now(), held: true, walk: null, closing: false, failure: undefined}
     }
 
     // A walk that ends picks up what was declared while it wound down.
@@ -82,12 +79,17 @@ export const createScheduler = (
         let failed = false
         let failure: unknown
         try {
-            current.summary = sessions.attach(current.stream).summary
+            sessions.attach(current.stream)
             while (current.walk != null) await current.walk
             if (current.failure != null) throw current.failure.error
             // Hooks declared since the last walk, or with no test at all.
             await harness.root.walk(current.run)
-            result = await finish(harness, current)
+            // The root's teardown, then the summary: the root has no result
+            // of its own, so the summary is what stands for it.
+            await harness.root.end()
+            result = summaryOf(current)
+            await sessions.footer(current.run.emit, result)
+            await current.run.emit("test:summary", result)
         } catch (error) {
             failed = true
             failure = error
@@ -123,44 +125,9 @@ export const createScheduler = (
     return {schedule, end}
 }
 
-// The root's teardown, then the summary. The root has no result of its
-// own, so the summary is what stands for it.
-const finish = async (harness: HarnessState, current: Cycle): Promise<declared.TAL.TestSummary> => {
-    const {run} = current
-    await harness.root.end()
-
-    const duration_ms = performance.now() - current.startedAt
-    const summary: declared.TAL.TestSummary = {
-        counts: {...run.counters},
-        duration_ms,
-        success: run.success,
-    }
-
-    const info = async (label: string, value: number | string) => {
-        await run.emit("test:diagnostic", {
-            message: `${label} ${value}`, nesting: 0, level: "info",
-        })
-    }
-
-    // node:test's summary, then what node:test never says: which package
-    // ran the suites, and where, as the browser or Node names itself. A
-    // script that is no suite leaves them off, and reports nothing at all.
-    if (current.summary) {
-        await info("tests", run.counters.tests)
-        await info("suites", run.counters.suites)
-        await info("pass", run.counters.passed)
-        await info("fail", run.counters.failed)
-        await info("cancelled", run.counters.cancelled)
-        await info("skipped", run.counters.skipped)
-        await info("todo", run.counters.todo)
-        await info("duration_ms", duration_ms)
-        await info("test-assert-lite", VERSION)
-        const userAgent = globalThis.navigator?.userAgent
-        if (userAgent) {
-            await info("user-agent", userAgent)
-        }
-    }
-
-    await run.emit("test:summary", summary)
-    return summary
-}
+// What the run came to: the counts, the time and the verdict.
+const summaryOf = ({run, startedAt}: Cycle): declared.TAL.TestSummary => ({
+    counts: {...run.counters},
+    duration_ms: performance.now() - startedAt,
+    success: run.success,
+})

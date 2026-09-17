@@ -2,6 +2,8 @@ import type * as declared from "test-assert-lite"
 import {html} from "../reporter/html.ts"
 import {spec} from "../reporter/spec.ts"
 import {tap} from "../reporter/tap.ts"
+import type {Run} from "../suite/job.ts"
+import {VERSION} from "../utils/version.ts"
 import {client, line} from "./client.ts"
 import type {ReportStream} from "./report-stream.ts"
 import type {HarnessState} from "./state.ts"
@@ -11,6 +13,7 @@ type OutputFn = declared.TAL.OutputFn
 type SessionOptions = declared.TAL.SessionOptions
 type Session = declared.TAL.Session
 type EventTargetLike = declared.TAL.EventTargetLike
+type TestSummary = declared.TAL.TestSummary
 
 // What a run reports with and where the page's console goes: opened by
 // session(), or with the defaults on the first declaration, until end()
@@ -18,8 +21,8 @@ type EventTargetLike = declared.TAL.EventTargetLike
 interface Open {
     reporter: ReporterFn
     output: OutputFn
-    // Whether end() reports the counts and the like; the session's say.
-    summary: boolean
+    // As given to session(); read where the footer goes.
+    summary: boolean | undefined
     session: Session
     end: (success: boolean) => Promise<void>
     // Opened by a declaration rather than by session(): the refusal differs.
@@ -34,8 +37,10 @@ export interface SessionControl {
     close: (success: boolean) => Promise<void>
     // Opens the default session unless one is open already.
     open: () => void
-    // Gives a run's stream the settings of the session, and the run what the session says of its end.
-    attach: (stream: ReportStream) => {summary: boolean}
+    // Gives a run's stream the settings of the session.
+    attach: (stream: ReportStream) => void
+    // Emits the lines after the tests, ahead of the summary event, as the session has it.
+    footer: (emit: Run["emit"], summary: TestSummary) => Promise<void>
 }
 
 // A base under a run's own URL connects the page to the CLI; any other
@@ -152,7 +157,7 @@ export const createSessions = (harness: HarnessState): SessionControl => {
         const opened = (open: Omit<Open, "release" | "auto" | "summary">): Open => {
             const target = targetOf(options.capture)
             const release = target == null ? () => undefined : capture(harness, target)
-            return {...open, auto, release, summary: options.summary !== false}
+            return {...open, auto, release, summary: options.summary}
         }
         if (url != null && CHANNEL.test(url.pathname)) {
             const channel = client(url)
@@ -199,7 +204,30 @@ export const createSessions = (harness: HarnessState): SessionControl => {
         attach: (stream) => {
             current ??= create({}, true)
             stream.attach(current.reporter, current.output)
-            return {summary: current.summary}
+        },
+        // node:test's summary in words, then what it never says: which
+        // package ran the suites, and where, as the browser or Node names
+        // itself. summary: false leaves it all off, for a script that is no suite.
+        footer: async (emit, summary) => {
+            if (current?.summary === false) return
+            const info = async (label: string, value: number | string) => {
+                await emit("test:diagnostic", {
+                    message: `${label} ${value}`, nesting: 0, level: "info",
+                })
+            }
+            await info("tests", summary.counts.tests)
+            await info("suites", summary.counts.suites)
+            await info("pass", summary.counts.passed)
+            await info("fail", summary.counts.failed)
+            await info("cancelled", summary.counts.cancelled)
+            await info("skipped", summary.counts.skipped)
+            await info("todo", summary.counts.todo)
+            await info("duration_ms", summary.duration_ms)
+            await info("test-assert-lite", VERSION)
+            const userAgent = globalThis.navigator?.userAgent
+            if (userAgent) {
+                await info("user-agent", userAgent)
+            }
         },
     }
 }
