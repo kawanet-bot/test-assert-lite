@@ -14,8 +14,8 @@ describe(TITLE, () => {
     it("runs registered tests and counts them", async () => {
         const local = createTAL()
         const events = capture(local)
-        local.it("a", () => undefined)
-        local.it("b", () => undefined)
+        local.test.it("a", () => undefined)
+        local.test.it("b", () => undefined)
         await local.session.end()
         const summary = summaryOf(events)
 
@@ -27,7 +27,7 @@ describe(TITLE, () => {
         const local = createTAL()
         const events = capture(local)
         let ran = false
-        local.it("later", () => {
+        local.test.it("later", () => {
             ran = true
         })
 
@@ -43,12 +43,12 @@ describe(TITLE, () => {
         const local = createTAL()
         const events = capture(local)
         const order: string[] = []
-        local.it("first", () => {
+        local.test.it("first", () => {
             order.push("first")
         })
         await new Promise(r => setTimeout(r, 0))
         assert.equal(order.length, 0)
-        local.it("second", () => {
+        local.test.it("second", () => {
             order.push("second")
         })
         await local.session.end()
@@ -62,7 +62,7 @@ describe(TITLE, () => {
     it("reports a failing test and flips success", async () => {
         const local = createTAL()
         const events = capture(local)
-        local.it("bad", () => {
+        local.test.it("bad", () => {
             throw new Error("boom")
         })
         await local.session.end()
@@ -77,11 +77,11 @@ describe(TITLE, () => {
         const local = createTAL()
         local.session.session({output: () => undefined})
         const order: string[] = []
-        local.it("1", async () => {
+        local.test.it("1", async () => {
             await new Promise(r => setTimeout(r, 20))
             order.push("1")
         })
-        local.it("2", () => {
+        local.test.it("2", () => {
             order.push("2")
         })
         await local.session.end()
@@ -92,7 +92,7 @@ describe(TITLE, () => {
     it("the summary is emitted last, and end() resolves with its verdict", async () => {
         const local = createTAL()
         const events = capture(local)
-        local.it("only", () => undefined)
+        local.test.it("only", () => undefined)
         const result = await local.session.end()
 
         const last = events.at(-1)
@@ -103,7 +103,7 @@ describe(TITLE, () => {
     it("the summary diagnostics precede the summary event", async () => {
         const local = createTAL()
         const events = capture(local)
-        local.it("one", () => undefined)
+        local.test.it("one", () => undefined)
         await local.session.end()
 
         const messages = events
@@ -117,7 +117,7 @@ describe(TITLE, () => {
     it("the summary names this package, after the counts and before the summary event", async () => {
         const local = createTAL()
         const events = capture(local)
-        local.it("one", () => undefined)
+        local.test.it("one", () => undefined)
         await local.session.end()
 
         const messages = events.filter(e => e.type === "test:diagnostic").map(e => String(e.data.message))
@@ -130,7 +130,7 @@ describe(TITLE, () => {
     it("end() resets the registry", async () => {
         const local = createTAL()
         const first = capture(local)
-        local.it("first", () => undefined)
+        local.test.it("first", () => undefined)
         await local.session.end()
         assert.equal(summaryOf(first).counts.tests, 1)
 
@@ -147,7 +147,7 @@ describe(TITLE, () => {
             release = resolve
         })
         let executions = 0
-        local.it("slow", async () => {
+        local.test.it("slow", async () => {
             executions++
             await waiting
         })
@@ -172,10 +172,10 @@ describe(TITLE, () => {
     it("an anonymous test falls back to the function name", async () => {
         const local = createTAL()
         const events = capture(local)
-        local.it(function namedFn() {
+        local.test.it(function namedFn() {
             // With no name the function name is used, as in node:test.
         })
-        local.it(() => undefined)
+        local.test.it(() => undefined)
         await local.session.end()
 
         assert.deepEqual(names(events, "test:pass"), ["namedFn", "<anonymous>"])
@@ -187,10 +187,10 @@ describe(TITLE, () => {
         const local = createTAL()
         const events = capture(local)
         const thrown = new RangeError("as is")
-        local.it("error", () => {
+        local.test.it("error", () => {
             throw thrown
         })
-        local.it("string", () => {
+        local.test.it("string", () => {
             throw "just text"
         })
         await local.session.end()

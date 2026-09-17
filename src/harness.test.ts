@@ -9,12 +9,12 @@ describe(TITLE, () => {
     it("createTAL returns the bound API", () => {
         const local = createTAL()
 
-        assert.equal(typeof local.suite, "function")
-        assert.equal(typeof local.describe, "function")
-        assert.equal(typeof local.test, "function")
-        assert.equal(typeof local.it, "function")
-        assert.equal(typeof local.before, "function")
-        assert.equal(typeof local.after, "function")
+        assert.equal(typeof local.test.suite, "function")
+        assert.equal(typeof local.test.describe, "function")
+        assert.equal(typeof local.test.test, "function")
+        assert.equal(typeof local.test.it, "function")
+        assert.equal(typeof local.test.before, "function")
+        assert.equal(typeof local.test.after, "function")
         assert.equal(typeof local.reporter, "object")
         assert.equal(typeof local.assert, "function")
         assert.equal(typeof local.strict, "function")
@@ -23,8 +23,8 @@ describe(TITLE, () => {
     it("describe aliases suite and it aliases test", () => {
         const local = createTAL()
 
-        assert.equal(local.describe, local.suite)
-        assert.equal(local.it, local.test)
+        assert.equal(local.test.describe, local.test.suite)
+        assert.equal(local.test.it, local.test.test)
     })
 
     // Isolation is the whole point of the factory, so hold the line that a
@@ -35,9 +35,9 @@ describe(TITLE, () => {
         const seenA = capture(a)
         const seenB = capture(b)
 
-        a.it("only on a", () => undefined)
-        b.it("only on b", () => undefined)
-        b.it("also on b", () => undefined)
+        a.test.it("only on a", () => undefined)
+        b.test.it("only on b", () => undefined)
+        b.test.it("also on b", () => undefined)
 
         await b.session.end()
         await a.session.end()
@@ -52,13 +52,13 @@ describe(TITLE, () => {
         b.session.session({output: () => undefined})
         const order: string[] = []
 
-        a.before(() => {
+        a.test.before(() => {
             order.push("a:before")
         })
-        a.it("a-test", () => {
+        a.test.it("a-test", () => {
             order.push("a-test")
         })
-        b.it("b-test", () => {
+        b.test.it("b-test", () => {
             order.push("b-test")
         })
 
@@ -71,7 +71,7 @@ describe(TITLE, () => {
     it("end() resets only its own harness", async () => {
         const local = createTAL()
         const first = capture(local)
-        local.it("once", () => undefined)
+        local.test.it("once", () => undefined)
         await local.session.end()
         assert.equal(summaryOf(first).counts.tests, 1)
 
@@ -89,7 +89,7 @@ describe(TITLE, () => {
 
         assert.notEqual(a.session, b.session)
 
-        b.it("only on b", () => undefined)
+        b.test.it("only on b", () => undefined)
         await b.session.end()
 
         assert.ok(names(seenByB, "test:pass").includes("only on b"))
@@ -106,7 +106,7 @@ describe(TITLE, () => {
             },
         })
 
-        local.it("visible", () => undefined)
+        local.test.it("visible", () => undefined)
         await local.session.end()
 
         assert.ok(lines.join("").includes("visible"))
@@ -128,7 +128,7 @@ describe(TITLE, () => {
         const local = createTAL()
         const seen = capture(local)
         let same = false
-        local.it("check", (t) => {
+        local.test.it("check", (t) => {
             // t.assert is the loose set, so its equal is the harness's plain
             // assert.equal, and its strictEqual the strict one.
             same = t.assert.equal === local.assert.equal && t.assert.strictEqual === local.strict.equal

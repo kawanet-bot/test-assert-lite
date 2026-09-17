@@ -32,7 +32,7 @@ describe(TITLE, () => {
                 text.push(t)
             },
         })
-        local.it("still runs", () => undefined)
+        local.test.it("still runs", () => undefined)
         assert.equal((await local.session.end()).success, false)
         assert.match(text.join(""), /✖ import\("@kawanet\/invalid"\)/)
         assert.match(text.join(""), /✔ still runs/)
@@ -54,7 +54,7 @@ describe(TITLE, () => {
         const local = createTAL()
         const out: string[] = []
         local.session.session({reporter: "tap", summary: false, output: t => {out.push(t)}})
-        local.it("fails", () => {
+        local.test.it("fails", () => {
             throw new Error("boom")
         })
         assert.equal((await local.session.end()).success, false)
@@ -90,7 +90,7 @@ describe(TITLE, () => {
                 out.push(text)
             },
         })
-        local.it("named", () => undefined)
+        local.test.it("named", () => undefined)
         await local.session.end()
         assert.equal(out[0], "TAP version 13\n")
     })
@@ -103,7 +103,7 @@ describe(TITLE, () => {
                 out.push(text)
             },
         })
-        local.it("imported", () => undefined)
+        local.test.it("imported", () => undefined)
         assert.equal((await local.session.end()).success, true)
         assert.equal(out[0], "TAP version 13\n")
         assert.match(out.join(""), /^ok 1 - imported$/m)
@@ -117,7 +117,7 @@ describe(TITLE, () => {
         fire(on, "error", {error: thrown, filename: "http://127.0.0.1:1/@tal/files/012345678/suite.mjs"})
         fire(on, "error", {target: {src: "http://127.0.0.1:1/@tal/files/012345678/missing.mjs"}})
         fire(on, "unhandledrejection", {reason: new Error("leaked")})
-        local.it("declared", () => undefined)
+        local.test.it("declared", () => undefined)
         await local.session.end()
         const summary = summaryOf(events)
 
@@ -134,7 +134,7 @@ describe(TITLE, () => {
         const local = createTAL()
         const on = target()
         const events = capture(local, {capture: on})
-        local.it("open", async () => {
+        local.test.it("open", async () => {
             fire(on, "unhandledrejection", {reason: new Error("meanwhile")})
             await new Promise(r => setTimeout(r, 0))
         })

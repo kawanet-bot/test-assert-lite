@@ -26,7 +26,7 @@ const stub: typeof fetch = (input, init) => {
 // report itself is kept off the channel, so what is seen is what is sent.
 const connect = (base: string | URL) => {
     const local = createTAL()
-    return {...local.session.session({base, output: () => undefined}), end: local.session.end, it: local.it}
+    return {...local.session.session({base, output: () => undefined}), end: local.session.end, it: local.test.it}
 }
 
 const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms))

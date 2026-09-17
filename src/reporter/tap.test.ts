@@ -132,9 +132,9 @@ describe(TITLE, () => {
                 lines.push(text)
             },
         })
-        local.describe("outer", () => {
-            local.it("child passes", () => undefined)
-            local.after(() => {
+        local.test.describe("outer", () => {
+            local.test.it("child passes", () => undefined)
+            local.test.after(() => {
                 throw new Error("after hook exploded")
             })
         })

@@ -18,16 +18,16 @@ describe(TITLE, () => {
         const local = createTAL()
         local.session.session({output: () => undefined})
         const order: string[] = []
-        local.it("top1", () => {
+        local.test.it("top1", () => {
             order.push("top1")
         })
-        local.describe("suite", () => {
+        local.test.describe("suite", () => {
             order.push("suite body")
-            local.it("child", () => {
+            local.test.it("child", () => {
                 order.push("child")
             })
         })
-        local.it("top2", () => {
+        local.test.it("top2", () => {
             order.push("top2")
         })
         await local.session.end()
@@ -38,9 +38,9 @@ describe(TITLE, () => {
     it("describe nesting increases the reported nesting", async () => {
         const local = createTAL()
         const events = capture(local)
-        local.describe("outer", () => {
-            local.describe("inner", () => {
-                local.it("deep", () => undefined)
+        local.test.describe("outer", () => {
+            local.test.describe("inner", () => {
+                local.test.it("deep", () => undefined)
             })
         })
         await local.session.end()
@@ -54,10 +54,10 @@ describe(TITLE, () => {
         const local = createTAL()
         local.session.session({output: () => undefined})
         const order: string[] = []
-        local.describe("async suite", async () => {
+        local.test.describe("async suite", async () => {
             await new Promise(r => setTimeout(r, 20))
             order.push("registered late")
-            local.it("late child", () => {
+            local.test.it("late child", () => {
                 order.push("late child body")
             })
         })
@@ -69,7 +69,7 @@ describe(TITLE, () => {
     it("a throwing describe body is reported and flips success", async () => {
         const local = createTAL()
         const events = capture(local)
-        local.describe("broken", () => {
+        local.test.describe("broken", () => {
             throw new Error("bad suite")
         })
         const summary = await local.session.end()
@@ -83,9 +83,9 @@ describe(TITLE, () => {
         const local = createTAL()
         const events = capture(local)
         let ran = false
-        local.describe.skip("skipped suite", () => {
+        local.test.describe.skip("skipped suite", () => {
             ran = true
-            local.it("never", () => undefined)
+            local.test.it("never", () => undefined)
         })
         await local.session.end()
         const summary = summaryOf(events)
@@ -110,11 +110,11 @@ describe(TITLE, () => {
             }
         }
 
-        local.it("host", () => {
-            attempt(() => local.describe("nope", () => undefined))
-            attempt(() => local.it("nope", () => undefined))
-            attempt(() => local.before(() => undefined))
-            attempt(() => local.after(() => undefined))
+        local.test.it("host", () => {
+            attempt(() => local.test.describe("nope", () => undefined))
+            attempt(() => local.test.it("nope", () => undefined))
+            attempt(() => local.test.before(() => undefined))
+            attempt(() => local.test.after(() => undefined))
         })
         await local.session.end()
 
@@ -136,20 +136,20 @@ describe(TITLE, () => {
             order.push(s)
         }
 
-        local.before(mark("root:before"))
-        local.after(mark("root:after"))
-        local.it("t1", mark("t1"))
-        local.describe("S1", () => {
-            local.before(mark("S1:before"))
-            local.after(mark("S1:after"))
-            local.it("s1a", mark("s1a"))
-            local.describe("S2", () => {
-                local.before(mark("S2:before"))
-                local.it("s2a", mark("s2a"))
+        local.test.before(mark("root:before"))
+        local.test.after(mark("root:after"))
+        local.test.it("t1", mark("t1"))
+        local.test.describe("S1", () => {
+            local.test.before(mark("S1:before"))
+            local.test.after(mark("S1:after"))
+            local.test.it("s1a", mark("s1a"))
+            local.test.describe("S2", () => {
+                local.test.before(mark("S2:before"))
+                local.test.it("s2a", mark("s2a"))
             })
-            local.it("s1b", mark("s1b"))
+            local.test.it("s1b", mark("s1b"))
         })
-        local.it("t2", mark("t2"))
+        local.test.it("t2", mark("t2"))
         await local.session.end()
 
         assert.equal(order.join(" "), [
@@ -164,8 +164,8 @@ describe(TITLE, () => {
     it("a passing suite is reported after its children", async () => {
         const local = createTAL()
         const events = capture(local)
-        local.describe("S", () => {
-            local.it("a", () => undefined)
+        local.test.describe("S", () => {
+            local.test.it("a", () => undefined)
         })
         await local.session.end()
 
@@ -178,10 +178,10 @@ describe(TITLE, () => {
     it("describe.todo and it.todo are the static forms of the todo option", async () => {
         const local = createTAL()
         const events = capture(local)
-        local.it.todo("static", () => undefined)
-        local.describe.todo("DS", () => {
-            local.it("ok", () => undefined)
-            local.it("broken", () => {
+        local.test.it.todo("static", () => undefined)
+        local.test.describe.todo("DS", () => {
+            local.test.it("ok", () => undefined)
+            local.test.it("broken", () => {
                 throw new Error("boom")
             })
         })
@@ -199,8 +199,8 @@ describe(TITLE, () => {
     it("describe.skip is reported as a skipped suite", async () => {
         const local = createTAL()
         const events = capture(local)
-        local.describe.skip("S", () => {
-            local.it("never", () => undefined)
+        local.test.describe.skip("S", () => {
+            local.test.it("never", () => undefined)
         })
         await local.session.end()
         const summary = summaryOf(events)
@@ -218,11 +218,11 @@ describe(TITLE, () => {
     it("a suite whose child fails is reported as subtestsFailed", async () => {
         const local = createTAL()
         const events = capture(local)
-        local.describe("S", () => {
-            local.it("bad", () => {
+        local.test.describe("S", () => {
+            local.test.it("bad", () => {
                 throw new Error("x")
             })
-            local.it("ok", () => undefined)
+            local.test.it("ok", () => undefined)
         })
         await local.session.end()
         const summary = summaryOf(events)
@@ -241,8 +241,8 @@ describe(TITLE, () => {
     it("a skipped test that failed still fails its suite", async () => {
         const local = createTAL()
         const events = capture(local)
-        local.describe("S", () => {
-            local.it("skip then throw", (t) => {
+        local.test.describe("S", () => {
+            local.test.it("skip then throw", (t) => {
                 t.skip("why")
                 throw new Error("boom")
             })
@@ -260,8 +260,8 @@ describe(TITLE, () => {
         const local = createTAL()
         const events = capture(local)
         const body = new Error("body")
-        local.describe("S", () => {
-            local.it("a", () => undefined)
+        local.test.describe("S", () => {
+            local.test.it("a", () => undefined)
             throw body
         })
         await local.session.end()
@@ -277,12 +277,12 @@ describe(TITLE, () => {
     it("a suite's result carries its own nesting", async () => {
         const local = createTAL()
         const events = capture(local)
-        local.describe("S1", () => {
-            local.describe("S2", () => {
-                local.before(() => {
+        local.test.describe("S1", () => {
+            local.test.describe("S2", () => {
+                local.test.before(() => {
                     throw new Error("setup")
                 })
-                local.it("x", () => undefined)
+                local.test.it("x", () => undefined)
             })
         })
         await local.session.end()
@@ -296,11 +296,11 @@ describe(TITLE, () => {
     it("testNumber counts within the parent", async () => {
         const local = createTAL()
         const events = capture(local)
-        local.describe("S", () => {
-            local.it("a", () => undefined)
-            local.it("b", () => undefined)
+        local.test.describe("S", () => {
+            local.test.it("a", () => undefined)
+            local.test.it("b", () => undefined)
         })
-        local.it("x", () => undefined)
+        local.test.it("x", () => undefined)
         await local.session.end()
 
         const numbered = ofType(events, "test:pass").map(e => `${e.data.name}#${e.data.testNumber}`)

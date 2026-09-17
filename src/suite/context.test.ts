@@ -13,7 +13,7 @@ describe(TITLE, () => {
     it("t.diagnostic() emits an info event", async () => {
         const local = createTAL()
         const events = capture(local)
-        local.it("noisy", (t) => {
+        local.test.it("noisy", (t) => {
             t.diagnostic("hello")
         })
         await local.session.end()
@@ -27,7 +27,7 @@ describe(TITLE, () => {
         const local = createTAL()
         local.session.session({output: () => undefined})
         let caught: unknown
-        local.it("asserting", (t) => {
+        local.test.it("asserting", (t) => {
             t.assert.equal(1, 1)
             try {
                 t.assert.equal(1, 2)
@@ -56,7 +56,7 @@ describe(TITLE, () => {
                 outcome[name] = false
             }
         }
-        local.it("asserting", (t) => {
+        local.test.it("asserting", (t) => {
             attempt("equal", () => t.assert.equal(1, "1"))
             attempt("deepEqual", () => t.assert.deepEqual({a: 1}, {a: "1"}))
             attempt("strictEqual", () => t.assert.strictEqual(1, "1"))
@@ -71,7 +71,7 @@ describe(TITLE, () => {
         const local = createTAL()
         local.session.session({output: () => undefined})
         let seen = ""
-        local.it("named", (t) => {
+        local.test.it("named", (t) => {
             seen = t.name
         })
         await local.session.end()
