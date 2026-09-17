@@ -8,7 +8,7 @@
 <body>
 <pre id="output"></pre>
 <script type="module">
-    import {end, it, session} from "test-assert-lite";
+    import {end, it, session} from "test-assert-lite"
 
     // The CLI puts its config into the head as JSON, ahead of this script.
     const config = document.querySelector(`script[type="application/vnd.config+json"]`)?.textContent
@@ -22,23 +22,23 @@
         capture: true,
         reporter: options.reporter,
         output: text => {
-            document.querySelector("#output")?.append(text);
-            stdout(text);
+            document.querySelector("#output")?.append(text)
+            stdout(text)
         },
-    });
+    })
 
-    for (const level of ["log", "info", "debug"]) console[level] = (...args) => stdout(`${args.join(" ")}\n`);
-    for (const level of ["warn", "error"]) console[level] = (...args) => stderr(args.join(" "));
+    for (const level of ["log", "info", "debug"]) console[level] = (...args) => stdout(`${args.join(" ")}\n`)
+    for (const level of ["warn", "error"]) console[level] = (...args) => stderr(args.join(" "))
 
     const files = (options?.files ?? [])
 
     const run = async (file) => {
         try {
-            await import(file);
+            await import(file)
         } catch (error) {
             it(file.replace(/^[^?]*\//, ""), () => {
-                throw error;
-            });
+                throw error
+            })
         }
     }
 
@@ -46,7 +46,7 @@
         await run(file)
     }
 
-    await end().catch(console.error);
+    await end().catch(console.error)
 </script>
 </body>
 </html>

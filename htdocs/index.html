@@ -10,17 +10,17 @@
 <h1>{{title}}</h1>
 <div id="output"></div>
 <script type="module">
-    import {end, reporter, session} from "test-assert-lite";
+    import {end, reporter, session} from "test-assert-lite"
 
     session({
         reporter: reporter.html(),
         output: text => document.querySelector("#output")?.insertAdjacentHTML("beforeend", text),
-    });
+    })
 
     // --serve --alias index.js=path/to/index.js
-    await import("index.js");
+    await import("index.js")
 
-    await end().catch(console.error);
+    await end().catch(console.error)
 </script>
 </body>
 </html>
