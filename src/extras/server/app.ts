@@ -122,7 +122,7 @@ export const createApp = (options: AppOptions): App => {
     const handler = compose([
         channel.handler,
         ...M(watcher?.handler),
-        scoped(compose([head, title, atRun])),
+        scoped(compose([...M(watcher?.inject), head, title, atRun])),
         ...[...served.own, ...served.dirs].map(dir => serveStatic(dir)),
         // /@tal/ is the CLI's: what none of the mounts above answered ends
         // here, whatever a mount or an upstream at the root would say to it.

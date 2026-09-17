@@ -169,7 +169,7 @@ describe(TITLE, () => {
             const index = (await get(running.origin + "/")).body
             assert.ok(index.includes("/@tal/watch?after=${after}"))
             assert.ok(index.includes("})(0)\n</script>\n</head>"))
-            assert.equal((await get(running.origin + watching.page)).body.includes("/@tal/watch"), false)
+            assert.equal((await get(running.origin + watching.page)).body.includes("/@tal/watch"), true)
             const pending = get(running.origin + "/@tal/watch?after=0")
             await writeFile(join(dir, "tests", "my suite.mjs"), "export const suite = 2")
             assert.equal((await pending).status, 200)
