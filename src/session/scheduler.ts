@@ -88,7 +88,6 @@ export const createScheduler = (
             // of its own, so the summary is what stands for it.
             await harness.root.end()
             result = summaryOf(current)
-            await sessions.footer(current.run.emit, result)
             await current.run.emit("test:summary", result)
         } catch (error) {
             failed = true
