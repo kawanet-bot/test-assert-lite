@@ -1,8 +1,8 @@
-import type * as declared from "test-assert-lite"
+import type {TAL} from "test-assert-lite"
 import {VERSION} from "../utils/version.ts"
 
-type TestEvent = declared.TAL.TestEvent
-type ReporterFn = declared.TAL.ReporterFn
+type TestEvent = TAL.TestEvent
+type ReporterFn = TAL.ReporterFn
 
 const info = (label: string, value: number | string): TestEvent => ({
     type: "test:diagnostic",

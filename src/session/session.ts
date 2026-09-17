@@ -1,4 +1,4 @@
-import type * as declared from "test-assert-lite"
+import type {TAL} from "test-assert-lite"
 import {html} from "../reporter/html.ts"
 import {spec} from "../reporter/spec.ts"
 import {tap} from "../reporter/tap.ts"
@@ -7,11 +7,11 @@ import {withFooter} from "./footer.ts"
 import type {ReportStream} from "./report-stream.ts"
 import type {HarnessState} from "./state.ts"
 
-type ReporterFn = declared.TAL.ReporterFn
-type OutputFn = declared.TAL.OutputFn
-type SessionOptions = declared.TAL.SessionOptions
-type Session = declared.TAL.Session
-type EventTargetLike = declared.TAL.EventTargetLike
+type ReporterFn = TAL.ReporterFn
+type OutputFn = TAL.OutputFn
+type SessionOptions = TAL.SessionOptions
+type Session = TAL.Session
+type EventTargetLike = TAL.EventTargetLike
 
 // What a run reports with and where the page's console goes: opened by
 // session(), or with the defaults on the first declaration, until end()
@@ -28,7 +28,7 @@ interface Open {
 }
 
 export interface SessionControl {
-    session: declared.TAL.SessionAPI["session"]
+    session: TAL.SessionAPI["session"]
     // Closes the session with the run's verdict; nothing to close is fine.
     close: (success: boolean) => Promise<void>
     // Opens the default session unless one is open already.
@@ -175,7 +175,7 @@ export const createSessions = (harness: HarnessState): SessionControl => {
         })
     }
 
-    const session: declared.TAL.SessionAPI["session"] = (options = {}) => {
+    const session: TAL.SessionAPI["session"] = (options = {}) => {
         if (current != null) {
             throw new Error(current.auto ? "session() must come before the first test is declared" : "session() is already open")
         }

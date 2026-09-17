@@ -1,8 +1,8 @@
-import type * as declared from "test-assert-lite"
+import type {TAL} from "test-assert-lite"
 import {expectError, expectNoError, invalid, type Outcome, readExpectation, readFilter} from "./throws.ts"
 
-type Predicate = declared.TAL.AssertPredicate
-type Filter = declared.TAL.ErrorFilter
+type Predicate = TAL.AssertPredicate
+type Filter = TAL.ErrorFilter
 // The declared shape is node:assert's; at runtime a promise is what
 // node:assert takes as one, checked below.
 type Block = Promise<unknown> | (() => Promise<unknown>)

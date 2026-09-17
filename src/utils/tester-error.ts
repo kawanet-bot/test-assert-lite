@@ -1,8 +1,8 @@
-import type * as declared from "test-assert-lite"
+import type {TAL} from "test-assert-lite"
 import {isError} from "./is-error.ts"
 import {stringify} from "./stringify.ts"
 
-type FailureType = declared.TAL.FailureType
+type FailureType = TAL.FailureType
 
 // https://github.com/nodejs/node/blob/main/lib/internal/errors.js
 const ERR_TEST_FAILURE = "ERR_TEST_FAILURE"
@@ -29,7 +29,7 @@ export const testRunnerError = (thrown: unknown, failureType: FailureType): Erro
     return new TesterError(message, failureType, thrown)
 }
 
-export const isTesterError = (error: unknown): error is TesterError => (isError(error) && (error as declared.TAL.TesterError).code === ERR_TEST_FAILURE)
+export const isTesterError = (error: unknown): error is TesterError => (isError(error) && (error as TAL.TesterError).code === ERR_TEST_FAILURE)
 
 export const isSubtestsFailed = (error: unknown): boolean => isTesterError(error) && error.failureType === "subtestsFailed"
 

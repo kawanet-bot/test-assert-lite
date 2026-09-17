@@ -1,14 +1,14 @@
-import type * as declared from "test-assert-lite"
+import type {TAL} from "test-assert-lite"
 import {$$} from "../utils/stringify.ts"
 import {errorText, isSubtestsFailed} from "../utils/tester-error.ts"
 import {directive} from "./spec.ts"
 
-type TestEvent = declared.TAL.TestEvent
-type ReporterFn = declared.TAL.ReporterFn
+type TestEvent = TAL.TestEvent
+type ReporterFn = TAL.ReporterFn
 
 const indentClass = (indent: number): string => (indent > 0 ? `tal-i${indent > 5 ? 5 : indent}` : "")
 
-const resultLine = (data: declared.TAL.TestPass | declared.TAL.TestFail, isPass: boolean, indented: boolean): string => {
+const resultLine = (data: TAL.TestPass | TAL.TestFail, isPass: boolean, indented: boolean): string => {
     const skipped = data.skip != null
     const todo = !skipped && data.todo != null
     const kind = skipped ? "skip" : isPass ? "pass" : todo ? "warn" : "fail"
@@ -19,7 +19,7 @@ const resultLine = (data: declared.TAL.TestPass | declared.TAL.TestFail, isPass:
     return $$`<div class="tal-r ${indents}"><span class="tal-${kind}">${symbol} ${data.name}</span> <span class="tal-info">(${ms}ms)</span>${note}</div>\n`
 }
 
-const formatFailures = (failed: declared.TAL.TestFail[]): string => {
+const formatFailures = (failed: TAL.TestFail[]): string => {
     if (!failed.length) return ""
     let out = $$`<div class="tal-r tal-fail">✖ failing tests:</div>\n`
     for (const data of failed) {
@@ -32,8 +32,8 @@ const formatFailures = (failed: declared.TAL.TestFail[]): string => {
 // Produces list items only, leaving the surrounding list and output target
 // to the page so applications can place the report in their own layout.
 export const html = (): ReporterFn => async function* (source: AsyncIterable<TestEvent>): AsyncIterable<string> {
-    const stack: declared.TAL.TestStart[] = []
-    const failed: declared.TAL.TestFail[] = []
+    const stack: TAL.TestStart[] = []
+    const failed: TAL.TestFail[] = []
 
     for await (const event of source) {
         if (event.type === "test:start") {
@@ -71,7 +71,7 @@ export const html = (): ReporterFn => async function* (source: AsyncIterable<Tes
         }
         out += resultLine(data, isPass, true)
         if (isFail) {
-            const failure = data as declared.TAL.TestFail
+            const failure = data as TAL.TestFail
             if (!isSubtestsFailed(failure.details.error)) failed.push(failure)
         }
         yield out

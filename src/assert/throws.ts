@@ -1,10 +1,10 @@
-import type * as declared from "test-assert-lite"
+import type {TAL} from "test-assert-lite"
 import {isError} from "../utils/is-error.ts"
 import {stringify} from "../utils/stringify.ts"
 import {AssertionError} from "./assertion-error.ts"
 
-type Predicate = declared.TAL.AssertPredicate
-type Filter = declared.TAL.ErrorFilter
+type Predicate = TAL.AssertPredicate
+type Filter = TAL.ErrorFilter
 
 // The one error for a misuse of any of these assertions, whatever was
 // wrong with the arguments. What matters is that it is not an AssertionError.

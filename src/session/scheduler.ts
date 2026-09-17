@@ -1,4 +1,4 @@
-import type * as declared from "test-assert-lite"
+import type {TAL} from "test-assert-lite"
 import type {Run} from "../suite/job.ts"
 import {ReportStream} from "./report-stream.ts"
 import type {SessionControl} from "./session.ts"
@@ -25,13 +25,13 @@ export interface Scheduler {
     // Called on a declaration at the root: starts the walk, once end() has
     // let it, unless one is under way.
     schedule: () => void
-    end: declared.TAL.SessionAPI["end"]
+    end: TAL.SessionAPI["end"]
 }
 
 export const createScheduler = (
     harness: HarnessState,
     sessions: SessionControl,
-    assert: declared.TAL.TestContextAssert,
+    assert: TAL.TestContextAssert,
 ): Scheduler => {
     let cycle: Cycle | null = null
     let running = false
@@ -42,7 +42,7 @@ export const createScheduler = (
         const run: Run = {
             counters: {tests: 0, suites: 0, passed: 0, failed: 0, cancelled: 0, skipped: 0, todo: 0},
             success: true,
-            emit: (type, data) => stream.emit({type, data} as declared.TAL.TestEvent),
+            emit: (type, data) => stream.emit({type, data} as TAL.TestEvent),
             assert,
             closed: false,
         }
@@ -66,7 +66,7 @@ export const createScheduler = (
 
     // Waits for the tests, reports, closes the session with the verdict, and
     // resets; a failure on the way still tells the session the run failed.
-    const end: declared.TAL.SessionAPI["end"] = async () => {
+    const end: TAL.SessionAPI["end"] = async () => {
         if (running) throw new Error("end() is already running")
         running = true
         // An empty run still reports, and root hooks alone still run.
@@ -75,7 +75,7 @@ export const createScheduler = (
         schedule()
         current.closing = true
 
-        let result: declared.TAL.TestSummary | undefined
+        let result: TAL.TestSummary | undefined
         let failed = false
         let failure: unknown
         try {
@@ -125,7 +125,7 @@ export const createScheduler = (
 }
 
 // What the run came to: the counts, the time and the verdict.
-const summaryOf = ({run, startedAt}: Cycle): declared.TAL.TestSummary => ({
+const summaryOf = ({run, startedAt}: Cycle): TAL.TestSummary => ({
     counts: {...run.counters},
     duration_ms: performance.now() - startedAt,
     success: run.success,

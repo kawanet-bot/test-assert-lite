@@ -1,6 +1,6 @@
 import {strict as assert} from "node:assert"
 import {describe, it} from "node:test"
-import type * as declared from "test-assert-lite"
+import type {TAL} from "test-assert-lite"
 import {createTAL} from "../index.ts"
 import {capture, names, ofType, summaryOf} from "../test-utils/capture.ts"
 
@@ -18,7 +18,7 @@ const fire = (on: EventTarget, type: string, fields: object): void => {
 }
 
 // The window's own type satisfies what capture asks for.
-const check: typeof globalThis extends declared.TAL.EventTargetLike ? true : never = true
+const check: typeof globalThis extends TAL.EventTargetLike ? true : never = true
 void check
 
 describe(TITLE, () => {

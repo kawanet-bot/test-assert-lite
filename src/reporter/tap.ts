@@ -1,15 +1,15 @@
-import type * as declared from "test-assert-lite"
+import type {TAL} from "test-assert-lite"
 import {errorText} from "../utils/tester-error.ts"
 
-type TestEvent = declared.TAL.TestEvent
-type ReporterFn = declared.TAL.ReporterFn
+type TestEvent = TAL.TestEvent
+type ReporterFn = TAL.ReporterFn
 
 // A bare "#" starts a TAP directive and a raw newline starts a new TAP
 // line, so both need escaping to keep one test point on one line.
 const escapeText = (text: string): string => text.replace(/#/g, "\\#").replace(/\n/g, "\\n")
 
 // A skip outranks a todo: a point carries one directive at most.
-const directive = (data: declared.TAL.TestPass | declared.TAL.TestFail): string => {
+const directive = (data: TAL.TestPass | TAL.TestFail): string => {
     const mark = data.skip != null ? ["SKIP", data.skip] as const : data.todo != null ? ["TODO", data.todo] as const : undefined
     if (mark == null) return ""
     return "string" === typeof mark[1] && mark[1] ? ` # ${mark[0]} ${escapeText(mark[1])}` : ` # ${mark[0]}`
@@ -17,7 +17,7 @@ const directive = (data: declared.TAL.TestPass | declared.TAL.TestFail): string 
 
 // A skip called from a body that then throws still fails the point (node's
 // own TAP does the same), so the verdict only depends on pass vs fail.
-const resultLine = (data: declared.TAL.TestPass | declared.TAL.TestFail, isPass: boolean, number: number): string =>
+const resultLine = (data: TAL.TestPass | TAL.TestFail, isPass: boolean, number: number): string =>
     `${isPass ? "ok" : "not ok"} ${number} - ${escapeText(data.name)}${directive(data)}`
 
 // Plain "#" comment lines rather than a YAML block: valid TAP that any
@@ -28,7 +28,7 @@ const diagnostic = (error: Error): string =>
 export const tap = (): ReporterFn => async function* (source: AsyncIterable<TestEvent>): AsyncIterable<string> {
     // Mirrors spec()/html(): stack up test:start and, once a result
     // arrives, emit the parents still pending as headings.
-    const stack: declared.TAL.TestStart[] = []
+    const stack: TAL.TestStart[] = []
     let number = 0
 
     yield "TAP version 13\n"

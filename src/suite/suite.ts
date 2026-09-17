@@ -1,12 +1,12 @@
-import type * as declared from "test-assert-lite"
+import type {TAL} from "test-assert-lite"
 import {TesterError, testRunnerError} from "../utils/tester-error.ts"
 import type {Job, Outcome} from "./job.ts"
 import type {Kind} from "./tester.ts"
 import {Tester} from "./tester.ts"
 
-type TestOptions = declared.TAL.TestOptions
-type SuiteFn = declared.TAL.SuiteFn
-type HookFn = declared.TAL.HookFn
+type TestOptions = TAL.TestOptions
+type SuiteFn = TAL.SuiteFn
+type HookFn = TAL.HookFn
 
 // One suite: its body declares the children, its hooks wrap them, and it
 // carries their verdict. A suite is reported like a test, which is why it

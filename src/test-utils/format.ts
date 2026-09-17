@@ -1,7 +1,7 @@
-import type * as declared from "test-assert-lite"
+import type {TAL} from "test-assert-lite"
 
-type TestEvent = declared.TAL.TestEvent
-type ReporterFn = declared.TAL.ReporterFn
+type TestEvent = TAL.TestEvent
+type ReporterFn = TAL.ReporterFn
 
 export type Emit = (type: string, data: TestEvent["data"]) => Promise<void>
 
