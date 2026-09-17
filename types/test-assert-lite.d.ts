@@ -255,6 +255,8 @@ export declare namespace TAL {
          * Node `true` means nothing yet.
          */
         capture?: boolean | EventTargetLike
+        /** false leaves the counts, the version and the user agent off the report; the summary event still comes. */
+        summary?: boolean
     }
 
     // What end() resolves with: whether every test passed.

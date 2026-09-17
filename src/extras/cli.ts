@@ -33,7 +33,7 @@ const runCLI = async (options: Options): Promise<number> => {
         return 0
     }
 
-    const config: DriverConfig = {options: {reporter: options.reporter, files: options.suites}}
+    const config: DriverConfig = {options: {reporter: options.reporter, files: options.suites, summary: options.summary}}
     if (options.mode === "node") {
         return (await runInNode(options.imports, config.options)).success ? 0 : 1
     }

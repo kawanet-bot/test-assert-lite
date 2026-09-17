@@ -3,6 +3,7 @@ import {html} from "../reporter/html.ts"
 import {spec} from "../reporter/spec.ts"
 import {tap} from "../reporter/tap.ts"
 import {client, line} from "./client.ts"
+import {withFooter} from "./footer.ts"
 import type {ReportStream} from "./report-stream.ts"
 import type {HarnessState} from "./state.ts"
 
@@ -145,7 +146,9 @@ export const createSessions = (harness: HarnessState): SessionControl => {
 
     const create = (options: SessionOptions, auto: boolean): Open => {
         const {base} = options
-        const reporter = reporterOf(options.reporter)
+        // The footer is the session's to leave off, for a script that is no suite.
+        const named = reporterOf(options.reporter)
+        const reporter = options.summary === false ? named : withFooter(named)
         const url = base == null ? null : new URL(base)
         const opened = (open: Omit<Open, "release" | "auto">): Open => {
             const target = targetOf(options.capture)

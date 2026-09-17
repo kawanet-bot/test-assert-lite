@@ -33,13 +33,15 @@ export const resolve = (specifier, context, next) => {
  * copy, still lands on the instance end() reads.
  */
 export const runInNode = async (imports: Imports, options: DriverOptions): Promise<TAL.SessionResult> => {
+    const {reporter, summary} = options
+
     // A Map, so a specifier named like an Object property finds no alias.
     // Every item left for Node is a file: the reading of the options saw to it.
     const aliases = new Map([...imports.entries()].map(([specifier, item]) => [specifier, pathToFileURL(item.getPath() as string).href]))
     const data: HookData = {aliases}
     register(`data:text/javascript,${encodeURIComponent(HOOK)}`, {data})
 
-    session({reporter: options.reporter})
+    session({reporter, summary})
 
     const files = (options?.files ?? []).map(file => pathToFileURL(resolve(file)).href)
 

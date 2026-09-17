@@ -1,6 +1,5 @@
 import type * as declared from "test-assert-lite"
 import type {Run} from "../suite/job.ts"
-import {VERSION} from "../utils/version.ts"
 import {ReportStream} from "./report-stream.ts"
 import type {SessionControl} from "./session.ts"
 import type {HarnessState} from "./state.ts"
@@ -85,7 +84,11 @@ export const createScheduler = (
             if (current.failure != null) throw current.failure.error
             // Hooks declared since the last walk, or with no test at all.
             await harness.root.walk(current.run)
-            result = await finish(harness, current)
+            // The root's teardown, then the summary: the root has no result
+            // of its own, so the summary is what stands for it.
+            await harness.root.end()
+            result = summaryOf(current)
+            await current.run.emit("test:summary", result)
         } catch (error) {
             failed = true
             failure = error
@@ -121,39 +124,9 @@ export const createScheduler = (
     return {schedule, end}
 }
 
-// The root's teardown, then the summary. The root has no result of its
-// own, so the summary is what stands for it.
-const finish = async (harness: HarnessState, current: Cycle): Promise<declared.TAL.TestSummary> => {
-    const {run} = current
-    await harness.root.end()
-
-    const duration_ms = performance.now() - current.startedAt
-    const summary: declared.TAL.TestSummary = {
-        counts: {...run.counters},
-        duration_ms,
-        success: run.success,
-    }
-
-    // node:test's summary, then what node:test never says: which package
-    // ran the suites, and where, as the browser or Node names itself.
-    const userAgent = globalThis.navigator?.userAgent
-    for (const [label, value] of [
-        ["tests", run.counters.tests],
-        ["suites", run.counters.suites],
-        ["pass", run.counters.passed],
-        ["fail", run.counters.failed],
-        ["cancelled", run.counters.cancelled],
-        ["skipped", run.counters.skipped],
-        ["todo", run.counters.todo],
-        ["duration_ms", duration_ms],
-        ["test-assert-lite", VERSION],
-        ...(userAgent == null ? [] : [["user-agent", userAgent]]),
-    ] as [string, number | string][]) {
-        await run.emit("test:diagnostic", {
-            message: `${label} ${value}`, nesting: 0, level: "info",
-        })
-    }
-
-    await run.emit("test:summary", summary)
-    return summary
-}
+// What the run came to: the counts, the time and the verdict.
+const summaryOf = ({run, startedAt}: Cycle): declared.TAL.TestSummary => ({
+    counts: {...run.counters},
+    duration_ms: performance.now() - startedAt,
+    success: run.success,
+})
