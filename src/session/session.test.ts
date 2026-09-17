@@ -27,7 +27,11 @@ describe(TITLE, () => {
     it("a name that is no module runs with spec and is one failed test", async () => {
         const local = createTAL()
         const text: string[] = []
-        local.session({reporter: "@kawanet/invalid", output: t => {text.push(t)}})
+        local.session({
+            reporter: "@kawanet/invalid", output: t => {
+                text.push(t)
+            },
+        })
         local.it("still runs", () => undefined)
         assert.equal((await local.end()).success, false)
         assert.match(text.join(""), /✖ import\("@kawanet\/invalid"\)/)
@@ -37,7 +41,11 @@ describe(TITLE, () => {
     it("a name starting with . is not imported, and is one failed test", async () => {
         const local = createTAL()
         const lines: string[] = []
-        local.session({reporter: "./nope.mjs", output: t => {lines.push(t)}})
+        local.session({
+            reporter: "./nope.mjs", output: t => {
+                lines.push(t)
+            },
+        })
         assert.equal((await local.end()).success, false)
         assert.match(lines.join(""), /unsupported reporter: \.\/nope\.mjs/)
     })
@@ -45,7 +53,11 @@ describe(TITLE, () => {
     it("takes a reporter by name", async () => {
         const local = createTAL()
         const out: string[] = []
-        local.session({reporter: "tap", output: text => {out.push(text)}})
+        local.session({
+            reporter: "tap", output: text => {
+                out.push(text)
+            },
+        })
         local.it("named", () => undefined)
         await local.end()
         assert.equal(out[0], "TAP version 13\n")
@@ -54,7 +66,11 @@ describe(TITLE, () => {
     it("takes a reporter by its module name: the default export, as node --test-reporter has it", async () => {
         const local = createTAL()
         const out: string[] = []
-        local.session({reporter: "test-assert-lite/reporter/tap", output: text => {out.push(text)}})
+        local.session({
+            reporter: "test-assert-lite/reporter/tap", output: text => {
+                out.push(text)
+            },
+        })
         local.it("imported", () => undefined)
         assert.equal((await local.end()).success, true)
         assert.equal(out[0], "TAP version 13\n")

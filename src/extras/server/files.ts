@@ -24,8 +24,10 @@ export interface Files {
     own: Dir[]
     /** The directories the files are served from, in path order, so one before those under it. */
     dirs: Dir[]
+
     /** The directory one of the files is served from. */
     dirOf(file: string): Dir
+
     /** The URL a page refers to one of the files by, percent-encoded. */
     urlOf(file: string): string
 }

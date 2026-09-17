@@ -11,7 +11,9 @@ export type DeepEqual = (a: unknown, b: unknown) => boolean
 // leave the walk over the own enumerable properties to follow, as in node.
 export interface Inspect<T extends object> {
     is(v: object, tag: string): v is T
+
     eq(a: T, b: T, deep: DeepEqual): boolean | null
+
     loose?(a: T, b: T, deep: DeepEqual): boolean | null
 }
 

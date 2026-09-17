@@ -8,10 +8,13 @@ import {errorText} from "../utils/tester-error.ts"
 export interface Client {
     /** Tells the CLI the page is up; it waits for this with a timeout. */
     begin(): Promise<void>
+
     /** Text for the CLI's stdout, buffered. */
     stdout(text: string): void
+
     /** A line for the CLI's stderr, buffered. */
     stderr(item: string | Error): void
+
     /** The verdict, sent once the buffers have drained; true alone passes. */
     end(success: boolean): Promise<void>
 }

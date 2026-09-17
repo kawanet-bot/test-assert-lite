@@ -69,6 +69,7 @@ describe(TITLE, () => {
         class Foo {
             a = 1
         }
+
         assert.throws(() => TAL.deepEqual(new Foo(), {a: 1}), /deep-equal/)
         assert.doesNotThrow(() => TAL.deepEqual(new Foo(), new Foo()))
     })
@@ -143,13 +144,16 @@ describe(TITLE, () => {
     // reading it as if it were would invoke the getter as a side effect.
     it("does not mistake a plain object's own length property for an array's", () => {
         let calls = 0
+
         class Sized {
             id = 1
+
             get length(): number {
                 calls++
                 return 9
             }
         }
+
         assert.doesNotThrow(() => TAL.deepEqual(new Sized(), new Sized()))
         assert.equal(calls, 0)
     })

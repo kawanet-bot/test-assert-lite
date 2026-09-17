@@ -98,7 +98,7 @@ export class ReportStream {
         }
     }
 
-    private async *source(): AsyncGenerator<TestEvent> {
+    private async* source(): AsyncGenerator<TestEvent> {
         for (;;) {
             while (!this.pending.length) {
                 if (this.closed) return

@@ -52,8 +52,11 @@ describe(TITLE, () => {
     // function, which a class refuses with a TypeError, in node as here.
     it("throws matches a class that does not extend Error by instanceof", () => {
         class Plain {}
+
         class Other {}
+
         class Custom extends Error {}
+
         const plain = (): never => {
             throw new Plain()
         }
@@ -149,6 +152,7 @@ describe(TITLE, () => {
 
         // A class that does not extend Error filters by instanceof as well.
         class Plain {}
+
         const plain = (): never => {
             throw new Plain()
         }

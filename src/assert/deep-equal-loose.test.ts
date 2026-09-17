@@ -48,6 +48,7 @@ describe(TITLE, () => {
         class Foo {
             a = 1
         }
+
         assert.doesNotThrow(() => loose.deepEqual(new Foo(), {a: 1}))
         assert.doesNotThrow(() => loose.deepEqual(Object.create(null), {}))
         // Same keys, different internal kind: still apart.
@@ -101,6 +102,7 @@ describe(TITLE, () => {
         assert.throws(() => strict.deepEqual(new Float32Array([0]), new Float32Array([-0])), /deep-equal/)
 
         class Sub extends Uint8Array {}
+
         assert.doesNotThrow(() => loose.deepEqual(new Uint8Array([1, 2]), new Sub([1, 2])))
         assert.throws(() => loose.deepEqual(new Uint8Array([1, 2]), new Uint8Array([1, 3])), /deep-equal/)
         assert.throws(() => loose.deepEqual(new Uint8Array([1, 2]), new Uint8Array([1, 2, 3])), /deep-equal/)

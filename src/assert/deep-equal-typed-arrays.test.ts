@@ -56,6 +56,7 @@ describe(TITLE, () => {
                 return 0
             }
         }
+
         const withExtra = (tag: number): Short => Object.assign(new Short([1, 2]), {tag})
         assert.doesNotThrow(() => TAL.deepEqual(withExtra(1), withExtra(1)))
         assert.throws(() => TAL.deepEqual(withExtra(1), withExtra(2)), /deep-equal/)
@@ -87,6 +88,7 @@ describe(TITLE, () => {
                 return 0
             }
         }
+
         const a = new Hidden([1, 2, 3])
         const b = new Hidden([9, 9, 9])
         assert.throws(() => TAL.deepEqual(a, b), /deep-equal/)

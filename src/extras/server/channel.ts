@@ -21,6 +21,7 @@ export interface Channel {
     handler: MiddlewareHandler
     /** The verdict the page reports at its end; rejects if it never begins. */
     done: Promise<boolean>
+
     /** Stops waiting for the page. */
     close(): void
 }
