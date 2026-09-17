@@ -50,6 +50,21 @@ describe(TITLE, () => {
         assert.match(lines.join(""), /unsupported reporter: \.\/nope\.mjs/)
     })
 
+    it("summary: false leaves the counts, the version and the user agent off; the plan stays", async () => {
+        const local = createTAL()
+        const out: string[] = []
+        local.session({reporter: "tap", summary: false, output: t => {out.push(t)}})
+        local.it("fails", () => {
+            throw new Error("boom")
+        })
+        assert.equal((await local.end()).success, false)
+        const text = out.join("")
+        assert.equal(text.includes("# tests "), false)
+        assert.equal(text.includes("# test-assert-lite "), false)
+        assert.match(text, /^not ok 1 - fails$/m)
+        assert.match(text, /^1\.\.1$/m)
+    })
+
     it("takes a reporter by name", async () => {
         const local = createTAL()
         const out: string[] = []
