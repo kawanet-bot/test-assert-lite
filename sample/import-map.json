@@ -1,5 +1,5 @@
 {
     "imports": {
-        "greet": "./lib/greet.mjs"
+        "greet": "./lib/greet.js"
     }
 }

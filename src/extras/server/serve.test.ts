@@ -95,7 +95,7 @@ describe(TITLE, () => {
         await writeFile(join(dir, "dist", "source.ts"), "export const source: number = 1")
         await writeFile(join(dir, "dist", "data.json"), "{}")
         await symlink("..", join(dir, "dist", "up"))
-        await symlink("lib.mjs", join(dir, "dist", "alias.mjs"))
+        await symlink("lib.mjs", join(dir, "dist", "alias.js"))
         await writeFile(join(dir, "elsewhere", "suite.mjs"), "export const suite = 1")
         await writeFile(join(dir, "secret.json"), "{}")
         server = await serve({
@@ -208,7 +208,7 @@ describe(TITLE, () => {
     })
 
     it("follows a symlink inside the directory but not one leading out", async () => {
-        assert.equal((await get(server.origin, "/dist/alias.mjs")).status, 200)
+        assert.equal((await get(server.origin, "/dist/alias.js")).status, 200)
         assert.equal((await get(server.origin, "/dist/up/secret.json")).status, 404)
     })
 

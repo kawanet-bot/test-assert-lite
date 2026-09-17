@@ -51,20 +51,20 @@ install-all: install-playwright
 
 # Each run builds what it tests; a plain `make test-webkit` works on its own.
 test-chromium: all
-	cd .. && node bin/cli.mjs --playwright chromium browser/tests/bundled.mjs
+	cd .. && node bin/cli.js --playwright chromium browser/tests/bundled.mjs
 
 test-firefox: all
-	cd .. && node bin/cli.mjs --playwright firefox browser/tests/bundled.mjs
+	cd .. && node bin/cli.js --playwright firefox browser/tests/bundled.mjs
 
 test-webkit: all
-	cd .. && node bin/cli.mjs --playwright webkit browser/tests/bundled.mjs
+	cd .. && node bin/cli.js --playwright webkit browser/tests/bundled.mjs
 
 # Off CI, the driver being started by hand; each WEBDRIVER_* set here goes
 # to the CLI option of the same name. safaridriver on a Mac, then chromedriver:
 #   WEBDRIVER_HOST=192.168.0.2 make test-webdriver
 #   WEBDRIVER_ENDPOINT=http://127.0.0.1:9515 WEBDRIVER_SESSION=session/chrome-headless.json make test-webdriver
 test-webdriver: all
-	cd .. && node bin/cli.mjs --webdriver \
+	cd .. && node bin/cli.js --webdriver \
 		$(if $(WEBDRIVER_ENDPOINT),--endpoint $(WEBDRIVER_ENDPOINT)) \
 		$(if $(WEBDRIVER_SESSION),--webdriver-session $(abspath $(WEBDRIVER_SESSION))) \
 		$(if $(WEBDRIVER_HOST),--host $(WEBDRIVER_HOST)) \
@@ -80,7 +80,7 @@ test-playwright: install-all test-chromium test-firefox test-webkit
 
 # The same bundle for a person: prints the URL and serves until Ctrl-C.
 serve: all
-	cd .. && node bin/cli.mjs --serve --alias index.js=browser/tests/bundled.mjs
+	cd .. && node bin/cli.js --serve --alias index.js=browser/tests/bundled.mjs
 
 # Browser bundle cleanup remains owned by builder/Makefile.
 clean:

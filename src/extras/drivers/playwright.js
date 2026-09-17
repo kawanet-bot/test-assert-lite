@@ -1,6 +1,6 @@
 // Playwright adapter for the browser test CLI: the one file that imports
 // playwright, which is not a dependency of this package. The TypeScript
-// beside it reaches runInPlaywright() through the hand-written .d.mts, so
+// beside it reaches runInPlaywright() through the hand-written .d.ts, so
 // this file is plain JavaScript on purpose.
 
 // Loaded on the call, not at import time, so the module itself can be

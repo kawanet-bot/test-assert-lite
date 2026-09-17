@@ -4,7 +4,7 @@
   "version": "0.0.1",
   "author": "Kawanet",
   "bin": {
-    "test-assert": "./bin/cli.mjs"
+    "test-assert": "./bin/cli.js"
   },
   "bugs": {
     "url": "https://github.com/kawanet/test-assert-lite/issues"
@@ -81,7 +81,7 @@
     }
   },
   "files": [
-    "bin/cli.mjs",
+    "bin/cli.js",
     "browser/run.html",
     "browser/session/",
     "dist/test-assert-lite.extras.js",
@@ -121,7 +121,7 @@
     "test": "make -C builder test",
     "test-max": "make -C builder clean all test && make -C builder/pack pack test-dist && make -C browser test-playwright",
     "ts-refine": "./node_modules/.bin/ts-refine format && ./node_modules/.bin/ts-refine imports",
-    "update-test-title": "find src -type f -name '*.test.ts' -exec perl -i -pe 's#(?<=^const TITLE = \").*?(?=\")#($ARGV =~ s:^src/::r)#em' {} +"
+    "update-test-title": "find src sample/typescript -type f -name '*.test.ts' -exec perl -i -pe 's#(?<=^const TITLE = \").*?(?=\")#($ARGV =~ s:^src/::r)#em' {} +"
   },
   "sideEffects": false,
   "simple-git-hooks": {

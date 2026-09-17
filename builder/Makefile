@@ -13,7 +13,7 @@ SHELL := bash
 # a separate build target below, so none counts as library input.
 SRC := $(shell find ../src -name '*.ts' -not -name '*.test.ts' -not -path '*/test-utils/*' -not -path '*/extras/*')
 TEST_SRC := $(shell find ../src -name '*.test.ts') $(wildcard ../src/test-utils/*.ts)
-EXTRAS_SRC := $(shell find ../src/extras -name '*.ts' -or -name '*.mjs')
+EXTRAS_SRC := $(shell find ../src/extras -name '*.ts' -or -name '*.mjs' -or -name '*.js')
 TYPES := $(wildcard ../types/*.d.ts)
 BUILDER_SRC := $(wildcard ./*.ts)
 
@@ -79,7 +79,7 @@ $(MJS_DST): $(MJS_CONFIG) $(SRC) $(BUILDER_SRC)
 	@echo ""
 
 # The extras (the CLI as a function) import the library by the package's
-# own name, which resolves from dist/. The executable bin/cli.mjs is
+# own name, which resolves from dist/. The executable bin/cli.js is
 # hand-written and reaches this by subpath.
 $(EXTRAS_DST): $(EXTRAS_CONFIG) $(EXTRAS_SRC) $(BUILDER_SRC) $(MJS_DST)
 	@mkdir -p $(dir $@)
@@ -138,7 +138,7 @@ test:
 # a side effect and never calls end() itself.
 test-full: test-quick
 	cd .. && node --test 'src/**/*.test.ts'
-	cd .. && ./bin/cli.mjs $(BUILDER_TEST_DST:./%=builder/%)
+	cd .. && ./bin/cli.js $(BUILDER_TEST_DST:./%=builder/%)
 
 test-quick: all
 	cd .. && node_modules/.bin/tsc --noEmit
