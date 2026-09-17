@@ -187,9 +187,10 @@ describe(TITLE, () => {
             assert.throws(() => readOptions(["--endpoint", "http://x", "a.test.ts"]), /apply to --webdriver only$/)
         })
 
-        it("refuses a runner with no suite, and --serve with one", () => {
+        it("refuses a runner with no suite on --playwright and --webdriver", () => {
             assert.throws(() => readOptions(["--playwright", "chromium", "--mount", "site"]), /no test files specified$/)
             assert.throws(() => readOptions(["--webdriver"]), /no test files specified$/)
+            assert.doesNotThrow(() => readOptions(["--serve"]))
         })
 
         it("reads several suites in a browser mode from one directory, in order, and refuses them from two", () => {

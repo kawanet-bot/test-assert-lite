@@ -30,10 +30,8 @@ export const USAGE = `Usage: test-assert [options] <file...>
 const BROWSERS = ["chromium", "firefox", "webkit"] as const
 export type Browser = typeof BROWSERS[number]
 
-// What the three browser modes share: the suites, what the page is made
-// of, and where the server sits. --serve takes no suite.
 export interface BrowserOptions {
-    /** The suites, absolute, all served from one directory; none under --serve. */
+    /** The suites, absolute, all served from one directory. */
     suites: string[]
     /** The reporter named, as given; the run says whether it knows it. */
     reporter?: string

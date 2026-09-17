@@ -31,9 +31,7 @@ describe(TITLE, () => {
         await rm(dir, {recursive: true, force: true})
     })
 
-    // A suite that throws while loading is one failed test, named as
-    // node --test names it; the tests it declared and the other suites
-    // run. Read off the TAP the run writes, as the command line shows it.
+    // A suite that throws while loading is one failed test.
     it("files a suite that threw while loading as one failed test, and runs the rest", async () => {
         const broken = join(dir, "broken.mjs")
         const fine = join(dir, "fine.mjs")
