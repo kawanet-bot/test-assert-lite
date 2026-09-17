@@ -76,7 +76,7 @@ describe(TITLE, () => {
     it("assert is callable like strict, and .strict leads to strict from either", () => {
         assert.doesNotThrow(() => TAL.assert(1))
         assert.throws(() => TAL.assert(0), /expected truthy/)
-        assert.equal(TAL.assert.strict, TAL.assert.strict)
+        assert.equal(typeof TAL.assert.strict, "function")
         assert.equal(TAL.assert.strict.strict, TAL.assert.strict)
         assert.notEqual(TAL.assert, TAL.assert.strict)
     })
