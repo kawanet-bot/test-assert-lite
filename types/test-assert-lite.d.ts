@@ -41,7 +41,7 @@ export declare namespace TAL {
 
     interface TestContext {
         readonly name: string
-        readonly assert: AssertMethods
+        readonly assert: TestContextAssert
         skip(message?: string): void
         todo(message?: string): void
         diagnostic(message: string): void
@@ -124,7 +124,7 @@ export declare namespace TAL {
     // Reachable as `t.assert`. `ok` and `ifError` are plain checks here rather
     // than assertion signatures: narrowing through a callback parameter trips
     // TS2775, which `node:test` itself hits on `t.assert.ok()`.
-    interface AssertMethods extends AssertBase {
+    interface TestContextAssert extends AssertBase {
         ok(value: unknown, message?: string | Error): void
         ifError(value: unknown): void
     }

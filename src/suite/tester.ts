@@ -1,4 +1,4 @@
-import type * as declared from "test-assert-lite"
+import type {TAL} from "test-assert-lite"
 import type {HarnessState} from "../session/state.ts"
 import {TesterError, cancelledByParent, parentAlreadyFinished, testRunnerError} from "../utils/tester-error.ts"
 import type {Args} from "./declare.ts"
@@ -6,9 +6,9 @@ import {nameOf, normalize, skipOf, todoOf} from "./declare.ts"
 import type {Outcome} from "./job.ts"
 import {Job} from "./job.ts"
 
-type TestOptions = declared.TAL.TestOptions
-type TestFn = declared.TAL.TestFn
-type SuiteFn = declared.TAL.SuiteFn
+type TestOptions = TAL.TestOptions
+type TestFn = TAL.TestFn
+type SuiteFn = TAL.SuiteFn
 
 export type Kind = "suite" | "test"
 
@@ -62,7 +62,7 @@ export class Tester extends Job {
 
     // ---- what t gives a body ----
 
-    private context(): declared.TAL.TestContext {
+    private context(): TAL.TestContext {
         return {
             name: this.name,
             assert: this.run.assert,

@@ -1,10 +1,10 @@
-import type * as declared from "test-assert-lite"
+import type {TAL} from "test-assert-lite"
 import {isError} from "../utils/is-error.ts"
 import {stringify} from "../utils/stringify.ts"
 import {AssertionError} from "./assertion-error.ts"
 
-type Predicate = declared.TAL.AssertPredicate
-type Filter = declared.TAL.ErrorFilter
+type AssertPredicate = TAL.AssertPredicate
+type ErrorFilter = TAL.ErrorFilter
 
 // The one error for a misuse of any of these assertions, whatever was
 // wrong with the arguments. What matters is that it is not an AssertionError.
@@ -32,13 +32,13 @@ const keysOf = (expected: object): string[] => isError(expected) ? [...Object.ke
 
 // A matcher shape node:assert takes. An object with nothing to compare
 // would match anything, so it is refused as node:assert refuses it.
-const isPredicate = (value: unknown): value is Predicate =>
+const isPredicate = (value: unknown): value is AssertPredicate =>
     value instanceof RegExp || "function" === typeof value || ("object" === typeof value && value != null && keysOf(value).length > 0)
 
 // Whether `thrown` satisfies `expected`, for every matcher node:assert takes:
 // a RegExp against String(thrown), a class, a validation function, or an
 // object whose properties thrown must carry.
-const matches = (thrown: unknown, expected: Predicate): boolean => {
+const matches = (thrown: unknown, expected: AssertPredicate): boolean => {
     if (expected instanceof RegExp) return expected.test(String(thrown))
     if ("function" === typeof expected) {
         // In node's order: any class answers by instanceof first, Error or
@@ -68,16 +68,16 @@ const VERB = {throws: "throw", rejects: "reject", doesNotThrow: "throw", doesNot
 // node:assert a string in the second position is the message, and then a
 // third argument is refused.
 export interface Expectation {
-    expected: Predicate | undefined
+    expected: AssertPredicate | undefined
     message: string | Error | undefined
     messageOnly: boolean
 }
 
-export const readExpectation = (rest: [expected?: Predicate | string, message?: string | Error]): Expectation => {
+export const readExpectation = (rest: [expected?: AssertPredicate | string, message?: string | Error]): Expectation => {
     const [second, third] = rest
     const messageOnly = "string" === typeof second
     if (messageOnly && rest.length > 1) throw invalid()
-    const expected = messageOnly ? undefined : second as Predicate | undefined
+    const expected = messageOnly ? undefined : second as AssertPredicate | undefined
     const message = messageOnly ? second as string : third
     if (expected != null && !isPredicate(expected)) throw invalid()
     return {expected, message, messageOnly}
@@ -112,13 +112,13 @@ export const expectError = (caught: Outcome, {expected, message, messageOnly}: E
 // The `[filter, message]` tail doesNotThrow and doesNotReject take alike.
 // The filter is a RegExp or a function only.
 export interface Filtering {
-    filter: Filter | undefined
+    filter: ErrorFilter | undefined
     note: string | Error | undefined
 }
 
-export const readFilter = (expected?: Filter | string, message?: string | Error): Filtering => {
+export const readFilter = (expected?: ErrorFilter | string, message?: string | Error): Filtering => {
     const messageOnly = "string" === typeof expected
-    const filter = messageOnly ? undefined : expected as Filter | undefined
+    const filter = messageOnly ? undefined : expected as ErrorFilter | undefined
     const note = messageOnly ? expected as string : message
     if (filter != null && !(filter instanceof RegExp || "function" === typeof filter)) throw invalid()
     return {filter, note}
@@ -142,14 +142,14 @@ export const expectNoError = (caught: Outcome, {filter, note}: Filtering, operat
 // --- the synchronous pair ------------------------------------------------
 
 // `throws(block, [expected], [message])`.
-export const throws = (block: () => unknown, ...rest: [expected?: Predicate | string, message?: string | Error]): void => {
+export const throws = (block: () => unknown, ...rest: [expected?: AssertPredicate | string, message?: string | Error]): void => {
     if ("function" !== typeof block) throw invalid()
     const expectation = readExpectation(rest)
     expectError(attempt(block), expectation, "throws")
 }
 
 // `doesNotThrow(block, [filter], [message])`.
-export const doesNotThrow = (block: () => unknown, expected?: Filter | string, message?: string | Error): void => {
+export const doesNotThrow = (block: () => unknown, expected?: ErrorFilter | string, message?: string | Error): void => {
     if ("function" !== typeof block) throw invalid()
     const filtering = readFilter(expected, message)
     expectNoError(attempt(block), filtering, "doesNotThrow")

@@ -2,7 +2,7 @@ import {strict as assert} from "node:assert"
 import {describe, it} from "node:test"
 import {sharedTAL} from "../index.ts"
 
-const TAL = sharedTAL.assert.strict
+const TAL_strict = sharedTAL.assert.strict
 
 const TITLE = "assert/deep-equal-builtins.test.ts"
 
@@ -20,32 +20,32 @@ describe(TITLE, () => {
     // errors with different messages would look equal; stack is left out,
     // matching node's own deepStrictEqual.
     it("compares Errors by name and message, not by stack", () => {
-        assert.doesNotThrow(() => TAL.deepEqual(new Error("boom"), new Error("boom")))
-        assert.throws(() => TAL.deepEqual(new Error("boom"), new Error("bang")), /deep-equal/)
+        assert.doesNotThrow(() => TAL_strict.deepEqual(new Error("boom"), new Error("boom")))
+        assert.throws(() => TAL_strict.deepEqual(new Error("boom"), new Error("bang")), /deep-equal/)
 
         const renamed = new Error("boom")
         renamed.name = "Custom"
-        assert.throws(() => TAL.deepEqual(renamed, new Error("boom")), /deep-equal/)
+        assert.throws(() => TAL_strict.deepEqual(renamed, new Error("boom")), /deep-equal/)
     })
 
     it("still compares an Error's own extra enumerable properties", () => {
         const withCode = (code: string): Error => Object.assign(new Error("boom"), {code})
-        assert.doesNotThrow(() => TAL.deepEqual(withCode("E1"), withCode("E1")))
-        assert.throws(() => TAL.deepEqual(withCode("E1"), withCode("E2")), /deep-equal/)
+        assert.doesNotThrow(() => TAL_strict.deepEqual(withCode("E1"), withCode("E1")))
+        assert.throws(() => TAL_strict.deepEqual(withCode("E1"), withCode("E2")), /deep-equal/)
     })
 
     // cause is not enumerable either, and is common enough (ES2022 exception
     // chaining) to get the same explicit treatment as name/message.
     it("compares an Error's cause recursively", () => {
-        assert.doesNotThrow(() => TAL.deepEqual(
+        assert.doesNotThrow(() => TAL_strict.deepEqual(
             new Error("boom", {cause: new Error("inner")}),
             new Error("boom", {cause: new Error("inner")}),
         ))
-        assert.throws(() => TAL.deepEqual(
+        assert.throws(() => TAL_strict.deepEqual(
             new Error("boom", {cause: new Error("inner")}),
             new Error("boom", {cause: new Error("other")}),
         ), /deep-equal/)
-        assert.throws(() => TAL.deepEqual(new Error("boom", {cause: "x"}), new Error("boom")), /deep-equal/)
+        assert.throws(() => TAL_strict.deepEqual(new Error("boom", {cause: "x"}), new Error("boom")), /deep-equal/)
     })
 
     // cause is recursed into before the memo stamp used to be set, so a
@@ -56,22 +56,22 @@ describe(TITLE, () => {
         a.cause = a
         const b = new Error("x") as Error & {cause?: unknown}
         b.cause = b
-        assert.doesNotThrow(() => TAL.deepEqual(a, b))
+        assert.doesNotThrow(() => TAL_strict.deepEqual(a, b))
     })
 
     it("compares an AggregateError's own errors array", () => {
         const one = (): AggregateError => new AggregateError([new Error("a")], "many")
-        assert.doesNotThrow(() => TAL.deepEqual(one(), one()))
-        assert.throws(() => TAL.deepEqual(one(), new AggregateError([new Error("b")], "many")), /deep-equal/)
+        assert.doesNotThrow(() => TAL_strict.deepEqual(one(), one()))
+        assert.throws(() => TAL_strict.deepEqual(one(), new AggregateError([new Error("b")], "many")), /deep-equal/)
     })
 
     // errors is checked by name wherever it appears, not only when the
     // instance is actually an AggregateError.
     it("compares a plain Error's own errors property the same way", () => {
         const withErrors = (errors: unknown[]): Error => Object.assign(new Error("x"), {errors})
-        assert.doesNotThrow(() => TAL.deepEqual(withErrors([1]), withErrors([1])))
-        assert.throws(() => TAL.deepEqual(withErrors([1]), withErrors([2])), /deep-equal/)
-        assert.throws(() => TAL.deepEqual(withErrors([1]), new Error("x")), /deep-equal/)
+        assert.doesNotThrow(() => TAL_strict.deepEqual(withErrors([1]), withErrors([1])))
+        assert.throws(() => TAL_strict.deepEqual(withErrors([1]), withErrors([2])), /deep-equal/)
+        assert.throws(() => TAL_strict.deepEqual(withErrors([1]), new Error("x")), /deep-equal/)
     })
 
     // Reading a[key] to compare naturally invokes a getter; nothing extra
@@ -84,7 +84,7 @@ describe(TITLE, () => {
                 return 1
             },
         })
-        assert.doesNotThrow(() => TAL.deepEqual(withGetter(), withGetter()))
+        assert.doesNotThrow(() => TAL_strict.deepEqual(withGetter(), withGetter()))
         assert.equal(calls, 2)
     })
 
@@ -94,27 +94,27 @@ describe(TITLE, () => {
     // narrower pass - see the tracking issue for the history).
     it("compares own enumerable symbol-keyed properties", () => {
         const sym = Symbol("k")
-        assert.doesNotThrow(() => TAL.deepEqual({a: 1, [sym]: "x"}, {a: 1, [sym]: "x"}))
-        assert.throws(() => TAL.deepEqual({a: 1, [sym]: "x"}, {a: 1, [sym]: "y"}), /deep-equal/)
-        assert.throws(() => TAL.deepEqual({a: 1, [sym]: "x"}, {a: 1}), /deep-equal/)
+        assert.doesNotThrow(() => TAL_strict.deepEqual({a: 1, [sym]: "x"}, {a: 1, [sym]: "x"}))
+        assert.throws(() => TAL_strict.deepEqual({a: 1, [sym]: "x"}, {a: 1, [sym]: "y"}), /deep-equal/)
+        assert.throws(() => TAL_strict.deepEqual({a: 1, [sym]: "x"}, {a: 1}), /deep-equal/)
         // A non-enumerable symbol-keyed property is not part of the contract
         // either, same as a non-enumerable string-keyed one.
         const withHidden = Object.defineProperty({}, sym, {value: "x", enumerable: false})
-        assert.doesNotThrow(() => TAL.deepEqual(withHidden, {}))
+        assert.doesNotThrow(() => TAL_strict.deepEqual(withHidden, {}))
     })
 
     // Date/RegExp keep their real state outside of own enumerable properties,
     // so they get an explicit value-based comparison, then fall through to
     // the own-key walk the same way Error/URL do above.
     it("compares Date by time value and RegExp by source/flags", () => {
-        assert.doesNotThrow(() => TAL.deepEqual(new Date(0), new Date(0)))
-        assert.throws(() => TAL.deepEqual(new Date(0), new Date(1)), /deep-equal/)
+        assert.doesNotThrow(() => TAL_strict.deepEqual(new Date(0), new Date(0)))
+        assert.throws(() => TAL_strict.deepEqual(new Date(0), new Date(1)), /deep-equal/)
         // getTime() is NaN for both, and NaN !== NaN, so this needs Object.is.
-        assert.doesNotThrow(() => TAL.deepEqual(new Date(NaN), new Date(NaN)))
-        assert.throws(() => TAL.deepEqual(new Date(NaN), new Date(0)), /deep-equal/)
-        assert.doesNotThrow(() => TAL.deepEqual(/a/gi, /a/gi))
-        assert.throws(() => TAL.deepEqual(/a/g, /b/g), /deep-equal/)
-        assert.throws(() => TAL.deepEqual(/a/g, /a/i), /deep-equal/)
+        assert.doesNotThrow(() => TAL_strict.deepEqual(new Date(NaN), new Date(NaN)))
+        assert.throws(() => TAL_strict.deepEqual(new Date(NaN), new Date(0)), /deep-equal/)
+        assert.doesNotThrow(() => TAL_strict.deepEqual(/a/gi, /a/gi))
+        assert.throws(() => TAL_strict.deepEqual(/a/g, /b/g), /deep-equal/)
+        assert.throws(() => TAL_strict.deepEqual(/a/g, /a/i), /deep-equal/)
     })
 
     // getTime()/valueOf() are called through the prototype, so an own
@@ -122,13 +122,13 @@ describe(TITLE, () => {
     it("resists an own getTime overriding the real one", () => {
         const a = new Date(0)
         Object.defineProperty(a, "getTime", {value: () => 999})
-        assert.doesNotThrow(() => TAL.deepEqual(a, new Date(0)))
+        assert.doesNotThrow(() => TAL_strict.deepEqual(a, new Date(0)))
     })
 
     it("still compares a Date's own extra enumerable properties", () => {
         const withExtra = (t: number, x: number): Date => Object.assign(new Date(t), {x})
-        assert.doesNotThrow(() => TAL.deepEqual(withExtra(0, 1), withExtra(0, 1)))
-        assert.throws(() => TAL.deepEqual(withExtra(0, 1), withExtra(0, 2)), /deep-equal/)
+        assert.doesNotThrow(() => TAL_strict.deepEqual(withExtra(0, 1), withExtra(0, 1)))
+        assert.throws(() => TAL_strict.deepEqual(withExtra(0, 1), withExtra(0, 2)), /deep-equal/)
     })
 
     // lastIndex is own but non-enumerable, so it needs the same explicit
@@ -138,28 +138,28 @@ describe(TITLE, () => {
         const a = /a/g
         a.exec("aaa")
         const b = /a/g
-        assert.throws(() => TAL.deepEqual(a, b), /deep-equal/)
+        assert.throws(() => TAL_strict.deepEqual(a, b), /deep-equal/)
         b.exec("aaa")
-        assert.doesNotThrow(() => TAL.deepEqual(a, b))
+        assert.doesNotThrow(() => TAL_strict.deepEqual(a, b))
 
         const withExtra = Object.assign(/a/g, {x: 1})
-        assert.throws(() => TAL.deepEqual(withExtra, /a/g), /deep-equal/)
+        assert.throws(() => TAL_strict.deepEqual(withExtra, /a/g), /deep-equal/)
     })
 
     // Boolean/Number wrap a primitive that no own key exposes; String's
     // characters already are own enumerable indices, so it only gains the
     // "extra own property" check the other two get for free from the walk.
     it("compares boxed Boolean/Number/String/BigInt by their wrapped value", () => {
-        assert.doesNotThrow(() => TAL.deepEqual(new Boolean(true), new Boolean(true)))
-        assert.throws(() => TAL.deepEqual(new Boolean(true), new Boolean(false)), /deep-equal/)
-        assert.throws(() => TAL.deepEqual(new Number(1), new Number(2)), /deep-equal/)
-        assert.doesNotThrow(() => TAL.deepEqual(new String("x"), new String("x")))
-        assert.doesNotThrow(() => TAL.deepEqual(Object(1n), Object(1n)))
-        assert.throws(() => TAL.deepEqual(Object(1n), Object(2n)), /deep-equal/)
+        assert.doesNotThrow(() => TAL_strict.deepEqual(new Boolean(true), new Boolean(true)))
+        assert.throws(() => TAL_strict.deepEqual(new Boolean(true), new Boolean(false)), /deep-equal/)
+        assert.throws(() => TAL_strict.deepEqual(new Number(1), new Number(2)), /deep-equal/)
+        assert.doesNotThrow(() => TAL_strict.deepEqual(new String("x"), new String("x")))
+        assert.doesNotThrow(() => TAL_strict.deepEqual(Object(1n), Object(1n)))
+        assert.throws(() => TAL_strict.deepEqual(Object(1n), Object(2n)), /deep-equal/)
 
         const extra = new String("x") as String & {slow?: boolean}
         extra.slow = true
-        assert.throws(() => TAL.deepEqual(extra, new String("x")), /deep-equal/)
+        assert.throws(() => TAL_strict.deepEqual(extra, new String("x")), /deep-equal/)
     })
 
     // Same for a symbol-keyed property: a boxed primitive is walked for
@@ -167,9 +167,9 @@ describe(TITLE, () => {
     it("compares a symbol-keyed property attached to a boxed primitive", () => {
         const sym = Symbol("k")
         const withSymbol = (): String => Object.assign(new String("x"), {[sym]: true})
-        assert.doesNotThrow(() => TAL.deepEqual(withSymbol(), withSymbol()))
-        assert.throws(() => TAL.deepEqual(withSymbol(), new String("x")), /deep-equal/)
-        assert.throws(() => TAL.deepEqual(Object.assign(new Number(1), {[sym]: 1}), new Number(1)), /deep-equal/)
+        assert.doesNotThrow(() => TAL_strict.deepEqual(withSymbol(), withSymbol()))
+        assert.throws(() => TAL_strict.deepEqual(withSymbol(), new String("x")), /deep-equal/)
+        assert.throws(() => TAL_strict.deepEqual(Object.assign(new Number(1), {[sym]: 1}), new Number(1)), /deep-equal/)
     })
 
     // Unlike the opaque types in deep-equal-collections.test.ts, node's real
@@ -177,12 +177,12 @@ describe(TITLE, () => {
     // since it costs little and a URL can plausibly appear in ordinary
     // form-handling code.
     it("compares URL by href, plus any extra own property", () => {
-        assert.doesNotThrow(() => TAL.deepEqual(new URL("http://foo"), new URL("http://foo")))
-        assert.throws(() => TAL.deepEqual(new URL("http://foo"), new URL("http://bar")), /deep-equal/)
+        assert.doesNotThrow(() => TAL_strict.deepEqual(new URL("http://foo"), new URL("http://foo")))
+        assert.throws(() => TAL_strict.deepEqual(new URL("http://foo"), new URL("http://bar")), /deep-equal/)
 
         const withExtra = new URL("http://foo") as URL & {tag?: number}
         withExtra.tag = 1
-        assert.throws(() => TAL.deepEqual(withExtra, new URL("http://foo")), /deep-equal/)
+        assert.throws(() => TAL_strict.deepEqual(withExtra, new URL("http://foo")), /deep-equal/)
     })
 
     // Node's own URL exposes engine-internal state through enumerable own
@@ -192,7 +192,7 @@ describe(TITLE, () => {
     it("ignores symbol-keyed properties on a builtin like URL", () => {
         const a = new URL("http://foo")
         Object.defineProperty(a, Symbol("internal"), {value: 1, enumerable: true})
-        assert.doesNotThrow(() => TAL.deepEqual(a, new URL("http://foo")))
+        assert.doesNotThrow(() => TAL_strict.deepEqual(a, new URL("http://foo")))
     })
 
     // A null-prototype object cannot be rendered with String(); building the
@@ -202,7 +202,7 @@ describe(TITLE, () => {
         a.x = 1
         const b = Object.create(null)
         b.x = 2
-        assert.equal(catchError(() => TAL.deepEqual(a, b))?.name, "AssertionError")
+        assert.equal(catchError(() => TAL_strict.deepEqual(a, b))?.name, "AssertionError")
     })
 
     // An object given a builtin's prototype, own properties and tag still
@@ -216,12 +216,12 @@ describe(TITLE, () => {
             return copy
         }
         const date = new Date(2000)
-        assert.equal(catchError(() => TAL.deepEqual(date, lookalike(date, "Date")))?.name, "AssertionError")
-        assert.equal(catchError(() => TAL.deepEqual(lookalike(date, "Date"), date))?.name, "AssertionError")
+        assert.equal(catchError(() => TAL_strict.deepEqual(date, lookalike(date, "Date")))?.name, "AssertionError")
+        assert.equal(catchError(() => TAL_strict.deepEqual(lookalike(date, "Date"), date))?.name, "AssertionError")
         const regExp = /abc/g
-        assert.equal(catchError(() => TAL.deepEqual(regExp, lookalike(regExp, "RegExp")))?.name, "AssertionError")
+        assert.equal(catchError(() => TAL_strict.deepEqual(regExp, lookalike(regExp, "RegExp")))?.name, "AssertionError")
         const map = new Map([[1, 2]])
-        assert.equal(catchError(() => TAL.deepEqual(map, lookalike(map, "Map")))?.name, "AssertionError")
+        assert.equal(catchError(() => TAL_strict.deepEqual(map, lookalike(map, "Map")))?.name, "AssertionError")
     })
 
     // The other way round: a real builtin whose own tag reads "Object" is
@@ -230,11 +230,11 @@ describe(TITLE, () => {
     it("still compares a builtin by its value when its tag is masked as Object", () => {
         const masked = <T extends object>(v: T): T => Object.defineProperty(v, Symbol.toStringTag, {value: "Object"})
         assert.equal(Object.prototype.toString.call(masked(new Date(0))), "[object Object]")
-        assert.doesNotThrow(() => TAL.deepEqual(masked(new Date(0)), masked(new Date(0))))
-        assert.throws(() => TAL.deepEqual(masked(new Date(0)), masked(new Date(1))), /deep-equal/)
-        assert.throws(() => TAL.deepEqual(masked(new Map([[1, 2]])), masked(new Map([[1, 3]]))), /deep-equal/)
+        assert.doesNotThrow(() => TAL_strict.deepEqual(masked(new Date(0)), masked(new Date(0))))
+        assert.throws(() => TAL_strict.deepEqual(masked(new Date(0)), masked(new Date(1))), /deep-equal/)
+        assert.throws(() => TAL_strict.deepEqual(masked(new Map([[1, 2]])), masked(new Map([[1, 3]]))), /deep-equal/)
         // A masked Date and a plain object share the tag but not the kind.
-        assert.throws(() => TAL.deepEqual(masked(new Date(0)), {}), /deep-equal/)
-        assert.throws(() => TAL.deepEqual({}, masked(new Date(0))), /deep-equal/)
+        assert.throws(() => TAL_strict.deepEqual(masked(new Date(0)), {}), /deep-equal/)
+        assert.throws(() => TAL_strict.deepEqual({}, masked(new Date(0))), /deep-equal/)
     })
 })

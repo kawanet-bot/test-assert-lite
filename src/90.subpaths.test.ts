@@ -4,7 +4,7 @@
 // declaration assignments make tsc read the bridges' .d.ts too.
 import {strict as assert} from "node:assert"
 import {test} from "node:test"
-import {sharedTAL as root} from "test-assert-lite"
+import {sharedTAL} from "test-assert-lite"
 import * as assertEntry from "test-assert-lite/assert"
 import * as strictEntry from "test-assert-lite/assert/strict"
 import * as htmlEntry from "test-assert-lite/reporter/html"
@@ -16,43 +16,43 @@ import * as testEntry from "test-assert-lite/test"
 const named = (entry: object): string[] => Object.keys(entry).filter(key => key !== "default").sort()
 
 test("test-assert-lite/test", () => {
-    const typed: typeof root.test.test = testEntry.default
+    const typed: typeof sharedTAL.test.test = testEntry.default
     void typed
-    assert.equal(testEntry.default, root.test.test)
+    assert.equal(testEntry.default, sharedTAL.test.test)
     assert.deepEqual(named(testEntry), ["after", "before", "describe", "it", "suite", "test"])
     for (const key of named(testEntry)) {
-        assert.equal(testEntry[key as keyof typeof testEntry], root.test[key as keyof typeof root.test], key)
+        assert.equal(testEntry[key as keyof typeof testEntry], sharedTAL.test[key as keyof typeof sharedTAL.test], key)
     }
 })
 
 test("test-assert-lite/assert", () => {
-    const typed: typeof root.assert = assertEntry.default
+    const typed: typeof sharedTAL.assert = assertEntry.default
     void typed
-    assert.equal(assertEntry.default, root.assert)
-    assert.equal(assertEntry.strict, root.assert.strict)
-    assert.deepEqual(named(assertEntry), Object.keys(root.assert).sort())
+    assert.equal(assertEntry.default, sharedTAL.assert)
+    assert.equal(assertEntry.strict, sharedTAL.assert.strict)
+    assert.deepEqual(named(assertEntry), Object.keys(sharedTAL.assert).sort())
     for (const key of named(assertEntry)) {
-        assert.equal(assertEntry[key as keyof typeof assertEntry], root.assert[key as keyof typeof root.assert], key)
+        assert.equal(assertEntry[key as keyof typeof assertEntry], sharedTAL.assert[key as keyof typeof sharedTAL.assert], key)
     }
 })
 
 test("test-assert-lite/assert/strict", () => {
-    const typed: typeof root.assert.strict = strictEntry.default
+    const typed: typeof sharedTAL.assert.strict = strictEntry.default
     void typed
-    assert.equal(strictEntry.default, root.assert.strict)
-    assert.equal(strictEntry.strict, root.assert.strict)
-    assert.deepEqual(named(strictEntry), Object.keys(root.assert.strict).sort())
+    assert.equal(strictEntry.default, sharedTAL.assert.strict)
+    assert.equal(strictEntry.strict, sharedTAL.assert.strict)
+    assert.deepEqual(named(strictEntry), Object.keys(sharedTAL.assert.strict).sort())
     for (const key of named(strictEntry)) {
-        assert.equal(strictEntry[key as keyof typeof strictEntry], root.assert.strict[key as keyof typeof root.assert.strict], key)
+        assert.equal(strictEntry[key as keyof typeof strictEntry], sharedTAL.assert.strict[key as keyof typeof sharedTAL.assert.strict], key)
     }
 })
 
 test("test-assert-lite/session", () => {
-    const typed: typeof root.session.session = sessionEntry.session
+    const typed: typeof sharedTAL.session.session = sessionEntry.session
     void typed
-    assert.equal(sessionEntry.session, root.session.session)
-    assert.equal(sessionEntry.load, root.session.load)
-    assert.equal(sessionEntry.end, root.session.end)
+    assert.equal(sessionEntry.session, sharedTAL.session.session)
+    assert.equal(sessionEntry.load, sharedTAL.session.load)
+    assert.equal(sessionEntry.end, sharedTAL.session.end)
     assert.deepEqual(named(sessionEntry), ["end", "load", "session"])
 })
 

@@ -1,4 +1,4 @@
-import type * as declared from "test-assert-lite"
+import type {TAL} from "test-assert-lite"
 import {isError} from "../utils/is-error.ts"
 import {stringify} from "../utils/stringify.ts"
 import {AssertionError} from "./assertion-error.ts"
@@ -9,7 +9,7 @@ import {looseSame} from "./deep-equal.ts"
 export const equalPair = (strict: boolean) => {
     const same = strict ? Object.is : looseSame
 
-    const equal: declared.TAL.Assert["equal"] = (actual, expected, message) => {
+    const equal: TAL.Assert["equal"] = (actual, expected, message) => {
         if (same(actual, expected)) return
         if (isError(message)) throw message
 
@@ -22,7 +22,7 @@ export const equalPair = (strict: boolean) => {
         })
     }
 
-    const notEqual: declared.TAL.Assert["notEqual"] = (actual, expected, message) => {
+    const notEqual: TAL.Assert["notEqual"] = (actual, expected, message) => {
         if (!same(actual, expected)) return
         if (isError(message)) throw message
         throw new AssertionError({

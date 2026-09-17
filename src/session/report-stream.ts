@@ -1,8 +1,8 @@
-import type * as declared from "test-assert-lite"
+import type {TAL} from "test-assert-lite"
 
-type TestEvent = declared.TAL.TestEvent
-type ReporterFn = declared.TAL.ReporterFn
-type OutputFn = declared.TAL.OutputFn
+type TestEvent = TAL.TestEvent
+type ReporterFn = TAL.ReporterFn
+type OutputFn = TAL.OutputFn
 
 interface QueueItem {
     event: TestEvent

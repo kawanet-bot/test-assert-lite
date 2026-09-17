@@ -1,4 +1,5 @@
 import type * as declared from "test-assert-lite"
+import type {TAL} from "test-assert-lite"
 import {createAssert} from "./assert/assert.ts"
 import {html} from "./reporter/html.ts"
 import {spec} from "./reporter/spec.ts"
@@ -12,14 +13,14 @@ import {createRegistrar} from "./suite/registrar.ts"
 export const createTAL: typeof declared.createTAL = () => {
     const state = createHarnessState()
     const sessions = createSessions(state)
-    const {assert, methods} = createAssert()
-    const {schedule, end} = createScheduler(state, sessions, methods)
+    const {assert, tca} = createAssert()
+    const {schedule, end} = createScheduler(state, sessions, tca)
     const registrar = createRegistrar(state, schedule)
-    const reporter: declared.TAL.Reporter = {spec, tap, html}
+    const reporter: TAL.Reporter = {spec, tap, html}
 
     // A suite that does not load is one failed test named after the file,
     // as node --test files it; the run goes on to the next.
-    const load: declared.TAL.SessionAPI["load"] = async file => {
+    const load: TAL.SessionAPI["load"] = async file => {
         try {
             await import(file)
         } catch (error) {
@@ -28,7 +29,7 @@ export const createTAL: typeof declared.createTAL = () => {
             })
         }
     }
-    const session: declared.TAL.SessionAPI = {session: sessions.session, load, end}
+    const session: TAL.SessionAPI = {session: sessions.session, load, end}
 
     return {
         assert,

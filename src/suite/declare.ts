@@ -3,9 +3,9 @@
 // todo options that decide a test's fate before it runs. Shared by the
 // registrar, which declares, and the test, which reads its own options.
 
-import type * as declared from "test-assert-lite"
+import type {TAL} from "test-assert-lite"
 
-type TestOptions = declared.TAL.TestOptions
+type TestOptions = TAL.TestOptions
 
 export type Args<F> = [name?: string | TestOptions | F, options?: TestOptions | F, fn?: F]
 

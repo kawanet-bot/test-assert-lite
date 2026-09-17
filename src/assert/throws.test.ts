@@ -2,7 +2,7 @@ import {strict as assert} from "node:assert"
 import {describe, it} from "node:test"
 import {sharedTAL} from "../index.ts"
 
-const TAL = sharedTAL.assert.strict
+const TAL_strict = sharedTAL.assert.strict
 
 const TITLE = "assert/throws.test.ts"
 
@@ -21,16 +21,16 @@ const boom = (): never => {
 
 describe(TITLE, () => {
     it("throws passes on any exception and fails on none", () => {
-        assert.doesNotThrow(() => TAL.throws(boom))
-        assert.throws(() => TAL.throws(() => undefined), /expected to throw/)
+        assert.doesNotThrow(() => TAL_strict.throws(boom))
+        assert.throws(() => TAL_strict.throws(() => undefined), /expected to throw/)
     })
 
     // A thrown undefined or null is still a throw, as node:assert counts it.
     it("both tell a thrown undefined apart from nothing thrown", () => {
-        assert.doesNotThrow(() => TAL.throws(() => {
+        assert.doesNotThrow(() => TAL_strict.throws(() => {
             throw undefined
         }))
-        assert.throws(() => TAL.doesNotThrow(() => {
+        assert.throws(() => TAL_strict.doesNotThrow(() => {
             throw null
         }), /expected not to throw/)
     })
@@ -38,15 +38,15 @@ describe(TITLE, () => {
     // node:assert tests the RegExp against String(error), so the name is
     // part of what it sees.
     it("throws matches a RegExp against the error's string form", () => {
-        assert.doesNotThrow(() => TAL.throws(boom, /boom/))
-        assert.doesNotThrow(() => TAL.throws(boom, /^RangeError: boom$/))
-        assert.throws(() => TAL.throws(boom, /nope/), /did not match/)
+        assert.doesNotThrow(() => TAL_strict.throws(boom, /boom/))
+        assert.doesNotThrow(() => TAL_strict.throws(boom, /^RangeError: boom$/))
+        assert.throws(() => TAL_strict.throws(boom, /nope/), /did not match/)
     })
 
     it("throws matches an Error class by instanceof", () => {
-        assert.doesNotThrow(() => TAL.throws(boom, RangeError))
-        assert.doesNotThrow(() => TAL.throws(boom, Error))
-        assert.throws(() => TAL.throws(boom, TypeError), /did not match/)
+        assert.doesNotThrow(() => TAL_strict.throws(boom, RangeError))
+        assert.doesNotThrow(() => TAL_strict.throws(boom, Error))
+        assert.throws(() => TAL_strict.throws(boom, TypeError), /did not match/)
     })
 
     // node:assert asks instanceof of any class, not only an Error subclass.
@@ -62,95 +62,95 @@ describe(TITLE, () => {
         const plain = (): never => {
             throw new Plain()
         }
-        assert.doesNotThrow(() => TAL.throws(plain, Plain))
-        assert.throws(() => TAL.throws(plain, Custom), /did not match/)
-        assert.throws(() => TAL.throws(plain, Other), TypeError)
-        assert.throws(() => TAL.throws(boom, Plain), TypeError)
+        assert.doesNotThrow(() => TAL_strict.throws(plain, Plain))
+        assert.throws(() => TAL_strict.throws(plain, Custom), /did not match/)
+        assert.throws(() => TAL_strict.throws(plain, Other), TypeError)
+        assert.throws(() => TAL_strict.throws(boom, Plain), TypeError)
     })
 
     it("throws accepts a validation function that returns true", () => {
-        assert.doesNotThrow(() => TAL.throws(boom, (e: unknown) => e instanceof RangeError))
-        assert.throws(() => TAL.throws(boom, () => false), /did not match/)
+        assert.doesNotThrow(() => TAL_strict.throws(boom, (e: unknown) => e instanceof RangeError))
+        assert.throws(() => TAL_strict.throws(boom, () => false), /did not match/)
         // Anything but `true` is a mismatch, as in node:assert.
-        assert.throws(() => TAL.throws(boom, () => 1 as never), /did not match/)
+        assert.throws(() => TAL_strict.throws(boom, () => 1 as never), /did not match/)
         // A function with a prototype is still a validation function when
         // the exception is not an instance of it.
-        assert.doesNotThrow(() => TAL.throws(boom, function (e: unknown) {
+        assert.doesNotThrow(() => TAL_strict.throws(boom, function (e: unknown) {
             return e instanceof RangeError
         }))
     })
 
     it("throws compares the properties of an object, RegExp values by test", () => {
-        assert.doesNotThrow(() => TAL.throws(boom, {message: "boom"}))
-        assert.doesNotThrow(() => TAL.throws(boom, {message: /^bo/, name: "RangeError"}))
-        assert.throws(() => TAL.throws(boom, {message: "other"}), /did not match/)
-        assert.throws(() => TAL.throws(boom, {code: "ERR_X"}), /did not match/)
+        assert.doesNotThrow(() => TAL_strict.throws(boom, {message: "boom"}))
+        assert.doesNotThrow(() => TAL_strict.throws(boom, {message: /^bo/, name: "RangeError"}))
+        assert.throws(() => TAL_strict.throws(boom, {message: "other"}), /did not match/)
+        assert.throws(() => TAL_strict.throws(boom, {code: "ERR_X"}), /did not match/)
     })
 
     // An expected property has to be there, even when its value is undefined,
     // and a primitive carries no properties at all.
     it("throws requires each expected property to be present", () => {
-        assert.throws(() => TAL.throws(boom, {code: undefined}), /did not match/)
-        assert.throws(() => TAL.throws(() => {
+        assert.throws(() => TAL_strict.throws(boom, {code: undefined}), /did not match/)
+        assert.throws(() => TAL_strict.throws(() => {
             throw "str"
         }, {message: "str"}), /did not match/)
     })
 
     it("throws reads an Error instance as an object including name and message", () => {
-        assert.doesNotThrow(() => TAL.throws(boom, new RangeError("boom")))
-        assert.throws(() => TAL.throws(boom, new Error("boom")), /did not match/)
-        assert.throws(() => TAL.throws(boom, new RangeError("other")), /did not match/)
+        assert.doesNotThrow(() => TAL_strict.throws(boom, new RangeError("boom")))
+        assert.throws(() => TAL_strict.throws(boom, new Error("boom")), /did not match/)
+        assert.throws(() => TAL_strict.throws(boom, new RangeError("other")), /did not match/)
     })
 
     // node:assert reads a string in the second position as the message.
     it("throws takes a string second argument as the message", () => {
-        const missing = catchError(() => TAL.throws(() => undefined, "should have thrown"))
+        const missing = catchError(() => TAL_strict.throws(() => undefined, "should have thrown"))
         assert.equal(missing?.name, "AssertionError")
         assert.equal(missing?.message, "should have thrown")
-        assert.doesNotThrow(() => TAL.throws(boom, "should have thrown"))
+        assert.doesNotThrow(() => TAL_strict.throws(boom, "should have thrown"))
     })
 
     // A message equal to what was thrown was meant as a matcher, so the call
     // is refused the way node:assert refuses it as ambiguous.
     it("throws refuses a string message identical to the thrown message", () => {
-        assert.throws(() => TAL.throws(boom, "boom"), /invalid arguments/)
-        assert.throws(() => TAL.throws(() => {
+        assert.throws(() => TAL_strict.throws(boom, "boom"), /invalid arguments/)
+        assert.throws(() => TAL_strict.throws(() => {
             throw "boom"
         }, "boom"), /invalid arguments/)
         // Any thrown object is read by its message, as node:assert reads it.
-        assert.throws(() => TAL.throws(() => {
+        assert.throws(() => TAL_strict.throws(() => {
             throw {message: "boom"}
         }, "boom"), /invalid arguments/)
-        assert.doesNotThrow(() => TAL.throws(() => {
+        assert.doesNotThrow(() => TAL_strict.throws(() => {
             throw {message: "other"}
         }, "boom"))
         // The same text as the third argument is a plain message.
-        assert.doesNotThrow(() => TAL.throws(boom, undefined, "boom"))
+        assert.doesNotThrow(() => TAL_strict.throws(boom, undefined, "boom"))
     })
 
     it("throws refuses what node:assert refuses", () => {
         // Every misuse ends in the same TypeError, which is what tells it apart from a failed assertion.
-        assert.throws(() => TAL.throws("not a function" as never), /invalid arguments/)
-        assert.throws(() => TAL.throws(boom, 123 as never), /invalid arguments/)
-        assert.throws(() => TAL.throws(boom, "one" as never, "two"), /invalid arguments/)
+        assert.throws(() => TAL_strict.throws("not a function" as never), /invalid arguments/)
+        assert.throws(() => TAL_strict.throws(boom, 123 as never), /invalid arguments/)
+        assert.throws(() => TAL_strict.throws(boom, "one" as never, "two"), /invalid arguments/)
         // Nothing to compare would match anything.
-        assert.throws(() => TAL.throws(boom, {}), /invalid arguments/)
+        assert.throws(() => TAL_strict.throws(boom, {}), /invalid arguments/)
     })
 
     it("doesNotThrow passes on no exception and fails on one", () => {
-        assert.doesNotThrow(() => TAL.doesNotThrow(() => undefined))
+        assert.doesNotThrow(() => TAL_strict.doesNotThrow(() => undefined))
         // The original message is part of the failure, to be acted on directly.
-        assert.throws(() => TAL.doesNotThrow(boom), /RangeError: boom/)
-        assert.throws(() => TAL.doesNotThrow(boom, "note"), /note/)
+        assert.throws(() => TAL_strict.doesNotThrow(boom), /RangeError: boom/)
+        assert.throws(() => TAL_strict.doesNotThrow(boom, "note"), /note/)
     })
 
     // What the filter does not match is passed through, not swallowed.
     it("doesNotThrow only reports what its filter matches", () => {
-        assert.throws(() => TAL.doesNotThrow(boom, /boom/), /expected not to throw/)
-        assert.throws(() => TAL.doesNotThrow(boom, RangeError), /expected not to throw/)
+        assert.throws(() => TAL_strict.doesNotThrow(boom, /boom/), /expected not to throw/)
+        assert.throws(() => TAL_strict.doesNotThrow(boom, RangeError), /expected not to throw/)
 
-        assert.ok(catchError(() => TAL.doesNotThrow(boom, /nope/)) instanceof RangeError)
-        assert.ok(catchError(() => TAL.doesNotThrow(boom, TypeError)) instanceof RangeError)
+        assert.ok(catchError(() => TAL_strict.doesNotThrow(boom, /nope/)) instanceof RangeError)
+        assert.ok(catchError(() => TAL_strict.doesNotThrow(boom, TypeError)) instanceof RangeError)
 
         // A class that does not extend Error filters by instanceof as well.
         class Plain {}
@@ -158,15 +158,15 @@ describe(TITLE, () => {
         const plain = (): never => {
             throw new Plain()
         }
-        assert.throws(() => TAL.doesNotThrow(plain, Plain), /expected not to throw/)
-        assert.ok(catchError(() => TAL.doesNotThrow(plain, RangeError)) instanceof Plain)
+        assert.throws(() => TAL_strict.doesNotThrow(plain, Plain), /expected not to throw/)
+        assert.ok(catchError(() => TAL_strict.doesNotThrow(plain, RangeError)) instanceof Plain)
     })
 
     // node:assert takes only a RegExp or a function here; an Error instance
     // or a plain object is a misuse, not a message.
     it("doesNotThrow refuses what node:assert refuses", () => {
-        assert.throws(() => TAL.doesNotThrow("not a function" as never), /invalid arguments/)
-        assert.throws(() => TAL.doesNotThrow(boom, new Error("note") as never), /invalid arguments/)
-        assert.throws(() => TAL.doesNotThrow(boom, {message: "boom"} as never), /invalid arguments/)
+        assert.throws(() => TAL_strict.doesNotThrow("not a function" as never), /invalid arguments/)
+        assert.throws(() => TAL_strict.doesNotThrow(boom, new Error("note") as never), /invalid arguments/)
+        assert.throws(() => TAL_strict.doesNotThrow(boom, {message: "boom"} as never), /invalid arguments/)
     })
 })

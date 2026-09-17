@@ -2,7 +2,7 @@ import {strict as assert} from "node:assert"
 import {describe, it} from "node:test"
 import {sharedTAL} from "../index.ts"
 
-const TAL = sharedTAL.assert.strict
+const TAL_strict = sharedTAL.assert.strict
 
 const TITLE = "assert/assertion-error.test.ts"
 
@@ -13,7 +13,7 @@ const PREFIX = "expected 0, got "
 const rendered = (value: unknown): string => {
     let message = ""
     try {
-        TAL.equal(value, 0)
+        TAL_strict.equal(value, 0)
     } catch (e) {
         message = (e as Error).message
     }

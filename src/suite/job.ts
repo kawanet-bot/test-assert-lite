@@ -1,8 +1,8 @@
-import type * as declared from "test-assert-lite"
+import type {TAL} from "test-assert-lite"
 import type {TesterError} from "../utils/tester-error.ts"
 import {cancelledByParent} from "../utils/tester-error.ts"
 
-type Counters = declared.TAL.TestSummary["counts"]
+type Counters = TAL.TestSummary["counts"]
 
 // How a test or suite ended, as its parent sees it. A parent whose child
 // failed or was cancelled fails in turn, as it does in node:test.
@@ -19,10 +19,10 @@ export interface Verdict {
 export interface Run {
     counters: Counters
     success: boolean
-    emit: (type: string, data: declared.TAL.TestEvent["data"]) => Promise<void>
+    emit: (type: string, data: TAL.TestEvent["data"]) => Promise<void>
     // t.assert uses the harness's assert, so once it takes options, what a
     // body sees stays consistent within one run.
-    assert: declared.TAL.AssertMethods
+    assert: TAL.TestContextAssert
     // Set once the root has nothing left to run. A body that outlived its
     // verdict is not waited for; what it does after this is dropped.
     closed: boolean

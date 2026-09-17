@@ -1,8 +1,8 @@
-import type * as declared from "test-assert-lite"
+import type {TAL} from "test-assert-lite"
 import {errorText, isSubtestsFailed} from "../utils/tester-error.ts"
 
-type TestEvent = declared.TAL.TestEvent
-type ReporterFn = declared.TAL.ReporterFn
+type TestEvent = TAL.TestEvent
+type ReporterFn = TAL.ReporterFn
 
 const SYMBOL = {
     pass: "✔ ",
@@ -36,7 +36,7 @@ const indent = (nesting: number): string => "  ".repeat(nesting)
 const paint = (on: boolean, color: string, text: string): string => on ? `${color}${text}${COLOR.reset}` : text
 
 // The note after a result: the skip's or the todo's reason, or its bare mark.
-export const directive = (data: declared.TAL.TestPass | declared.TAL.TestFail): string => {
+export const directive = (data: TAL.TestPass | TAL.TestFail): string => {
     const mark = data.skip != null ? ["SKIP", data.skip] as const : data.todo != null ? ["TODO", data.todo] as const : undefined
     if (mark == null) return ""
     return ` # ${"string" === typeof mark[1] && mark[1] ? mark[1] : mark[0]}`
@@ -45,7 +45,7 @@ export const directive = (data: declared.TAL.TestPass | declared.TAL.TestFail): 
 // One result line: symbol, name, duration and note. A skip outranks the
 // verdict in the symbol, so a skipped failure still reads as skipped; a
 // failed todo is a warning rather than a failure, as node:test's spec has it.
-const resultLine = (data: declared.TAL.TestPass | declared.TAL.TestFail, isPass: boolean, colors: boolean, indented: boolean): string => {
+const resultLine = (data: TAL.TestPass | TAL.TestFail, isPass: boolean, colors: boolean, indented: boolean): string => {
     const skipped = data.skip != null
     const todo = !skipped && data.todo != null
     const symbol = skipped ? SYMBOL.skip : isPass ? SYMBOL.pass : todo ? SYMBOL.warn : SYMBOL.fail
@@ -55,7 +55,7 @@ const resultLine = (data: declared.TAL.TestPass | declared.TAL.TestFail, isPass:
     return paint(colors, color, `${indented ? indent(data.nesting) : ""}${symbol}${data.name}`) + ms + note
 }
 
-const formatFailures = (failed: declared.TAL.TestFail[], colors: boolean): string => {
+const formatFailures = (failed: TAL.TestFail[], colors: boolean): string => {
     if (!failed.length) return ""
     let out = "\n" + paint(colors, COLOR.red, `${SYMBOL.fail}failing tests:`) + "\n"
     for (const data of failed) {
@@ -65,14 +65,14 @@ const formatFailures = (failed: declared.TAL.TestFail[], colors: boolean): strin
     return out
 }
 
-export const spec = (options?: declared.TAL.SpecOptions): ReporterFn => {
+export const spec = (options?: TAL.SpecOptions): ReporterFn => {
     const colors = options?.colors ?? defaultColors()
 
     return async function* (source: AsyncIterable<TestEvent>): AsyncIterable<string> {
         // Stack up test:start and, once a result arrives, emit the parents
         // still pending as headings. This is how node:test's spec builds it.
-        const stack: declared.TAL.TestStart[] = []
-        const failed: declared.TAL.TestFail[] = []
+        const stack: TAL.TestStart[] = []
+        const failed: TAL.TestFail[] = []
 
         for await (const event of source) {
             if (event.type === "test:start") {
