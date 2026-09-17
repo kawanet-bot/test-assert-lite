@@ -2,7 +2,7 @@ import {strict as assert} from "node:assert"
 import {describe, it} from "node:test"
 import {sharedTAL} from "../index.ts"
 
-const TAL = sharedTAL.assert.strict
+const TAL_strict = sharedTAL.assert.strict
 
 const TITLE = "assert/deep-equal-typed-arrays.test.ts"
 
@@ -11,9 +11,9 @@ describe(TITLE, () => {
     // tests below), which happens to also expose its elements as own
     // enumerable indices for an integer type, same as a plain array's.
     it("compares typed arrays element by element", () => {
-        assert.doesNotThrow(() => TAL.deepEqual(new Uint8Array([1, 2]), new Uint8Array([1, 2])))
-        assert.throws(() => TAL.deepEqual(new Uint8Array([1, 2]), new Uint8Array([1, 3])), /deep-equal/)
-        assert.throws(() => TAL.deepEqual(new Uint8Array([1, 2]), new Int8Array([1, 2])), /deep-equal/)
+        assert.doesNotThrow(() => TAL_strict.deepEqual(new Uint8Array([1, 2]), new Uint8Array([1, 2])))
+        assert.throws(() => TAL_strict.deepEqual(new Uint8Array([1, 2]), new Uint8Array([1, 3])), /deep-equal/)
+        assert.throws(() => TAL_strict.deepEqual(new Uint8Array([1, 2]), new Int8Array([1, 2])), /deep-equal/)
     })
 
     // The byte comparison settles the indices; a property attached on top
@@ -21,11 +21,11 @@ describe(TITLE, () => {
     // plain array's would be, without re-walking the indices themselves.
     it("compares an extra own property attached to a typed array", () => {
         const withExtra = (tag: number): Uint8Array => Object.assign(new Uint8Array([1, 2]), {tag})
-        assert.doesNotThrow(() => TAL.deepEqual(withExtra(1), withExtra(1)))
-        assert.throws(() => TAL.deepEqual(withExtra(1), withExtra(2)), /deep-equal/)
-        assert.throws(() => TAL.deepEqual(withExtra(1), new Uint8Array([1, 2])), /deep-equal/)
+        assert.doesNotThrow(() => TAL_strict.deepEqual(withExtra(1), withExtra(1)))
+        assert.throws(() => TAL_strict.deepEqual(withExtra(1), withExtra(2)), /deep-equal/)
+        assert.throws(() => TAL_strict.deepEqual(withExtra(1), new Uint8Array([1, 2])), /deep-equal/)
         // Same bytes, but only one side carries the property.
-        assert.throws(() => TAL.deepEqual(new Uint8Array([1, 2]), withExtra(1)), /deep-equal/)
+        assert.throws(() => TAL_strict.deepEqual(new Uint8Array([1, 2]), withExtra(1)), /deep-equal/)
     })
 
     // A symbol-keyed property attached to a typed array is an own enumerable
@@ -33,9 +33,9 @@ describe(TITLE, () => {
     it("compares a symbol-keyed property attached to a typed array", () => {
         const sym = Symbol("k")
         const withSymbol = (v: unknown): Uint8Array => Object.assign(new Uint8Array([1, 2]), {[sym]: v})
-        assert.doesNotThrow(() => TAL.deepEqual(withSymbol(true), withSymbol(true)))
-        assert.throws(() => TAL.deepEqual(withSymbol(true), withSymbol(false)), /deep-equal/)
-        assert.throws(() => TAL.deepEqual(withSymbol(true), new Uint8Array([1, 2])), /deep-equal/)
+        assert.doesNotThrow(() => TAL_strict.deepEqual(withSymbol(true), withSymbol(true)))
+        assert.throws(() => TAL_strict.deepEqual(withSymbol(true), withSymbol(false)), /deep-equal/)
+        assert.throws(() => TAL_strict.deepEqual(withSymbol(true), new Uint8Array([1, 2])), /deep-equal/)
     })
 
     // Skipping the indices is tied to the typed-array comparison itself: a
@@ -45,8 +45,8 @@ describe(TITLE, () => {
     it("still counts the indices of a typed array disguised as an ArrayBuffer", () => {
         const disguised = Object.setPrototypeOf(new Uint8Array(3), ArrayBuffer.prototype) as unknown as ArrayBuffer
         Object.defineProperty(disguised, Symbol.toStringTag, {value: "ArrayBuffer"})
-        assert.throws(() => TAL.deepEqual(new ArrayBuffer(3), disguised), /deep-equal/)
-        assert.throws(() => TAL.deepEqual(disguised, new ArrayBuffer(3)), /deep-equal/)
+        assert.throws(() => TAL_strict.deepEqual(new ArrayBuffer(3), disguised), /deep-equal/)
+        assert.throws(() => TAL_strict.deepEqual(disguised, new ArrayBuffer(3)), /deep-equal/)
     })
 
     // The indices are skipped by count, read through the intrinsic length
@@ -60,8 +60,8 @@ describe(TITLE, () => {
         }
 
         const withExtra = (tag: number): Short => Object.assign(new Short([1, 2]), {tag})
-        assert.doesNotThrow(() => TAL.deepEqual(withExtra(1), withExtra(1)))
-        assert.throws(() => TAL.deepEqual(withExtra(1), withExtra(2)), /deep-equal/)
+        assert.doesNotThrow(() => TAL_strict.deepEqual(withExtra(1), withExtra(1)))
+        assert.throws(() => TAL_strict.deepEqual(withExtra(1), withExtra(2)), /deep-equal/)
     })
 
     // Object.is(NaN, NaN) is always true regardless of payload bits, but a
@@ -77,8 +77,8 @@ describe(TITLE, () => {
         const b = nanBits(0x7fc00000)
         const c = nanBits(0x7fc00001)
         assert.ok(Number.isNaN(a[0]) && Number.isNaN(c[0]))
-        assert.doesNotThrow(() => TAL.deepEqual(a, b))
-        assert.throws(() => TAL.deepEqual(a, c), /deep-equal/)
+        assert.doesNotThrow(() => TAL_strict.deepEqual(a, b))
+        assert.throws(() => TAL_strict.deepEqual(a, c), /deep-equal/)
     })
 
     // byteLength/byteOffset/buffer are read through the intrinsic
@@ -93,19 +93,19 @@ describe(TITLE, () => {
 
         const a = new Hidden([1, 2, 3])
         const b = new Hidden([9, 9, 9])
-        assert.throws(() => TAL.deepEqual(a, b), /deep-equal/)
+        assert.throws(() => TAL_strict.deepEqual(a, b), /deep-equal/)
     })
 
     // ArrayBuffer/DataView compare their bytes, a DataView windowed by its
     // own byteOffset/byteLength rather than its whole backing buffer's.
     it("compares ArrayBuffer/DataView by byte content", () => {
-        assert.doesNotThrow(() => TAL.deepEqual(new Uint8Array([1, 2]).buffer, new Uint8Array([1, 2]).buffer))
-        assert.throws(() => TAL.deepEqual(new Uint8Array([1, 2]).buffer, new Uint8Array([1, 3]).buffer), /deep-equal/)
+        assert.doesNotThrow(() => TAL_strict.deepEqual(new Uint8Array([1, 2]).buffer, new Uint8Array([1, 2]).buffer))
+        assert.throws(() => TAL_strict.deepEqual(new Uint8Array([1, 2]).buffer, new Uint8Array([1, 3]).buffer), /deep-equal/)
 
         const view = (bytes: number[], offset: number, length: number): DataView =>
             new DataView(new Uint8Array(bytes).buffer, offset, length)
-        assert.doesNotThrow(() => TAL.deepEqual(view([0, 1, 2, 3], 1, 2), view([9, 1, 2, 9], 1, 2)))
-        assert.throws(() => TAL.deepEqual(view([0, 1, 2, 3], 1, 2), view([0, 1, 9, 3], 1, 2)), /deep-equal/)
+        assert.doesNotThrow(() => TAL_strict.deepEqual(view([0, 1, 2, 3], 1, 2), view([9, 1, 2, 9], 1, 2)))
+        assert.throws(() => TAL_strict.deepEqual(view([0, 1, 2, 3], 1, 2), view([0, 1, 9, 3], 1, 2)), /deep-equal/)
     })
 
     // A DataView from another realm (an iframe, a vm context) fails
@@ -120,8 +120,8 @@ describe(TITLE, () => {
         const foreign = (bytes: number[]): DataView =>
             Object.setPrototypeOf(new DataView(new Uint8Array(bytes).buffer), foreignProto)
         assert.equal(foreign([1]) instanceof DataView, false)
-        assert.doesNotThrow(() => TAL.deepEqual(foreign([1, 2, 3]), foreign([1, 2, 3])))
-        assert.throws(() => TAL.deepEqual(foreign([1, 2, 3]), foreign([9, 9, 9])), /deep-equal/)
+        assert.doesNotThrow(() => TAL_strict.deepEqual(foreign([1, 2, 3]), foreign([1, 2, 3])))
+        assert.throws(() => TAL_strict.deepEqual(foreign([1, 2, 3]), foreign([9, 9, 9])), /deep-equal/)
     })
 
     // A typed array can also spoof Symbol.toStringTag to claim it is a
@@ -131,8 +131,8 @@ describe(TITLE, () => {
         const fake = (bytes: number[]): Uint8Array =>
             Object.defineProperty(new Uint8Array(bytes), Symbol.toStringTag, {get: () => "DataView", configurable: true})
         assert.equal(Object.prototype.toString.call(fake([])), "[object DataView]")
-        assert.doesNotThrow(() => TAL.deepEqual(fake([1, 2, 3]), fake([1, 2, 3])))
-        assert.throws(() => TAL.deepEqual(fake([1, 2, 3]), fake([9, 9, 9])), /deep-equal/)
+        assert.doesNotThrow(() => TAL_strict.deepEqual(fake([1, 2, 3]), fake([1, 2, 3])))
+        assert.throws(() => TAL_strict.deepEqual(fake([1, 2, 3]), fake([9, 9, 9])), /deep-equal/)
     })
 
     // Same prototype (so the earlier prototype check passes) plus a spoofed
@@ -143,7 +143,7 @@ describe(TITLE, () => {
         Object.defineProperty(fake, Symbol.toStringTag, {value: "Uint8Array", configurable: true})
         assert.equal(Object.getPrototypeOf(fake), Uint8Array.prototype)
         assert.equal(Object.prototype.toString.call(fake), "[object Uint8Array]")
-        assert.throws(() => TAL.deepEqual(new Uint8Array([1, 2, 3]), fake), /deep-equal/)
+        assert.throws(() => TAL_strict.deepEqual(new Uint8Array([1, 2, 3]), fake), /deep-equal/)
     })
 
     // The byte comparison splits off any unaligned lead and tail (0-3 bytes
@@ -158,34 +158,34 @@ describe(TITLE, () => {
         // Every offset phase (0-3), a length spanning lead + a full 4-byte
         // word + tail, with a difference planted in the lead and the tail.
         for (let offset = 0; offset < 4; offset++) {
-            assert.doesNotThrow(() => TAL.deepEqual(view(bytes, offset, 6), view(bytes, offset, 6)))
+            assert.doesNotThrow(() => TAL_strict.deepEqual(view(bytes, offset, 6), view(bytes, offset, 6)))
 
             const inLead = bytes.slice()
             inLead[offset] = 99
-            assert.throws(() => TAL.deepEqual(view(bytes, offset, 6), view(inLead, offset, 6)), /deep-equal/)
+            assert.throws(() => TAL_strict.deepEqual(view(bytes, offset, 6), view(inLead, offset, 6)), /deep-equal/)
 
             const inTail = bytes.slice()
             inTail[offset + 5] = 99
-            assert.throws(() => TAL.deepEqual(view(bytes, offset, 6), view(inTail, offset, 6)), /deep-equal/)
+            assert.throws(() => TAL_strict.deepEqual(view(bytes, offset, 6), view(inTail, offset, 6)), /deep-equal/)
         }
 
         // Every length from 0 up through one that reaches a full word, so
         // the lead-only (no bulk reached yet) path is covered too.
         for (let length = 0; length <= 5; length++) {
-            assert.doesNotThrow(() => TAL.deepEqual(view(bytes, 1, length), view(bytes, 1, length)))
+            assert.doesNotThrow(() => TAL_strict.deepEqual(view(bytes, 1, length), view(bytes, 1, length)))
         }
 
         // A difference inside the aligned middle word itself.
         const inBulk = bytes.slice()
         inBulk[4] = 99
-        assert.throws(() => TAL.deepEqual(view(bytes, 0, 8), view(inBulk, 0, 8)), /deep-equal/)
+        assert.throws(() => TAL_strict.deepEqual(view(bytes, 0, 8), view(inBulk, 0, 8)), /deep-equal/)
 
         // Different phase on each side: no 32-bit read lands on both, so
         // this falls back to comparing every byte instead of just some.
         const rebased = [0, ...bytes]
-        assert.doesNotThrow(() => TAL.deepEqual(view(bytes, 0, 6), view(rebased, 1, 6)))
+        assert.doesNotThrow(() => TAL_strict.deepEqual(view(bytes, 0, 6), view(rebased, 1, 6)))
         rebased[6] = 99
-        assert.throws(() => TAL.deepEqual(view(bytes, 0, 6), view(rebased, 1, 6)), /deep-equal/)
+        assert.throws(() => TAL_strict.deepEqual(view(bytes, 0, 6), view(rebased, 1, 6)), /deep-equal/)
     })
 
     // A detached typed array's byteLength getter reports 0 without throwing,
@@ -197,10 +197,10 @@ describe(TITLE, () => {
             structuredClone(view.buffer, {transfer: [view.buffer]})
             return view
         }
-        assert.doesNotThrow(() => TAL.deepEqual(detached([1, 2, 3]), new Uint8Array(0)))
-        assert.doesNotThrow(() => TAL.deepEqual(detached([1, 2, 3]), detached([4, 5])))
+        assert.doesNotThrow(() => TAL_strict.deepEqual(detached([1, 2, 3]), new Uint8Array(0)))
+        assert.doesNotThrow(() => TAL_strict.deepEqual(detached([1, 2, 3]), detached([4, 5])))
         // A different element kind is still a different kind, detached or not.
-        assert.throws(() => TAL.deepEqual(detached([1, 2, 3]), new Int8Array(0)), /deep-equal/)
+        assert.throws(() => TAL_strict.deepEqual(detached([1, 2, 3]), new Int8Array(0)), /deep-equal/)
     })
 
     // Unlike a typed array's, DataView's byteLength/byteOffset getters throw
@@ -213,8 +213,8 @@ describe(TITLE, () => {
             structuredClone(buf, {transfer: [buf]})
             return view
         }
-        assert.throws(() => TAL.deepEqual(detached(), detached()), TypeError)
-        assert.throws(() => TAL.deepEqual(detached(), new DataView(new ArrayBuffer(0))), TypeError)
+        assert.throws(() => TAL_strict.deepEqual(detached(), detached()), TypeError)
+        assert.throws(() => TAL_strict.deepEqual(detached(), new DataView(new ArrayBuffer(0))), TypeError)
     })
 
     // SharedArrayBuffer isn't an instanceof ArrayBuffer, so it needs its own
@@ -227,15 +227,15 @@ describe(TITLE, () => {
             new Uint8Array(buf).set(values)
             return buf
         }
-        assert.doesNotThrow(() => TAL.deepEqual(
+        assert.doesNotThrow(() => TAL_strict.deepEqual(
             bytes(new SharedArrayBuffer(2), 1, 2),
             bytes(new SharedArrayBuffer(2), 1, 2),
         ))
-        assert.throws(() => TAL.deepEqual(
+        assert.throws(() => TAL_strict.deepEqual(
             bytes(new SharedArrayBuffer(2), 1, 2),
             bytes(new SharedArrayBuffer(2), 1, 3),
         ), /deep-equal/)
         // An ArrayBuffer and a SharedArrayBuffer are still a different kind.
-        assert.throws(() => TAL.deepEqual(bytes(new SharedArrayBuffer(2), 1, 2), new Uint8Array([1, 2]).buffer), /deep-equal/)
+        assert.throws(() => TAL_strict.deepEqual(bytes(new SharedArrayBuffer(2), 1, 2), new Uint8Array([1, 2]).buffer), /deep-equal/)
     })
 })
