@@ -66,7 +66,8 @@ test("test surface", () => {
 test("assert surface", () => {
     assert.equal(typeof m.sharedTAL.assert.ok, "function")
     assert.equal(typeof m.sharedTAL.assert.deepEqual, "function")
-    assert.equal(m.sharedTAL.assert.strict, m.sharedTAL.assert.strict)
+    assert.notEqual(m.sharedTAL.assert, m.sharedTAL.assert.strict)
+    assert.equal(m.sharedTAL.assert.strict.strict, m.sharedTAL.assert.strict)
     assert.equal(typeof m.sharedTAL.assert.strict.ok, "function")
     assert.equal(typeof m.sharedTAL.assert.strict.equal, "function")
     assert.equal(typeof m.sharedTAL.assert.strict.notEqual, "function")
