@@ -13,7 +13,7 @@ SHELL := bash
 # a separate build target below, so none counts as library input.
 SRC := $(shell find ../src -name '*.ts' -not -name '*.test.ts' -not -path '*/test-utils/*' -not -path '*/extras/*')
 TEST_SRC := $(shell find ../src -name '*.test.ts') $(wildcard ../src/test-utils/*.ts)
-EXTRAS_SRC := $(shell find ../src/extras -name '*.ts' -or -name '*.mjs')
+EXTRAS_SRC := $(shell find ../src/extras -name '*.ts' -or -name '*.mjs' -or -name '*.js')
 TYPES := $(wildcard ../types/*.d.ts)
 BUILDER_SRC := $(wildcard ./*.ts)
 
