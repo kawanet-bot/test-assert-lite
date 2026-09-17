@@ -1,8 +1,6 @@
 import type {TAL} from "test-assert-lite"
 import {expectError, expectNoError, invalid, type Outcome, readExpectation, readFilter} from "./throws.ts"
 
-type Predicate = TAL.AssertPredicate
-type Filter = TAL.ErrorFilter
 // The declared shape is node:assert's; at runtime a promise is what
 // node:assert takes as one, checked below.
 type Block = Promise<unknown> | (() => Promise<unknown>)
@@ -42,14 +40,14 @@ const settle = async (block: Block): Promise<Outcome> => {
 // `rejects(block, [expected], [message])`: throws for a promise, judged by
 // the same rules once it has settled. Being async, a misuse of the
 // arguments is a rejection as well, as it is in node:assert.
-export const rejects = async (block: Block, ...rest: [expected?: Predicate | string, message?: string | Error]): Promise<void> => {
+export const rejects = async (block: Block, ...rest: [expected?: TAL.AssertPredicate | string, message?: string | Error]): Promise<void> => {
     const caught = await settle(block)
     expectError(caught, readExpectation(rest), "rejects")
 }
 
 // `doesNotReject(block, [filter], [message])`: doesNotThrow for a promise.
 // A rejection the filter does not match rejects this one as it is.
-export const doesNotReject = async (block: Block, expected?: Filter | string, message?: string | Error): Promise<void> => {
+export const doesNotReject = async (block: Block, expected?: TAL.ErrorFilter | string, message?: string | Error): Promise<void> => {
     const caught = await settle(block)
     expectNoError(caught, readFilter(expected, message), "doesNotReject")
 }
