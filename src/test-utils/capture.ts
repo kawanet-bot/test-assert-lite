@@ -5,7 +5,7 @@ import type * as declared from "test-assert-lite"
 // Where silence is all that is wanted, open the session with an output.
 export const capture = (harness: declared.TAL.TestHarness, options: Omit<declared.TAL.SessionOptions, "reporter"> = {}): declared.TAL.TestEvent[] => {
     const events: declared.TAL.TestEvent[] = []
-    harness.session({
+    harness.session.session({
         ...options,
         reporter: async function* (source) {
             for await (const event of source) events.push(event)

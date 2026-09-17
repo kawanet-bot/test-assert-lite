@@ -24,6 +24,7 @@ const DEFAULTS: [specifier: string, target: string][] = [
     ["test-assert-lite/reporter/html", "test-assert-lite/reporter/html"],
     ["test-assert-lite/reporter/spec", "test-assert-lite/reporter/spec"],
     ["test-assert-lite/reporter/tap", "test-assert-lite/reporter/tap"],
+    ["test-assert-lite/session", "test-assert-lite/session"],
     ["node:test", "test-assert-lite/test"],
     ["node:assert", "test-assert-lite/assert"],
     ["node:assert/strict", "test-assert-lite/assert/strict"],

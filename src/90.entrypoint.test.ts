@@ -88,6 +88,9 @@ test("createTAL returns the same shape", () => {
     assert.equal(typeof h.after, "function")
     assert.equal(typeof h.assert, "function")
     assert.equal(typeof h.reporter, "object")
+    assert.equal(typeof h.session.session, "function")
+    assert.equal(typeof h.session.load, "function")
+    assert.equal(typeof h.session.end, "function")
     assert.equal(typeof h.strict, "function")
 })
 

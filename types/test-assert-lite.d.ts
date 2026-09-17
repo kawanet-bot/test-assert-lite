@@ -273,6 +273,17 @@ export declare namespace TAL {
         stderr(item: string | Error): void
     }
 
+    // The session's own entry, `test-assert-lite/session`: opening it,
+    // loading the suites into it, and ending it.
+    interface SessionAPI {
+        /** Opens a new session for the following tests. */
+        session(options?: SessionOptions): Session
+        /** Imports a suite, by URL or absolute path, so its tests are declared. */
+        load(file: string): Promise<void>
+        /** Runs every registered test, and closes the session. */
+        end(): Promise<SessionResult>
+    }
+
     // --- harness ---
 
     // One isolated set of everything the package offers: the tests, the
@@ -282,20 +293,17 @@ export declare namespace TAL {
         assert: Assert
         before(fn: HookFn): void
         describe: SuiteAPI
-        /** Runs every registered test, and closes the session. */
-        end(): Promise<SessionResult>
         it: TestAPI
         reporter: Reporter
-        /** Opens a new session for the following tests. */
-        session(options?: SessionOptions): Session
+        session: SessionAPI
         strict: Assert
         suite: SuiteAPI
         test: TestAPI
     }
 }
 
-/** The harness the package's own entries share, `test-assert-lite/test` and the rest. */
+/** The shared harness behind the subpaths: `test-assert-lite/test`, `/assert`, `/session` and the reporters. */
 export declare const sharedTAL: TAL.TestHarness
 
-/** A harness of its own, apart from the shared one. */
+/** Creates a local harness apart from `sharedTAL`. */
 export declare function createTAL(): TAL.TestHarness

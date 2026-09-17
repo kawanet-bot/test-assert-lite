@@ -16,7 +16,7 @@ describe(TITLE, () => {
     // when the walk reaches it.
     it("runs children in declaration order", async () => {
         const local = createTAL()
-        local.session({output: () => undefined})
+        local.session.session({output: () => undefined})
         const order: string[] = []
         local.it("top1", () => {
             order.push("top1")
@@ -30,7 +30,7 @@ describe(TITLE, () => {
         local.it("top2", () => {
             order.push("top2")
         })
-        await local.end()
+        await local.session.end()
 
         assert.deepEqual(order, ["top1", "suite body", "child", "top2"])
     })
@@ -43,7 +43,7 @@ describe(TITLE, () => {
                 local.it("deep", () => undefined)
             })
         })
-        await local.end()
+        await local.session.end()
 
         const pass = events.find(e => e.type === "test:pass")
         assert.equal((pass?.data as {nesting: number}).nesting, 2)
@@ -52,7 +52,7 @@ describe(TITLE, () => {
 
     it("async describe bodies are awaited before their children run", async () => {
         const local = createTAL()
-        local.session({output: () => undefined})
+        local.session.session({output: () => undefined})
         const order: string[] = []
         local.describe("async suite", async () => {
             await new Promise(r => setTimeout(r, 20))
@@ -61,7 +61,7 @@ describe(TITLE, () => {
                 order.push("late child body")
             })
         })
-        await local.end()
+        await local.session.end()
 
         assert.deepEqual(order, ["registered late", "late child body"])
     })
@@ -72,7 +72,7 @@ describe(TITLE, () => {
         local.describe("broken", () => {
             throw new Error("bad suite")
         })
-        const summary = await local.end()
+        const summary = await local.session.end()
 
         assert.equal(summary.success, false)
         const fail = events.find(e => e.type === "test:fail")
@@ -87,7 +87,7 @@ describe(TITLE, () => {
             ran = true
             local.it("never", () => undefined)
         })
-        await local.end()
+        await local.session.end()
         const summary = summaryOf(events)
 
         assert.equal(ran, false)
@@ -99,7 +99,7 @@ describe(TITLE, () => {
     // in t.test(), so its message says so.
     it("the declaration API is rejected from inside a test body", async () => {
         const local = createTAL()
-        local.session({output: () => undefined})
+        local.session.session({output: () => undefined})
         const caught: string[] = []
         const attempt = (fn: () => void) => {
             try {
@@ -116,7 +116,7 @@ describe(TITLE, () => {
             attempt(() => local.before(() => undefined))
             attempt(() => local.after(() => undefined))
         })
-        await local.end()
+        await local.session.end()
 
         assert.equal(caught.join("\n"), [
             "describe() cannot be called from inside a test body",
@@ -130,7 +130,7 @@ describe(TITLE, () => {
     // covering hook scope, describe and it interleaving, and grandchildren.
     it("matches the execution order of node:test", async () => {
         const local = createTAL()
-        local.session({output: () => undefined})
+        local.session.session({output: () => undefined})
         const order: string[] = []
         const mark = (s: string) => () => {
             order.push(s)
@@ -150,7 +150,7 @@ describe(TITLE, () => {
             local.it("s1b", mark("s1b"))
         })
         local.it("t2", mark("t2"))
-        await local.end()
+        await local.session.end()
 
         assert.equal(order.join(" "), [
             "root:before", "t1",
@@ -167,7 +167,7 @@ describe(TITLE, () => {
         local.describe("S", () => {
             local.it("a", () => undefined)
         })
-        await local.end()
+        await local.session.end()
 
         const results = ofType(events, "test:pass").map(e => `${e.data.name}:${e.data.details.type}:${e.data.nesting}`)
         assert.deepEqual(results, ["a:test:1", "S:suite:0"])
@@ -185,7 +185,7 @@ describe(TITLE, () => {
                 throw new Error("boom")
             })
         })
-        await local.end()
+        await local.session.end()
         const summary = summaryOf(events)
 
         const results = events.filter(e => e.type === "test:pass" || e.type === "test:fail")
@@ -202,7 +202,7 @@ describe(TITLE, () => {
         local.describe.skip("S", () => {
             local.it("never", () => undefined)
         })
-        await local.end()
+        await local.session.end()
         const summary = summaryOf(events)
 
         const pass = ofType(events, "test:pass")[0]?.data
@@ -224,7 +224,7 @@ describe(TITLE, () => {
             })
             local.it("ok", () => undefined)
         })
-        await local.end()
+        await local.session.end()
         const summary = summaryOf(events)
 
         const fails = ofType(events, "test:fail")
@@ -247,7 +247,7 @@ describe(TITLE, () => {
                 throw new Error("boom")
             })
         })
-        await local.end()
+        await local.session.end()
         const summary = summaryOf(events)
 
         const suite = ofType(events, "test:fail").find(e => e.data.name === "S")?.data
@@ -264,7 +264,7 @@ describe(TITLE, () => {
             local.it("a", () => undefined)
             throw body
         })
-        await local.end()
+        await local.session.end()
         const summary = summaryOf(events)
 
         const fails = ofType(events, "test:fail")
@@ -285,7 +285,7 @@ describe(TITLE, () => {
                 local.it("x", () => undefined)
             })
         })
-        await local.end()
+        await local.session.end()
 
         const s2 = ofType(events, "test:fail").find(e => e.data.name === "S2")?.data
         assert.equal(s2?.nesting, 1)
@@ -301,7 +301,7 @@ describe(TITLE, () => {
             local.it("b", () => undefined)
         })
         local.it("x", () => undefined)
-        await local.end()
+        await local.session.end()
 
         const numbered = ofType(events, "test:pass").map(e => `${e.data.name}#${e.data.testNumber}`)
         assert.deepEqual(numbered, ["a#1", "b#2", "S#1", "x#2"])

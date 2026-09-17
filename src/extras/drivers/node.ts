@@ -6,7 +6,7 @@ import {register} from "node:module"
 import {resolve} from "node:path"
 import {pathToFileURL} from "node:url"
 import type {TAL} from "test-assert-lite"
-import {sharedTAL} from "test-assert-lite"
+import {end, load, session} from "test-assert-lite/session"
 import type {Imports} from "../imports.ts"
 import type {DriverOptions} from "./driver-config.ts"
 
@@ -33,7 +33,6 @@ export const resolve = (specifier, context, next) => {
  * copy, still lands on the instance end() reads.
  */
 export const runInNode = async (imports: Imports, options: DriverOptions): Promise<TAL.SessionResult> => {
-    const {end, it, session} = sharedTAL
     const {reporter, summary} = options
 
     // A Map, so a specifier named like an Object property finds no alias.
@@ -46,18 +45,8 @@ export const runInNode = async (imports: Imports, options: DriverOptions): Promi
 
     const files = (options?.files ?? []).map(file => pathToFileURL(resolve(file)).href)
 
-    const run = async (file: string) => {
-        try {
-            await import(file)
-        } catch (error) {
-            it(file.replace(/^[^?]*\//, ""), () => {
-                throw error
-            })
-        }
-    }
-
     for (const file of files) {
-        await run(file)
+        await load(file)
     }
 
     return end()

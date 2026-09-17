@@ -24,6 +24,7 @@ const rollupConfig: RollupOptions = {
         "test-assert-lite/reporter/html",
         "test-assert-lite/reporter/spec",
         "test-assert-lite/reporter/tap",
+        "test-assert-lite/session",
         "test-assert-lite/test",
         "node:assert",
         "node:assert/strict",

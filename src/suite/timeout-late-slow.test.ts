@@ -38,7 +38,7 @@ describeSlow(TITLE, () => {
             })
         })
         keepOpen(local)
-        await local.end()
+        await local.session.end()
         const summary = summaryOf(events)
 
         assert.equal(ran, 2)
@@ -61,7 +61,7 @@ describeSlow(TITLE, () => {
             })
         })
         keepOpen(local)
-        await local.end()
+        await local.session.end()
         const summary = summaryOf(events)
 
         const late = ofType(events, "test:fail").find(e => e.data.name === "late")?.data
@@ -84,7 +84,7 @@ describeSlow(TITLE, () => {
             })
         })
         keepOpen(local)
-        await local.end()
+        await local.session.end()
         const summary = summaryOf(events)
 
         assert.equal(settled, true)
@@ -103,7 +103,7 @@ describeSlow(TITLE, () => {
             })
         })
         keepOpen(local)
-        await local.end()
+        await local.session.end()
 
         assert.deepEqual(names(events, "test:start"), ["slow", "keep", "late", "grandchild"])
     })
@@ -128,7 +128,7 @@ describeSlow(TITLE, () => {
             await t.test("late2", () => undefined)
         })
         keepOpen(local)
-        await local.end()
+        await local.session.end()
 
         assert.deepEqual(order, ["released"])
         const grandchild = ofType(events, "test:fail").find(e => e.data.name === "grandchild")?.data
@@ -147,7 +147,7 @@ describeSlow(TITLE, () => {
             })
         })
         keepOpen(local)
-        await local.end()
+        await local.session.end()
         const summary = summaryOf(events)
 
         const late = ofType(events, "test:fail").find(e => e.data.name === "late")?.data
@@ -168,7 +168,7 @@ describeSlow(TITLE, () => {
             })
         })
         keepOpen(local)
-        await local.end()
+        await local.session.end()
         const summary = summaryOf(events)
 
         const late = ofType(events, "test:fail").find(e => e.data.name === "late")?.data
@@ -189,7 +189,7 @@ describeSlow(TITLE, () => {
             })
         })
         keepOpen(local)
-        await local.end()
+        await local.session.end()
         const summary = summaryOf(events)
 
         assert.equal(ran, false)
@@ -211,7 +211,7 @@ describeSlow(TITLE, () => {
             await new Promise(r => setTimeout(r, slow(80)))
         })
         local.it("third", () => undefined)
-        await local.end()
+        await local.session.end()
 
         const results = events
             .filter(e => e.type === "test:pass" || e.type === "test:fail")
