@@ -2,7 +2,7 @@ import {strict as assert} from "node:assert"
 import {mkdtemp, rm, writeFile} from "node:fs/promises"
 import {createServer} from "node:net"
 import {tmpdir} from "node:os"
-import {join, relative} from "node:path"
+import {join} from "node:path"
 import {after, before, describe, it} from "node:test"
 import {CLI} from "./cli.ts"
 
@@ -31,9 +31,7 @@ describe(TITLE, () => {
         await rm(dir, {recursive: true, force: true})
     })
 
-    // A suite that throws while loading is one failed test, named as
-    // node --test names it; the tests it declared and the other suites
-    // run. Read off the TAP the run writes, as the command line shows it.
+    // A suite that throws while loading is one failed test.
     it("files a suite that threw while loading as one failed test, and runs the rest", async () => {
         const broken = join(dir, "broken.mjs")
         const fine = join(dir, "fine.mjs")
@@ -49,7 +47,7 @@ describe(TITLE, () => {
         }
         const lines = chunks.join("\n").split("\n")
         const results = lines.filter(line => /^(not )?ok /.test(line))
-        assert.deepEqual(results, ["ok 1 - declared before the throw", `not ok 2 - ${relative(process.cwd(), broken)}`, "ok 3 - in the other suite"])
+        assert.deepEqual(results, ["ok 1 - declared before the throw", `not ok 2 - broken.mjs`, "ok 3 - in the other suite"])
         assert.ok(lines.includes("# Error: at the top level"), lines.join("\n"))
     })
 

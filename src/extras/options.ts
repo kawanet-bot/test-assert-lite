@@ -10,7 +10,7 @@ import {ImportAliasItem, Imports, cwdURL, readImportMap} from "./imports.ts"
 import {createFiles} from "./server/files.ts"
 import {UsageError} from "./usage-error.ts"
 
-export const USAGE = `Usage: test-assert [options] <file...>
+export const USAGE = `Usage: test-assert [options] [file...]
   -v, --version               print this package's version
   --alias <specifier>=<file>  what a specifier resolves to: a file, a URL for the page, or this package's own name (repeatable)
   --import-map <file>         JSON import map: a relative address is a file beside it, / and http(s):// go to the page as they are
@@ -30,10 +30,8 @@ export const USAGE = `Usage: test-assert [options] <file...>
 const BROWSERS = ["chromium", "firefox", "webkit"] as const
 export type Browser = typeof BROWSERS[number]
 
-// What the three browser modes share: the suites, what the page is made
-// of, and where the server sits. --serve takes no suite.
 export interface BrowserOptions {
-    /** The suites, absolute, all served from one directory; none under --serve. */
+    /** The suites, absolute, all served from one directory. */
     suites: string[]
     /** The reporter named, as given; the run says whether it knows it. */
     reporter?: string
@@ -161,10 +159,6 @@ export const readOptions = (args: string[]): Options => {
     if (!webdriver && (values["webdriver-session"] != null || values.endpoint != null)) {
         throw new UsageError("--webdriver-session and --endpoint apply to --webdriver only")
     }
-    // --serve is a web server, not a run: a page imports what it runs.
-    if (serve && files.length) {
-        throw new UsageError(`--serve takes no test file: ${files.join(", ")}`)
-    }
     if (!serve && !files.length) {
         throw new UsageError("no test files specified")
     }
@@ -195,7 +189,7 @@ export const readOptions = (args: string[]): Options => {
     // per directory. One under another counts as served from the latter.
     const served = createFiles([...suites, ...scripts, ...imports.paths()])
     if (new Set(suites.map(file => served.dirOf(file))).size > 1) {
-        throw new UsageError("--playwright and --webdriver take the test files from one directory")
+        throw new UsageError("--playwright, --webdriver and --serve take the test files from one directory")
     }
 
     const shared: BrowserOptions = {

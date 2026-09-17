@@ -82,11 +82,10 @@ describe(TITLE, () => {
         }
         const map = at('<script type="importmap">')
         const config = at('<script type="application/vnd.config+json">')
-        const own = at('<script type="module">')
         assert.match(tests, /^\/@tal\/files\/[0-9a-f]{9}\/$/)
         const script = at(`<script src="${tests}setup.js"></script>`)
         const second = at(`<script src="${tests}set%2Bup%232.js"></script>`)
-        assert.ok(map < config && config < own && own < script && script < second)
+        assert.ok(map < config && config < script && script < second)
         assert.equal(head.includes('<script type="module" src='), false)
         const {options} = JSON.parse(head.slice(head.indexOf("{", config), head.indexOf("</script>", config)))
         assert.deepEqual(options, {files: [`${tests}my%20suite.mjs`, `${tests}second.mjs`]})
@@ -161,7 +160,7 @@ describe(TITLE, () => {
         assert.equal(await app.done, true)
     })
 
-    it("asks about changes from the page people open alone, and only with watch on", async () => {
+    it("asks about changes from both pages, and only with watch on", async () => {
         assert.equal((await get(url("/"))).body.includes("/@tal/watch?after="), false)
         assert.equal((await get(url("/@tal/watch?after=0"))).status, 404)
         const watching = createApp({suites: [join(dir, "tests", "my suite.mjs")], watch: true, stdout: () => undefined})
@@ -170,7 +169,7 @@ describe(TITLE, () => {
             const index = (await get(running.origin + "/")).body
             assert.ok(index.includes("/@tal/watch?after=${after}"))
             assert.ok(index.includes("})(0)\n</script>\n</head>"))
-            assert.equal((await get(running.origin + watching.page)).body.includes("/@tal/watch"), false)
+            assert.equal((await get(running.origin + watching.page)).body.includes("/@tal/watch"), true)
             const pending = get(running.origin + "/@tal/watch?after=0")
             await writeFile(join(dir, "tests", "my suite.mjs"), "export const suite = 2")
             assert.equal((await pending).status, 200)

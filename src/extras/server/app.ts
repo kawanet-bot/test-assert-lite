@@ -55,6 +55,8 @@ const root = fileURLToPath(packageRoot())
 // it cannot close the tag, and reads back as the same string.
 const safeJSON = (value: unknown): string => JSON.stringify(value, null, 4).replace(/</g, "\\u003c")
 
+const M = (fn: MiddlewareHandler | undefined | false) => [fn].filter(Boolean) as MiddlewareHandler[]
+
 /**
  * Builds the application for the suites: its middleware, and the promise
  * of the verdict the page at `page` reports back through it.
@@ -101,13 +103,14 @@ export const createApp = (options: AppOptions): App => {
         return ""
     })
 
-    // Two pages get the head: the root's HTML, with the reload ask under
-    // watch, and the run's page, without it. Each is a scoped chain so the
-    // head touches nothing served after it, /@tal/ least of all: the build
-    // and the bridges have to stay as the package ships them.
+    // Add the generated head only to the root and run pages.
     const atRoot = mounted == null
         ? serveStatic({path: "/", root: resolve(root, "htdocs")})
-        : /^https?:\/\//i.test(mounted) ? proxy({path: "/", upstream: mounted}) : serveStatic({path: "/", root: mounted})
+        : /^https?:\/\//i.test(mounted)
+            ? proxy({path: "/", upstream: mounted})
+            : serveStatic({path: "/", root: mounted})
+
+    const atRun = serveStatic({path: `${channel.path}run.html`, root: resolve(root, "browser", "run.html")})
 
     // The CLI's own pages are named after what they run: the package each
     // suite belongs to, or the suite's own name where there is none.
@@ -115,13 +118,13 @@ export const createApp = (options: AppOptions): App => {
     const title = withTitle([...new Set(names)].join(" ") || "test-assert-lite")
     const handler = compose([
         channel.handler,
-        ...(watcher == null ? [] : [watcher.handler]),
-        scoped(compose([head, title, serveStatic({path: `${channel.path}run.html`, root: resolve(root, "browser", "run.html")})])),
+        ...M(watcher?.handler),
+        scoped(compose([...M(watcher?.inject), head, title, atRun])),
         ...[...served.own, ...served.dirs].map(dir => serveStatic(dir)),
         // /@tal/ is the CLI's: what none of the mounts above answered ends
         // here, whatever a mount or an upstream at the root would say to it.
         async (c, next) => (c.req.path.startsWith("/@tal/") ? c.notFound() : next()),
-        scoped(compose([...(watcher == null ? [] : [watcher.inject]), head, ...(mounted == null ? [title] : []), atRoot])),
+        scoped(compose([...M(watcher?.inject), head, ...M(!mounted && title), atRoot])),
     ])
 
     return {

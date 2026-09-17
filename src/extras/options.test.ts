@@ -187,11 +187,10 @@ describe(TITLE, () => {
             assert.throws(() => readOptions(["--endpoint", "http://x", "a.test.ts"]), /apply to --webdriver only$/)
         })
 
-        it("refuses a runner with no suite, and --serve with one", () => {
+        it("refuses a runner with no suite on --playwright and --webdriver", () => {
             assert.throws(() => readOptions(["--playwright", "chromium", "--mount", "site"]), /no test files specified$/)
             assert.throws(() => readOptions(["--webdriver"]), /no test files specified$/)
-            assert.throws(() => readOptions(["--serve", "a.mjs", "b.mjs"]), /--serve takes no test file: a\.mjs, b\.mjs$/)
-            assert.throws(() => readOptions(["--serve", "--mount", "site", "a.mjs"]), /--serve takes no test file/)
+            assert.doesNotThrow(() => readOptions(["--serve"]))
         })
 
         it("reads several suites in a browser mode from one directory, in order, and refuses them from two", () => {
@@ -199,9 +198,9 @@ describe(TITLE, () => {
             assert.equal(options.mode, "playwright")
             if (options.mode !== "playwright") return
             assert.deepEqual(options.suites, [resolve("test/b.mjs"), resolve("test/a.mjs"), resolve("test/b.mjs"), resolve("test/sub/c.mjs")])
-            assert.throws(() => readOptions(["--playwright", "chromium", "test/a.mjs", "other/b.mjs"]), /--playwright and --webdriver take the test files from one directory$/)
-            assert.throws(() => readOptions(["--playwright", "chromium", "x/a.mjs", "test/b.mjs"]), /from one directory$/)
-            assert.throws(() => readOptions(["--playwright", "chromium", "test/a/x.mjs", "test/b/y.mjs"]), /from one directory$/)
+            assert.throws(() => readOptions(["--playwright", "chromium", "test/a.mjs", "other/b.mjs"]), /from one directory$/)
+            assert.throws(() => readOptions(["--webdriver", "x/a.mjs", "test/b.mjs"]), /from one directory$/)
+            assert.throws(() => readOptions(["--serve", "test/a/x.mjs", "test/b/y.mjs"]), /from one directory$/)
         })
 
         it("counts a suite's directory under a script's or an alias's as that one", () => {

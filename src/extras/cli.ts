@@ -70,7 +70,8 @@ const runCLI = async (options: Options): Promise<number> => {
     if (options.mode === "serve") {
         // Only the URL goes to stdout, so it can be piped. The server keeps
         // the process alive until an interrupt, which resolves this.
-        process.stdout.write(`${server.origin}/\n`)
+        const url = options.suites.length ? page : server.origin + "/"
+        process.stdout.write(`${url}\n`)
         process.stderr.write("Serving; press Ctrl-C to stop.\n")
         await new Promise<void>(stop => process.once("SIGINT", () => stop()))
         close()
