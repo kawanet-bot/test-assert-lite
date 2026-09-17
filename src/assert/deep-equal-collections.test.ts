@@ -2,7 +2,7 @@ import {strict as assert} from "node:assert"
 import {describe, it} from "node:test"
 import {sharedTAL} from "../index.ts"
 
-const {strict: TAL} = sharedTAL
+const TAL = sharedTAL.strict
 
 const TITLE = "assert/deep-equal-collections.test.ts"
 

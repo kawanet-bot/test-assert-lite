@@ -308,7 +308,8 @@ The minified build is an ES module: an import map leads the package's name to it
 <script type="module">
     import {sharedTAL} from "test-assert-lite"
 
-    const {describe, it, strict: assert, reporter, end, session} = sharedTAL
+    const {describe, it, reporter, end, session} = sharedTAL
+    const assert = sharedTAL.strict
 
     // The report goes to console.log by default; render it as HTML in the page instead.
     // session() comes before the first test is declared.
