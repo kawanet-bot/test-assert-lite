@@ -16,7 +16,7 @@ describe(TITLE, () => {
         local.it("noisy", (t) => {
             t.diagnostic("hello")
         })
-        await local.end()
+        await local.session.end()
 
         const found = events.find(e => e.type === "test:diagnostic" && e.data.message === "hello")
         assert.ok(found)
@@ -25,7 +25,7 @@ describe(TITLE, () => {
 
     it("t.assert is available on the context", async () => {
         const local = createTAL()
-        local.session({output: () => undefined})
+        local.session.session({output: () => undefined})
         let caught: unknown
         local.it("asserting", (t) => {
             t.assert.equal(1, 1)
@@ -35,7 +35,7 @@ describe(TITLE, () => {
                 caught = e
             }
         })
-        await local.end()
+        await local.session.end()
 
         assert.ok(caught instanceof Error)
         assert.equal((caught as Error & {code?: string}).code, "ERR_ASSERTION")
@@ -46,7 +46,7 @@ describe(TITLE, () => {
     // *StrictEqual names.
     it("t.assert compares loosely under the plain names, strictly under the strict ones", async () => {
         const local = createTAL()
-        local.session({output: () => undefined})
+        local.session.session({output: () => undefined})
         const outcome: Record<string, boolean> = {}
         const attempt = (name: string, fn: () => void): void => {
             try {
@@ -62,19 +62,19 @@ describe(TITLE, () => {
             attempt("strictEqual", () => t.assert.strictEqual(1, "1"))
             attempt("deepStrictEqual", () => t.assert.deepStrictEqual({a: 1}, {a: "1"}))
         })
-        await local.end()
+        await local.session.end()
 
         assert.deepEqual(outcome, {equal: true, deepEqual: true, strictEqual: false, deepStrictEqual: false})
     })
 
     it("the context carries the test name", async () => {
         const local = createTAL()
-        local.session({output: () => undefined})
+        local.session.session({output: () => undefined})
         let seen = ""
         local.it("named", (t) => {
             seen = t.name
         })
-        await local.end()
+        await local.session.end()
 
         assert.equal(seen, "named")
     })

@@ -126,7 +126,7 @@ describe(TITLE, () => {
     it("reports a suite failure that has no failing child", async () => {
         const local = createTAL()
         const lines: string[] = []
-        local.session({
+        local.session.session({
             reporter: local.reporter.tap(),
             output: text => {
                 lines.push(text)
@@ -138,7 +138,7 @@ describe(TITLE, () => {
                 throw new Error("after hook exploded")
             })
         })
-        const summary = await local.end()
+        const summary = await local.session.end()
 
         const out = lines.join("")
         assert.match(out, /^ok 1 - child passes$/m)

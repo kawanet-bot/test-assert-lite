@@ -27,13 +27,13 @@ describe(TITLE, () => {
     it("a name that is no module runs with spec and is one failed test", async () => {
         const local = createTAL()
         const text: string[] = []
-        local.session({
+        local.session.session({
             reporter: "@kawanet/invalid", output: t => {
                 text.push(t)
             },
         })
         local.it("still runs", () => undefined)
-        assert.equal((await local.end()).success, false)
+        assert.equal((await local.session.end()).success, false)
         assert.match(text.join(""), /✖ import\("@kawanet\/invalid"\)/)
         assert.match(text.join(""), /✔ still runs/)
     })
@@ -41,23 +41,23 @@ describe(TITLE, () => {
     it("a name starting with . is not imported, and is one failed test", async () => {
         const local = createTAL()
         const lines: string[] = []
-        local.session({
+        local.session.session({
             reporter: "./nope.mjs", output: t => {
                 lines.push(t)
             },
         })
-        assert.equal((await local.end()).success, false)
+        assert.equal((await local.session.end()).success, false)
         assert.match(lines.join(""), /unsupported reporter: \.\/nope\.mjs/)
     })
 
     it("summary: false leaves the counts, the version and the user agent off; the plan stays", async () => {
         const local = createTAL()
         const out: string[] = []
-        local.session({reporter: "tap", summary: false, output: t => {out.push(t)}})
+        local.session.session({reporter: "tap", summary: false, output: t => {out.push(t)}})
         local.it("fails", () => {
             throw new Error("boom")
         })
-        assert.equal((await local.end()).success, false)
+        assert.equal((await local.session.end()).success, false)
         const text = out.join("")
         assert.equal(text.includes("# tests "), false)
         assert.equal(text.includes("# test-assert-lite "), false)
@@ -65,29 +65,46 @@ describe(TITLE, () => {
         assert.match(text, /^1\.\.1$/m)
     })
 
+    // load() takes a URL a page and Node both import: a data: module that
+    // declares nothing, and one that cannot be fetched.
+    it("load() imports a suite, and files one that does not load as a failed test", async () => {
+        const local = createTAL()
+        const text: string[] = []
+        local.session.session({reporter: "tap", output: t => {text.push(t)}})
+        await local.session.load("data:text/javascript,export const loaded = 1")
+        assert.equal((await local.session.end()).success, true)
+
+        const other = createTAL()
+        const lines: string[] = []
+        other.session.session({reporter: "tap", output: t => {lines.push(t)}})
+        await other.session.load("http://127.0.0.1:1/nope.mjs")
+        assert.equal((await other.session.end()).success, false)
+        assert.match(lines.join(""), /^not ok 1 - nope\.mjs$/m)
+    })
+
     it("takes a reporter by name", async () => {
         const local = createTAL()
         const out: string[] = []
-        local.session({
+        local.session.session({
             reporter: "tap", output: text => {
                 out.push(text)
             },
         })
         local.it("named", () => undefined)
-        await local.end()
+        await local.session.end()
         assert.equal(out[0], "TAP version 13\n")
     })
 
     it("takes a reporter by its module name: the default export, as node --test-reporter has it", async () => {
         const local = createTAL()
         const out: string[] = []
-        local.session({
+        local.session.session({
             reporter: "test-assert-lite/reporter/tap", output: text => {
                 out.push(text)
             },
         })
         local.it("imported", () => undefined)
-        assert.equal((await local.end()).success, true)
+        assert.equal((await local.session.end()).success, true)
         assert.equal(out[0], "TAP version 13\n")
         assert.match(out.join(""), /^ok 1 - imported$/m)
     })
@@ -101,7 +118,7 @@ describe(TITLE, () => {
         fire(on, "error", {target: {src: "http://127.0.0.1:1/@tal/files/012345678/missing.mjs"}})
         fire(on, "unhandledrejection", {reason: new Error("leaked")})
         local.it("declared", () => undefined)
-        await local.end()
+        await local.session.end()
         const summary = summaryOf(events)
 
         assert.deepEqual(names(events, "test:fail"), ["suite.mjs", "missing.mjs", "unhandled rejection"])
@@ -121,7 +138,7 @@ describe(TITLE, () => {
             fire(on, "unhandledrejection", {reason: new Error("meanwhile")})
             await new Promise(r => setTimeout(r, 0))
         })
-        await local.end()
+        await local.session.end()
         const summary = summaryOf(events)
 
         assert.deepEqual(names(events, "test:pass"), ["open"])
@@ -133,11 +150,11 @@ describe(TITLE, () => {
         const local = createTAL()
         const on = target()
         capture(local, {capture: on})
-        await local.end()
+        await local.session.end()
         fire(on, "unhandledrejection", {reason: new Error("after the end")})
         const again = capture(local)
         fire(on, "unhandledrejection", {reason: new Error("without capture")})
-        await local.end()
+        await local.session.end()
 
         assert.equal(summaryOf(again).counts.tests, 0)
     })

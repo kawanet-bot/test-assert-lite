@@ -39,8 +39,8 @@ describe(TITLE, () => {
         b.it("only on b", () => undefined)
         b.it("also on b", () => undefined)
 
-        await b.end()
-        await a.end()
+        await b.session.end()
+        await a.session.end()
         assert.equal(summaryOf(seenB).counts.tests, 2)
         assert.equal(summaryOf(seenA).counts.tests, 1)
     })
@@ -48,8 +48,8 @@ describe(TITLE, () => {
     it("two harnesses do not share hooks", async () => {
         const a = createTAL()
         const b = createTAL()
-        a.session({output: () => undefined})
-        b.session({output: () => undefined})
+        a.session.session({output: () => undefined})
+        b.session.session({output: () => undefined})
         const order: string[] = []
 
         a.before(() => {
@@ -62,8 +62,8 @@ describe(TITLE, () => {
             order.push("b-test")
         })
 
-        await b.end()
-        await a.end()
+        await b.session.end()
+        await a.session.end()
 
         assert.deepEqual(order, ["b-test", "a:before", "a-test"])
     })
@@ -72,11 +72,11 @@ describe(TITLE, () => {
         const local = createTAL()
         const first = capture(local)
         local.it("once", () => undefined)
-        await local.end()
+        await local.session.end()
         assert.equal(summaryOf(first).counts.tests, 1)
 
         const second = capture(local)
-        await local.end()
+        await local.session.end()
         assert.equal(summaryOf(second).counts.tests, 0)
     })
 
@@ -90,7 +90,7 @@ describe(TITLE, () => {
         assert.notEqual(a.session, b.session)
 
         b.it("only on b", () => undefined)
-        await b.end()
+        await b.session.end()
 
         assert.ok(names(seenByB, "test:pass").includes("only on b"))
         assert.equal(seenByA.length, 0)
@@ -99,7 +99,7 @@ describe(TITLE, () => {
     it("output set on one harness does not reach the other", async () => {
         const local = createTAL()
         const lines: string[] = []
-        local.session({
+        local.session.session({
             reporter: local.reporter.spec({colors: false}),
             output: text => {
                 lines.push(text)
@@ -107,7 +107,7 @@ describe(TITLE, () => {
         })
 
         local.it("visible", () => undefined)
-        await local.end()
+        await local.session.end()
 
         assert.ok(lines.join("").includes("visible"))
     })
@@ -133,7 +133,7 @@ describe(TITLE, () => {
             // assert.equal, and its strictEqual the strict one.
             same = t.assert.equal === local.assert.equal && t.assert.strictEqual === local.strict.equal
         })
-        await local.end()
+        await local.session.end()
 
         assert.equal(same, true)
         assert.equal(names(seen, "test:pass").join(""), "check")

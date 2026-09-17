@@ -300,21 +300,23 @@ The minified build is an ES module: an import map leads the package's name to it
 <script type="importmap">
 {
     "imports": {
-        "test-assert-lite": "https://cdn.jsdelivr.net/npm/test-assert-lite/dist/test-assert-lite.min.js"
+        "test-assert-lite": "https://cdn.jsdelivr.net/npm/test-assert-lite/dist/test-assert-lite.min.js",
+        "test-assert-lite/test": "https://cdn.jsdelivr.net/npm/test-assert-lite/exports/test.js",
+        "test-assert-lite/assert": "https://cdn.jsdelivr.net/npm/test-assert-lite/exports/assert.js",
+        "test-assert-lite/session": "https://cdn.jsdelivr.net/npm/test-assert-lite/exports/session.js"
     }
 }
 </script>
 <div id="output"></div>
 <script type="module">
-    import {sharedTAL} from "test-assert-lite"
-
-    const {describe, it, reporter, end, session} = sharedTAL
-    const assert = sharedTAL.strict
+    import {describe, it} from "test-assert-lite/test"
+    import {strict as assert} from "test-assert-lite/assert"
+    import {session, end} from "test-assert-lite/session"
 
     // The report goes to console.log by default; render it as HTML in the page instead.
     // session() comes before the first test is declared.
     session({
-        reporter: reporter.html(),
+        reporter: "html",
         output: html => document.getElementById("output").insertAdjacentHTML("beforeend", html),
     })
 
@@ -356,14 +358,15 @@ export default {
         "test-assert-lite": "https://cdn.jsdelivr.net/npm/test-assert-lite/dist/test-assert-lite.min.js",
         "node:test": "https://cdn.jsdelivr.net/npm/test-assert-lite/exports/test.js",
         "node:assert": "https://cdn.jsdelivr.net/npm/test-assert-lite/exports/assert.js",
-        "node:assert/strict": "https://cdn.jsdelivr.net/npm/test-assert-lite/exports/assert/strict.js"
+        "node:assert/strict": "https://cdn.jsdelivr.net/npm/test-assert-lite/exports/assert/strict.js",
+        "test-assert-lite/session": "https://cdn.jsdelivr.net/npm/test-assert-lite/exports/session.js"
     }
 }
 </script>
 <script type="module" src="./scripts/bundled-tests.js"></script>
 <script type="module">
-    import {sharedTAL} from "test-assert-lite"
-    sharedTAL.end()
+    import {end} from "test-assert-lite/session"
+    end()
 </script>
 ```
 

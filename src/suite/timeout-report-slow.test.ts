@@ -16,7 +16,7 @@ const TITLE = "suite/timeout-report-slow.test.ts"
 // write waits, so the cases below find the report still going on.
 const captureSlowly = (local: ReturnType<typeof createTAL>): ReturnType<typeof capture> => {
     const events: ReturnType<typeof capture> = []
-    local.session({
+    local.session.session({
         reporter: async function* (source) {
             for await (const event of source) {
                 events.push(event)
@@ -35,7 +35,7 @@ describeSlow(TITLE, () => {
     it("a parent that throws waits for a settled child still reporting", async () => {
         const local = createTAL()
         const events: ReturnType<typeof capture> = []
-        local.session({
+        local.session.session({
             reporter: async function* (source) {
                 for await (const event of source) {
                     events.push(event)
@@ -54,7 +54,7 @@ describeSlow(TITLE, () => {
             await new Promise(r => setTimeout(r, slow(40)))
             throw new Error("boom")
         })
-        await local.end()
+        await local.session.end()
         const summary = summaryOf(events)
 
         assert.deepEqual(names(events, "test:fail"), ["grandchild", "child", "parent"])
@@ -68,7 +68,7 @@ describeSlow(TITLE, () => {
     it("a cancelled child settling during its parent's report stays silent", async () => {
         const local = createTAL()
         const events: ReturnType<typeof capture> = []
-        local.session({
+        local.session.session({
             reporter: async function* (source) {
                 for await (const event of source) {
                     events.push(event)
@@ -87,7 +87,7 @@ describeSlow(TITLE, () => {
             })
             await new Promise(r => setTimeout(r, slow(200)))
         })
-        await local.end()
+        await local.session.end()
         const summary = summaryOf(events)
 
         assert.deepEqual(names(events, "test:start"), ["parent", "child", "g1", "g2"])
@@ -101,7 +101,7 @@ describeSlow(TITLE, () => {
     it("a parent that throws waits for a settled grandchild still reporting", async () => {
         const local = createTAL()
         const events: ReturnType<typeof capture> = []
-        local.session({
+        local.session.session({
             reporter: async function* (source) {
                 for await (const event of source) {
                     events.push(event)
@@ -118,7 +118,7 @@ describeSlow(TITLE, () => {
             await new Promise(r => setTimeout(r, slow(20)))
             throw new Error("boom")
         })
-        await local.end()
+        await local.session.end()
         const summary = summaryOf(events)
 
         assert.deepEqual(names(events, "test:start"), ["parent", "child", "grandchild"])
@@ -146,7 +146,7 @@ describeSlow(TITLE, () => {
                 ran = true
             })
         })
-        await local.end()
+        await local.session.end()
         const summary = summaryOf(events)
 
         assert.equal(ran, true)
@@ -163,7 +163,7 @@ describeSlow(TITLE, () => {
             void t.test("quick skip", {skip: "why"}, () => undefined)
             await new Promise(r => setTimeout(r, slow(40)))
         })
-        await local.end()
+        await local.session.end()
         const summary = summaryOf(events)
 
         assert.deepEqual(summary.counts, {tests: 2, suites: 0, passed: 0, failed: 0, cancelled: 1, skipped: 1, todo: 0})
@@ -184,7 +184,7 @@ describeSlow(TITLE, () => {
             t.skip("too late")
             await new Promise(r => setTimeout(r, slow(100)))
         })
-        await local.end()
+        await local.session.end()
         const summary = summaryOf(events)
 
         assert.deepEqual(summary.counts, {tests: 2, suites: 0, passed: 0, failed: 0, cancelled: 2, skipped: 0, todo: 0})
@@ -206,7 +206,7 @@ describeSlow(TITLE, () => {
             })
             await new Promise(r => setTimeout(r, slow(100)))
         })
-        await local.end()
+        await local.session.end()
         const summary = summaryOf(events)
 
         assert.equal(ran, false)
@@ -230,7 +230,7 @@ describeSlow(TITLE, () => {
             })
             await new Promise(r => setTimeout(r, slow(100)))
         })
-        await local.end()
+        await local.session.end()
         const summary = summaryOf(events)
 
         assert.equal(ran, 0)

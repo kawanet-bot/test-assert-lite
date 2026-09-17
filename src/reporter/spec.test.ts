@@ -29,13 +29,13 @@ describe(TITLE, () => {
 
             const local = createTAL()
             const lines: string[] = []
-            local.session({
+            local.session.session({
                 output: text => {
                     lines.push(text)
                 },
             })
             local.it("colored", () => undefined)
-            await local.end()
+            await local.session.end()
 
             assert.match(lines.join(""), /\u001b\[32m/)
         } finally {
@@ -52,13 +52,13 @@ describe(TITLE, () => {
         if ("undefined" !== typeof process && process.stdout.isTTY) return
         const local = createTAL()
         const lines: string[] = []
-        local.session({
+        local.session.session({
             output: text => {
                 lines.push(text)
             },
         })
         local.it("plain", () => undefined)
-        await local.end()
+        await local.session.end()
 
         assert.equal(lines.join("").includes("\u001b["), false)
     })
@@ -183,7 +183,7 @@ describe(TITLE, () => {
     it("renders a cancelled suite like node:test", async () => {
         const local = createTAL()
         const lines: string[] = []
-        local.session({
+        local.session.session({
             reporter: local.reporter.spec({colors: false}),
             output: text => {
                 lines.push(text)
@@ -195,7 +195,7 @@ describe(TITLE, () => {
             })
             local.it("a", () => undefined)
         })
-        await local.end()
+        await local.session.end()
 
         const out = lines.join("").replace(/\(\d+\.\d{3}ms\)/g, "(ms)")
         assert.match(out, /^▶ S\n {2}✖ a \(ms\)\n✖ S \(ms\)\n/)

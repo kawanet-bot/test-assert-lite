@@ -18,7 +18,7 @@ describe(TITLE, () => {
         local.it("skipped", {skip: "why"}, () => {
             ran = true
         })
-        await local.end()
+        await local.session.end()
         const summary = summaryOf(events)
 
         assert.equal(ran, false)
@@ -35,7 +35,7 @@ describe(TITLE, () => {
         local.it.skip("static", () => {
             ran = true
         })
-        await local.end()
+        await local.session.end()
         const summary = summaryOf(events)
 
         assert.equal(ran, false)
@@ -50,7 +50,7 @@ describe(TITLE, () => {
             t.skip("later")
             reached = true
         })
-        await local.end()
+        await local.session.end()
         const summary = summaryOf(events)
 
         assert.equal(reached, true)
@@ -68,7 +68,7 @@ describe(TITLE, () => {
                 throw new Error("child failed")
             })
         })
-        await local.end()
+        await local.session.end()
         const summary = summaryOf(events)
 
         const parent = ofType(events, "test:fail").find(e => e.data.name === "parent")?.data
@@ -93,7 +93,7 @@ describe(TITLE, () => {
         local.it("broken", {todo: true}, () => {
             throw new Error("boom")
         })
-        await local.end()
+        await local.session.end()
         const summary = summaryOf(events)
 
         assert.equal(ran, 2)
@@ -112,7 +112,7 @@ describe(TITLE, () => {
             t.todo("later")
         })
         local.it("it.todo", () => undefined)
-        await local.end()
+        await local.session.end()
         const summary = summaryOf(events)
 
         const later = ofType(events, "test:pass").find(e => e.data.name === "later")?.data
@@ -129,7 +129,7 @@ describe(TITLE, () => {
             t.todo("t")
             t.skip("s")
         })
-        await local.end()
+        await local.session.end()
         const summary = summaryOf(events)
 
         const passes = ofType(events, "test:pass").map(e => `${e.data.name}:${String(e.data.skip)}:${String(e.data.todo)}`)
@@ -147,7 +147,7 @@ describe(TITLE, () => {
                 throw new Error("boom")
             })
         })
-        await local.end()
+        await local.session.end()
         const summary = summaryOf(events)
 
         const child = ofType(events, "test:fail").find(e => e.data.name === "child")?.data
@@ -169,7 +169,7 @@ describe(TITLE, () => {
                 throw new Error("boom")
             })
         })
-        await local.end()
+        await local.session.end()
         const summary = summaryOf(events)
 
         const child = ofType(events, "test:fail").find(e => e.data.name === "child")?.data

@@ -23,7 +23,7 @@ describe(TITLE, () => {
             })
             order.push("parent end")
         })
-        await local.end()
+        await local.session.end()
         const summary = summaryOf(events)
 
         assert.deepEqual(order, ["parent start", "child", "parent end"])
@@ -43,7 +43,7 @@ describe(TITLE, () => {
             })
             order.push("parent body")
         })
-        await local.end()
+        await local.session.end()
         const summary = summaryOf(events)
 
         assert.deepEqual(order, ["parent body", "child"])
@@ -60,7 +60,7 @@ describe(TITLE, () => {
                 throw new Error("boom")
             })
         })
-        await local.end()
+        await local.session.end()
         const summary = summaryOf(events)
 
         assert.equal(summary.counts.tests, 2)
@@ -79,7 +79,7 @@ describe(TITLE, () => {
                 throw new Error("boom")
             })
         })
-        await local.end()
+        await local.session.end()
         const summary = summaryOf(events)
 
         assert.equal(summary.counts.failed, 2)
@@ -90,7 +90,7 @@ describe(TITLE, () => {
     // await before the parent's next statement runs.
     it("the first subtest starts before t.test() returns", async () => {
         const local = createTAL()
-        local.session({output: () => undefined})
+        local.session.session({output: () => undefined})
         const order: string[] = []
         local.it("parent", async (t) => {
             const pending = t.test("child", () => {
@@ -99,7 +99,7 @@ describe(TITLE, () => {
             order.push("after call")
             await pending
         })
-        await local.end()
+        await local.session.end()
 
         assert.deepEqual(order, ["child body", "after call"])
     })
@@ -121,7 +121,7 @@ describe(TITLE, () => {
                 order.push("fast")
             })
         })
-        await local.end()
+        await local.session.end()
 
         assert.deepEqual(order, ["slow start", "slow end", "fast"])
         assert.deepEqual(names(events, "test:start"), ["parent", "slow", "fast"])
@@ -143,7 +143,7 @@ describe(TITLE, () => {
             throw new Error("boom")
         })
         local.it("next", () => undefined)
-        await local.end()
+        await local.session.end()
         const summary = summaryOf(events)
 
         const results = events
@@ -172,7 +172,7 @@ describe(TITLE, () => {
             })
             throw new Error("boom")
         })
-        await local.end()
+        await local.session.end()
         const summary = summaryOf(events)
 
         assert.equal(ran, false)
@@ -196,7 +196,7 @@ describe(TITLE, () => {
         local.it("keep", async () => {
             await new Promise(r => setTimeout(r, 60))
         })
-        await local.end()
+        await local.session.end()
         const summary = summaryOf(events)
 
         const grandchild = ofType(events, "test:fail").find(e => e.data.name === "grandchild")?.data
@@ -213,7 +213,7 @@ describe(TITLE, () => {
             await t.test("c1", () => undefined)
             await t.test("c2", () => undefined)
         })
-        await local.end()
+        await local.session.end()
 
         const numbered = ofType(events, "test:pass").map(e => `${e.data.name}#${e.data.testNumber}`)
         assert.deepEqual(numbered, ["c1#1", "c2#2", "parent#1"])
