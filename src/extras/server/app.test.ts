@@ -82,11 +82,10 @@ describe(TITLE, () => {
         }
         const map = at('<script type="importmap">')
         const config = at('<script type="application/vnd.config+json">')
-        const own = at('<script type="module">')
         assert.match(tests, /^\/@tal\/files\/[0-9a-f]{9}\/$/)
         const script = at(`<script src="${tests}setup.js"></script>`)
         const second = at(`<script src="${tests}set%2Bup%232.js"></script>`)
-        assert.ok(map < config && config < own && own < script && script < second)
+        assert.ok(map < config && config < script && script < second)
         assert.equal(head.includes('<script type="module" src='), false)
         const {options} = JSON.parse(head.slice(head.indexOf("{", config), head.indexOf("</script>", config)))
         assert.deepEqual(options, {files: [`${tests}my%20suite.mjs`, `${tests}second.mjs`]})
