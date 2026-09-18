@@ -79,18 +79,18 @@ const runCLI = async (options: Options): Promise<number> => {
     }
 
     try {
-        const {done} = app
+        const settled = app.done
         if (options.mode === "webdriver") {
             await runInWebDriver({
                 url,
-                done,
+                settled,
                 session: options.session == null ? undefined : readFileSync(options.session, "utf8"),
                 endpoint: options.endpoint,
             })
         } else if (options.mode === "playwright") {
             await runInPlaywright({
                 url,
-                done,
+                settled,
                 browser: options.browser,
             })
         } else {
@@ -98,7 +98,7 @@ const runCLI = async (options: Options): Promise<number> => {
         }
         // The exit code alone, as in Node mode and node --test: the summary
         // on stdout already says what failed, and no tests is not a failure.
-        return (await done) ? 0 : 1
+        return (await settled) ? 0 : 1
     } finally {
         close()
     }

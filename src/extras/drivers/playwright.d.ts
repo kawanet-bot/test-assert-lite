@@ -5,7 +5,7 @@ export interface PlaywrightRunOptions {
     /** URL of the page to open, under the run's own path on the CLI's server. */
     url: string
     /** The verdict the page reports back to that server. */
-    done: Promise<unknown>
+    settled: Promise<unknown>
     /** Which of Playwright's browsers to launch; chromium by default. */
     browser?: "chromium" | "firefox" | "webkit"
 }
