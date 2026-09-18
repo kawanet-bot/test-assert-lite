@@ -10,7 +10,7 @@ import {stringify} from "../utils/stringify.ts"
 import {VERSION} from "../utils/version.ts"
 import type {DriverConfig} from "./drivers/driver-config.ts"
 import {runInNode} from "./drivers/node.ts"
-import {runInPlaywright} from "./drivers/playwright.js"
+import {runInPlaywright} from "./drivers/playwright.ts"
 import {runInWebDriver} from "./drivers/webdriver.ts"
 import type {Options} from "./options.ts"
 import {readOptions, USAGE} from "./options.ts"
@@ -79,22 +79,17 @@ const runCLI = async (options: Options): Promise<number> => {
     }
 
     try {
+        const completion = app.done
+
         if (options.mode === "webdriver") {
-            await runInWebDriver({
-                url,
-                running: app.done,
-                session: options.session == null ? undefined : readFileSync(options.session, "utf8"),
-                endpoint: options.endpoint,
-            })
+            const session = options.session == null ? undefined : readFileSync(options.session, "utf8")
+            await runInWebDriver({url, completion, options: {session, endpoint: options.endpoint}})
         } else if (options.mode === "playwright") {
-            await runInPlaywright({
-                url,
-                running: app.done,
-                engine: options.engine,
-            })
+            await runInPlaywright({url, completion, options: {engine: options.engine}})
         } else {
             throw new Error(`Invalid mode: ${(options as Options)?.mode}`)
         }
+
         // The exit code alone, as in Node mode and node --test: the summary
         // on stdout already says what failed, and no tests is not a failure.
         return (await app.done) ? 0 : 1

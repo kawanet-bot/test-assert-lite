@@ -207,7 +207,7 @@ export const readOptions = (args: string[]): Options => {
         port: values.port == null ? undefined : portOf(values.port),
         origin: values.origin == null ? undefined : originOf(values.origin),
     }
-    if (engine != null) return {...shared, mode: "playwright", engine: engine}
+    if (engine) return {...shared, mode: "playwright", engine}
     if (webdriver) return {...shared, mode: "webdriver", session: values["webdriver-session"], endpoint: values.endpoint ?? "http://127.0.0.1:4444"}
     return {...shared, mode: "serve"}
 }
