@@ -5,9 +5,9 @@
 
 export interface WebDriverRunOptions {
     /** URL of the page to open, under the run's own path on the CLI's server. */
-    page: string
-    /** The verdict the page reports back to that server. */
-    done: Promise<boolean>
+    url: string
+    /** Remains pending while the run is active; the browser closes when it settles. */
+    running: Promise<unknown>
     /** The WebDriver server, such as http://127.0.0.1:4444 */
     endpoint: string
     /** JSON sent as the body of POST /session; no capabilities by default. */
@@ -27,12 +27,12 @@ const call = async (endpoint: string, method: string, path: string, body?: strin
 }
 
 /**
- * Runs the suites on `page` in the browser the WebDriver
- * server at `endpoint` drives, and resolves to the verdict the page sends
- * back. The driver only opens the page: from there the page reports on its
- * own, so no command waits on the run and no script timeout is in play.
+ * Opens `url` in the browser the WebDriver server at `endpoint` drives,
+ * and keeps the session until `running` settles. The driver only opens
+ * the page: from there the page reports on its own, so no command waits
+ * on the run and no script timeout is in play.
  */
-export const runInWebDriver = async ({page, done, endpoint, session}: WebDriverRunOptions): Promise<boolean> => {
+export const runInWebDriver = async ({url, running, endpoint, session}: WebDriverRunOptions): Promise<void> => {
     let created: Reply["value"]
     try {
         created = await call(endpoint, "POST", "/session", session ?? JSON.stringify({capabilities: {}}))
@@ -44,8 +44,9 @@ export const runInWebDriver = async ({page, done, endpoint, session}: WebDriverR
     const base = `/session/${created.sessionId}`
     let failure: unknown
     try {
-        await call(endpoint, "POST", `${base}/url`, JSON.stringify({url: page}))
-        return await done
+        await call(endpoint, "POST", `${base}/url`, JSON.stringify({url}))
+        await running
+        return
     } catch (error) {
         failure = error
         throw error

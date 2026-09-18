@@ -28,20 +28,23 @@ export const USAGE = `Usage: test-assert [options] [file...]
   --playwright <browser>      run the suite through Playwright: chromium, firefox or webkit
 `
 
-const BROWSERS = ["chromium", "firefox", "webkit"] as const
-export type Browser = typeof BROWSERS[number]
+const ENGINE_NAMES = ["chromium", "firefox", "webkit"] as const
+export type EngineName = typeof ENGINE_NAMES[number]
 
-export interface BrowserOptions {
+interface CommonOptions {
     /** The suites, absolute, all served from one directory. */
     suites: string[]
     /** The reporter named, as given; the run says whether it knows it. */
     reporter?: string
     /** false under --no-summary; otherwise left unset. */
     summary?: boolean
-    /** Classic scripts to run first, absolute, in order. */
-    scripts: string[]
     /** From --import-map then --alias, a later item over an earlier one of the same specifier. */
     imports: Imports
+}
+
+interface BrowserOptions extends CommonOptions {
+    /** Classic scripts to run first, absolute, in order. */
+    scripts: string[]
     /** What the root serves in place of htdocs: an absolute directory, or an http(s) URL ending in "/". */
     mount?: string
     host?: string
@@ -52,9 +55,9 @@ export interface BrowserOptions {
 export type Options =
     | {mode: "help"}
     | {mode: "version"}
-    | {mode: "node", suites: string[], imports: Imports, reporter?: string, summary?: boolean}
+    | CommonOptions & {mode: "node"}
     | BrowserOptions & {mode: "serve"}
-    | BrowserOptions & {mode: "playwright", browser: Browser}
+    | BrowserOptions & {mode: "playwright", engine: EngineName}
     | BrowserOptions & {mode: "webdriver", session?: string, endpoint: string}
 
 // A port is a whole number a socket can take, written in decimal: what
@@ -104,9 +107,11 @@ export const importsOf = (mapFile: string | undefined, aliases: string[], mode: 
     return imports
 }
 
-export const browserOf = (name: string): Browser => {
-    if (!(BROWSERS as readonly string[]).includes(name)) throw new UsageError(`--playwright takes chromium, firefox or webkit: ${name}`)
-    return name as Browser
+const isEngineName = (v: unknown): v is EngineName => ENGINE_NAMES.includes(v as EngineName)
+
+export const engineNameOf = (name: string): EngineName => {
+    if (!isEngineName(name)) throw new UsageError(`--playwright takes chromium, firefox or webkit: ${name}`)
+    return name
 }
 
 // parseArgs settles the flag forms (--x=v, -h, --) and rejects a flag this
@@ -152,9 +157,9 @@ export const readOptions = (args: string[]): Options => {
     if (values.version) return {mode: "version"}
 
     const {playwright, webdriver, serve} = values
-    const browser = playwright == null ? undefined : browserOf(playwright)
-    const browsing = browser != null || webdriver || serve
-    if ((browser != null ? 1 : 0) + (webdriver ? 1 : 0) + (serve ? 1 : 0) > 1) {
+    const engine = playwright == null ? undefined : engineNameOf(playwright)
+    const browsing = engine != null || webdriver || serve
+    if ((engine ? 1 : 0) + (webdriver ? 1 : 0) + (serve ? 1 : 0) > 1) {
         throw new UsageError("--playwright, --webdriver and --serve are exclusive")
     }
     if (!browsing && (values.script.length || values.mount != null || values.host != null || values.port != null || values.origin != null)) {
@@ -202,7 +207,7 @@ export const readOptions = (args: string[]): Options => {
         port: values.port == null ? undefined : portOf(values.port),
         origin: values.origin == null ? undefined : originOf(values.origin),
     }
-    if (browser != null) return {...shared, mode: "playwright", browser}
+    if (engine != null) return {...shared, mode: "playwright", engine: engine}
     if (webdriver) return {...shared, mode: "webdriver", session: values["webdriver-session"], endpoint: values.endpoint ?? "http://127.0.0.1:4444"}
     return {...shared, mode: "serve"}
 }

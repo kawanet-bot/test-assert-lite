@@ -1,7 +1,7 @@
 import {strict as assert} from "node:assert"
 import {resolve} from "node:path"
 import {describe, it} from "node:test"
-import {browserOf, mountOf, originOf, portOf, readOptions} from "./options.ts"
+import {engineNameOf, mountOf, originOf, portOf, readOptions} from "./options.ts"
 
 const TITLE = "extras/options.test.ts"
 
@@ -35,12 +35,12 @@ describe(TITLE, () => {
         })
     })
 
-    describe("browserOf", () => {
+    describe("engineNameOf", () => {
         it("takes one of Playwright's three, and nothing else", () => {
-            assert.equal(browserOf("chromium"), "chromium")
-            assert.equal(browserOf("firefox"), "firefox")
-            assert.equal(browserOf("webkit"), "webkit")
-            assert.throws(() => browserOf("electron"), /--playwright takes chromium, firefox or webkit: electron$/)
+            assert.equal(engineNameOf("chromium"), "chromium")
+            assert.equal(engineNameOf("firefox"), "firefox")
+            assert.equal(engineNameOf("webkit"), "webkit")
+            assert.throws(() => engineNameOf("electron"), /--playwright takes chromium, firefox or webkit: electron$/)
         })
     })
 
@@ -159,7 +159,7 @@ describe(TITLE, () => {
             const options = readOptions(["--playwright", "webkit", "suite.mjs"])
             assert.equal(options.mode, "playwright")
             if (options.mode !== "playwright") return
-            assert.equal(options.browser, "webkit")
+            assert.equal(options.engine, "webkit")
             assert.deepEqual(options.suites, [resolve("suite.mjs")])
             assert.throws(() => readOptions(["--playwright", "electron", "suite.mjs"]), /--playwright takes/)
         })

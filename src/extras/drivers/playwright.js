@@ -15,13 +15,13 @@ const loadPlaywright = async (name) => {
 }
 
 /**
- * Runs the suites on `page` in a headless `browser` (chromium
- * unless told otherwise) and resolves to the verdict the page sends back.
- * Playwright only opens the page: from there the page reports on its own.
+ * Opens `url` in a headless browser (chromium unless told otherwise) and
+ * keeps it open until `running` settles. Playwright only opens the page:
+ * from there the page reports on its own.
  */
-export const runInPlaywright = async ({page: url, done, browser: name = "chromium"}) => {
-    const playwright = await loadPlaywright(name)
-    const browser = await playwright[name].launch()
+export const runInPlaywright = async ({url, running, engine = "chromium"}) => {
+    const playwright = await loadPlaywright(engine)
+    const browser = await playwright[engine].launch()
     try {
         // A browser that goes away fails the run at once, ahead of the
         // silence bound the page's own word would otherwise run into.
@@ -31,7 +31,7 @@ export const runInPlaywright = async ({page: url, done, browser: name = "chromiu
         void gone.catch(() => undefined)
         const page = await browser.newPage()
         await page.goto(url)
-        return await Promise.race([done, gone])
+        await Promise.race([running, gone])
     } finally {
         await browser.close()
     }
