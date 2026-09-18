@@ -32,8 +32,8 @@ export interface PageLike {
 
 export interface RunInBrowserOptions {
     browser: BrowserLike
-    newPageOptions?: object
-    gotoOptions?: object
+    newPage?: object
+    goto?: object
 }
 
 /**
@@ -51,8 +51,8 @@ export const runInBrowser: WebRunFn<RunInBrowserOptions> = async ({url, completi
         // Handled here as well: close() below fires this too when something
         // else failed first, and that must not add an unhandled rejection.
         void gone.catch(() => undefined)
-        const page = await browser.newPage(options.newPageOptions)
-        await page.goto(url, options.gotoOptions)
+        const page = await browser.newPage(options.newPage)
+        await page.goto(url, options.goto)
         await Promise.race([completion, gone])
     } finally {
         await browser.close()

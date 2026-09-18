@@ -7,7 +7,7 @@ export interface RunInPlaywrightOptions extends Omit<RunInBrowserOptions, "brows
     /** Which browser engine Playwright launches. */
     engine: BrowserName
 
-    launchOptions?: object
+    launch?: object
 }
 
 type BrowserName = "chromium" | "firefox" | "webkit"
@@ -42,7 +42,7 @@ export const runInPlaywright: WebRunFn<RunInPlaywrightOptions> = async ({url, co
         throw new Error(`Playwright is not ready: \`npm install -D playwright && npx playwright install ${engine}\``)
     }
 
-    const browser = await browserType.launch(options.launchOptions)
+    const browser = await browserType.launch(options.launch)
 
     return runInBrowser({url, completion, options: {...options, browser}})
 }
