@@ -3,11 +3,9 @@
 // cannot launch, Safari on a Mac say, runs the suites too. Node's fetch()
 // is all it takes, so no optional dependency is kept out of tsc here.
 
+import type {OpenerFn} from "./opener.ts"
+
 export interface WebDriverRunOptions {
-    /** URL of the page to open, under the run's own path on the CLI's server. */
-    url: string
-    /** Settles when the run finishes or fails; the browser closes then. */
-    completion: Promise<unknown>
     /** The WebDriver server, such as http://127.0.0.1:4444 */
     endpoint: string
     /** JSON sent as the body of POST /session; no capabilities by default. */
@@ -26,36 +24,33 @@ const call = async (endpoint: string, method: string, path: string, body?: strin
     return value
 }
 
-/**
- * Opens `url` in the browser the WebDriver server at `endpoint` drives,
- * and keeps the session until `completion` settles. The driver only opens
- * the page: from there the page reports on its own, so no command waits
- * on the run and no script timeout is in play.
- */
-export const runInWebDriver = async ({url, completion, endpoint, session}: WebDriverRunOptions): Promise<void> => {
+export const webDriverOpener = async ({endpoint, session}: WebDriverRunOptions): Promise<OpenerFn> => {
     let created: Reply["value"]
     try {
-        created = await call(endpoint, "POST", "/session", session ?? JSON.stringify({capabilities: {}}))
+        created = await call(endpoint, "POST", "/session", session || JSON.stringify({capabilities: {}}))
     } catch (error) {
         // Nothing listening is the likely case, and the most useful hint.
         if (!(error instanceof TypeError)) throw error
         throw new Error(`No WebDriver server at ${endpoint}: \`safaridriver -p 4444\` or \`chromedriver --port=4444\``, {cause: error})
     }
     const base = `/session/${created.sessionId}`
-    let failure: unknown
-    try {
-        await call(endpoint, "POST", `${base}/url`, JSON.stringify({url}))
-        await completion
-        return
-    } catch (error) {
-        failure = error
-        throw error
-    } finally {
-        // A session gone with its browser rejects this too: the error in
-        // flight says why, so this one is reported beside it, not in its place.
-        await call(endpoint, "DELETE", base).catch(error => {
-            if (failure == null) throw error
-            console.error(error)
-        })
+
+    return async ({url, completion}) => {
+        let failure: unknown
+        try {
+            await call(endpoint, "POST", `${base}/url`, JSON.stringify({url}))
+            await completion
+            return
+        } catch (error) {
+            failure = error
+            throw error
+        } finally {
+            // A session gone with its browser rejects this too: the error in
+            // flight says why, so this one is reported beside it, not in its place.
+            await call(endpoint, "DELETE", base).catch(error => {
+                if (failure == null) throw error
+                console.error(error)
+            })
+        }
     }
 }
