@@ -35,7 +35,7 @@ describe(TITLE, () => {
         })
     })
 
-    describe("browserOf", () => {
+    describe("engineNameOf", () => {
         it("takes one of Playwright's three, and nothing else", () => {
             assert.equal(engineNameOf("chromium"), "chromium")
             assert.equal(engineNameOf("firefox"), "firefox")

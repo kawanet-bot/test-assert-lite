@@ -4,9 +4,9 @@
 export interface PlaywrightRunOptions {
     /** URL of the page to open, under the run's own path on the CLI's server. */
     url: string
-    /** Settles once the page has ended, whatever the outcome; the browser closes on it. */
+    /** Remains pending while the run is active; the browser closes when it settles. */
     running: Promise<unknown>
-    /** Which of Playwright's browsers to launch; chromium by default. */
+    /** Which browser engine Playwright launches; chromium by default. */
     engine?: "chromium" | "firefox" | "webkit"
 }
 
