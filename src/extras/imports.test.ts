@@ -145,8 +145,8 @@ describe(TITLE, () => {
         })
 
         it("refuses what it cannot read or parse, naming the option", () => {
-            assert.throws(() => readImportMap(join(dir, "maps", "none.json")), /ENOENT/)
-            assert.throws(() => readImportMap(join(dir, "maps", "bad.json")), /Invalid JSON/)
+            assert.throws(() => readImportMap(join(dir, "maps", "none.json")), /ENOENT:/)
+            assert.throws(() => readImportMap(join(dir, "maps", "bad.json")), /--import-map: Invalid JSON/)
         })
     })
 

@@ -5,7 +5,7 @@
 
 import {resolve} from "node:path"
 import {fileURLToPath, pathToFileURL} from "node:url"
-import {readJSON} from "../utils/read-json.ts"
+import {readJsonFile} from "../utils/read-json.ts"
 import {UsageError} from "./usage-error.ts"
 
 interface ImportMapJSON {
@@ -166,7 +166,7 @@ export const importMapItems = (map: unknown, mapFile: URL): ImportMapItem[] => {
 /** The items of an import map file, its own location being what a relative address resolves against. */
 export const readImportMap = (file: string): ImportMapItem[] => {
     const url = pathToFileURL(file)
-    const map = readJSON<ImportMapJSON>(file)
+    const map = readJsonFile<ImportMapJSON>(file, e => new UsageError(`--import-map: ${e}`))
     return importMapItems(map, url)
 }
 
