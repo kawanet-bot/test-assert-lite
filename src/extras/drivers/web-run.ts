@@ -30,11 +30,17 @@ export interface PageLike {
     goto(url: string, options?: object): Promise<unknown>
 }
 
+export interface RunInBrowserOptions {
+    browser: BrowserLike
+    newPageOptions?: object
+    gotoOptions?: object
+}
+
 /**
  * Opens `url` in `browser`, a Playwright-like one already launched, and
  * closes it once `completion` settles. Rejects when the browser is gone.
  */
-export const runInBrowser: WebRunFn<{browser: BrowserLike}> = async ({url, completion, options}) => {
+export const runInBrowser: WebRunFn<RunInBrowserOptions> = async ({url, completion, options}) => {
     const {browser} = options
     try {
         // A browser that goes away fails the run at once, ahead of the
@@ -45,8 +51,8 @@ export const runInBrowser: WebRunFn<{browser: BrowserLike}> = async ({url, compl
         // Handled here as well: close() below fires this too when something
         // else failed first, and that must not add an unhandled rejection.
         void gone.catch(() => undefined)
-        const page = await browser.newPage()
-        await page.goto(url)
+        const page = await browser.newPage(options.newPageOptions)
+        await page.goto(url, options.gotoOptions)
         await Promise.race([completion, gone])
     } finally {
         await browser.close()
