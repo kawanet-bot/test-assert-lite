@@ -82,14 +82,14 @@ const runCLI = async (options: Options): Promise<number> => {
         if (options.mode === "webdriver") {
             await runInWebDriver({
                 url,
-                running: app.done,
+                completion: app.done,
                 session: options.session == null ? undefined : readFileSync(options.session, "utf8"),
                 endpoint: options.endpoint,
             })
         } else if (options.mode === "playwright") {
             await runInPlaywright({
                 url,
-                running: app.done,
+                completion: app.done,
                 engine: options.engine,
             })
         } else {
