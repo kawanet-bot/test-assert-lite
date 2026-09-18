@@ -79,22 +79,26 @@ const runCLI = async (options: Options): Promise<number> => {
     }
 
     try {
-        const success = options.mode === "webdriver"
-            ? await runInWebDriver({
+        const {done} = app
+        if (options.mode === "webdriver") {
+            await runInWebDriver({
                 page,
-                done: app.done,
+                done,
                 session: options.session == null ? undefined : readFileSync(options.session, "utf8"),
                 endpoint: options.endpoint,
             })
-            : await runInPlaywright({
+        } else if (options.mode === "playwright") {
+            await runInPlaywright({
                 page,
-                done: app.done,
+                done,
                 browser: options.browser,
             })
-
+        } else {
+            throw new Error(`Invalid mode: ${(options as Options)?.mode}`)
+        }
         // The exit code alone, as in Node mode and node --test: the summary
         // on stdout already says what failed, and no tests is not a failure.
-        return success ? 0 : 1
+        return await done ? 0 : 1
     } finally {
         close()
     }

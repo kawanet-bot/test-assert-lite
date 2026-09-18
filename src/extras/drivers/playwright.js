@@ -31,7 +31,7 @@ export const runInPlaywright = async ({page: url, done, browser: name = "chromiu
         void gone.catch(() => undefined)
         const page = await browser.newPage()
         await page.goto(url)
-        return await Promise.race([done, gone])
+        await Promise.race([done, gone])
     } finally {
         await browser.close()
     }
