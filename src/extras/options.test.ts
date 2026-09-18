@@ -146,11 +146,12 @@ describe(TITLE, () => {
             assert.throws(() => readOptions(["--alias", "cdn=https://cdn.example/x.js", "a.test.ts"]), /--alias: a URL applies to --playwright, --webdriver and --serve only: "cdn"/)
         })
 
-        it("reads --playwright with its browser", () => {
-            const options = readOptions(["--playwright", "webkit", "suite.mjs"])
+        it("reads --playwright with its browser and config file", () => {
+            const options = readOptions(["--playwright", "webkit", "--playwright-config", "config.json", "suite.mjs"])
             assert.equal(options.mode, "playwright")
             if (options.mode !== "playwright") return
             assert.equal(options.engine, "webkit")
+            assert.equal(options.configJson, "config.json")
             assert.deepEqual(options.session.files, [resolve("suite.mjs")])
             assert.throws(() => readOptions(["--playwright", "electron", "suite.mjs"]), /--playwright takes/)
         })
