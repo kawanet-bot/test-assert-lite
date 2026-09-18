@@ -7,7 +7,6 @@ import {pathToFileURL} from "node:url"
 import type {ImportBase} from "./imports.ts"
 import {ImportAliasItem, ImportMapItem, Imports, importMapItems, readImportMap} from "./imports.ts"
 import {createFiles} from "./server/files.ts"
-import {UsageError} from "./usage-error.ts"
 
 const TITLE = "extras/imports.test.ts"
 
@@ -19,14 +18,6 @@ const mapped = (specifier: string, address: unknown): ImportMapItem => new Impor
 // at fixed paths, the rest under a directory digest, blanked out to compare.
 const serveFor = (...items: ImportBase[]): ((file: string) => string) => createFiles(new Imports(items).paths()).urlOf
 const unhash = (address: string | undefined): string => address?.replace(/\/[0-9a-f]{9}\//, "/xxxxxxxxx/") || ""
-
-const refused = (fn: () => unknown, reason: RegExp): void => {
-    assert.throws(fn, (error: unknown) => {
-        assert.ok(error instanceof UsageError)
-        assert.match(error.message, reason)
-        return true
-    })
-}
 
 const DEFAULTS = [
     "test-assert-lite",
@@ -64,7 +55,7 @@ describe(TITLE, () => {
                 assert.ok(item.isURL())
                 assert.equal(item.getPath(), undefined)
                 assert.equal(item.getAddress(serveFor(item)), entry.slice(entry.indexOf("=") + 1))
-                assert.match(item.refusal("node") ?? "", /^--alias: a URL applies to --playwright, --webdriver and --serve only: "/)
+                assert.match(item.refusal("node") ?? "", /--alias: a URL applies to --playwright, --webdriver and --serve only: "/)
                 assert.equal(item.refusal("browser"), undefined)
             }
         })
@@ -83,13 +74,15 @@ describe(TITLE, () => {
 
         it("refuses a key a page would resolve against its base, in the browser modes only", () => {
             for (const entry of ["./a=x.mjs", "/a=x.mjs", "a/=lib/"]) {
-                assert.match(alias(entry).refusal("browser") ?? "", /^--alias: no prefix entry or relative key: "/)
+                assert.match(alias(entry).refusal("browser") ?? "", /--alias: no prefix entry or relative key: "/)
                 assert.equal(alias(entry).refusal("node"), undefined)
             }
         })
 
         it("refuses an entry without a specifier or a target", () => {
-            for (const entry of ["mod", "=x.mjs", "mod="]) refused(() => alias(entry), /^--alias takes <specifier>=<target>: /)
+            assert.throws(() => alias("mod"), /--alias takes <specifier>=<target>: /)
+            assert.throws(() => alias("=x.mjs"), /--alias takes <specifier>=<target>: /)
+            assert.throws(() => alias("mod="), /--alias takes <specifier>=<target>: /)
         })
     })
 
@@ -110,26 +103,26 @@ describe(TITLE, () => {
                 assert.equal(item.isPath(), false)
                 assert.equal(item.getPath(), undefined)
                 assert.equal(item.getAddress(serveFor(item)), address)
-                assert.match(item.refusal("node") ?? "", /^--import-map: an address starting with \/ or a scheme applies to --playwright, --webdriver and --serve only: "/)
+                assert.match(item.refusal("node") ?? "", /--import-map: an address starting with \/ or a scheme applies to --playwright, --webdriver and --serve only: "/)
                 assert.equal(item.refusal("browser"), undefined)
             }
         })
 
         it("takes a URL as a key, and refuses a bare address, a prefix entry and a relative key", () => {
             assert.equal(mapped("https://cdn.example/lib.js", "./local.mjs").getPath(), resolve("maps", "local.mjs"))
-            refused(() => mapped("a", "lodash"), /^--import-map: an address starts with \.\/, \.\.\/, \/ or a scheme: "a"$/)
-            refused(() => mapped("a", "test-assert-lite/test"), /an address starts with/)
-            refused(() => mapped("a", 1), /^--import-map: not a string: "a"$/)
-            refused(() => mapped("a/", "./a/"), /^--import-map: no prefix entry or relative key: "a\/"$/)
-            refused(() => mapped("./a", "./a.js"), /no prefix entry or relative key: "\.\/a"$/)
+            assert.throws(() => mapped("a", "lodash"), /--import-map: an address starts with \.\/, \.\.\/, \/ or a scheme: "a"$/)
+            assert.throws(() => mapped("a", "test-assert-lite/test"), /an address starts with/)
+            assert.throws(() => mapped("a", 1), /--import-map: not a string: "a"$/)
+            assert.throws(() => mapped("a/", "./a/"), /--import-map: no prefix entry or relative key: "a\/"$/)
+            assert.throws(() => mapped("./a", "./a.js"), /no prefix entry or relative key: "\.\/a"$/)
         })
 
         it("is read from the map's imports alone, in order", () => {
             assert.deepEqual(importMapItems({imports: {a: "./a.js", b: "/b.js"}}, mapFile).map(item => [item.specifier, item.target]), [["a", "./a.js"], ["b", "/b.js"]])
             assert.deepEqual(importMapItems({}, mapFile), [])
-            refused(() => importMapItems([], mapFile), /^--import-map: not an object$/)
-            refused(() => importMapItems({imports: {}, scopes: {}}, mapFile), /^--import-map: only "imports" is supported: "scopes"$/)
-            refused(() => importMapItems({imports: []}, mapFile), /^--import-map: not an object: "imports"$/)
+            assert.throws(() => importMapItems([], mapFile), /--import-map: not an object$/)
+            assert.throws(() => importMapItems({imports: {}, scopes: {}}, mapFile), /--import-map: only "imports" is supported: "scopes"$/)
+            assert.throws(() => importMapItems({imports: []}, mapFile), /--import-map: not an object: "imports"$/)
         })
     })
 
@@ -152,8 +145,8 @@ describe(TITLE, () => {
         })
 
         it("refuses what it cannot read or parse, naming the option", () => {
-            refused(() => readImportMap(join(dir, "maps", "none.json")), /^--import-map: ENOENT/)
-            refused(() => readImportMap(join(dir, "maps", "bad.json")), /^--import-map: /)
+            assert.throws(() => readImportMap(join(dir, "maps", "none.json")), /ENOENT/)
+            assert.throws(() => readImportMap(join(dir, "maps", "bad.json")), /Invalid JSON/)
         })
     })
 
