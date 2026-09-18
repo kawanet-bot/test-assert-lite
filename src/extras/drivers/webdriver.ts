@@ -38,7 +38,7 @@ export const runInWebDriver: WebRunFn<RunInWebDriverOptions> = async ({url, comp
     const endpoint = options.endpoint || "http://127.0.0.1:4444"
     let created: Reply["value"]
 
-    const session = {...options.session}
+    const session: SessionRequest = options.session ? {...options.session} : {}
     if (!session.capabilities) session.capabilities = {}
 
     try {
