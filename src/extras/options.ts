@@ -58,7 +58,7 @@ export type Options =
     | CommonOptions & {mode: "node"}
     | BrowserOptions & {mode: "serve"}
     | BrowserOptions & {mode: "playwright", engine: EngineName}
-    | BrowserOptions & {mode: "webdriver", session?: string, endpoint: string}
+    | BrowserOptions & {mode: "webdriver", session?: string, endpoint?: string}
 
 // A port is a whole number a socket can take, written in decimal: what
 // Number() would also read, 0x50 or 1e3 or nothing, is not one.
@@ -208,6 +208,6 @@ export const readOptions = (args: string[]): Options => {
         origin: values.origin == null ? undefined : originOf(values.origin),
     }
     if (engine) return {...shared, mode: "playwright", engine}
-    if (webdriver) return {...shared, mode: "webdriver", session: values["webdriver-session"], endpoint: values.endpoint ?? "http://127.0.0.1:4444"}
+    if (webdriver) return {...shared, mode: "webdriver", session: values["webdriver-session"], endpoint: values.endpoint}
     return {...shared, mode: "serve"}
 }

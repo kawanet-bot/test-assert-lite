@@ -7,9 +7,13 @@ import type {WebRunFn} from "./web-run.ts"
 
 export interface RunInWebDriverOptions {
     /** The WebDriver server, such as http://127.0.0.1:4444 */
-    endpoint: string
-    /** JSON sent as the body of POST /session; no capabilities by default. */
-    session?: string
+    endpoint?: string
+    /** The request body of POST /session; no capabilities by default. */
+    session?: SessionRequest
+}
+
+interface SessionRequest {
+    capabilities?: object
 }
 
 // A WebDriver response carries its payload, or its error, under `value`.
@@ -31,11 +35,14 @@ const call = async (endpoint: string, method: string, path: string, body?: strin
  * run and no script timeout is in play.
  */
 export const runInWebDriver: WebRunFn<RunInWebDriverOptions> = async ({url, completion, options}) => {
-    const {endpoint, session} = options
+    const endpoint = options.endpoint || "http://127.0.0.1:4444"
     let created: Reply["value"]
 
+    const session = {...options.session}
+    if (!session.capabilities) session.capabilities = {}
+
     try {
-        created = await call(endpoint, "POST", "/session", session || JSON.stringify({capabilities: {}}))
+        created = await call(endpoint, "POST", "/session", JSON.stringify(session, null, 2))
     } catch (error) {
         // Nothing listening is the likely case, and the most useful hint.
         if (!(error instanceof TypeError)) throw error

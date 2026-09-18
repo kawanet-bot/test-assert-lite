@@ -5,7 +5,7 @@
 // and --serve hands the same page to a person. Directory search and glob
 // expansion are left to the shell: only explicit file names are accepted.
 
-import {readFileSync} from "node:fs"
+import {readFile} from "node:fs/promises"
 import {stringify} from "../utils/stringify.ts"
 import {VERSION} from "../utils/version.ts"
 import type {DriverConfig} from "./drivers/driver-config.ts"
@@ -82,7 +82,7 @@ const runCLI = async (options: Options): Promise<number> => {
         const completion = app.done
 
         if (options.mode === "webdriver") {
-            const session = options.session == null ? undefined : readFileSync(options.session, "utf8")
+            const session = !options.session ? undefined : await readJSON(options.session)
             await runInWebDriver({url, completion, options: {session, endpoint: options.endpoint}})
         } else if (options.mode === "playwright") {
             await runInPlaywright({url, completion, options: {engine: options.engine}})
@@ -95,6 +95,16 @@ const runCLI = async (options: Options): Promise<number> => {
         return (await app.done) ? 0 : 1
     } finally {
         close()
+    }
+}
+
+const readJSON = async <T extends object>(file: string): Promise<T | undefined> => {
+    const json = await readFile(file, "utf8")
+    if (!json) return
+    try {
+        return JSON.parse(json)
+    } catch (e) {
+        throw new Error(`Invalid JSON: ${file}`)
     }
 }
 

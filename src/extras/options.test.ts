@@ -169,7 +169,7 @@ describe(TITLE, () => {
             assert.equal(options.mode, "webdriver")
             if (options.mode !== "webdriver") return
             assert.equal(options.session, undefined)
-            assert.equal(options.endpoint, "http://127.0.0.1:4444")
+            assert.equal(options.endpoint, undefined)
             const given = readOptions(["--webdriver", "--webdriver-session", "s.json", "--endpoint", "http://127.0.0.1:9515", "suite.mjs"])
             assert.equal(given.mode, "webdriver")
             if (given.mode !== "webdriver") return
