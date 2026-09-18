@@ -61,7 +61,7 @@ const runCLI = async (options: Options): Promise<number> => {
         app.close()
         throw error
     })
-    const page = `${server.origin}${app.page}`
+    const url = `${server.origin}${app.page}`
     const close = (): void => {
         app.close()
         server.close()
@@ -70,8 +70,8 @@ const runCLI = async (options: Options): Promise<number> => {
     if (options.mode === "serve") {
         // Only the URL goes to stdout, so it can be piped. The server keeps
         // the process alive until an interrupt, which resolves this.
-        const url = options.suites.length ? page : server.origin + "/"
-        process.stdout.write(`${url}\n`)
+        const entryURL = options.suites.length ? url : `${server.origin}/`
+        process.stdout.write(`${entryURL}\n`)
         process.stderr.write("Serving; press Ctrl-C to stop.\n")
         await new Promise<void>(stop => process.once("SIGINT", () => stop()))
         close()
@@ -82,14 +82,14 @@ const runCLI = async (options: Options): Promise<number> => {
         const {done} = app
         if (options.mode === "webdriver") {
             await runInWebDriver({
-                page,
+                url,
                 done,
                 session: options.session == null ? undefined : readFileSync(options.session, "utf8"),
                 endpoint: options.endpoint,
             })
         } else if (options.mode === "playwright") {
             await runInPlaywright({
-                page,
+                url,
                 done,
                 browser: options.browser,
             })
@@ -98,7 +98,7 @@ const runCLI = async (options: Options): Promise<number> => {
         }
         // The exit code alone, as in Node mode and node --test: the summary
         // on stdout already says what failed, and no tests is not a failure.
-        return await done ? 0 : 1
+        return (await done) ? 0 : 1
     } finally {
         close()
     }

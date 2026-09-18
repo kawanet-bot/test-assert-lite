@@ -19,7 +19,7 @@ const loadPlaywright = async (name) => {
  * unless told otherwise) and resolves to the verdict the page sends back.
  * Playwright only opens the page: from there the page reports on its own.
  */
-export const runInPlaywright = async ({page: url, done, browser: name = "chromium"}) => {
+export const runInPlaywright = async ({url, done, browser: name = "chromium"}) => {
     const playwright = await loadPlaywright(name)
     const browser = await playwright[name].launch()
     try {
