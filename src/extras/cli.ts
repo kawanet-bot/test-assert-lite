@@ -90,7 +90,7 @@ const runCLI = async (options: Options): Promise<number> => {
             await runInPlaywright({
                 url,
                 running: app.done,
-                browserName: options.browserName,
+                engine: options.engine,
             })
         } else {
             throw new Error(`Invalid mode: ${(options as Options)?.mode}`)

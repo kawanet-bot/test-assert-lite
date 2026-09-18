@@ -7,7 +7,7 @@ export interface PlaywrightRunOptions {
     /** Settles once the page has ended, whatever the outcome; the browser closes on it. */
     running: Promise<unknown>
     /** Which of Playwright's browsers to launch; chromium by default. */
-    browserName?: "chromium" | "firefox" | "webkit"
+    engine?: "chromium" | "firefox" | "webkit"
 }
 
 /**

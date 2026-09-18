@@ -19,9 +19,9 @@ const loadPlaywright = async (name) => {
  * keeps it open until `running` settles. Playwright only opens the page:
  * from there the page reports on its own.
  */
-export const runInPlaywright = async ({url, running, browserName = "chromium"}) => {
-    const playwright = await loadPlaywright(browserName)
-    const browser = await playwright[browserName].launch()
+export const runInPlaywright = async ({url, running, engine = "chromium"}) => {
+    const playwright = await loadPlaywright(engine)
+    const browser = await playwright[engine].launch()
     try {
         // A browser that goes away fails the run at once, ahead of the
         // silence bound the page's own word would otherwise run into.
