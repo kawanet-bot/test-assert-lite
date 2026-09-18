@@ -107,10 +107,10 @@ export const importsOf = (mapFile: string | undefined, aliases: string[], mode: 
     return imports
 }
 
-const isPlaywrihtBrowser = (v: unknown): v is BrowserName => BROWSER_NAMES.includes(v as BrowserName)
+const isPlaywrightBrowser = (v: unknown): v is BrowserName => BROWSER_NAMES.includes(v as BrowserName)
 
 export const browserOf = (name: string): BrowserName => {
-    if (!isPlaywrihtBrowser(name)) throw new UsageError(`--playwright takes chromium, firefox or webkit: ${name}`)
+    if (!isPlaywrightBrowser(name)) throw new UsageError(`--playwright takes chromium, firefox or webkit: ${name}`)
     return name
 }
 

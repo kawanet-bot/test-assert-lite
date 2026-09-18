@@ -15,9 +15,9 @@ const loadPlaywright = async (name) => {
 }
 
 /**
- * Runs the suites on `page` in a headless `browser` (chromium
- * unless told otherwise) and resolves to the verdict the page sends back.
- * Playwright only opens the page: from there the page reports on its own.
+ * Opens `url` in a headless browser (chromium unless told otherwise) and
+ * keeps it open until `settled` settles. Playwright only opens the page:
+ * from there the page reports on its own.
  */
 export const runInPlaywright = async ({url, settled, browserName = "chromium"}) => {
     const playwright = await loadPlaywright(browserName)

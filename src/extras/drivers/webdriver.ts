@@ -6,7 +6,7 @@
 export interface WebDriverRunOptions {
     /** URL of the page to open, under the run's own path on the CLI's server. */
     url: string
-    /** The verdict the page reports back to that server. */
+    /** Settles once the page has ended, whatever the outcome; the browser closes on it. */
     settled: Promise<unknown>
     /** The WebDriver server, such as http://127.0.0.1:4444 */
     endpoint: string
@@ -27,10 +27,10 @@ const call = async (endpoint: string, method: string, path: string, body?: strin
 }
 
 /**
- * Runs the suites on `page` in the browser the WebDriver
- * server at `endpoint` drives, and resolves to the verdict the page sends
- * back. The driver only opens the page: from there the page reports on its
- * own, so no command waits on the run and no script timeout is in play.
+ * Opens `url` in the browser the WebDriver server at `endpoint` drives,
+ * and keeps the session until `settled` settles. The driver only opens
+ * the page: from there the page reports on its own, so no command waits
+ * on the run and no script timeout is in play.
  */
 export const runInWebDriver = async ({url, settled, endpoint, session}: WebDriverRunOptions): Promise<void> => {
     let created: Reply["value"]
