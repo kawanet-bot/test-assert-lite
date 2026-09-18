@@ -1,9 +1,13 @@
+// The shape every browser driver takes: a page to open, and when to close.
+// What a driver needs beside that, a WebDriver endpoint or a Playwright
+// engine say, is its own `options`.
+
 export interface WebRunOptions<T> {
     /** URL of the page to open, under the run's own path on the CLI's server. */
     url: string
     /** Settles when the run finishes or fails; the browser closes then. */
     completion: Promise<unknown>
-    /** custom options per driver */
+    /** What the driver itself takes, beside the page and its completion. */
     options: T
 }
 
@@ -26,13 +30,12 @@ export interface PageLike {
     goto(url: string, options?: object): Promise<unknown>
 }
 
+/**
+ * Opens `url` in `browser`, a Playwright-like one already launched, and
+ * closes it once `completion` settles. Rejects when the browser is gone.
+ */
 export const runInBrowser: WebRunFn<{browser: BrowserLike}> = async ({url, completion, options}) => {
     const {browser} = options
-
-    /**
-     * Opens `url` in a headless browser and keeps it open until `completion`
-     * settles. Rejects when Playwright is missing or the browser is gone.
-     */
     try {
         // A browser that goes away fails the run at once, ahead of the
         // silence bound the page's own word would otherwise run into.

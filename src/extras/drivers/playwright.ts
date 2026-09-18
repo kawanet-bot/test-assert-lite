@@ -14,6 +14,10 @@ interface BrowserTypeLike {
     launch(options?: object): Promise<BrowserLike>
 }
 
+/**
+ * Launches the engine headless and runs the page in it. Rejects when
+ * Playwright is missing, with a hint on installing it.
+ */
 export const runInPlaywright: WebRunFn<RunInPlaywrightOptions> = async ({url, completion, options}) => {
     const engine = options?.engine as BrowserName || "chromium"
     let browserType: BrowserTypeLike | undefined = undefined

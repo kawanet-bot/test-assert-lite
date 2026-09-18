@@ -24,6 +24,12 @@ const call = async (endpoint: string, method: string, path: string, body?: strin
     return value
 }
 
+/**
+ * Opens `url` in the browser the WebDriver server at `endpoint` drives, and
+ * ends the session once `completion` settles. The driver only opens the
+ * page: from there the page reports on its own, so no command waits on the
+ * run and no script timeout is in play.
+ */
 export const runInWebDriver: WebRunFn<RunInWebDriverOptions> = async ({url, completion, options}) => {
     const {endpoint, session} = options
     let created: Reply["value"]
