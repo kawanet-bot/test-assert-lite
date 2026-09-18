@@ -8,6 +8,7 @@ import {parseArgs} from "node:util"
 import type {Mode} from "./imports.ts"
 import {ImportAliasItem, Imports, cwdURL, readImportMap} from "./imports.ts"
 import {createFiles} from "./server/files.ts"
+import type {SessionConfig} from "./session-config.ts"
 import {UsageError} from "./usage-error.ts"
 
 export const USAGE = `Usage: test-assert [options] [file...]
@@ -26,18 +27,15 @@ export const USAGE = `Usage: test-assert [options] [file...]
   --webdriver-session <file>  JSON sent as the body of POST /session (default: no capabilities)
   --endpoint <url>            the WebDriver server (default: http://127.0.0.1:4444)
   --playwright <browser>      run the suite through Playwright: chromium, firefox or webkit
+  --playwright-config <file>  JSON options for Playwright's launch, newPage and goto
 `
 
 const ENGINE_NAMES = ["chromium", "firefox", "webkit"] as const
 export type EngineName = typeof ENGINE_NAMES[number]
 
 interface CommonOptions {
-    /** The suites, absolute, all served from one directory. */
-    suites: string[]
-    /** The reporter named, as given; the run says whether it knows it. */
-    reporter?: string
-    /** false under --no-summary; otherwise left unset. */
-    summary?: boolean
+    session: SessionConfig
+
     /** From --import-map then --alias, a later item over an earlier one of the same specifier. */
     imports: Imports
 }
@@ -57,8 +55,8 @@ export type Options =
     | {mode: "version"}
     | CommonOptions & {mode: "node"}
     | BrowserOptions & {mode: "serve"}
-    | BrowserOptions & {mode: "playwright", engine: EngineName}
-    | BrowserOptions & {mode: "webdriver", session?: string, endpoint: string}
+    | BrowserOptions & {mode: "playwright", engine: EngineName, configJson?: string}
+    | BrowserOptions & {mode: "webdriver", endpoint?: string, sessionJson?: string}
 
 // A port is a whole number a socket can take, written in decimal: what
 // Number() would also read, 0x50 or 1e3 or nothing, is not one.
@@ -133,6 +131,7 @@ const parse = (args: string[]) => {
                 script: {type: "string", multiple: true, default: []},
                 mount: {type: "string"},
                 playwright: {type: "string"},
+                "playwright-config": {type: "string"},
                 webdriver: {type: "boolean", default: false},
                 "webdriver-session": {type: "string"},
                 endpoint: {type: "string"},
@@ -168,6 +167,9 @@ export const readOptions = (args: string[]): Options => {
     if (!webdriver && (values["webdriver-session"] != null || values.endpoint != null)) {
         throw new UsageError("--webdriver-session and --endpoint apply to --webdriver only")
     }
+    if (!playwright && (values["playwright-config"] != null)) {
+        throw new UsageError("--playwright-config applies to --playwright only")
+    }
     if (!serve && !files.length) {
         throw new UsageError("no test files specified")
     }
@@ -181,25 +183,30 @@ export const readOptions = (args: string[]): Options => {
     }
 
     const imports = importsOf(values["import-map"], values.alias, browsing ? "browser" : "node")
+
     // Only the flag given makes a value: the run's default stands otherwise.
     const summary = values["no-summary"] ? false : undefined
-    if (!browsing) return {mode: "node", suites: files.map(file => resolve(file)), imports, reporter: values.reporter, summary}
 
-    const suites = files.map(file => resolve(file))
+    const session: SessionConfig = {
+        files: files.map(file => resolve(file)),
+        reporter: values.reporter,
+        summary,
+    }
+
+    if (!browsing) return {mode: "node", imports, session}
+
     const scripts = values.script.map(script => resolve(script))
 
-    // The suites are served from one directory, so a module they share is
+    // The test files are served from one directory, so a module they share is
     // one URL and loads once, as under Node; from two, it would load once
     // per directory. One under another counts as served from the latter.
-    const served = createFiles([...suites, ...scripts, ...imports.paths()])
-    if (new Set(suites.map(file => served.dirOf(file))).size > 1) {
+    const served = createFiles([...(session.files), ...scripts, ...imports.paths()])
+    if (new Set(session.files.map(file => served.dirOf(file))).size > 1) {
         throw new UsageError("--playwright, --webdriver and --serve take the test files from one directory")
     }
 
     const shared: BrowserOptions = {
-        suites: suites,
-        reporter: values.reporter,
-        summary,
+        session,
         scripts,
         imports,
         mount: values.mount == null ? undefined : mountOf(values.mount),
@@ -207,7 +214,7 @@ export const readOptions = (args: string[]): Options => {
         port: values.port == null ? undefined : portOf(values.port),
         origin: values.origin == null ? undefined : originOf(values.origin),
     }
-    if (engine) return {...shared, mode: "playwright", engine}
-    if (webdriver) return {...shared, mode: "webdriver", session: values["webdriver-session"], endpoint: values.endpoint ?? "http://127.0.0.1:4444"}
+    if (engine) return {...shared, mode: "playwright", engine, configJson: values["playwright-config"]}
+    if (webdriver) return {...shared, mode: "webdriver", sessionJson: values["webdriver-session"], endpoint: values.endpoint}
     return {...shared, mode: "serve"}
 }

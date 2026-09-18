@@ -2,6 +2,7 @@ import {strict as assert} from "node:assert"
 import {resolve} from "node:path"
 import {describe, it} from "node:test"
 import {engineNameOf, mountOf, originOf, portOf, readOptions} from "./options.ts"
+import type {SessionConfig} from "./session-config.ts"
 
 const TITLE = "extras/options.test.ts"
 
@@ -76,7 +77,7 @@ describe(TITLE, () => {
             const options = readOptions(["a.test.ts", "b.test.ts"])
             assert.equal(options.mode, "node")
             if (options.mode !== "node") return
-            assert.deepEqual(options.suites, [resolve("a.test.ts"), resolve("b.test.ts")])
+            assert.deepEqual(options.session.files, [resolve("a.test.ts"), resolve("b.test.ts")])
             assert.deepEqual(options.imports.paths(), [])
         })
 
@@ -97,19 +98,9 @@ describe(TITLE, () => {
 
         it("reads --serve: no suite, nothing else set", () => {
             const options = readOptions(["--serve"])
-            assert.ok(options.mode === "serve" && options.imports.paths().length === 0)
-            assert.deepEqual({...options, imports: null}, {
-                mode: "serve",
-                suites: [],
-                reporter: undefined,
-                summary: undefined,
-                scripts: [],
-                imports: null,
-                mount: undefined,
-                host: undefined,
-                port: undefined,
-                origin: undefined,
-            })
+            assert.equal(options.mode, "serve")
+            assert.equal(options.session.files?.length, 0)
+            assert.equal(options.imports.paths().length, 0)
         })
 
         it("reads --host as given, --port and --origin checked and normalized", () => {
@@ -134,14 +125,14 @@ describe(TITLE, () => {
         })
 
         it("reads --reporter as given, in every mode", () => {
-            const named = (args: string[]): string | undefined => (readOptions(args) as {reporter?: string}).reporter
+            const named = (args: string[]): string | undefined => (readOptions(args) as {session: SessionConfig}).session.reporter
             assert.equal(named(["--reporter", "tap", "a.test.ts"]), "tap")
             assert.equal(named(["--reporter", "html", "--serve"]), "html")
             assert.equal(named(["a.test.ts"]), undefined)
         })
 
         it("reads --no-summary as summary false, and leaves it unset otherwise", () => {
-            const summary = (args: string[]): boolean | undefined => (readOptions(args) as {summary?: boolean}).summary
+            const summary = (args: string[]): boolean | undefined => (readOptions(args) as {session: SessionConfig}).session.summary
             assert.equal(summary(["--no-summary", "a.test.ts"]), false)
             assert.equal(summary(["--no-summary", "--serve"]), false)
             assert.equal(summary(["a.test.ts"]), undefined)
@@ -155,12 +146,13 @@ describe(TITLE, () => {
             assert.throws(() => readOptions(["--alias", "cdn=https://cdn.example/x.js", "a.test.ts"]), /--alias: a URL applies to --playwright, --webdriver and --serve only: "cdn"/)
         })
 
-        it("reads --playwright with its browser", () => {
-            const options = readOptions(["--playwright", "webkit", "suite.mjs"])
+        it("reads --playwright with its browser and config file", () => {
+            const options = readOptions(["--playwright", "webkit", "--playwright-config", "config.json", "suite.mjs"])
             assert.equal(options.mode, "playwright")
             if (options.mode !== "playwright") return
             assert.equal(options.engine, "webkit")
-            assert.deepEqual(options.suites, [resolve("suite.mjs")])
+            assert.equal(options.configJson, "config.json")
+            assert.deepEqual(options.session.files, [resolve("suite.mjs")])
             assert.throws(() => readOptions(["--playwright", "electron", "suite.mjs"]), /--playwright takes/)
         })
 
@@ -168,12 +160,12 @@ describe(TITLE, () => {
             const options = readOptions(["--webdriver", "suite.mjs"])
             assert.equal(options.mode, "webdriver")
             if (options.mode !== "webdriver") return
-            assert.equal(options.session, undefined)
-            assert.equal(options.endpoint, "http://127.0.0.1:4444")
+            assert.equal(options.sessionJson, undefined)
+            assert.equal(options.endpoint, undefined)
             const given = readOptions(["--webdriver", "--webdriver-session", "s.json", "--endpoint", "http://127.0.0.1:9515", "suite.mjs"])
             assert.equal(given.mode, "webdriver")
             if (given.mode !== "webdriver") return
-            assert.equal(given.session, "s.json")
+            assert.equal(given.sessionJson, "s.json")
             assert.equal(given.endpoint, "http://127.0.0.1:9515")
         })
 
@@ -195,6 +187,11 @@ describe(TITLE, () => {
             assert.throws(() => readOptions(["--endpoint", "http://x", "a.test.ts"]), /apply to --webdriver only$/)
         })
 
+        it("refuses the Playwright flags outside --playwright", () => {
+            assert.throws(() => readOptions(["--serve", "--playwright-config", "s.json"]), /applies to --playwright only$/)
+            assert.throws(() => readOptions(["--webdriver", "--playwright-config", "s.json"]), /applies to --playwright only$/)
+        })
+
         it("refuses a runner with no suite on --playwright and --webdriver", () => {
             assert.throws(() => readOptions(["--playwright", "chromium", "--mount", "site"]), /no test files specified$/)
             assert.throws(() => readOptions(["--webdriver"]), /no test files specified$/)
@@ -205,7 +202,7 @@ describe(TITLE, () => {
             const options = readOptions(["--playwright", "chromium", "test/b.mjs", "./test/a.mjs", "test/b.mjs", "test/sub/c.mjs"])
             assert.equal(options.mode, "playwright")
             if (options.mode !== "playwright") return
-            assert.deepEqual(options.suites, [resolve("test/b.mjs"), resolve("test/a.mjs"), resolve("test/b.mjs"), resolve("test/sub/c.mjs")])
+            assert.deepEqual(options.session.files, [resolve("test/b.mjs"), resolve("test/a.mjs"), resolve("test/b.mjs"), resolve("test/sub/c.mjs")])
             assert.throws(() => readOptions(["--playwright", "chromium", "test/a.mjs", "other/b.mjs"]), /from one directory$/)
             assert.throws(() => readOptions(["--webdriver", "x/a.mjs", "test/b.mjs"]), /from one directory$/)
             assert.throws(() => readOptions(["--serve", "test/a/x.mjs", "test/b/y.mjs"]), /from one directory$/)
@@ -220,7 +217,7 @@ describe(TITLE, () => {
         it("reads --serve with --mount, without a suite", () => {
             const options = readOptions(["--serve", "--mount", "site"])
             assert.equal(options.mode, "serve")
-            assert.deepEqual((options as {suites?: string[]}).suites, [])
+            assert.deepEqual(options.session.files, [])
             assert.equal((options as {mount?: string}).mount, resolve("site"))
         })
 

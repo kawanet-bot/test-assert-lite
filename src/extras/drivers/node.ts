@@ -8,12 +8,17 @@ import {pathToFileURL} from "node:url"
 import type {TAL} from "test-assert-lite"
 import {end, load, session} from "test-assert-lite/session"
 import type {Imports} from "../imports.ts"
-import type {DriverOptions} from "./driver-config.ts"
+import type {SessionConfig} from "../session-config.ts"
 
 /** What the hook is handed at registration, and the only place its source and this file meet. */
 interface HookData {
     /** Each specifier to the file URL it resolves to: this package's own subpaths for node:test and node:assert, and what --import-map and --alias add. */
     aliases: Map<string, string>
+}
+
+interface RunInNodeOptions {
+    imports: Imports
+    session: SessionConfig
 }
 
 // Written as source because a hook reaches the loader as a module of its
@@ -32,20 +37,20 @@ export const resolve = (specifier, context, next) => {
  * from this copy of it, so a suite outside any project, or beside another
  * copy, still lands on the instance end() reads.
  */
-export const runInNode = async (imports: Imports, options: DriverOptions): Promise<TAL.SessionResult> => {
-    const {reporter, summary} = options
+export const runInNode = async (options: RunInNodeOptions): Promise<TAL.SessionResult> => {
+    const {reporter, summary, files} = options.session
 
     // A Map, so a specifier named like an Object property finds no alias.
     // Every item left for Node is a file: the reading of the options saw to it.
-    const aliases = new Map([...imports.entries()].map(([specifier, item]) => [specifier, pathToFileURL(item.getPath() as string).href]))
+    const aliases = new Map([...options.imports.entries()].map(([specifier, item]) => [specifier, pathToFileURL(item.getPath() as string).href]))
     const data: HookData = {aliases}
     register(`data:text/javascript,${encodeURIComponent(HOOK)}`, {data})
 
     session({reporter, summary})
 
-    const files = (options?.files ?? []).map(file => pathToFileURL(resolve(file)).href)
+    const urlList = files.map(file => pathToFileURL(resolve(file)).href)
 
-    for (const file of files) {
+    for (const file of urlList) {
         await load(file)
     }
 

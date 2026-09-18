@@ -50,8 +50,9 @@ describe(TITLE, () => {
         const laid = createFiles([join(dir, "tests", "my suite.mjs"), join(dir, "lib", "mod.mjs")])
         tests = laid.dirOf(join(dir, "tests", "my suite.mjs")).path
         lib = laid.dirOf(join(dir, "lib", "mod.mjs")).path
+        const files = [join(dir, "tests", "my suite.mjs"), join(dir, "tests", "second.mjs")]
         app = createApp({
-            suites: [join(dir, "tests", "my suite.mjs"), join(dir, "tests", "second.mjs")],
+            session: {files},
             scripts: [join(dir, "tests", "setup.js"), join(dir, "tests", "set+up#2.js")],
             imports: new Imports([
                 new ImportAliasItem(`mod=${join(dir, "lib", "mod.mjs")}`, cwd),
@@ -82,14 +83,14 @@ describe(TITLE, () => {
             return i
         }
         const map = at('<script type="importmap">')
-        const config = at('<script type="application/vnd.config+json">')
+        const config = at('<script type="application/vnd.session-config+json">')
         assert.match(tests, /^\/@tal\/files\/[0-9a-f]{9}\/$/)
         const script = at(`<script src="${tests}setup.js"></script>`)
         const second = at(`<script src="${tests}set%2Bup%232.js"></script>`)
         assert.ok(map < config && config < script && script < second)
         assert.equal(head.includes('<script type="module" src='), false)
-        const {options} = JSON.parse(head.slice(head.indexOf("{", config), head.indexOf("</script>", config)))
-        assert.deepEqual(options, {files: [`${tests}my%20suite.mjs`, `${tests}second.mjs`]})
+        const {session} = JSON.parse(head.slice(head.indexOf("{", config), head.indexOf("</script>", config)))
+        assert.deepEqual(session, {files: [`${tests}my%20suite.mjs`, `${tests}second.mjs`]})
         const {imports} = JSON.parse(head.slice(head.indexOf("{", map), head.indexOf("</script>", map)))
         assert.equal(imports["node:test"], "/@tal/exports/test.js")
         assert.equal(imports["test-assert-lite"], "/@tal/dist/test-assert-lite.min.js")
@@ -101,14 +102,14 @@ describe(TITLE, () => {
     })
 
     it("escapes a < in the config, so a name cannot close the tag, and reads it back", async () => {
-        const odd = createApp({config: {options: {reporter: "</script><b>"}}, stdout: () => undefined})
+        const odd = createApp({session: {files: [], reporter: "</script><b>"}, stdout: () => undefined})
         const server = await serve({handler: odd.handler})
         try {
             const head = (await get(server.origin + "/")).body.split("</head>")[0] as string
-            const config = head.indexOf('<script type="application/vnd.config+json">')
+            const config = head.indexOf('<script type="application/vnd.session-config+json">')
             const json = head.slice(head.indexOf("{", config), head.indexOf("</script>", config))
             assert.equal(json.includes("</script>"), false)
-            assert.deepEqual(JSON.parse(json), {options: {reporter: "</script><b>", files: []}})
+            assert.deepEqual(JSON.parse(json), {session: {reporter: "</script><b>", files: []}})
         } finally {
             odd.close()
             server.close()
@@ -178,7 +179,8 @@ describe(TITLE, () => {
     it("asks about changes from both pages, and only with watch on", async () => {
         assert.equal((await get(url("/"))).body.includes("/@tal/watch?after="), false)
         assert.equal((await get(url("/@tal/watch?after=0"))).status, 404)
-        const watching = createApp({suites: [join(dir, "tests", "my suite.mjs")], watch: true, stdout: () => undefined})
+        const files = [join(dir, "tests", "my suite.mjs")]
+        const watching = createApp({session: {files}, watch: true, stdout: () => undefined})
         const running = await serve({handler: watching.handler})
         try {
             const index = (await get(running.origin + "/")).body
@@ -197,7 +199,8 @@ describe(TITLE, () => {
 
     it("serves without the reload, and says so once, where it cannot watch", async () => {
         const lines: string[] = []
-        const blind = createApp({suites: [join(dir, "missing", "suite.mjs")], watch: true, stdout: () => undefined, stderr: text => lines.push(text)})
+        const files = [join(dir, "missing", "suite.mjs")]
+        const blind = createApp({session: {files}, watch: true, stdout: () => undefined, stderr: text => lines.push(text)})
         const running = await serve({handler: blind.handler})
         try {
             assert.equal(lines.length, 1)
@@ -220,9 +223,11 @@ describe(TITLE, () => {
         await writeFile(join(plain, "b <c>.mjs"), "")
         await mkdir(join(plain, "site"))
         await writeFile(join(plain, "site", "index.html"), "<html><head><title>{{title}}</title></head><body>{{title}}</body></html>")
-        const named = createApp({suites: [join(plain, "a.mjs"), join(plain, "b <c>.mjs"), join(plain, "a.mjs")], stdout: () => undefined})
-        const mounted = createApp({suites: [join(plain, "a.mjs")], mount: join(plain, "site"), stdout: () => undefined})
-        const bare = createApp({mount: join(plain, "site"), stdout: () => undefined})
+        const namedFiles = [join(plain, "a.mjs"), join(plain, "b <c>.mjs"), join(plain, "a.mjs")]
+        const named = createApp({session: {files: namedFiles}, stdout: () => undefined})
+        const mountedFiles = [join(plain, "a.mjs")]
+        const mounted = createApp({session: {files: mountedFiles}, mount: join(plain, "site"), stdout: () => undefined})
+        const bare = createApp({session: {files: []}, mount: join(plain, "site"), stdout: () => undefined})
         const servers = await Promise.all([named, mounted, bare].map(app => serve({handler: app.handler})))
         try {
             assert.ok((await get(servers[0]!.origin + named.page)).body.includes("<title>a.mjs b &#60;c&#62;.mjs</title>"))
@@ -239,7 +244,8 @@ describe(TITLE, () => {
     it("serves a mounted directory at the root in place of htdocs, its HTML with the head", async () => {
         await mkdir(join(dir, "site"))
         await writeFile(join(dir, "site", "index.html"), "<html><head></head><body>mine</body></html>")
-        const mounted = createApp({suites: [join(dir, "tests", "my suite.mjs")], mount: join(dir, "site"), stdout: () => undefined})
+        const files = [join(dir, "tests", "my suite.mjs")]
+        const mounted = createApp({session: {files}, mount: join(dir, "site"), stdout: () => undefined})
         const running = await serve({handler: mounted.handler})
         try {
             const index = await get(running.origin + "/")
@@ -257,7 +263,7 @@ describe(TITLE, () => {
     it("serves a mounted directory without a suite: the library in the head, no suite tag, no suite mount", async () => {
         await mkdir(join(dir, "plain"))
         await writeFile(join(dir, "plain", "index.html"), "<html><head></head><body>plain</body></html>")
-        const bare = createApp({mount: join(dir, "plain"), watch: true, stdout: () => undefined})
+        const bare = createApp({session: {files: []}, mount: join(dir, "plain"), watch: true, stdout: () => undefined})
         const running = await serve({handler: bare.handler})
         try {
             const index = (await get(running.origin + "/")).body
@@ -274,7 +280,8 @@ describe(TITLE, () => {
         await mkdir(join(dir, "mapped"))
         await writeFile(join(dir, "mapped", "index.html"), '<html><head><script type="importmap">{"imports":{"mine":"/mine.mjs"}}</script></head><body>mapped</body></html>')
         const lines: string[] = []
-        const mapped = createApp({suites: [join(dir, "tests", "my suite.mjs")], mount: join(dir, "mapped"), stdout: () => undefined, stderr: text => lines.push(text)})
+        const files = [join(dir, "tests", "my suite.mjs")]
+        const mapped = createApp({session: {files}, mount: join(dir, "mapped"), stdout: () => undefined, stderr: text => lines.push(text)})
         const running = await serve({handler: mapped.handler})
         try {
             const index = (await get(running.origin + "/")).body
@@ -300,7 +307,8 @@ describe(TITLE, () => {
         await new Promise<void>(listening => upstream.listen(0, "127.0.0.1", listening))
         const address = upstream.address()
         const port = typeof address === "object" && address != null ? address.port : 0
-        const mounted = createApp({suites: [join(dir, "tests", "my suite.mjs")], mount: `http://127.0.0.1:${port}/app/`, stdout: () => undefined})
+        const files = [join(dir, "tests", "my suite.mjs")]
+        const mounted = createApp({session: {files}, mount: `http://127.0.0.1:${port}/app/`, stdout: () => undefined})
         const running = await serve({handler: mounted.handler})
         try {
             const index = await get(running.origin + "/")
@@ -319,7 +327,8 @@ describe(TITLE, () => {
     })
 
     it("fails the verdict on anything but true", async () => {
-        const other = createApp({suites: [join(dir, "tests", "my suite.mjs")], stdout: () => undefined})
+        const files = [join(dir, "tests", "my suite.mjs")]
+        const other = createApp({session: {files}, stdout: () => undefined})
         const running = await serve({handler: other.handler})
         try {
             assert.equal(await post(running.origin + other.page.replace(/run\.html$/, "end"), "yes"), 204)

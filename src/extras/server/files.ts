@@ -22,6 +22,7 @@ export interface Dir {
 export interface Files {
     /** This package's own directories, dist/ and exports/, at the paths of their names. */
     own: Dir[]
+
     /** The directories the files are served from, in path order, so one before those under it. */
     dirs: Dir[]
 

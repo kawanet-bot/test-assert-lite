@@ -3,10 +3,14 @@
 // of target it holds, what a mode cannot take of it, the local file it is,
 // and the address a page gets; the list keeps them in order, last wins.
 
-import {readFileSync} from "node:fs"
 import {resolve} from "node:path"
 import {fileURLToPath, pathToFileURL} from "node:url"
+import {readJsonFile} from "../utils/read-json.ts"
 import {UsageError} from "./usage-error.ts"
+
+interface ImportMapJSON {
+    imports: Record<string, string>
+}
 
 export type Mode = "node" | "browser"
 
@@ -162,12 +166,7 @@ export const importMapItems = (map: unknown, mapFile: URL): ImportMapItem[] => {
 /** The items of an import map file, its own location being what a relative address resolves against. */
 export const readImportMap = (file: string): ImportMapItem[] => {
     const url = pathToFileURL(file)
-    let map: unknown
-    try {
-        map = JSON.parse(readFileSync(url, "utf8"))
-    } catch (error) {
-        throw new UsageError(`--import-map: ${error instanceof Error ? error.message : String(error)}`)
-    }
+    const map = readJsonFile<ImportMapJSON>(file, e => new UsageError(`--import-map: ${e}`))
     return importMapItems(map, url)
 }
 

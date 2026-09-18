@@ -6,9 +6,9 @@
 
 import {basename, resolve} from "node:path"
 import {fileURLToPath} from "node:url"
-import type {DriverConfig} from "../drivers/driver-config.ts"
 import {Imports} from "../imports.ts"
 import {packageNameOf, packageRoot} from "../package-root.ts"
+import type {DriverConfig, SessionConfig} from "../session-config.ts"
 import type {ChannelOptions} from "./channel.ts"
 import {createChannel} from "./channel.ts"
 import {createFiles} from "./files.ts"
@@ -23,8 +23,6 @@ import type {Watcher} from "./watch.ts"
 import {createWatcher} from "./watch.ts"
 
 export interface AppOptions extends ChannelOptions {
-    /** The suites, absolute, all served from one directory. Without any, the pages carry the library and no suite. */
-    suites?: string[]
     /** Classic scripts to run before the suites, absolute, in this order. */
     scripts?: string[]
     /** Specifiers and what they resolve to: a file, served from its directory, or a URL put into the map as it is. */
@@ -32,7 +30,7 @@ export interface AppOptions extends ChannelOptions {
     /** What the root serves in place of htdocs: an absolute directory, or an http(s) URL ending in "/" to proxy. */
     mount?: string
     /** What the command line hands the page, as JSON in its head; empty options unless given. Its files become the suites' served URLs. */
-    config?: DriverConfig
+    session: SessionConfig
     /** Reloads the page people open when a suite, a script or an imported file changes; off where it cannot watch. */
     watch?: boolean
 }
@@ -64,7 +62,8 @@ const M = (fn: MiddlewareHandler | undefined | false) => [fn].filter(Boolean) as
  * of the verdict the page at `page` reports back through it.
  */
 export const createApp = (options: AppOptions): App => {
-    const {suites = [], scripts = [], imports = new Imports([]), mount: mounted, config = {options: {}}, stderr = text => process.stderr.write(text)} = options
+    const {scripts = [], imports = new Imports([]), mount: mounted, session, stderr = text => process.stderr.write(text)} = options
+    const {files = []} = session
     const channel = createChannel(options)
 
     // Watching is a convenience of --serve, not what it is for: where the
@@ -73,7 +72,7 @@ export const createApp = (options: AppOptions): App => {
     let watcher: Watcher | null = null
     if (options.watch) {
         try {
-            watcher = createWatcher([...suites, ...scripts, ...imports.paths()])
+            watcher = createWatcher([...files, ...scripts, ...imports.paths()])
         } catch (error) {
             stderr(`watch is off: ${error instanceof Error ? error.message : String(error)}\n`)
         }
@@ -82,7 +81,7 @@ export const createApp = (options: AppOptions): App => {
     // Every file given is served from its directory under /@tal/files/, so
     // a sibling or a nested import resolves beside it while nothing above
     // stays reachable; the suites' directory is the same for all of them.
-    const served = createFiles([...suites, ...scripts, ...imports.paths()])
+    const served = createFiles([...files, ...scripts, ...imports.paths()])
 
     // The package's name in the map leads to the minified build, so the
     // library loads as the suites import it; only the scripts go in as tags.
@@ -93,8 +92,8 @@ export const createApp = (options: AppOptions): App => {
     // the head. The suites are the config's files, by their served URLs,
     // for the page to import in that order, as the Node driver does.
     const importmap = `<script type="importmap">\n${safeJSON({imports: imports.addresses(file => served.urlOf(file))})}\n</script>\n`
-    const page: DriverConfig = {...config, options: {...config.options, files: suites.map(suite => served.urlOf(suite))}}
-    const configTag = `<script type="application/vnd.config+json">\n${safeJSON(page)}\n</script>\n`
+    const configObj: DriverConfig = {session: {...session, files: files.map(file => served.urlOf(file))}}
+    const configTag = `<script type="application/vnd.session-config+json">\n${safeJSON(configObj)}\n</script>\n`
     const tags = scriptUrls.map(url => `<script src="${url}"></script>\n`).join("")
     // A page with an import map of its own goes out as it is: a second map
     // is not for a browser, and without this one the suites cannot load,
@@ -116,7 +115,7 @@ export const createApp = (options: AppOptions): App => {
 
     // The CLI's own pages are named after what they run: the package each
     // suite belongs to, or the suite's own name where there is none.
-    const names = suites.map(suite => packageNameOf(suite) ?? basename(suite))
+    const names = files.map(file => packageNameOf(file) ?? basename(file))
     const title = withTitle([...new Set(names)].join(" ") || "test-assert-lite")
     const handler = compose([
         channel.handler,
