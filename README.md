@@ -200,6 +200,10 @@ test-assert --playwright chromium test/browser.test.mjs
 - Runs the suite in a headless `chromium`, `firefox` or `webkit` through [Playwright](https://playwright.dev/).
 - Needs the `playwright` package and that browser: `npm install -D playwright && npx playwright install chromium`.
 
+### `--playwright-config <file>`
+
+- JSON options passed to Playwright's [launch](https://playwright.dev/docs/api/class-browsertype#browser-type-launch), [newPage](https://playwright.dev/docs/api/class-browser#browser-new-page) and [goto](https://playwright.dev/docs/api/class-page#page-goto) methods.
+
 ### Import Maps
 
 Map package names to browser-ready ESM files installed by npm:

@@ -187,8 +187,8 @@ describe(TITLE, () => {
         })
 
         it("refuses the Playwright flags outside --playwright", () => {
-            assert.throws(() => readOptions(["--serve", "--playwright-config", "s.json"]), /apply to --playwright only$/)
-            assert.throws(() => readOptions(["--webdriver", "--playwright-config", "s.json"]), /apply to --playwright only$/)
+            assert.throws(() => readOptions(["--serve", "--playwright-config", "s.json"]), /applies to --playwright only$/)
+            assert.throws(() => readOptions(["--webdriver", "--playwright-config", "s.json"]), /applies to --playwright only$/)
         })
 
         it("refuses a runner with no suite on --playwright and --webdriver", () => {

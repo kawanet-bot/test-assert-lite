@@ -27,6 +27,7 @@ export const USAGE = `Usage: test-assert [options] [file...]
   --webdriver-session <file>  JSON sent as the body of POST /session (default: no capabilities)
   --endpoint <url>            the WebDriver server (default: http://127.0.0.1:4444)
   --playwright <browser>      run the suite through Playwright: chromium, firefox or webkit
+  --playwright-config <file>  JSON options for Playwright's launch, newPage and goto
 `
 
 const ENGINE_NAMES = ["chromium", "firefox", "webkit"] as const
@@ -167,7 +168,7 @@ export const readOptions = (args: string[]): Options => {
         throw new UsageError("--webdriver-session and --endpoint apply to --webdriver only")
     }
     if (!playwright && (values["playwright-config"] != null)) {
-        throw new UsageError("--playwright-config apply to --playwright only")
+        throw new UsageError("--playwright-config applies to --playwright only")
     }
     if (!serve && !files.length) {
         throw new UsageError("no test files specified")
