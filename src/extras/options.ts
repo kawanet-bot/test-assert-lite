@@ -54,8 +54,8 @@ export type Options =
     | {mode: "version"}
     | CommonOptions & {mode: "node"}
     | BrowserOptions & {mode: "serve"}
-    | BrowserOptions & {mode: "playwright", engine: EngineName}
-    | BrowserOptions & {mode: "webdriver", sessionJson?: string, endpoint?: string}
+    | BrowserOptions & {mode: "playwright", engine: EngineName, configJson?: string}
+    | BrowserOptions & {mode: "webdriver", endpoint?: string, sessionJson?: string}
 
 // A port is a whole number a socket can take, written in decimal: what
 // Number() would also read, 0x50 or 1e3 or nothing, is not one.
@@ -130,6 +130,7 @@ const parse = (args: string[]) => {
                 script: {type: "string", multiple: true, default: []},
                 mount: {type: "string"},
                 playwright: {type: "string"},
+                "playwright-config": {type: "string"},
                 webdriver: {type: "boolean", default: false},
                 "webdriver-session": {type: "string"},
                 endpoint: {type: "string"},
@@ -164,6 +165,9 @@ export const readOptions = (args: string[]): Options => {
     }
     if (!webdriver && (values["webdriver-session"] != null || values.endpoint != null)) {
         throw new UsageError("--webdriver-session and --endpoint apply to --webdriver only")
+    }
+    if (!playwright && (values["playwright-config"] != null)) {
+        throw new UsageError("--playwright-config apply to --playwright only")
     }
     if (!serve && !files.length) {
         throw new UsageError("no test files specified")
@@ -209,7 +213,7 @@ export const readOptions = (args: string[]): Options => {
         port: values.port == null ? undefined : portOf(values.port),
         origin: values.origin == null ? undefined : originOf(values.origin),
     }
-    if (engine) return {...shared, mode: "playwright", engine}
+    if (engine) return {...shared, mode: "playwright", engine, configJson: values["playwright-config"]}
     if (webdriver) return {...shared, mode: "webdriver", sessionJson: values["webdriver-session"], endpoint: values.endpoint}
     return {...shared, mode: "serve"}
 }

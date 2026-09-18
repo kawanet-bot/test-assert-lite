@@ -91,7 +91,8 @@ const runCLI = async (options: Options): Promise<number> => {
             const session = !options.sessionJson ? undefined : await readJSON(options.sessionJson)
             await runInWebDriver({url, completion, options: {session, endpoint: options.endpoint}})
         } else if (mode === "playwright") {
-            await runInPlaywright({url, completion, options: {engine: options.engine}})
+            const config = !options.configJson ? undefined : await readJSON(options.configJson)
+            await runInPlaywright({url, completion, options: {...config, engine: options.engine}})
         } else {
             throw new Error(`Invalid mode: ${mode}`)
         }

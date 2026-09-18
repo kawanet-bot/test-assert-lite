@@ -186,6 +186,11 @@ describe(TITLE, () => {
             assert.throws(() => readOptions(["--endpoint", "http://x", "a.test.ts"]), /apply to --webdriver only$/)
         })
 
+        it("refuses the Playwright flags outside --playwright", () => {
+            assert.throws(() => readOptions(["--serve", "--playwright-config", "s.json"]), /apply to --playwright only$/)
+            assert.throws(() => readOptions(["--webdriver", "--playwright-config", "s.json"]), /apply to --playwright only$/)
+        })
+
         it("refuses a runner with no suite on --playwright and --webdriver", () => {
             assert.throws(() => readOptions(["--playwright", "chromium", "--mount", "site"]), /no test files specified$/)
             assert.throws(() => readOptions(["--webdriver"]), /no test files specified$/)
