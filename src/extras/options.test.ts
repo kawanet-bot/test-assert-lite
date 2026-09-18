@@ -159,7 +159,7 @@ describe(TITLE, () => {
             const options = readOptions(["--playwright", "webkit", "suite.mjs"])
             assert.equal(options.mode, "playwright")
             if (options.mode !== "playwright") return
-            assert.equal(options.browser, "webkit")
+            assert.equal(options.browserName, "webkit")
             assert.deepEqual(options.suites, [resolve("suite.mjs")])
             assert.throws(() => readOptions(["--playwright", "electron", "suite.mjs"]), /--playwright takes/)
         })

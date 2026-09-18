@@ -7,7 +7,7 @@ export interface PlaywrightRunOptions {
     /** The verdict the page reports back to that server. */
     settled: Promise<unknown>
     /** Which of Playwright's browsers to launch; chromium by default. */
-    browser?: "chromium" | "firefox" | "webkit"
+    browserName?: "chromium" | "firefox" | "webkit"
 }
 
 /**
