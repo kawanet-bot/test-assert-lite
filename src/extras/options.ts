@@ -8,6 +8,7 @@ import {parseArgs} from "node:util"
 import type {Mode} from "./imports.ts"
 import {ImportAliasItem, Imports, cwdURL, readImportMap} from "./imports.ts"
 import {createFiles} from "./server/files.ts"
+import type {SessionConfig} from "./session-config.ts"
 import {UsageError} from "./usage-error.ts"
 
 export const USAGE = `Usage: test-assert [options] [file...]
@@ -32,12 +33,8 @@ const ENGINE_NAMES = ["chromium", "firefox", "webkit"] as const
 export type EngineName = typeof ENGINE_NAMES[number]
 
 interface CommonOptions {
-    /** The suites, absolute, all served from one directory. */
-    suites: string[]
-    /** The reporter named, as given; the run says whether it knows it. */
-    reporter?: string
-    /** false under --no-summary; otherwise left unset. */
-    summary?: boolean
+    session: SessionConfig
+
     /** From --import-map then --alias, a later item over an earlier one of the same specifier. */
     imports: Imports
 }
@@ -58,7 +55,7 @@ export type Options =
     | CommonOptions & {mode: "node"}
     | BrowserOptions & {mode: "serve"}
     | BrowserOptions & {mode: "playwright", engine: EngineName}
-    | BrowserOptions & {mode: "webdriver", session?: string, endpoint?: string}
+    | BrowserOptions & {mode: "webdriver", sessionJson?: string, endpoint?: string}
 
 // A port is a whole number a socket can take, written in decimal: what
 // Number() would also read, 0x50 or 1e3 or nothing, is not one.
@@ -181,25 +178,30 @@ export const readOptions = (args: string[]): Options => {
     }
 
     const imports = importsOf(values["import-map"], values.alias, browsing ? "browser" : "node")
+
     // Only the flag given makes a value: the run's default stands otherwise.
     const summary = values["no-summary"] ? false : undefined
-    if (!browsing) return {mode: "node", suites: files.map(file => resolve(file)), imports, reporter: values.reporter, summary}
 
-    const suites = files.map(file => resolve(file))
+    const session: SessionConfig = {
+        files: files.map(file => resolve(file)),
+        reporter: values.reporter,
+        summary,
+    }
+
+    if (!browsing) return {mode: "node", imports, session}
+
     const scripts = values.script.map(script => resolve(script))
 
-    // The suites are served from one directory, so a module they share is
+    // The test files are served from one directory, so a module they share is
     // one URL and loads once, as under Node; from two, it would load once
     // per directory. One under another counts as served from the latter.
-    const served = createFiles([...suites, ...scripts, ...imports.paths()])
-    if (new Set(suites.map(file => served.dirOf(file))).size > 1) {
+    const served = createFiles([...(session.files), ...scripts, ...imports.paths()])
+    if (new Set(session.files.map(file => served.dirOf(file))).size > 1) {
         throw new UsageError("--playwright, --webdriver and --serve take the test files from one directory")
     }
 
     const shared: BrowserOptions = {
-        suites: suites,
-        reporter: values.reporter,
-        summary,
+        session,
         scripts,
         imports,
         mount: values.mount == null ? undefined : mountOf(values.mount),
@@ -208,6 +210,6 @@ export const readOptions = (args: string[]): Options => {
         origin: values.origin == null ? undefined : originOf(values.origin),
     }
     if (engine) return {...shared, mode: "playwright", engine}
-    if (webdriver) return {...shared, mode: "webdriver", session: values["webdriver-session"], endpoint: values.endpoint}
+    if (webdriver) return {...shared, mode: "webdriver", sessionJson: values["webdriver-session"], endpoint: values.endpoint}
     return {...shared, mode: "serve"}
 }

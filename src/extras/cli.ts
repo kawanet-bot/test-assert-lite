@@ -8,7 +8,6 @@
 import {readFile} from "node:fs/promises"
 import {stringify} from "../utils/stringify.ts"
 import {VERSION} from "../utils/version.ts"
-import type {DriverConfig} from "./drivers/driver-config.ts"
 import {runInNode} from "./drivers/node.ts"
 import {runInPlaywright} from "./drivers/playwright.ts"
 import {runInWebDriver} from "./drivers/webdriver.ts"
@@ -24,31 +23,37 @@ export interface CLIOptions {
 }
 
 const runCLI = async (options: Options): Promise<number> => {
-    if (options.mode === "help") {
+    const {mode} = options
+    if (mode === "help") {
         process.stdout.write(USAGE)
         return 0
     }
-    if (options.mode === "version") {
+
+    if (mode === "version") {
         process.stdout.write(`test-assert-lite ${VERSION}\n`)
         return 0
     }
 
-    const config: DriverConfig = {options: {reporter: options.reporter, files: options.suites, summary: options.summary}}
-    if (options.mode === "node") {
-        return (await runInNode(options.imports, config.options)).success ? 0 : 1
+    const {session, imports} = options
+    if (mode === "node") {
+        const result = await runInNode({
+            imports,
+            session,
+        })
+        return result?.success ? 0 : 1
     }
 
     // The application is the middleware, the server runs it; every request
     // goes to stderr, apart from the reporter's stdout, so a 404 for a
     // mistyped --script or --alias shows up there.
     const app = createApp({
-        suites: options.suites,
         scripts: options.scripts,
-        imports: options.imports,
+        imports,
         mount: options.mount,
-        config,
-        watch: options.mode === "serve",
+        session,
+        watch: mode === "serve",
     })
+
     // A server that cannot listen, its port taken say, is an error to show;
     // the application, with its watch, must not keep the process up for it.
     const server = await serve({
@@ -61,16 +66,17 @@ const runCLI = async (options: Options): Promise<number> => {
         app.close()
         throw error
     })
+
     const url = `${server.origin}${app.page}`
     const close = (): void => {
         app.close()
         server.close()
     }
 
-    if (options.mode === "serve") {
+    if (mode === "serve") {
         // Only the URL goes to stdout, so it can be piped. The server keeps
         // the process alive until an interrupt, which resolves this.
-        const entryURL = options.suites.length ? url : `${server.origin}/`
+        const entryURL = options.session.files?.length ? url : `${server.origin}/`
         process.stdout.write(`${entryURL}\n`)
         process.stderr.write("Serving; press Ctrl-C to stop.\n")
         await new Promise<void>(stop => process.once("SIGINT", () => stop()))
@@ -81,13 +87,13 @@ const runCLI = async (options: Options): Promise<number> => {
     try {
         const completion = app.done
 
-        if (options.mode === "webdriver") {
-            const session = !options.session ? undefined : await readJSON(options.session)
+        if (mode === "webdriver") {
+            const session = !options.sessionJson ? undefined : await readJSON(options.sessionJson)
             await runInWebDriver({url, completion, options: {session, endpoint: options.endpoint}})
-        } else if (options.mode === "playwright") {
+        } else if (mode === "playwright") {
             await runInPlaywright({url, completion, options: {engine: options.engine}})
         } else {
-            throw new Error(`Invalid mode: ${(options as Options)?.mode}`)
+            throw new Error(`Invalid mode: ${mode}`)
         }
 
         // The exit code alone, as in Node mode and node --test: the summary
