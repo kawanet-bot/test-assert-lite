@@ -62,7 +62,15 @@ interface Answer {
 // The access log line: method, URL, status, body length and the time to
 // respond, as morgan's tiny format has them, a "-" for anything missing.
 const tiny = (req: IncomingMessage, status: number, length: number, ms: number): string =>
-    [req.method, req.url, status, length, null, ms.toFixed(3), "ms"].map(v => v || "-").join(" ")
+    [req.method, req.url, status, length, null, ms.toFixed(3), "ms"].map(quote).join(" ")
+
+const quote = (v: string | number | null | undefined) => {
+    if (v == null || v === "") return "-"
+    v = String(v)
+    if (!/["\s]/.test(v)) return v
+    v = v.replace(/"/g, "").replace(/\s+/g, " ")
+    return `"${v}"`
+}
 
 // 127.0.0.1 rather than localhost on both ends: a browser may resolve
 // localhost to ::1 while this listens on IPv4 only. Port 0 picks a free one.

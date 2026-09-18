@@ -264,14 +264,14 @@ describe(TITLE, () => {
         const from = lines.length
         assert.equal((await get(server.origin, "/boom")).status, 500)
         assert.match(lines[from] ?? "", /^Error: boom\n/)
-        assert.match(lines[from + 1] ?? "", /^GET \/boom 500 - - /)
+        assert.match(lines[from + 1] ?? "", /^GET \/boom 500 0 - /)
     })
 
     it("answers 500 when the Response's body fails to be read, rather than hanging", async () => {
         const from = lines.length
         assert.equal((await get(server.origin, "/broken")).status, 500)
         assert.match(lines[from] ?? "", /^Error: broken body\n/)
-        assert.match(lines[from + 1] ?? "", /^GET \/broken 500 - - /)
+        assert.match(lines[from + 1] ?? "", /^GET \/broken 500 0 - /)
     })
 
     it("answers 400 to a target that is not a path, or a Host that is no host", async () => {
@@ -333,8 +333,8 @@ describe(TITLE, () => {
         await get(server.origin, "/dist/notes.txt")
         assert.deepEqual(lines.slice(from).map(line => line.replace(/ \d+\.\d{3} ms$/, " N ms")), [
             "GET /dist/lib.mjs 200 20 - N ms",
-            "GET /missing.html 404 - - N ms",
-            "GET /dist/notes.txt 403 - - N ms",
+            "GET /missing.html 404 0 - N ms",
+            "GET /dist/notes.txt 403 0 - N ms",
         ])
     })
 })
