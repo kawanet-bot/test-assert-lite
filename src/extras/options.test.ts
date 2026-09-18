@@ -1,7 +1,7 @@
 import {strict as assert} from "node:assert"
 import {resolve} from "node:path"
 import {describe, it} from "node:test"
-import {browserOf, mountOf, originOf, portOf, readOptions} from "./options.ts"
+import {browserNameOf, mountOf, originOf, portOf, readOptions} from "./options.ts"
 
 const TITLE = "extras/options.test.ts"
 
@@ -37,10 +37,10 @@ describe(TITLE, () => {
 
     describe("browserOf", () => {
         it("takes one of Playwright's three, and nothing else", () => {
-            assert.equal(browserOf("chromium"), "chromium")
-            assert.equal(browserOf("firefox"), "firefox")
-            assert.equal(browserOf("webkit"), "webkit")
-            assert.throws(() => browserOf("electron"), /--playwright takes chromium, firefox or webkit: electron$/)
+            assert.equal(browserNameOf("chromium"), "chromium")
+            assert.equal(browserNameOf("firefox"), "firefox")
+            assert.equal(browserNameOf("webkit"), "webkit")
+            assert.throws(() => browserNameOf("electron"), /--playwright takes chromium, firefox or webkit: electron$/)
         })
     })
 

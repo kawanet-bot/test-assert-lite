@@ -107,10 +107,10 @@ export const importsOf = (mapFile: string | undefined, aliases: string[], mode: 
     return imports
 }
 
-const isPlaywrightBrowser = (v: unknown): v is BrowserName => BROWSER_NAMES.includes(v as BrowserName)
+const isBrowserName = (v: unknown): v is BrowserName => BROWSER_NAMES.includes(v as BrowserName)
 
-export const browserOf = (name: string): BrowserName => {
-    if (!isPlaywrightBrowser(name)) throw new UsageError(`--playwright takes chromium, firefox or webkit: ${name}`)
+export const browserNameOf = (name: string): BrowserName => {
+    if (!isBrowserName(name)) throw new UsageError(`--playwright takes chromium, firefox or webkit: ${name}`)
     return name
 }
 
@@ -157,7 +157,7 @@ export const readOptions = (args: string[]): Options => {
     if (values.version) return {mode: "version"}
 
     const {playwright, webdriver, serve} = values
-    const browserName = playwright == null ? undefined : browserOf(playwright)
+    const browserName = playwright == null ? undefined : browserNameOf(playwright)
     const browsing = browserName != null || webdriver || serve
     if ((browserName ? 1 : 0) + (webdriver ? 1 : 0) + (serve ? 1 : 0) > 1) {
         throw new UsageError("--playwright, --webdriver and --serve are exclusive")
