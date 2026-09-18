@@ -5,13 +5,13 @@ export interface PlaywrightRunOptions {
     /** URL of the page to open, under the run's own path on the CLI's server. */
     url: string
     /** Settles once the page has ended, whatever the outcome; the browser closes on it. */
-    settled: Promise<unknown>
+    running: Promise<unknown>
     /** Which of Playwright's browsers to launch; chromium by default. */
     browserName?: "chromium" | "firefox" | "webkit"
 }
 
 /**
- * Opens `url` in a headless browser and keeps it open until `settled`
+ * Opens `url` in a headless browser and keeps it open until `running`
  * settles. Rejects when Playwright is missing or the browser is gone.
  */
 export function runInPlaywright(options: PlaywrightRunOptions): Promise<void>

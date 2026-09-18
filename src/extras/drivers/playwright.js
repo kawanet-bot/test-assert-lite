@@ -16,10 +16,10 @@ const loadPlaywright = async (name) => {
 
 /**
  * Opens `url` in a headless browser (chromium unless told otherwise) and
- * keeps it open until `settled` settles. Playwright only opens the page:
+ * keeps it open until `running` settles. Playwright only opens the page:
  * from there the page reports on its own.
  */
-export const runInPlaywright = async ({url, settled, browserName = "chromium"}) => {
+export const runInPlaywright = async ({url, running, browserName = "chromium"}) => {
     const playwright = await loadPlaywright(browserName)
     const browser = await playwright[browserName].launch()
     try {
@@ -31,7 +31,7 @@ export const runInPlaywright = async ({url, settled, browserName = "chromium"}) 
         void gone.catch(() => undefined)
         const page = await browser.newPage()
         await page.goto(url)
-        await Promise.race([settled, gone])
+        await Promise.race([running, gone])
     } finally {
         await browser.close()
     }
