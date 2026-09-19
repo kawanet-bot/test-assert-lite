@@ -23,7 +23,9 @@
     "noUnusedParameters": true,
     "removeComments": false,
     "skipLibCheck": false,
+    "sourceMap": false,
     "strictNullChecks": true,
+    "strictPropertyInitialization": true,
     "target": "ES2022",
     "types": [
       "node"

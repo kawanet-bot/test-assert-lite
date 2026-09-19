@@ -11,7 +11,7 @@ import {VERSION} from "../utils/version.ts"
 import {runInNode} from "./drivers/node.ts"
 import {runInPlaywright} from "./drivers/playwright.ts"
 import {runInWebDriver} from "./drivers/webdriver.ts"
-import type {Options} from "./options.ts"
+import type {ModeOptions} from "./mode-options.ts"
 import {readOptions, USAGE} from "./options.ts"
 import {createApp} from "./server/app.ts"
 import {serve} from "./server/serve.ts"
@@ -22,7 +22,7 @@ export interface CLIOptions {
     args: string[]
 }
 
-const runCLI = async (options: Options): Promise<number> => {
+const runCLI = async (options: ModeOptions): Promise<number> => {
     const {mode} = options
     if (mode === "help") {
         process.stdout.write(USAGE)

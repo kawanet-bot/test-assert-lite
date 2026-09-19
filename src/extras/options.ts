@@ -7,6 +7,8 @@ import {resolve} from "node:path"
 import {parseArgs} from "node:util"
 import type {Mode} from "./imports.ts"
 import {ImportAliasItem, Imports, cwdURL, readImportMap} from "./imports.ts"
+import type {EngineName, ModeOptions, WebModeOptions} from "./mode-options.ts"
+import {isEngineName} from "./mode-options.ts"
 import {createFiles} from "./server/files.ts"
 import type {SessionConfig} from "./session-config.ts"
 import {UsageError} from "./usage-error.ts"
@@ -29,34 +31,6 @@ export const USAGE = `Usage: test-assert [options] [file...]
   --playwright <browser>      run the suite through Playwright: chromium, firefox or webkit
   --playwright-config <file>  JSON options for Playwright's launch, newPage and goto
 `
-
-const ENGINE_NAMES = ["chromium", "firefox", "webkit"] as const
-export type EngineName = typeof ENGINE_NAMES[number]
-
-interface CommonOptions {
-    session: SessionConfig
-
-    /** From --import-map then --alias, a later item over an earlier one of the same specifier. */
-    imports: Imports
-}
-
-interface BrowserOptions extends CommonOptions {
-    /** Classic scripts to run first, absolute, in order. */
-    scripts: string[]
-    /** What the root serves in place of htdocs: an absolute directory, or an http(s) URL ending in "/". */
-    mount?: string
-    host?: string
-    port?: number
-    origin?: string
-}
-
-export type Options =
-    | {mode: "help"}
-    | {mode: "version"}
-    | CommonOptions & {mode: "node"}
-    | BrowserOptions & {mode: "serve"}
-    | BrowserOptions & {mode: "playwright", engine: EngineName, configJson?: string}
-    | BrowserOptions & {mode: "webdriver", endpoint?: string, sessionJson?: string}
 
 // A port is a whole number a socket can take, written in decimal: what
 // Number() would also read, 0x50 or 1e3 or nothing, is not one.
@@ -105,8 +79,6 @@ export const importsOf = (mapFile: string | undefined, aliases: string[], mode: 
     return imports
 }
 
-const isEngineName = (v: unknown): v is EngineName => ENGINE_NAMES.includes(v as EngineName)
-
 export const engineNameOf = (name: string): EngineName => {
     if (!isEngineName(name)) throw new UsageError(`--playwright takes chromium, firefox or webkit: ${name}`)
     return name
@@ -150,7 +122,7 @@ const parse = (args: string[]) => {
  * mode they name needs, every value checked and every path absolute, or
  * throws UsageError with the reason when there is one to give.
  */
-export const readOptions = (args: string[]): Options => {
+export const readOptions = (args: string[]): ModeOptions => {
     const {values, positionals: files} = parse(args)
     if (values.help) return {mode: "help"}
     if (values.version) return {mode: "version"}
@@ -205,7 +177,7 @@ export const readOptions = (args: string[]): Options => {
         throw new UsageError("--playwright, --webdriver and --serve take the test files from one directory")
     }
 
-    const shared: BrowserOptions = {
+    const shared: WebModeOptions = {
         session,
         scripts,
         imports,
