@@ -50,10 +50,33 @@ describe(TITLE, () => {
         assert.match(lines.join(""), /unsupported reporter: \.\/nope\.mjs/)
     })
 
-    it("summary: false leaves the counts, the version and the user agent off; the plan stays", async () => {
+    // Quiet tunes only the default reporter.
+    it("quiet has the default reporter list the failures alone, and a passing run prints nothing", async () => {
         const local = createTAL()
         const out: string[] = []
-        local.session.session({reporter: "tap", summary: false, output: t => {out.push(t)}})
+        local.session.session({quiet: true, output: t => {out.push(t)}})
+        local.test.it("passes", () => undefined)
+        local.test.it("fails", () => {
+            throw new Error("boom")
+        })
+        assert.equal((await local.session.end()).success, false)
+        const text = out.join("")
+        assert.equal(text.includes("passes"), false)
+        assert.equal(text.includes("ℹ tests "), false)
+        assert.ok(text.includes("✖ fails"))
+
+        const green = createTAL()
+        const said: string[] = []
+        green.session.session({quiet: true, output: t => {said.push(t)}})
+        green.test.it("passes", () => undefined)
+        assert.equal((await green.session.end()).success, true)
+        assert.equal(said.join(""), "")
+    })
+
+    it("quiet leaves the counts, the version and the user agent off a named reporter; the plan stays", async () => {
+        const local = createTAL()
+        const out: string[] = []
+        local.session.session({reporter: "tap", quiet: true, output: t => {out.push(t)}})
         local.test.it("fails", () => {
             throw new Error("boom")
         })

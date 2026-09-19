@@ -43,9 +43,8 @@ const runCLI = async (options: ModeOptions): Promise<number> => {
         return result?.success ? 0 : 1
     }
 
-    // The application is the middleware, the server runs it; every request
-    // goes to stderr, apart from the reporter's stdout, so a 404 for a
-    // mistyped --script or --alias shows up there.
+    // The application is the middleware. Reports go to stdout.
+    // Server logs go to stderr.
     const app = createApp({
         scripts: options.scripts,
         imports,
@@ -63,6 +62,7 @@ const runCLI = async (options: ModeOptions): Promise<number> => {
         port: options.port,
         origin: options.origin,
         log: line => process.stderr.write(`${line}\n`),
+        quiet: session.quiet,
     }).catch((error: unknown) => {
         app.close()
         throw error

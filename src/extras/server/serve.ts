@@ -18,8 +18,10 @@ export interface ServeOptions {
     port?: number
     /** What a browser reaches the server as, scheme://host[:port], when not the address listened on. */
     origin?: string
-    /** Gets one line per response, in morgan's tiny format, and any error; none without it. */
+    /** Receives access and error logs. */
     log?: (line: string) => void
+    /** Limits access logs to unsuccessful responses. */
+    quiet?: boolean
 }
 
 export interface Server {
@@ -76,7 +78,7 @@ const quote = (v: string | number | null | undefined) => {
 // localhost to ::1 while this listens on IPv4 only. Port 0 picks a free one.
 // A wildcard address listens on every interface but names none, so the
 // loopback of its family stands in; an IPv6 literal needs brackets.
-export const serve = async ({handler, log, ...options}: ServeOptions): Promise<Server> => {
+export const serve = async ({handler, log, quiet, ...options}: ServeOptions): Promise<Server> => {
     // An empty --host= is the default too, not the unspecified address.
     const host = options.host || "127.0.0.1"
     const named = host === "0.0.0.0" ? "127.0.0.1" : host === "::" ? "[::1]" : host.includes(":") ? `[${host}]` : host
@@ -109,7 +111,7 @@ export const serve = async ({handler, log, ...options}: ServeOptions): Promise<S
         void respond(req).then(({status, headers, body}) => {
             res.writeHead(status, {...headers, "content-length": String(body.length)})
             res.end(body)
-            log?.(tiny(req, status, body.length, performance.now() - started))
+            if (!quiet || status >= 400) log?.(tiny(req, status, body.length, performance.now() - started))
         })
     })
     // A port already taken is an error to the caller, not to the process.

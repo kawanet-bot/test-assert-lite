@@ -115,10 +115,10 @@ const reporterMap = new Map<string, () => ReporterFn>([
 export const createSessions = (harness: HarnessState): SessionControl => {
     let current: Open | null = null
 
-    // A name with no reporter behind it runs with spec, and is one failed
-    // test at the root, filed as capture files a window's errors.
-    const reporterOf = (v: ReporterFn | string | undefined): ReporterFn => {
-        if (!v) return spec()
+    // An unsupported reporter becomes a root failure. With none named,
+    // the session uses spec and lets quiet tune it.
+    const reporterOf = (v: ReporterFn | string | undefined): ReporterFn | undefined => {
+        if (!v) return undefined
         if ("function" === typeof v) return v
         const init = reporterMap.get(v)
         if (init) return init()
@@ -147,8 +147,8 @@ export const createSessions = (harness: HarnessState): SessionControl => {
     const create = (options: SessionOptions, auto: boolean): Open => {
         const {base} = options
         // The footer is the session's to leave off, for a script that is no suite.
-        const named = reporterOf(options.reporter)
-        const reporter = options.summary === false ? named : withFooter(named)
+        const named = reporterOf(options.reporter) ?? spec({quiet: options.quiet})
+        const reporter = options.quiet ? named : withFooter(named)
         const url = base == null ? null : new URL(base)
         const opened = (open: Omit<Open, "release" | "auto">): Open => {
             const target = targetOf(options.capture)

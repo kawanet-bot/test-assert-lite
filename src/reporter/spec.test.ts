@@ -172,6 +172,33 @@ describe(TITLE, () => {
         assert.match(out, /failing tests:\n\n✖ first \(1\.000ms\)\n {2}Error: one[\s\S]*\n\n✖ second \(1\.000ms\)\n {2}Error: two/)
     })
 
+    // Quiet keeps diagnostics and reports failures at the end.
+    it("quiet writes the failing list alone, after the run's summary", async () => {
+        const quiet = (send: (emit: Emit) => Promise<void>): Promise<string> => formatEvents(sharedTAL.reporter.spec({colors: false, quiet: true}), send)
+        const summary = {counts: {tests: 3, suites: 1, passed: 2, failed: 1, cancelled: 0, skipped: 0, todo: 0}, duration_ms: 1, success: false}
+        const subtestsFailed = Object.assign(new Error("1 subtest failed"), {code: "ERR_TEST_FAILURE", failureType: "subtestsFailed"})
+        const out = await quiet(async emit => {
+            await emit("test:start", {name: "S", nesting: 0})
+            await emit("test:start", {name: "fine", nesting: 1})
+            await emit("test:pass", {...pass("fine"), nesting: 1})
+            await emit("test:start", {name: "bad", nesting: 1})
+            await emit("test:diagnostic", {message: "noted", nesting: 1, level: "info"})
+            await emit("test:fail", {...pass("bad"), nesting: 1, details: {duration_ms: 1, type: "test", error: new Error("boom")}})
+            await emit("test:fail", {...pass("S"), details: {duration_ms: 2, type: "suite", error: subtestsFailed}})
+            await emit("test:summary", summary)
+        })
+
+        assert.ok(out.startsWith("  ℹ noted\n"))
+        assert.equal(out.includes("fine"), false)
+        assert.equal(out.includes("S ("), false)
+        assert.ok(out.includes("✖ bad"))
+        assert.equal(await quiet(async emit => {
+            await emit("test:start", {name: "fine", nesting: 0})
+            await emit("test:pass", pass("fine"))
+            await emit("test:summary", {...summary, counts: {...summary.counts, failed: 0}, success: true})
+        }), "")
+    })
+
     it("renders a skipped suite", async () => {
         const out = await render(emit => emit("test:pass", {...pass("S"), skip: true, details: {duration_ms: 1, type: "suite"}}))
 

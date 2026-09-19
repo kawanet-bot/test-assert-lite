@@ -145,11 +145,11 @@ describe(TITLE, () => {
             assert.equal(named(["a.test.ts"]), undefined)
         })
 
-        it("reads --no-summary as summary false, and leaves it unset otherwise", () => {
-            const summary = (args: string[]): boolean | undefined => (readOptions(args) as {session: TestSession}).session.summary
-            assert.equal(summary(["--no-summary", "a.test.ts"]), false)
-            assert.equal(summary(["--no-summary", "--serve"]), false)
-            assert.equal(summary(["a.test.ts"]), undefined)
+        it("reads -q and --quiet as quiet, and leaves it unset otherwise", () => {
+            const quiet = (args: string[]): boolean | undefined => (readOptions(args) as {session: TestSession}).session.quiet
+            assert.equal(quiet(["-q", "a.test.ts"]), true)
+            assert.equal(quiet(["--quiet", "--serve"]), true)
+            assert.equal(quiet(["a.test.ts"]), undefined)
         })
 
         it("reads --alias in Node mode too", () => {

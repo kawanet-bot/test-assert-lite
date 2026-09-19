@@ -326,6 +326,30 @@ describe(TITLE, () => {
         }
     })
 
+    // Quiet keeps unsuccessful responses and their errors in the log.
+    it("logs the 4xx and 5xx lines alone under quiet, the errors with them", async () => {
+        const said: string[] = []
+        const quiet = await serve({
+            handler: compose([
+                async (c, next) => (c.req.path === "/boom" ? Promise.reject(new Error("boom")) : next()),
+                serveStatic({path: "/", root: join(dir, "htdocs")}),
+            ]),
+            log: line => said.push(line),
+            quiet: true,
+        })
+        try {
+            assert.equal((await get(quiet.origin, "/page.html")).status, 200)
+            assert.equal((await get(quiet.origin, "/missing.html")).status, 404)
+            assert.equal((await get(quiet.origin, "/boom")).status, 500)
+        } finally {
+            quiet.close()
+        }
+        assert.equal(said.length, 3)
+        assert.match(said[0] ?? "", /^GET \/missing\.html 404 0 - /)
+        assert.match(said[1] ?? "", /^Error: boom\n/)
+        assert.match(said[2] ?? "", /^GET \/boom 500 0 - /)
+    })
+
     it("logs one line per response, in morgan's tiny format", async () => {
         const from = lines.length
         await get(server.origin, "/dist/lib.mjs")
