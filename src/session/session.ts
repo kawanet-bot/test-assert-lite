@@ -2,7 +2,8 @@ import type {TAL} from "test-assert-lite"
 import {html} from "../reporter/html.ts"
 import {spec} from "../reporter/spec.ts"
 import {tap} from "../reporter/tap.ts"
-import {client, line} from "./client.ts"
+import {errorText} from "../utils/tester-error.ts"
+import {client} from "./client.ts"
 import {withFooter} from "./footer.ts"
 import type {ReportStream} from "./report-stream.ts"
 import type {HarnessState} from "./state.ts"
@@ -40,6 +41,13 @@ export interface SessionControl {
 // A base under a run's own URL connects the page to the CLI; any other
 // base means nothing here.
 const CHANNEL = /^\/@tal\/run\//
+
+// stderr holds lines: an Error becomes its text, and a line that lacks
+// its newline gets one.
+const line = (item: string | Error): string => {
+    const text = errorText(item)
+    return text.endsWith("\n") ? text : `${text}\n`
+}
 
 const defaultOutput: OutputFn = (text) => {
     // console.log adds its own newline, so drop the trailing one
@@ -161,7 +169,7 @@ export const createSessions = (harness: HarnessState): SessionControl => {
             return opened({
                 reporter,
                 output: options.output ?? (text => channel.stdout(text)),
-                session: {stdout: channel.stdout, stderr: channel.stderr},
+                session: {stdout: channel.stdout, stderr: item => channel.stderr(line(item))},
                 end: channel.end,
             })
         }
