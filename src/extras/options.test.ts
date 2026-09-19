@@ -96,6 +96,20 @@ describe(TITLE, () => {
             assert.equal(readOptions(["a.test.ts", "b.mts"]).mode, "node")
         })
 
+        it("reads -e and --eval as the script to run, in place of the test files", () => {
+            const node = readOptions(["-e", "console.log(1)"])
+            assert.equal(node.mode, "node")
+            if (node.mode !== "node") return
+            assert.equal(node.eval, "console.log(1)")
+            assert.deepEqual(node.session.files, [])
+            assert.equal(readOptions(["--eval", "console.log(1)", "--playwright", "chromium"]).mode, "playwright")
+            assert.equal(readOptions(["--serve", "-e", "console.log(1)"]).mode, "serve")
+            const files = readOptions(["a.test.ts"])
+            assert.equal(files.mode === "node" && files.eval, undefined)
+            assert.throws(() => readOptions(["-e", "console.log(1)", "a.test.ts"]), /-e takes the place of the test files$/)
+            assert.throws(() => readOptions(["-e"]), /argument missing/)
+        })
+
         it("reads --serve: no suite, nothing else set", () => {
             const options = readOptions(["--serve"])
             assert.equal(options.mode, "serve")
