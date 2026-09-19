@@ -52,12 +52,18 @@ describe(TITLE, () => {
     })
 
     it("runs the script -e gives in place of the files, its tests through the same hook", async () => {
+        const helper = join(dir, "helper.mjs")
+        await writeFile(helper, `export const name = "inline"\n`)
         const chunks: string[] = []
         const log = console.log
+        const cwd = process.cwd()
         console.log = (text: string) => chunks.push(text)
+        process.chdir(dir)
         try {
-            assert.equal(await CLI({args: ["--reporter", "tap", "-e", `import {it} from "node:test"\nit("inline", () => undefined)\n`]}), 0)
+            const script = `import {it} from "node:test"\nimport {name} from "./helper.mjs"\nit(name, () => undefined)\n`
+            assert.equal(await CLI({args: ["--reporter", "tap", "-e", script]}), 0)
         } finally {
+            process.chdir(cwd)
             console.log = log
         }
         const lines = chunks.join("\n").split("\n")

@@ -84,7 +84,7 @@ describe(TITLE, () => {
         const inline = createTAL()
         const said: string[] = []
         inline.session.session({reporter: "tap", output: t => {said.push(t)}})
-        await inline.session.load("data:text/javascript,throw new Error('at the top')")
+        await inline.session.load(new URL("[eval]", import.meta.url).href)
         assert.equal((await inline.session.end()).success, false)
         assert.match(said.join(""), /^not ok 1 - \[eval\]$/m)
     })
