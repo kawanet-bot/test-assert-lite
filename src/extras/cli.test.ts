@@ -51,6 +51,19 @@ describe(TITLE, () => {
         assert.ok(lines.includes("# Error: at the top level"), lines.join("\n"))
     })
 
+    it("runs the script -e gives in place of the files, its tests through the same hook", async () => {
+        const chunks: string[] = []
+        const log = console.log
+        console.log = (text: string) => chunks.push(text)
+        try {
+            assert.equal(await CLI({args: ["--reporter", "tap", "-e", `import {it} from "node:test"\nit("inline", () => undefined)\n`]}), 0)
+        } finally {
+            console.log = log
+        }
+        const lines = chunks.join("\n").split("\n")
+        assert.deepEqual(lines.filter(line => /^(not )?ok /.test(line)), ["ok 1 - inline"])
+    })
+
     it("leaves no watch behind when the port asked for is taken", async () => {
         const taken = createServer()
         await new Promise<void>(listening => taken.listen(0, "127.0.0.1", listening))

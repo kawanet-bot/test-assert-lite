@@ -116,6 +116,26 @@ describe(TITLE, () => {
         }
     })
 
+    it("serves a script given as eval.js under the run's path, and names it as the one file", async () => {
+        const inline = createApp({session: {files: []}, eval: "console.log('<hi>')\n", stdout: () => undefined})
+        const server = await serve({handler: inline.handler})
+        try {
+            const path = inline.page.replace(/run\.html$/, "eval.js")
+            const res = await get(server.origin + path)
+            assert.equal(res.status, 200)
+            assert.equal(res.type, "text/javascript; charset=utf-8")
+            assert.equal(res.body, "console.log('<hi>')\n")
+            const head = (await get(server.origin + inline.page)).body.split("</head>")[0] as string
+            const config = head.indexOf('<script type="application/vnd.test-session+json">')
+            const json = head.slice(head.indexOf("{", config), head.indexOf("</script>", config))
+            assert.deepEqual(JSON.parse(json), {session: {files: [path]}})
+            assert.equal((await get(url(app.page.replace(/run\.html$/, "eval.js")))).status, 404)
+        } finally {
+            inline.close()
+            server.close()
+        }
+    })
+
     it("serves the run page under the run's path alone", async () => {
         assert.match(app.page, /^\/@tal\/run\/[0-9a-z]{9}\/run\.html$/)
         const res = await get(url(app.page))
