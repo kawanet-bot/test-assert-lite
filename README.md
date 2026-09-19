@@ -119,7 +119,7 @@ test-assert --playwright chromium test/browser.test.mjs
 - `--playwright <browser>` does the same through Playwright.
 - `--serve` serves for a browser, with auto reload. The three are exclusive.
 - A run exits 0 when all tests pass and 1 otherwise. Reports go to stdout; server messages and access logs go to stderr.
-- Each report ends with the counts, the package version and the user agent that ran the suite, unless `--no-summary`.
+- Each report ends with the counts, the package version and the user agent that ran the suite, unless `-q`.
 
 ### `-v`, `--version`
 
@@ -148,9 +148,10 @@ test-assert --playwright chromium test/browser.test.mjs
 - How the run is reported: `spec` (default), `tap` or `html`.
 - Or a module to import, `--reporter test-assert-lite/reporter/tap` say: its default export is the reporter, as `node --test-reporter` takes one. A name that does not import is one failed test, and the run reports with `spec`.
 
-### `--no-summary`
+### `-q`, `--quiet`
 
-- Leaves the counts, the package version and the user agent off the report. A script that declares no test then reports nothing.
+- Only the failures: the summary lines and the access log stay off, and `spec` lists the failures at the end instead of a line per test. A run where every test passes prints nothing.
+- A `--reporter` named reports as it does; the summary lines and the access log go all the same.
 
 ### `--serve`
 
