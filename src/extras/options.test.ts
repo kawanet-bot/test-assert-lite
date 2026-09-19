@@ -156,7 +156,7 @@ describe(TITLE, () => {
             assert.throws(() => readOptions(["--playwright", "electron", "suite.mjs"]), /--playwright takes/)
         })
 
-        it("reads --webdriver with its session file and endpoint, the endpoint on loopback by default", () => {
+        it("reads --webdriver with its config file and endpoint", () => {
             const options = readOptions(["--webdriver", "suite.mjs"])
             assert.equal(options.mode, "webdriver")
             if (options.mode !== "webdriver") return

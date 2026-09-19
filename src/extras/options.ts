@@ -26,7 +26,7 @@ export const USAGE = `Usage: test-assert [options] [file...]
   --script <file>             classic script to run first (browser modes, repeatable)
   --mount <dir|url>           what the root serves instead of htdocs: a directory, or an origin to proxy (browser modes)
   --webdriver                 run the suite through a WebDriver server: safaridriver, chromedriver
-  --webdriver-config <file>  JSON sent as the body of POST /session (default: no capabilities)
+  --webdriver-config <file>   JSON sent as the body of POST /session (default: no capabilities)
   --endpoint <url>            the WebDriver server (default: http://127.0.0.1:4444)
   --playwright <browser>      run the suite through Playwright: chromium, firefox or webkit
   --playwright-config <file>  JSON options for Playwright's launch, newPage and goto
@@ -190,12 +190,12 @@ export const readOptions = (args: string[]): ModeOptions => {
         origin: values.origin == null ? undefined : originOf(values.origin),
     }
     if (engine) {
-        const custom = !playwrightConfig ? undefined : readJsonFile<BrowserCustom>(playwrightConfig)
+        const custom = !playwrightConfig ? undefined : readJsonFile<BrowserCustom>(playwrightConfig, msg => new UsageError(`--playwright-config: ${msg}`))
         return {...shared, mode: "playwright", engine, custom}
     }
 
     if (webdriver) {
-        const sessionReq = !webdriverConfig ? undefined : readJsonFile<WebDriverCustom>(webdriverConfig)
+        const sessionReq = !webdriverConfig ? undefined : readJsonFile<WebDriverCustom>(webdriverConfig, msg => new UsageError(`--webdriver-config: ${msg}`))
         return {...shared, mode: "webdriver", custom: sessionReq, endpoint: values.endpoint}
     }
 

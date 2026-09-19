@@ -1,7 +1,3 @@
-// The shape every browser driver takes: a page to open, and when to close.
-// What a driver needs beside that, a WebDriver endpoint or a Playwright
-// engine say, is its own `options`.
-
 import type {BrowserCustom} from "../mode-options.ts"
 
 export interface RunInBrowserOptions {
@@ -11,7 +7,7 @@ export interface RunInBrowserOptions {
     completion: Promise<unknown>
 
     browser: BrowserLike
-    /** Extended configuration via --webdriver-config */
+    /** Extended configuration via --playwright-config */
     custom?: BrowserCustom
 }
 
