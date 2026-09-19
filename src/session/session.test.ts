@@ -50,7 +50,7 @@ describe(TITLE, () => {
         assert.match(lines.join(""), /unsupported reporter: \.\/nope\.mjs/)
     })
 
-    // quiet tunes the session's own spec; a run that passes says nothing at all.
+    // Quiet tunes only the default reporter.
     it("quiet has the default reporter list the failures alone, and a passing run prints nothing", async () => {
         const local = createTAL()
         const out: string[] = []

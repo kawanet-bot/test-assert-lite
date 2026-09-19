@@ -18,9 +18,9 @@ export interface ServeOptions {
     port?: number
     /** What a browser reaches the server as, scheme://host[:port], when not the address listened on. */
     origin?: string
-    /** Gets one line per response, in morgan's tiny format, and any error; none without it. */
+    /** Receives access and error logs. */
     log?: (line: string) => void
-    /** Only a response that went wrong, 4xx or 5xx, gets its line; an error gets its stack all the same. */
+    /** Limits access logs to unsuccessful responses. */
     quiet?: boolean
 }
 

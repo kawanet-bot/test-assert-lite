@@ -326,8 +326,7 @@ describe(TITLE, () => {
         }
     })
 
-    // quiet keeps the lines for what went wrong: a 404, and a 500 with the
-    // error's stack ahead of it, as morgan's skip on the status would.
+    // Quiet keeps unsuccessful responses and their errors in the log.
     it("logs the 4xx and 5xx lines alone under quiet, the errors with them", async () => {
         const said: string[] = []
         const quiet = await serve({

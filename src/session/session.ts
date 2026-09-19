@@ -115,10 +115,8 @@ const reporterMap = new Map<string, () => ReporterFn>([
 export const createSessions = (harness: HarnessState): SessionControl => {
     let current: Open | null = null
 
-    // A name with no reporter behind it runs with spec, and is one failed
-    // test at the root, filed as capture files a window's errors.
-    // No reporter named is the session's own spec, which quiet tunes; one
-    // named, spec included, reports as it is.
+    // An unsupported reporter becomes a root failure. With none named,
+    // the session uses spec and lets quiet tune it.
     const reporterOf = (v: ReporterFn | string | undefined): ReporterFn | undefined => {
         if (!v) return undefined
         if ("function" === typeof v) return v

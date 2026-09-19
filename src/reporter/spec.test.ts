@@ -172,8 +172,7 @@ describe(TITLE, () => {
         assert.match(out, /failing tests:\n\n✖ first \(1\.000ms\)\n {2}Error: one[\s\S]*\n\n✖ second \(1\.000ms\)\n {2}Error: two/)
     })
 
-    // Quiet: nothing per test, a diagnostic still, and the failing list
-    // at the end; a suite failed by its children stays out of it there too.
+    // Quiet keeps diagnostics and reports failures at the end.
     it("quiet writes the failing list alone, after the run's summary", async () => {
         const quiet = (send: (emit: Emit) => Promise<void>): Promise<string> => formatEvents(sharedTAL.reporter.spec({colors: false, quiet: true}), send)
         const summary = {counts: {tests: 3, suites: 1, passed: 2, failed: 1, cancelled: 0, skipped: 0, todo: 0}, duration_ms: 1, success: false}
