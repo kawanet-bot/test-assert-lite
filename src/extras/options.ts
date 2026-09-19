@@ -8,7 +8,7 @@ import {parseArgs} from "node:util"
 import {readJsonFile} from "../utils/read-json.ts"
 import type {Mode} from "./imports.ts"
 import {ImportAliasItem, Imports, cwdURL, readImportMap} from "./imports.ts"
-import type {EngineName, ModeOptions, SessionConfig, WebModeOptions} from "./mode-options.ts"
+import type {BrowserCustomConfig, EngineName, ModeOptions, SessionConfig, SessionReqJSON, WebModeOptions} from "./mode-options.ts"
 import {isEngineName} from "./mode-options.ts"
 import {createFiles} from "./server/files.ts"
 import {UsageError} from "./usage-error.ts"
@@ -131,6 +131,7 @@ export const readOptions = (args: string[]): ModeOptions => {
     const engine = playwright == null ? undefined : engineNameOf(playwright)
     const browsing = engine != null || webdriver || serve
     const webdriverSession = values["webdriver-session"]
+    const playwrightConfig = values["playwright-config"]
 
     if ((engine ? 1 : 0) + (webdriver ? 1 : 0) + (serve ? 1 : 0) > 1) {
         throw new UsageError("--playwright, --webdriver and --serve are exclusive")
@@ -188,10 +189,13 @@ export const readOptions = (args: string[]): ModeOptions => {
         port: values.port == null ? undefined : portOf(values.port),
         origin: values.origin == null ? undefined : originOf(values.origin),
     }
-    if (engine) return {...shared, mode: "playwright", engine, configJson: values["playwright-config"]}
+    if (engine) {
+        const custom = !playwrightConfig ? undefined : readJsonFile<BrowserCustomConfig>(playwrightConfig)
+        return {...shared, mode: "playwright", engine, custom}
+    }
 
     if (webdriver) {
-        const sessionReq = !webdriverSession ? undefined : readJsonFile(webdriverSession)
+        const sessionReq = !webdriverSession ? undefined : readJsonFile<SessionReqJSON>(webdriverSession)
         return {...shared, mode: "webdriver", sessionReq, endpoint: values.endpoint}
     }
 

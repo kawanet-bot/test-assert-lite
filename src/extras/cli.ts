@@ -5,7 +5,6 @@
 // and --serve hands the same page to a person. Directory search and glob
 // expansion are left to the shell: only explicit file names are accepted.
 
-import {readJsonFile} from "../utils/read-json.ts"
 import {stringify} from "../utils/stringify.ts"
 import {VERSION} from "../utils/version.ts"
 import {runInNode} from "./drivers/node.ts"
@@ -91,8 +90,8 @@ const runCLI = async (options: ModeOptions): Promise<number> => {
             const {sessionReq, endpoint} = options
             await runInWebDriver({url, completion, options: {sessionReq, endpoint}})
         } else if (mode === "playwright") {
-            const config = !options.configJson ? undefined : readJsonFile(options.configJson)
-            await runInPlaywright({url, completion, options: {...config, engine: options.engine}})
+            const {custom, engine} = options
+            await runInPlaywright({url, completion, custom, options: {engine}})
         } else {
             throw new Error(`Invalid mode: ${mode}`)
         }

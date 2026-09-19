@@ -2,6 +2,8 @@
 // What a driver needs beside that, a WebDriver endpoint or a Playwright
 // engine say, is its own `options`.
 
+import type {BrowserCustomConfig} from "../mode-options.ts"
+
 export interface WebRunOptions<T> {
     /** URL of the page to open, under the run's own path on the CLI's server. */
     url: string
@@ -9,6 +11,8 @@ export interface WebRunOptions<T> {
     completion: Promise<unknown>
     /** What the driver itself takes, beside the page and its completion. */
     options: T
+
+    custom?: BrowserCustomConfig
 }
 
 /**
@@ -21,26 +25,26 @@ export interface WebRunFn<T> {
 export interface BrowserLike {
     on(event: "disconnected", listener: () => any): this
 
+    /** @see https://playwright.dev/docs/api/class-browser#browser-new-page */
     newPage(options?: object): Promise<PageLike>
 
-    close(options?: object): Promise<unknown>
+    close(): Promise<unknown>
 }
 
 export interface PageLike {
+    /** @see https://playwright.dev/docs/api/class-page#page-goto */
     goto(url: string, options?: object): Promise<unknown>
 }
 
 export interface RunInBrowserOptions {
     browser: BrowserLike
-    newPage?: object
-    goto?: object
 }
 
 /**
  * Opens `url` in `browser`, a Playwright-like one already launched, and
  * closes it once `completion` settles. Rejects when the browser is gone.
  */
-export const runInBrowser: WebRunFn<RunInBrowserOptions> = async ({url, completion, options}) => {
+export const runInBrowser: WebRunFn<RunInBrowserOptions> = async ({url, completion, options, custom}) => {
     const {browser} = options
     try {
         // A browser that goes away fails the run at once, ahead of the
@@ -51,8 +55,8 @@ export const runInBrowser: WebRunFn<RunInBrowserOptions> = async ({url, completi
         // Handled here as well: close() below fires this too when something
         // else failed first, and that must not add an unhandled rejection.
         void gone.catch(() => undefined)
-        const page = await browser.newPage(options.newPage)
-        await page.goto(url, options.goto)
+        const page = await browser.newPage(custom?.newPage)
+        await page.goto(url, custom?.goto)
         await Promise.race([completion, gone])
     } finally {
         await browser.close()

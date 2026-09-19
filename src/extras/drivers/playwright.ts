@@ -1,18 +1,18 @@
 // Playwright adapter for the browser test CLI: the one file that imports
 // playwright, which is not a dependency of this package.
 
-import {runInBrowser, type BrowserLike, type RunInBrowserOptions, type WebRunFn} from "./web-run.ts"
+import type {BrowserLike, WebRunFn} from "./web-run.ts"
+import {runInBrowser} from "./web-run.ts"
 
-export interface RunInPlaywrightOptions extends Omit<RunInBrowserOptions, "browser"> {
+export interface RunInPlaywrightOptions {
     /** Which browser engine Playwright launches. */
     engine: BrowserName
-
-    launch?: object
 }
 
 type BrowserName = "chromium" | "firefox" | "webkit"
 
 interface BrowserTypeLike {
+    /** @see https://playwright.dev/docs/api/class-browsertype#browser-type-launch */
     launch(options?: object): Promise<BrowserLike>
 }
 
@@ -31,7 +31,7 @@ const loadBrowserType = async (pkg: string, engine: BrowserName = "chromium"): P
  * Launches the engine headless and runs the page in it. Rejects when
  * Playwright is missing, with a hint on installing it.
  */
-export const runInPlaywright: WebRunFn<RunInPlaywrightOptions> = async ({url, completion, options}) => {
+export const runInPlaywright: WebRunFn<RunInPlaywrightOptions> = async ({url, completion, options, custom}) => {
     const {engine} = options
 
     const browserType = await loadBrowserType("playwright", engine) ||
@@ -42,7 +42,7 @@ export const runInPlaywright: WebRunFn<RunInPlaywrightOptions> = async ({url, co
         throw new Error(`Playwright is not ready: \`npm install -D playwright && npx playwright install ${engine}\``)
     }
 
-    const browser = await browserType.launch(options.launch)
+    const browser = await browserType.launch(custom?.launch)
 
-    return runInBrowser({url, completion, options: {...options, browser}})
+    return runInBrowser({url, completion, custom, options: {browser}})
 }

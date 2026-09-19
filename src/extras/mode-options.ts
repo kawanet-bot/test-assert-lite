@@ -12,6 +12,15 @@ export interface SessionReqJSON {
     capabilities?: object
 }
 
+export interface BrowserCustomConfig {
+    /** @see https://playwright.dev/docs/api/class-browsertype#browser-type-launch */
+    launch?: object
+    /** @see https://playwright.dev/docs/api/class-browser#browser-new-page */
+    newPage?: object
+    /** @see https://playwright.dev/docs/api/class-page#page-goto */
+    goto?: object
+}
+
 export interface SessionConfig {
     /** The reporter named on the command line; spec unless given. */
     reporter?: string
@@ -43,7 +52,7 @@ export type ModeOptions =
     | {mode: "version"}
     | TestModeOptions & {mode: "node"}
     | WebModeOptions & {mode: "serve"}
-    | WebModeOptions & {mode: "playwright", engine: EngineName, configJson?: string}
+    | WebModeOptions & {mode: "playwright", engine: EngineName, custom?: BrowserCustomConfig}
     | WebModeOptions & {mode: "webdriver", endpoint?: string, sessionReq?: SessionReqJSON}
 
 export const isEngineName = (v: unknown): v is EngineName => ENGINE_NAMES.includes(v as EngineName)

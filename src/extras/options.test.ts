@@ -147,11 +147,11 @@ describe(TITLE, () => {
         })
 
         it("reads --playwright with its browser and config file", () => {
-            const options = readOptions(["--playwright", "webkit", "--playwright-config", "config.json", "suite.mjs"])
+            const options = readOptions(["--playwright", "webkit", "--playwright-config", "browser/playwright/iphone15pro.json", "suite.mjs"])
             assert.equal(options.mode, "playwright")
             if (options.mode !== "playwright") return
             assert.equal(options.engine, "webkit")
-            assert.equal(options.configJson, "config.json")
+            assert.equal((options.custom?.newPage as {isMobile: boolean})?.isMobile, true)
             assert.deepEqual(options.session.files, [resolve("suite.mjs")])
             assert.throws(() => readOptions(["--playwright", "electron", "suite.mjs"]), /--playwright takes/)
         })
