@@ -5,6 +5,7 @@
 
 import {resolve} from "node:path"
 import {parseArgs} from "node:util"
+import {readJsonFile} from "../utils/read-json.ts"
 import type {Mode} from "./imports.ts"
 import {ImportAliasItem, Imports, cwdURL, readImportMap} from "./imports.ts"
 import type {EngineName, ModeOptions, SessionConfig, WebModeOptions} from "./mode-options.ts"
@@ -129,13 +130,15 @@ export const readOptions = (args: string[]): ModeOptions => {
     const {playwright, webdriver, serve} = values
     const engine = playwright == null ? undefined : engineNameOf(playwright)
     const browsing = engine != null || webdriver || serve
+    const webdriverSession = values["webdriver-session"]
+
     if ((engine ? 1 : 0) + (webdriver ? 1 : 0) + (serve ? 1 : 0) > 1) {
         throw new UsageError("--playwright, --webdriver and --serve are exclusive")
     }
     if (!browsing && (values.script.length || values.mount != null || values.host != null || values.port != null || values.origin != null)) {
         throw new UsageError("--host, --port, --origin, --script and --mount apply to --playwright, --webdriver and --serve only")
     }
-    if (!webdriver && (values["webdriver-session"] != null || values.endpoint != null)) {
+    if (!webdriver && (webdriverSession != null || values.endpoint != null)) {
         throw new UsageError("--webdriver-session and --endpoint apply to --webdriver only")
     }
     if (!playwright && (values["playwright-config"] != null)) {
@@ -186,6 +189,11 @@ export const readOptions = (args: string[]): ModeOptions => {
         origin: values.origin == null ? undefined : originOf(values.origin),
     }
     if (engine) return {...shared, mode: "playwright", engine, configJson: values["playwright-config"]}
-    if (webdriver) return {...shared, mode: "webdriver", sessionJson: values["webdriver-session"], endpoint: values.endpoint}
+
+    if (webdriver) {
+        const sessionReq = !webdriverSession ? undefined : readJsonFile(webdriverSession)
+        return {...shared, mode: "webdriver", sessionReq, endpoint: values.endpoint}
+    }
+
     return {...shared, mode: "serve"}
 }

@@ -88,8 +88,8 @@ const runCLI = async (options: ModeOptions): Promise<number> => {
         const completion = app.done
 
         if (mode === "webdriver") {
-            const session = !options.sessionJson ? undefined : readJsonFile(options.sessionJson)
-            await runInWebDriver({url, completion, options: {session, endpoint: options.endpoint}})
+            const {sessionReq, endpoint} = options
+            await runInWebDriver({url, completion, options: {sessionReq, endpoint}})
         } else if (mode === "playwright") {
             const config = !options.configJson ? undefined : readJsonFile(options.configJson)
             await runInPlaywright({url, completion, options: {...config, engine: options.engine}})

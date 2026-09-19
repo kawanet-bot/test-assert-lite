@@ -3,17 +3,14 @@
 // cannot launch, Safari on a Mac say, runs the suites too. Node's fetch()
 // is all it takes, so no optional dependency is kept out of tsc here.
 
+import type {SessionReqJSON} from "../mode-options.ts"
 import type {WebRunFn} from "./web-run.ts"
 
 export interface RunInWebDriverOptions {
     /** The WebDriver server, such as http://127.0.0.1:4444 */
     endpoint?: string
     /** The request body of POST /session; no capabilities by default. */
-    session?: SessionRequest
-}
-
-interface SessionRequest {
-    capabilities?: object
+    sessionReq?: SessionReqJSON
 }
 
 // A WebDriver response carries its payload, or its error, under `value`.
@@ -38,11 +35,11 @@ export const runInWebDriver: WebRunFn<RunInWebDriverOptions> = async ({url, comp
     const endpoint = options.endpoint || "http://127.0.0.1:4444"
     let created: Reply["value"]
 
-    const session: SessionRequest = options.session ? {...options.session} : {}
-    if (!session.capabilities) session.capabilities = {}
+    const sessionReq: SessionReqJSON = !options.sessionReq ? {} : {...options.sessionReq}
+    if (!sessionReq.capabilities) sessionReq.capabilities = {}
 
     try {
-        created = await call(endpoint, "POST", "/session", JSON.stringify(session, null, 2))
+        created = await call(endpoint, "POST", "/session", JSON.stringify(sessionReq, null, 2))
     } catch (error) {
         // Nothing listening is the likely case, and the most useful hint.
         if (!(error instanceof TypeError)) throw error

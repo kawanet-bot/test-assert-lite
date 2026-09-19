@@ -7,6 +7,11 @@ export interface SessionConfigJSON {
     session: SessionConfig
 }
 
+/** The request body of POST /session for WebDriver. */
+export interface SessionReqJSON {
+    capabilities?: object
+}
+
 export interface SessionConfig {
     /** The reporter named on the command line; spec unless given. */
     reporter?: string
@@ -39,6 +44,6 @@ export type ModeOptions =
     | TestModeOptions & {mode: "node"}
     | WebModeOptions & {mode: "serve"}
     | WebModeOptions & {mode: "playwright", engine: EngineName, configJson?: string}
-    | WebModeOptions & {mode: "webdriver", endpoint?: string, sessionJson?: string}
+    | WebModeOptions & {mode: "webdriver", endpoint?: string, sessionReq?: SessionReqJSON}
 
 export const isEngineName = (v: unknown): v is EngineName => ENGINE_NAMES.includes(v as EngineName)
