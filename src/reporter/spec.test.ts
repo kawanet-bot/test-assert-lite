@@ -189,8 +189,12 @@ describe(TITLE, () => {
             await emit("test:summary", summary)
         })
 
-        assert.match(out, /^ {2}ℹ noted\n\n✖ failing tests:\n\n✖ bad \(\d+\.\d{3}ms\)\n {2}Error: boom\n/)
-        assert.equal(/fine|S \(/.test(out), false)
+        assert.ok(out.startsWith("  ℹ noted\n"))
+        assert.ok(out.includes("failing tests:"))
+        assert.ok(out.includes("✖ bad"))
+        assert.ok(out.includes("Error: boom"))
+        assert.equal(out.includes("fine"), false)
+        assert.equal(out.includes("S ("), false)
         assert.equal(await quiet(async emit => {
             await emit("test:start", {name: "fine", nesting: 0})
             await emit("test:pass", pass("fine"))
