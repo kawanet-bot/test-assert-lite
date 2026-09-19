@@ -2,7 +2,8 @@ import type {TAL} from "test-assert-lite"
 import {html} from "../reporter/html.ts"
 import {spec} from "../reporter/spec.ts"
 import {tap} from "../reporter/tap.ts"
-import {client, line} from "./client.ts"
+import {errorText} from "../utils/tester-error.ts"
+import {client} from "./client.ts"
 import {withFooter} from "./footer.ts"
 import type {ReportStream} from "./report-stream.ts"
 import type {HarnessState} from "./state.ts"
@@ -10,16 +11,14 @@ import type {HarnessState} from "./state.ts"
 type ReporterFn = TAL.ReporterFn
 type OutputFn = TAL.OutputFn
 type SessionOptions = TAL.SessionOptions
-type Session = TAL.Session
+type Writer = TAL.Writer
 type EventTargetLike = TAL.EventTargetLike
 
-// What a run reports with and where the page's console goes: opened by
-// session(), or with the defaults on the first declaration, until end()
-// closes it with the verdict.
+// What a run reports with: opened by session(), or with the defaults on
+// the first declaration, until end() closes it with the verdict.
 interface Open {
     reporter: ReporterFn
     output: OutputFn
-    session: Session
     end: (success: boolean) => Promise<void>
     // Opened by a declaration rather than by session(): the refusal differs.
     auto: boolean
@@ -35,6 +34,44 @@ export interface SessionControl {
     open: () => void
     // Gives a run's stream the settings of the session.
     attach: (stream: ReportStream) => void
+    stdout: Writer
+    stderr: Writer
+}
+
+// One of the two streams. With a sink the text goes through as it comes;
+// without one, before a session and after it, or in a page with no run
+// URL, the text is held.
+interface Outlet extends Writer {
+    connect: (sink: ((text: string) => void) | undefined) => void
+    disconnect: () => void
+}
+
+const textOf = (chunk: string | Error): string => {
+    if ("string" === typeof chunk) return chunk
+    const text = errorText(chunk)
+    return text.endsWith("\n") ? text : `${text}\n`
+}
+
+const outlet = (): Outlet => {
+    let sink: ((text: string) => void) | null = null
+    let held = ""
+    return {
+        write: chunk => {
+            const text = textOf(chunk)
+            if (sink != null) sink(text)
+            else held += text
+        },
+        connect: fn => {
+            if (fn == null) return
+            sink = fn
+            const text = held
+            held = ""
+            if (text) fn(text)
+        },
+        disconnect: () => {
+            sink = null
+        },
+    }
 }
 
 // A base under a run's own URL connects the page to the CLI; any other
@@ -46,12 +83,10 @@ const defaultOutput: OutputFn = (text) => {
     console.log(text.replace(/\n$/, ""))
 }
 
-// Node's process streams where they exist, the console in a browser.
-const writer = (name: "stdout" | "stderr"): ((text: string) => void) => {
+// Node's process streams, where they exist.
+const local = (name: "stdout" | "stderr"): ((text: string) => void) | undefined => {
     const stream = "undefined" !== typeof process ? process[name] : undefined
-    if (stream?.write != null) return text => void stream.write(text)
-    const log = name === "stdout" ? console.log : console.error
-    return text => log(text.replace(/\n$/, ""))
+    return stream?.write == null ? undefined : text => void stream.write(text)
 }
 
 // The suites are served under a digest-named directory; the name a
@@ -114,6 +149,8 @@ const reporterMap = new Map<string, () => ReporterFn>([
 
 export const createSessions = (harness: HarnessState): SessionControl => {
     let current: Open | null = null
+    const stdout = outlet()
+    const stderr = outlet()
 
     // An unsupported reporter becomes a root failure. With none named,
     // the session uses spec and lets quiet tune it.
@@ -158,19 +195,19 @@ export const createSessions = (harness: HarnessState): SessionControl => {
         if (url != null && CHANNEL.test(url.pathname)) {
             const channel = client(url)
             void channel.begin()
+            stdout.connect(channel.stdout)
+            stderr.connect(channel.stderr)
             return opened({
                 reporter,
                 output: options.output ?? (text => channel.stdout(text)),
-                session: {stdout: channel.stdout, stderr: channel.stderr},
                 end: channel.end,
             })
         }
-        const stdout = writer("stdout")
-        const stderr = writer("stderr")
+        stdout.connect(local("stdout"))
+        stderr.connect(local("stderr"))
         return opened({
             reporter,
             output: options.output ?? defaultOutput,
-            session: {stdout, stderr: item => stderr(line(item))},
             end: async () => undefined,
         })
     }
@@ -180,13 +217,14 @@ export const createSessions = (harness: HarnessState): SessionControl => {
             throw new Error(current.auto ? "session() must come before the first test is declared" : "session() is already open")
         }
         current = create(options, false)
-        return current.session
     }
 
     const close = async (success: boolean): Promise<void> => {
         const open = current
         if (open == null) return
         current = null
+        stdout.disconnect()
+        stderr.disconnect()
         open.release()
         await open.end(success)
     }
@@ -201,5 +239,7 @@ export const createSessions = (harness: HarnessState): SessionControl => {
             current ??= create({}, true)
             stream.attach(current.reporter, current.output)
         },
+        stdout,
+        stderr,
     }
 }

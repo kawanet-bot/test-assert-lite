@@ -278,24 +278,28 @@ export declare namespace TAL {
         success: boolean
     }
 
-    // Where the console goes: the CLI under a run's URL, Node's own streams,
-    // the browser's console otherwise. Sending to the CLI never rejects.
-    interface Session {
-        /** Text for stdout, buffered. */
-        stdout(text: string): void
-        /** A line for stderr, buffered: an Error by its text, and a newline added when the line lacks one. */
-        stderr(item: string | Error): void
+    // One of the session's streams. Text goes as given; an Error goes as
+    // its text, with a newline at its end.
+    interface Writer {
+        write(chunk: string | Error): void
     }
 
     // The session's own entry, `test-assert-lite/session`: opening it,
     // loading the suites into it, and ending it.
     interface SessionAPI {
         /** Opens a new session for the following tests. */
-        session(options?: SessionOptions): Session
+        session(options?: SessionOptions): void
         /** Imports a suite, by URL or absolute path, so its tests are declared. */
         load(file: string): Promise<void>
         /** Runs every registered test, and closes the session. */
         end(): Promise<SessionResult>
+        /**
+         * The console of the run: the CLI under a run's URL, or Node's own
+         * streams. Text written outside a session, before session() or after
+         * end(), waits for the next one; so does a page's with no run URL.
+         */
+        stdout: Writer
+        stderr: Writer
     }
 
     // --- harness ---

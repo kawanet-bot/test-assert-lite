@@ -29,7 +29,8 @@ export const createTAL: typeof declared.createTAL = () => {
             })
         }
     }
-    const session: TAL.SessionAPI = {session: sessions.session, load, end}
+    const {stdout, stderr} = sessions
+    const session: TAL.SessionAPI = {session: sessions.session, load, end, stdout, stderr}
 
     return {
         assert,

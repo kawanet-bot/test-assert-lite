@@ -26,7 +26,8 @@ const stub: typeof fetch = (input, init) => {
 // report itself is kept off the channel, so what is seen is what is sent.
 const connect = (base: string | URL) => {
     const local = createTAL()
-    return {...local.session.session({base, output: () => undefined}), end: local.session.end, it: local.test.it}
+    local.session.session({base, output: () => undefined})
+    return {...local.session, it: local.test.it}
 }
 
 const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms))
@@ -43,9 +44,9 @@ describe(TITLE, () => {
     it("posts begin first, then the streams, then end, in order", async () => {
         seen.length = 0
         const client = connect(RUN)
-        client.stdout("one\n")
-        client.stderr("warned\n")
-        client.stdout("two\n")
+        client.stdout.write("one\n")
+        client.stderr.write("warned\n")
+        client.stdout.write("two\n")
         await client.end()
         assert.deepEqual(seen.map(({path}) => path), [
             "/@tal/run/abc/begin",
@@ -61,7 +62,7 @@ describe(TITLE, () => {
     it("gathers a burst of lines into one request per stream", async () => {
         seen.length = 0
         const client = connect(RUN)
-        for (let i = 0; i < 100; i++) client.stdout(`line ${i}\n`)
+        for (let i = 0; i < 100; i++) client.stdout.write(`line ${i}\n`)
         await client.end()
         assert.deepEqual(seen.map(({path}) => path), ["/@tal/run/abc/begin", "/@tal/run/abc/stdout", "/@tal/run/abc/end"])
         assert.equal((seen[1]?.body ?? "").split("\n").length - 1, 100)
@@ -71,10 +72,10 @@ describe(TITLE, () => {
     it("flushes on its own while the run goes on", async () => {
         seen.length = 0
         const client = connect(RUN)
-        client.stdout("early\n")
+        client.stdout.write("early\n")
         await sleep(200)
         assert.deepEqual(seen.map(({path, body}) => `${path} ${JSON.stringify(body)}`), ['/@tal/run/abc/begin ""', '/@tal/run/abc/stdout "early\\n"'])
-        client.stdout("late\n")
+        client.stdout.write("late\n")
         await client.end()
         assert.equal(seen.length, 4)
         assert.equal(seen[2]?.body, "late\n")
@@ -90,18 +91,48 @@ describe(TITLE, () => {
         assert.equal(seen.at(-1)?.body, "false")
     })
 
-    it("keeps stderr in lines: an Error by its text, a newline where one lacks", async () => {
+    it("sends text as given, and an Error as its text with a newline", async () => {
         seen.length = 0
         const client = connect(RUN)
-        client.stderr("bare")
-        client.stderr("ended\n")
-        client.stderr(new TypeError("typed"))
+        client.stderr.write("as ")
+        client.stderr.write("given\n")
+        client.stderr.write(new TypeError("typed"))
         await client.end()
         const lines = (seen[1]?.body ?? "").split("\n")
-        assert.equal(lines[0], "bare")
-        assert.equal(lines[1], "ended")
-        assert.match(lines[2] ?? "", /^TypeError: typed/)
+        assert.equal(lines[0], "as given")
+        assert.match(lines[1] ?? "", /^TypeError: typed/)
         assert.equal(seen[1]?.body.endsWith("\n"), true)
+    })
+
+    it("text written before session() goes out once the session is open", async () => {
+        seen.length = 0
+        const local = createTAL()
+        local.session.stdout.write("early\n")
+        local.session.stderr.write("warned\n")
+        local.session.session({base: RUN, output: () => undefined})
+        await local.session.end()
+        assert.deepEqual(seen.map(({path, body}) => `${path} ${JSON.stringify(body)}`), [
+            '/@tal/run/abc/begin ""',
+            '/@tal/run/abc/stdout "early\\n"',
+            '/@tal/run/abc/stderr "warned\\n"',
+            '/@tal/run/abc/end "true"',
+        ])
+    })
+
+    it("text written after end() waits for the next session", async () => {
+        seen.length = 0
+        const local = createTAL()
+        local.session.session({base: RUN, output: () => undefined})
+        await local.session.end()
+        local.session.stdout.write("later\n")
+        assert.equal(seen.length, 2)
+        local.session.session({base: RUN, output: () => undefined})
+        await local.session.end()
+        assert.deepEqual(seen.slice(2).map(({path, body}) => `${path} ${JSON.stringify(body)}`), [
+            '/@tal/run/abc/begin ""',
+            '/@tal/run/abc/stdout "later\\n"',
+            '/@tal/run/abc/end "true"',
+        ])
     })
 
     it("takes a URL for the base as well as a string", async () => {
@@ -113,7 +144,7 @@ describe(TITLE, () => {
 
     it("does not reject when a request fails", async () => {
         const client = connect(GONE)
-        client.stdout("lost\n")
+        client.stdout.write("lost\n")
         await client.end()
     })
 
@@ -122,7 +153,7 @@ describe(TITLE, () => {
     it("a base outside a run's URL sends nothing", async () => {
         seen.length = 0
         const client = connect("http://127.0.0.1:1/")
-        client.stdout("")
+        client.stdout.write("")
         await client.end()
         assert.equal(seen.length, 0)
     })
