@@ -151,7 +151,7 @@ test-assert --playwright chromium test/browser.test.mjs
 ### `-q`, `--quiet`
 
 - Only the failures: the summary lines stay off, the access log keeps the 4xx and 5xx lines alone, and `spec` lists the failures at the end instead of a line per test. A run where every test passes prints nothing.
-- A `--reporter` named reports as it does; the summary lines and the access log of what went well go all the same.
+- A `--reporter` named reports as it does; the rest is left off all the same.
 
 ### `--serve`
 
