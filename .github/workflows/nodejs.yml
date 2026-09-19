@@ -29,6 +29,8 @@ jobs:
           # relative to the common ancestor of everything listed.
           path: |
             README.md
+            browser/playwright/
+            browser/webdriver/
             builder/pack/
             builder/tests/
             sample/

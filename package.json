@@ -83,7 +83,7 @@
   "files": [
     "bin/cli.js",
     "browser/run.html",
-    "browser/session/",
+    "browser/webdriver/",
     "dist/test-assert-lite.extras.js",
     "dist/test-assert-lite.js",
     "dist/test-assert-lite.min.js",

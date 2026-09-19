@@ -5,10 +5,12 @@
 
 import {resolve} from "node:path"
 import {parseArgs} from "node:util"
+import {readJsonFile} from "../utils/read-json.ts"
 import type {Mode} from "./imports.ts"
 import {ImportAliasItem, Imports, cwdURL, readImportMap} from "./imports.ts"
+import type {BrowserCustom, EngineName, ModeOptions, TestSession, WebDriverCustom, WebModeOptions} from "./mode-options.ts"
+import {isEngineName} from "./mode-options.ts"
 import {createFiles} from "./server/files.ts"
-import type {SessionConfig} from "./session-config.ts"
 import {UsageError} from "./usage-error.ts"
 
 export const USAGE = `Usage: test-assert [options] [file...]
@@ -24,39 +26,11 @@ export const USAGE = `Usage: test-assert [options] [file...]
   --script <file>             classic script to run first (browser modes, repeatable)
   --mount <dir|url>           what the root serves instead of htdocs: a directory, or an origin to proxy (browser modes)
   --webdriver                 run the suite through a WebDriver server: safaridriver, chromedriver
-  --webdriver-session <file>  JSON sent as the body of POST /session (default: no capabilities)
+  --webdriver-config <file>   JSON sent as the body of POST /session (default: no capabilities)
   --endpoint <url>            the WebDriver server (default: http://127.0.0.1:4444)
   --playwright <browser>      run the suite through Playwright: chromium, firefox or webkit
   --playwright-config <file>  JSON options for Playwright's launch, newPage and goto
 `
-
-const ENGINE_NAMES = ["chromium", "firefox", "webkit"] as const
-export type EngineName = typeof ENGINE_NAMES[number]
-
-interface CommonOptions {
-    session: SessionConfig
-
-    /** From --import-map then --alias, a later item over an earlier one of the same specifier. */
-    imports: Imports
-}
-
-interface BrowserOptions extends CommonOptions {
-    /** Classic scripts to run first, absolute, in order. */
-    scripts: string[]
-    /** What the root serves in place of htdocs: an absolute directory, or an http(s) URL ending in "/". */
-    mount?: string
-    host?: string
-    port?: number
-    origin?: string
-}
-
-export type Options =
-    | {mode: "help"}
-    | {mode: "version"}
-    | CommonOptions & {mode: "node"}
-    | BrowserOptions & {mode: "serve"}
-    | BrowserOptions & {mode: "playwright", engine: EngineName, configJson?: string}
-    | BrowserOptions & {mode: "webdriver", endpoint?: string, sessionJson?: string}
 
 // A port is a whole number a socket can take, written in decimal: what
 // Number() would also read, 0x50 or 1e3 or nothing, is not one.
@@ -105,8 +79,6 @@ export const importsOf = (mapFile: string | undefined, aliases: string[], mode: 
     return imports
 }
 
-const isEngineName = (v: unknown): v is EngineName => ENGINE_NAMES.includes(v as EngineName)
-
 export const engineNameOf = (name: string): EngineName => {
     if (!isEngineName(name)) throw new UsageError(`--playwright takes chromium, firefox or webkit: ${name}`)
     return name
@@ -133,7 +105,7 @@ const parse = (args: string[]) => {
                 playwright: {type: "string"},
                 "playwright-config": {type: "string"},
                 webdriver: {type: "boolean", default: false},
-                "webdriver-session": {type: "string"},
+                "webdriver-config": {type: "string"},
                 endpoint: {type: "string"},
                 help: {type: "boolean", short: "h", default: false},
                 version: {type: "boolean", short: "v", default: false},
@@ -150,7 +122,7 @@ const parse = (args: string[]) => {
  * mode they name needs, every value checked and every path absolute, or
  * throws UsageError with the reason when there is one to give.
  */
-export const readOptions = (args: string[]): Options => {
+export const readOptions = (args: string[]): ModeOptions => {
     const {values, positionals: files} = parse(args)
     if (values.help) return {mode: "help"}
     if (values.version) return {mode: "version"}
@@ -158,14 +130,17 @@ export const readOptions = (args: string[]): Options => {
     const {playwright, webdriver, serve} = values
     const engine = playwright == null ? undefined : engineNameOf(playwright)
     const browsing = engine != null || webdriver || serve
+    const webdriverConfig = values["webdriver-config"]
+    const playwrightConfig = values["playwright-config"]
+
     if ((engine ? 1 : 0) + (webdriver ? 1 : 0) + (serve ? 1 : 0) > 1) {
         throw new UsageError("--playwright, --webdriver and --serve are exclusive")
     }
     if (!browsing && (values.script.length || values.mount != null || values.host != null || values.port != null || values.origin != null)) {
         throw new UsageError("--host, --port, --origin, --script and --mount apply to --playwright, --webdriver and --serve only")
     }
-    if (!webdriver && (values["webdriver-session"] != null || values.endpoint != null)) {
-        throw new UsageError("--webdriver-session and --endpoint apply to --webdriver only")
+    if (!webdriver && (webdriverConfig != null || values.endpoint != null)) {
+        throw new UsageError("--webdriver-config and --endpoint apply to --webdriver only")
     }
     if (!playwright && (values["playwright-config"] != null)) {
         throw new UsageError("--playwright-config applies to --playwright only")
@@ -187,7 +162,7 @@ export const readOptions = (args: string[]): Options => {
     // Only the flag given makes a value: the run's default stands otherwise.
     const summary = values["no-summary"] ? false : undefined
 
-    const session: SessionConfig = {
+    const session: TestSession = {
         files: files.map(file => resolve(file)),
         reporter: values.reporter,
         summary,
@@ -205,7 +180,7 @@ export const readOptions = (args: string[]): Options => {
         throw new UsageError("--playwright, --webdriver and --serve take the test files from one directory")
     }
 
-    const shared: BrowserOptions = {
+    const shared: WebModeOptions = {
         session,
         scripts,
         imports,
@@ -214,7 +189,15 @@ export const readOptions = (args: string[]): Options => {
         port: values.port == null ? undefined : portOf(values.port),
         origin: values.origin == null ? undefined : originOf(values.origin),
     }
-    if (engine) return {...shared, mode: "playwright", engine, configJson: values["playwright-config"]}
-    if (webdriver) return {...shared, mode: "webdriver", sessionJson: values["webdriver-session"], endpoint: values.endpoint}
+    if (engine) {
+        const custom = !playwrightConfig ? undefined : readJsonFile<BrowserCustom>(playwrightConfig, msg => new UsageError(`--playwright-config: ${msg}`))
+        return {...shared, mode: "playwright", engine, custom}
+    }
+
+    if (webdriver) {
+        const sessionReq = !webdriverConfig ? undefined : readJsonFile<WebDriverCustom>(webdriverConfig, msg => new UsageError(`--webdriver-config: ${msg}`))
+        return {...shared, mode: "webdriver", custom: sessionReq, endpoint: values.endpoint}
+    }
+
     return {...shared, mode: "serve"}
 }

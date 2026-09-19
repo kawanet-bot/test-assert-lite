@@ -1,8 +1,8 @@
 import {strict as assert} from "node:assert"
 import {resolve} from "node:path"
 import {describe, it} from "node:test"
+import type {TestSession} from "./mode-options.ts"
 import {engineNameOf, mountOf, originOf, portOf, readOptions} from "./options.ts"
-import type {SessionConfig} from "./session-config.ts"
 
 const TITLE = "extras/options.test.ts"
 
@@ -125,14 +125,14 @@ describe(TITLE, () => {
         })
 
         it("reads --reporter as given, in every mode", () => {
-            const named = (args: string[]): string | undefined => (readOptions(args) as {session: SessionConfig}).session.reporter
+            const named = (args: string[]): string | undefined => (readOptions(args) as {session: TestSession}).session.reporter
             assert.equal(named(["--reporter", "tap", "a.test.ts"]), "tap")
             assert.equal(named(["--reporter", "html", "--serve"]), "html")
             assert.equal(named(["a.test.ts"]), undefined)
         })
 
         it("reads --no-summary as summary false, and leaves it unset otherwise", () => {
-            const summary = (args: string[]): boolean | undefined => (readOptions(args) as {session: SessionConfig}).session.summary
+            const summary = (args: string[]): boolean | undefined => (readOptions(args) as {session: TestSession}).session.summary
             assert.equal(summary(["--no-summary", "a.test.ts"]), false)
             assert.equal(summary(["--no-summary", "--serve"]), false)
             assert.equal(summary(["a.test.ts"]), undefined)
@@ -147,25 +147,25 @@ describe(TITLE, () => {
         })
 
         it("reads --playwright with its browser and config file", () => {
-            const options = readOptions(["--playwright", "webkit", "--playwright-config", "config.json", "suite.mjs"])
+            const options = readOptions(["--playwright", "webkit", "--playwright-config", "browser/playwright/iphone15pro.json", "suite.mjs"])
             assert.equal(options.mode, "playwright")
             if (options.mode !== "playwright") return
             assert.equal(options.engine, "webkit")
-            assert.equal(options.configJson, "config.json")
+            assert.equal((options.custom?.newPage as {isMobile: boolean})?.isMobile, true)
             assert.deepEqual(options.session.files, [resolve("suite.mjs")])
             assert.throws(() => readOptions(["--playwright", "electron", "suite.mjs"]), /--playwright takes/)
         })
 
-        it("reads --webdriver with its session file and endpoint, the endpoint on loopback by default", () => {
+        it("reads --webdriver with its config file and endpoint", () => {
             const options = readOptions(["--webdriver", "suite.mjs"])
             assert.equal(options.mode, "webdriver")
             if (options.mode !== "webdriver") return
-            assert.equal(options.sessionJson, undefined)
+            assert.equal(options.custom, undefined)
             assert.equal(options.endpoint, undefined)
-            const given = readOptions(["--webdriver", "--webdriver-session", "s.json", "--endpoint", "http://127.0.0.1:9515", "suite.mjs"])
+            const given = readOptions(["--webdriver", "--webdriver-config", "browser/webdriver/chrome-attach.json", "--endpoint", "http://127.0.0.1:9515", "suite.mjs"])
             assert.equal(given.mode, "webdriver")
             if (given.mode !== "webdriver") return
-            assert.equal(given.sessionJson, "s.json")
+            assert.equal(typeof given.custom?.capabilities, "object")
             assert.equal(given.endpoint, "http://127.0.0.1:9515")
         })
 
@@ -182,7 +182,7 @@ describe(TITLE, () => {
         })
 
         it("refuses the WebDriver flags outside --webdriver", () => {
-            assert.throws(() => readOptions(["--serve", "--webdriver-session", "s.json"]), /apply to --webdriver only$/)
+            assert.throws(() => readOptions(["--serve", "--webdriver-config", "s.json"]), /apply to --webdriver only$/)
             assert.throws(() => readOptions(["--playwright", "chromium", "--endpoint", "http://x", "suite.mjs"]), /apply to --webdriver only$/)
             assert.throws(() => readOptions(["--endpoint", "http://x", "a.test.ts"]), /apply to --webdriver only$/)
         })

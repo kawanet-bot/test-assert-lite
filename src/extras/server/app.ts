@@ -7,8 +7,8 @@
 import {basename, resolve} from "node:path"
 import {fileURLToPath} from "node:url"
 import {Imports} from "../imports.ts"
+import type {TestSession} from "../mode-options.ts"
 import {packageNameOf, packageRoot} from "../package-root.ts"
-import type {DriverConfig, SessionConfig} from "../session-config.ts"
 import type {ChannelOptions} from "./channel.ts"
 import {createChannel} from "./channel.ts"
 import {createFiles} from "./files.ts"
@@ -30,7 +30,7 @@ export interface AppOptions extends ChannelOptions {
     /** What the root serves in place of htdocs: an absolute directory, or an http(s) URL ending in "/" to proxy. */
     mount?: string
     /** What the command line hands the page, as JSON in its head; empty options unless given. Its files become the suites' served URLs. */
-    session: SessionConfig
+    session: TestSession
     /** Reloads the page people open when a suite, a script or an imported file changes; off where it cannot watch. */
     watch?: boolean
 }
@@ -46,6 +46,12 @@ export interface App {
     /** Stops waiting for the page. */
     close(): void
 }
+
+interface TestSessionJSON {
+    session: TestSession
+}
+
+export const TestSessionType = "application/vnd.test-session+json"
 
 // The package root holds the pages, htdocs/ and browser/run.html; they
 // are served from there whatever the suite's location.
@@ -92,8 +98,8 @@ export const createApp = (options: AppOptions): App => {
     // the head. The suites are the config's files, by their served URLs,
     // for the page to import in that order, as the Node driver does.
     const importmap = `<script type="importmap">\n${safeJSON({imports: imports.addresses(file => served.urlOf(file))})}\n</script>\n`
-    const configObj: DriverConfig = {session: {...session, files: files.map(file => served.urlOf(file))}}
-    const configTag = `<script type="application/vnd.session-config+json">\n${safeJSON(configObj)}\n</script>\n`
+    const configObj: TestSessionJSON = {session: {...session, files: files.map(file => served.urlOf(file))}}
+    const configTag = `<script type="${TestSessionType}">\n${safeJSON(configObj)}\n</script>\n`
     const tags = scriptUrls.map(url => `<script src="${url}"></script>\n`).join("")
     // A page with an import map of its own goes out as it is: a second map
     // is not for a browser, and without this one the suites cannot load,

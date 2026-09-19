@@ -62,11 +62,11 @@ test-webkit: all
 # Off CI, the driver being started by hand; each WEBDRIVER_* set here goes
 # to the CLI option of the same name. safaridriver on a Mac, then chromedriver:
 #   WEBDRIVER_HOST=192.168.0.2 make test-webdriver
-#   WEBDRIVER_ENDPOINT=http://127.0.0.1:9515 WEBDRIVER_SESSION=session/chrome-headless.json make test-webdriver
+#   WEBDRIVER_ENDPOINT=http://127.0.0.1:9515 WEBDRIVER_CONFIG=webdriver/chrome-headless.json make test-webdriver
 test-webdriver: all
 	cd .. && node bin/cli.js --webdriver \
 		$(if $(WEBDRIVER_ENDPOINT),--endpoint $(WEBDRIVER_ENDPOINT)) \
-		$(if $(WEBDRIVER_SESSION),--webdriver-session $(abspath $(WEBDRIVER_SESSION))) \
+		$(if $(WEBDRIVER_CONFIG),--webdriver-config $(abspath $(WEBDRIVER_CONFIG))) \
 		$(if $(WEBDRIVER_HOST),--host $(WEBDRIVER_HOST)) \
 		browser/tests/bundled.mjs
 

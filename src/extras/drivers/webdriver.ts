@@ -3,17 +3,17 @@
 // cannot launch, Safari on a Mac say, runs the suites too. Node's fetch()
 // is all it takes, so no optional dependency is kept out of tsc here.
 
-import type {WebRunFn} from "./web-run.ts"
+import type {WebDriverCustom} from "../mode-options.ts"
 
 export interface RunInWebDriverOptions {
+    /** URL of the page to open, under the run's own path on the CLI's server. */
+    url: string
+    /** Settles when the run finishes or fails; the browser closes then. */
+    completion: Promise<unknown>
     /** The WebDriver server, such as http://127.0.0.1:4444 */
     endpoint?: string
-    /** The request body of POST /session; no capabilities by default. */
-    session?: SessionRequest
-}
-
-interface SessionRequest {
-    capabilities?: object
+    /** Extended configuration via --webdriver-config */
+    custom?: WebDriverCustom
 }
 
 // A WebDriver response carries its payload, or its error, under `value`.
@@ -34,15 +34,14 @@ const call = async (endpoint: string, method: string, path: string, body?: strin
  * page: from there the page reports on its own, so no command waits on the
  * run and no script timeout is in play.
  */
-export const runInWebDriver: WebRunFn<RunInWebDriverOptions> = async ({url, completion, options}) => {
-    const endpoint = options.endpoint || "http://127.0.0.1:4444"
+export const runInWebDriver = async ({url, completion, endpoint, custom}: RunInWebDriverOptions): Promise<void> => {
+    if (!endpoint) endpoint = "http://127.0.0.1:4444"
     let created: Reply["value"]
 
-    const session: SessionRequest = options.session ? {...options.session} : {}
-    if (!session.capabilities) session.capabilities = {}
+    const sessionReq = {capabilities: (custom?.capabilities || {})}
 
     try {
-        created = await call(endpoint, "POST", "/session", JSON.stringify(session, null, 2))
+        created = await call(endpoint, "POST", "/session", JSON.stringify(sessionReq, null, 2))
     } catch (error) {
         // Nothing listening is the likely case, and the most useful hint.
         if (!(error instanceof TypeError)) throw error
