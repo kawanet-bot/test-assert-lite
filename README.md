@@ -113,13 +113,18 @@ test-assert --webdriver test/browser.test.mjs
 test-assert --playwright chromium test/browser.test.mjs
 ```
 
-- Name files directly; the shell expands globs. CommonJS test files are not supported.
+- Name files directly; the shell expands globs. CommonJS test files are not supported. `-e <script>` runs a script in their place.
 - TypeScript test files run as they are, in a browser too, through `stripTypeScriptTypes` of Node.js 22.18 or later.
 - `--webdriver` runs the test files in the browser a WebDriver server drives, from one directory.
 - `--playwright <browser>` does the same through Playwright.
 - `--serve` serves for a browser, with auto reload. The three are exclusive.
 - A run exits 0 when all tests pass and 1 otherwise. Reports go to stdout; server messages and access logs go to stderr.
 - Each report ends with the counts, the package version and the user agent that ran the suite, unless `--no-summary`.
+
+### `-e`, `--eval <script>`
+
+- Runs the script in place of test files, in Node or in the browser: `test-assert --playwright chromium -e "console.log(navigator.userAgent)"`.
+- The script is a module: it imports `node:test` as a test file does, and a script that throws is one failed test.
 
 ### `-v`, `--version`
 
