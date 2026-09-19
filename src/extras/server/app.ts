@@ -31,6 +31,8 @@ export interface AppOptions extends ChannelOptions {
     mount?: string
     /** What the command line hands the page, as JSON in its head; empty options unless given. Its files become the suites' served URLs. */
     session: TestSession
+    /** A script to run in place of the files, served under the run's own path as eval.js. */
+    eval?: string
     /** Reloads the page people open when a suite, a script or an imported file changes; off where it cannot watch. */
     watch?: boolean
 }
@@ -68,7 +70,7 @@ const M = (fn: MiddlewareHandler | undefined | false) => [fn].filter(Boolean) as
  * of the verdict the page at `page` reports back through it.
  */
 export const createApp = (options: AppOptions): App => {
-    const {scripts = [], imports = new Imports([]), mount: mounted, session, stderr = text => process.stderr.write(text)} = options
+    const {scripts = [], imports = new Imports([]), mount: mounted, session, eval: script, stderr = text => process.stderr.write(text)} = options
     const {files = []} = session
     const channel = createChannel(options)
 
@@ -98,7 +100,9 @@ export const createApp = (options: AppOptions): App => {
     // the head. The suites are the config's files, by their served URLs,
     // for the page to import in that order, as the Node driver does.
     const importmap = `<script type="importmap">\n${safeJSON({imports: imports.addresses(file => served.urlOf(file))})}\n</script>\n`
-    const configObj: TestSessionJSON = {session: {...session, files: files.map(file => served.urlOf(file))}}
+    // The script goes in as the one file, at its URL under the run's path.
+    const evalPath = script == null ? null : `${channel.path}eval.js`
+    const configObj: TestSessionJSON = {session: {...session, files: evalPath == null ? files.map(file => served.urlOf(file)) : [evalPath]}}
     const configTag = `<script type="${TestSessionType}">\n${safeJSON(configObj)}\n</script>\n`
     const tags = scriptUrls.map(url => `<script src="${url}"></script>\n`).join("")
     // A page with an import map of its own goes out as it is: a second map
@@ -118,6 +122,7 @@ export const createApp = (options: AppOptions): App => {
             : serveStatic({path: "/", root: mounted})
 
     const atRun = serveStatic({path: `${channel.path}run.html`, root: resolve(root, "browser", "run.html")})
+    const atEval: MiddlewareHandler = async (c, next) => (c.req.path === evalPath ? c.body(script ?? "", 200, {"content-type": "text/javascript; charset=utf-8"}) : next())
 
     // The CLI's own pages are named after what they run: the package each
     // suite belongs to, or the suite's own name where there is none.
@@ -126,7 +131,7 @@ export const createApp = (options: AppOptions): App => {
     const handler = compose([
         channel.handler,
         ...M(watcher?.handler),
-        scoped(compose([...M(watcher?.inject), head, title, atRun])),
+        scoped(compose([...M(watcher?.inject), head, title, atRun, atEval])),
         ...served.own.map(dir => serveStatic(dir)),
         // A .ts among the files given goes out as JavaScript; the root
         // mount is served as it is.

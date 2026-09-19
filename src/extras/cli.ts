@@ -38,6 +38,7 @@ const runCLI = async (options: ModeOptions): Promise<number> => {
         const result = await runInNode({
             imports,
             session,
+            eval: options.eval,
         })
         return result?.success ? 0 : 1
     }
@@ -50,6 +51,7 @@ const runCLI = async (options: ModeOptions): Promise<number> => {
         imports,
         mount: options.mount,
         session,
+        eval: options.eval,
         watch: mode === "serve",
     })
 
@@ -75,7 +77,7 @@ const runCLI = async (options: ModeOptions): Promise<number> => {
     if (mode === "serve") {
         // Only the URL goes to stdout, so it can be piped. The server keeps
         // the process alive until an interrupt, which resolves this.
-        const entryURL = options.session.files?.length ? url : `${server.origin}/`
+        const entryURL = options.session.files?.length || options.eval != null ? url : `${server.origin}/`
         process.stdout.write(`${entryURL}\n`)
         process.stderr.write("Serving; press Ctrl-C to stop.\n")
         await new Promise<void>(stop => process.once("SIGINT", () => stop()))

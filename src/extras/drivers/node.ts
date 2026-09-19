@@ -19,6 +19,8 @@ interface HookData {
 interface RunInNodeOptions {
     imports: Imports
     session: TestSession
+    /** A script to run in place of the files, as a data: URL module. */
+    eval?: string
 }
 
 // Written as source because a hook reaches the loader as a module of its
@@ -48,7 +50,11 @@ export const runInNode = async (options: RunInNodeOptions): Promise<TAL.SessionR
 
     session({reporter, summary})
 
-    const urlList = files.map(file => pathToFileURL(resolve(file)).href)
+    // The script is a module of its own, so it imports node:test as a
+    // file would, through the same hook.
+    const urlList = options.eval == null
+        ? files.map(file => pathToFileURL(resolve(file)).href)
+        : [`data:text/javascript,${encodeURIComponent(options.eval)}`]
 
     for (const file of urlList) {
         await load(file)
