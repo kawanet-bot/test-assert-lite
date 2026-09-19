@@ -19,7 +19,7 @@ export const USAGE = `Usage: test-assert [options] [file...]
   --alias <specifier>=<file>  what a specifier resolves to: a file, a URL for the page, or this package's own name (repeatable)
   --import-map <file>         JSON import map: a relative address is a file beside it, / and http(s):// go to the page as they are
   --reporter <name>           how the run is reported: spec, tap or html (default: spec)
-  --no-summary                leave the counts, duration_ms, the version and the user agent off the report
+  -q, --quiet                 only the failures: no summary lines, no line per passing test, no access log
   --serve                     serve for a browser and print the URL, with auto reload
   --host <address>            address the server listens on (browser modes, default: 127.0.0.1)
   --port <number>             port the server listens on (browser modes, default: a free one)
@@ -100,7 +100,7 @@ const parse = (args: string[]) => {
                 alias: {type: "string", multiple: true, default: []},
                 "import-map": {type: "string"},
                 reporter: {type: "string"},
-                "no-summary": {type: "boolean", default: false},
+                quiet: {type: "boolean", short: "q"},
                 script: {type: "string", multiple: true, default: []},
                 mount: {type: "string"},
                 playwright: {type: "string"},
@@ -165,13 +165,10 @@ export const readOptions = (args: string[]): ModeOptions => {
 
     const imports = importsOf(values["import-map"], values.alias, browsing ? "browser" : "node")
 
-    // Only the flag given makes a value: the run's default stands otherwise.
-    const summary = values["no-summary"] ? false : undefined
-
     const session: TestSession = {
         files: files.map(file => resolve(file)),
         reporter: values.reporter,
-        summary,
+        quiet: values.quiet,
     }
 
     if (!browsing) return {mode: "node", imports, session, eval: script}

@@ -46,7 +46,7 @@ export const load = (url, context, next) => {
  * copy, still lands on the instance end() reads.
  */
 export const runInNode = async (options: RunInNodeOptions): Promise<TAL.SessionResult> => {
-    const {reporter, summary, files} = options.session
+    const {reporter, quiet, files} = options.session
 
     // A Map, so a specifier named like an Object property finds no alias.
     // Every item left for Node is a file: the reading of the options saw to it.
@@ -59,7 +59,7 @@ export const runInNode = async (options: RunInNodeOptions): Promise<TAL.SessionR
     const data: HookData = {aliases, virtual}
     register(`data:text/javascript,${encodeURIComponent(HOOK)}`, {data})
 
-    session({reporter, summary})
+    session({reporter, quiet})
 
     const urlList = evalURL == null
         ? files.map(file => pathToFileURL(resolve(file)).href)
