@@ -7,10 +7,9 @@ import {resolve} from "node:path"
 import {parseArgs} from "node:util"
 import type {Mode} from "./imports.ts"
 import {ImportAliasItem, Imports, cwdURL, readImportMap} from "./imports.ts"
-import type {EngineName, ModeOptions, WebModeOptions} from "./mode-options.ts"
+import type {EngineName, ModeOptions, SessionConfig, WebModeOptions} from "./mode-options.ts"
 import {isEngineName} from "./mode-options.ts"
 import {createFiles} from "./server/files.ts"
-import type {SessionConfig} from "./session-config.ts"
 import {UsageError} from "./usage-error.ts"
 
 export const USAGE = `Usage: test-assert [options] [file...]

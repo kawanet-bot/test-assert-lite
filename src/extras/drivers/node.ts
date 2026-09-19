@@ -8,7 +8,7 @@ import {pathToFileURL} from "node:url"
 import type {TAL} from "test-assert-lite"
 import {end, load, session} from "test-assert-lite/session"
 import type {Imports} from "../imports.ts"
-import type {SessionConfig} from "../session-config.ts"
+import type {SessionConfig} from "../mode-options.ts"
 
 /** What the hook is handed at registration, and the only place its source and this file meet. */
 interface HookData {

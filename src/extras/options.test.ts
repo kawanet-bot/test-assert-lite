@@ -1,8 +1,8 @@
 import {strict as assert} from "node:assert"
 import {resolve} from "node:path"
 import {describe, it} from "node:test"
+import type {SessionConfig} from "./mode-options.ts"
 import {engineNameOf, mountOf, originOf, portOf, readOptions} from "./options.ts"
-import type {SessionConfig} from "./session-config.ts"
 
 const TITLE = "extras/options.test.ts"
 

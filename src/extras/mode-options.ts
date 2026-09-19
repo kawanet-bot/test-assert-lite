@@ -1,8 +1,20 @@
 import type {Imports} from "./imports.ts"
-import type {SessionConfig} from "./session-config.ts"
 
 const ENGINE_NAMES = ["chromium", "firefox", "webkit"] as const
 export type EngineName = typeof ENGINE_NAMES[number]
+
+export interface SessionConfigJSON {
+    session: SessionConfig
+}
+
+export interface SessionConfig {
+    /** The reporter named on the command line; spec unless given. */
+    reporter?: string
+    /** The test files to import, in order: paths under Node, served URLs in a page. */
+    files: string[]
+    /** false leaves the counts, the version and the user agent off the report. */
+    summary?: boolean
+}
 
 interface TestModeOptions {
     session: SessionConfig

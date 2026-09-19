@@ -7,8 +7,8 @@
 import {basename, resolve} from "node:path"
 import {fileURLToPath} from "node:url"
 import {Imports} from "../imports.ts"
+import type {SessionConfig, SessionConfigJSON} from "../mode-options.ts"
 import {packageNameOf, packageRoot} from "../package-root.ts"
-import type {DriverConfig, SessionConfig} from "../session-config.ts"
 import type {ChannelOptions} from "./channel.ts"
 import {createChannel} from "./channel.ts"
 import {createFiles} from "./files.ts"
@@ -92,7 +92,7 @@ export const createApp = (options: AppOptions): App => {
     // the head. The suites are the config's files, by their served URLs,
     // for the page to import in that order, as the Node driver does.
     const importmap = `<script type="importmap">\n${safeJSON({imports: imports.addresses(file => served.urlOf(file))})}\n</script>\n`
-    const configObj: DriverConfig = {session: {...session, files: files.map(file => served.urlOf(file))}}
+    const configObj: SessionConfigJSON = {session: {...session, files: files.map(file => served.urlOf(file))}}
     const configTag = `<script type="application/vnd.session-config+json">\n${safeJSON(configObj)}\n</script>\n`
     const tags = scriptUrls.map(url => `<script src="${url}"></script>\n`).join("")
     // A page with an import map of its own goes out as it is: a second map
