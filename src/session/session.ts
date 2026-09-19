@@ -2,6 +2,8 @@ import type {TAL} from "test-assert-lite"
 import {html} from "../reporter/html.ts"
 import {spec} from "../reporter/spec.ts"
 import {tap} from "../reporter/tap.ts"
+import {isError} from "../utils/is-error.ts"
+import {stringify} from "../utils/stringify.ts"
 import {errorText} from "../utils/tester-error.ts"
 import {client} from "./client.ts"
 import {withFooter} from "./footer.ts"
@@ -13,6 +15,7 @@ type OutputFn = TAL.OutputFn
 type SessionOptions = TAL.SessionOptions
 type Writer = TAL.Writer
 type EventTargetLike = TAL.EventTargetLike
+type ConsoleLike = TAL.ConsoleLike
 
 // What a run reports with: opened by session(), or with the defaults on
 // the first declaration, until end() closes it with the verdict.
@@ -22,7 +25,7 @@ interface Open {
     end: (success: boolean) => Promise<void>
     // Opened by a declaration rather than by session(): the refusal differs.
     auto: boolean
-    // Lets go of the errors outside the tests, where capture took them.
+    // Lets go of what the session took: the errors outside the tests, and the console.
     release: () => void
 }
 
@@ -123,6 +126,29 @@ const capture = (harness: HarnessState, target: EventTargetLike): (() => void) =
     }
 }
 
+// The console's methods go to the writers until released, a call a line:
+// a string as it is, an Error with its stack, anything else as an
+// assertion would show it.
+const STDOUT_LEVELS = ["log", "info", "debug"] as const
+const STDERR_LEVELS = ["warn", "error"] as const
+type Level = keyof ConsoleLike
+
+const consoleLine = (args: unknown[]): string =>
+    `${args.map(v => "string" === typeof v ? v : isError(v) ? errorText(v) : stringify(v)).join(" ")}\n`
+
+const takeConsole = (target: ConsoleLike, stdout: Writer, stderr: Writer): (() => void) => {
+    const saved = new Map<Level, ConsoleLike[Level]>()
+    const take = (level: Level, writer: Writer): void => {
+        saved.set(level, target[level])
+        target[level] = (...args) => writer.write(consoleLine(args))
+    }
+    for (const level of STDOUT_LEVELS) take(level, stdout)
+    for (const level of STDERR_LEVELS) take(level, stderr)
+    return () => {
+        for (const [level, fn] of saved) target[level] = fn
+    }
+}
+
 // What takes a listener: a window has it, Node's global does not.
 const isEventTarget = (value: unknown): value is EventTargetLike => {
     const v = value as Partial<EventTargetLike> | null | undefined
@@ -186,7 +212,12 @@ export const createSessions = (harness: HarnessState): SessionControl => {
         const output = options.output ?? ((text: string) => stdout.write(text))
         const opened = (open: Omit<Open, "release" | "auto">): Open => {
             const target = targetOf(options.capture)
-            const release = target == null ? () => undefined : capture(harness, target)
+            const releaseErrors = target == null ? () => undefined : capture(harness, target)
+            const releaseConsole = options.console == null ? () => undefined : takeConsole(options.console, stdout, stderr)
+            const release = (): void => {
+                releaseErrors()
+                releaseConsole()
+            }
             return {...open, auto, release}
         }
         if (url != null && CHANNEL.test(url.pathname)) {

@@ -252,6 +252,15 @@ export declare namespace TAL {
         removeEventListener(type: string, listener: (event: unknown) => void, capture?: boolean): void
     }
 
+    // What a session takes over: the five methods a page's console has.
+    interface ConsoleLike {
+        log(...args: unknown[]): void
+        info(...args: unknown[]): void
+        debug(...args: unknown[]): void
+        warn(...args: unknown[]): void
+        error(...args: unknown[]): void
+    }
+
     interface SessionOptions {
         /** What the run's events are formatted with; `reporter.spec()` unless given. */
         reporter?: ReporterFn | string
@@ -269,6 +278,11 @@ export declare namespace TAL {
          * Node `true` means nothing yet.
          */
         capture?: boolean | EventTargetLike
+        /**
+         * A console the session takes over until end(): log, info and debug
+         * go to `stdout`, warn and error to `stderr`, each call one line.
+         */
+        console?: ConsoleLike
         /** Reduces output while keeping failures visible. The summary event is unchanged. */
         quiet?: boolean
     }
