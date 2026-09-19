@@ -19,12 +19,14 @@ export const createTAL: typeof declared.createTAL = () => {
     const reporter: TAL.Reporter = {spec, tap, html}
 
     // A suite that does not load is one failed test named after the file,
-    // as node --test files it; the run goes on to the next.
+    // as node --test files it; the run goes on to the next. A data: URL
+    // has no file name: it is [eval], as node -e calls its script.
     const load: TAL.SessionAPI["load"] = async file => {
         try {
             await import(file)
         } catch (error) {
-            registrar.test(file.replace(/^[^?]*\//, ""), () => {
+            const name = file.startsWith("data:") ? "[eval]" : file.replace(/^[^?]*\//, "")
+            registrar.test(name, () => {
                 throw error
             })
         }
