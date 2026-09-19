@@ -308,9 +308,9 @@ export declare namespace TAL {
         /** Runs every registered test, and closes the session. */
         end(): Promise<SessionResult>
         /**
-         * The console of the run: the CLI under a run's URL, or Node's own
-         * streams. Text written outside a session, before session() or after
-         * end(), waits for the next one; so does a page's with no run URL.
+         * The console of the run: the CLI under a run's URL, Node's own
+         * streams, or the console as it was when the package loaded. Text
+         * written outside a session, before session() or after end(), waits for the next one.
          */
         stdout: Writer
         stderr: Writer

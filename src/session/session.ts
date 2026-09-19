@@ -42,10 +42,9 @@ export interface SessionControl {
 }
 
 // One of the two streams. With a sink the text goes through as it comes;
-// without one, before a session and after it, or in a page with no run
-// URL, the text is held.
+// without one, before a session and after it, the text is held.
 interface Outlet extends Writer {
-    connect: (sink: ((text: string) => void) | undefined) => void
+    connect: (sink: (text: string) => void) => void
     disconnect: () => void
 }
 
@@ -65,7 +64,6 @@ const outlet = (): Outlet => {
             else held += text
         },
         connect: fn => {
-            if (fn == null) return
             sink = fn
             const text = held
             held = ""
@@ -81,10 +79,16 @@ const outlet = (): Outlet => {
 // base means nothing here.
 const CHANNEL = /^\/@tal\/run\//
 
-// Node's process streams, where they exist.
-const local = (name: "stdout" | "stderr"): ((text: string) => void) | undefined => {
+// The console as it was when this module loaded, ahead of any page code:
+// what a page's session takes over never loops back through here.
+const native = {stdout: console.log, stderr: console.error}
+
+// Node's process streams where they exist, the console as loaded otherwise.
+const local = (name: "stdout" | "stderr"): ((text: string) => void) => {
     const stream = "undefined" !== typeof process ? process[name] : undefined
-    return stream?.write == null ? undefined : text => void stream.write(text)
+    if (stream?.write != null) return text => void stream.write(text)
+    const log = native[name]
+    return text => log(text.replace(/\n$/, ""))
 }
 
 // The suites are served under a digest-named directory; the name a
