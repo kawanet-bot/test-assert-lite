@@ -121,14 +121,14 @@ test-assert --playwright chromium test/browser.test.mjs
 - A run exits 0 when all tests pass and 1 otherwise. Reports go to stdout; server messages and access logs go to stderr.
 - Each report ends with the counts, the package version and the user agent that ran the suite, unless `--no-summary`.
 
+### `-v`, `--version`
+
+- Prints this package's version and exits.
+
 ### `-e`, `--eval <script>`
 
 - Runs the script in place of test files, in Node or in the browser: `test-assert --playwright chromium -e "console.log(navigator.userAgent)"`.
 - The script is a module: it imports `node:test` as a test file does, and a script that throws is one failed test.
-
-### `-v`, `--version`
-
-- Prints this package's version and exits.
 
 ### `--alias <specifier>=<file>`
 

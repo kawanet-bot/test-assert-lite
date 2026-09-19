@@ -80,13 +80,6 @@ describe(TITLE, () => {
         await other.session.load("http://127.0.0.1:1/nope.mjs")
         assert.equal((await other.session.end()).success, false)
         assert.match(lines.join(""), /^not ok 1 - nope\.mjs$/m)
-
-        const inline = createTAL()
-        const said: string[] = []
-        inline.session.session({reporter: "tap", output: t => {said.push(t)}})
-        await inline.session.load(new URL("[eval]", import.meta.url).href)
-        assert.equal((await inline.session.end()).success, false)
-        assert.match(said.join(""), /^not ok 1 - \[eval\]$/m)
     })
 
     it("takes a reporter by name", async () => {

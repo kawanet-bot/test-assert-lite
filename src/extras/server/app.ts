@@ -31,7 +31,7 @@ export interface AppOptions extends ChannelOptions {
     mount?: string
     /** What the command line hands the page, as JSON in its head; empty options unless given. Its files become the suites' served URLs. */
     session: TestSession
-    /** A script to run in place of the files, served under the run's own path as eval.js. */
+    /** A script to run in place of the files, served under the run's own path as [eval].js. */
     eval?: string
     /** Reloads the page people open when a suite, a script or an imported file changes; off where it cannot watch. */
     watch?: boolean
@@ -101,7 +101,7 @@ export const createApp = (options: AppOptions): App => {
     // for the page to import in that order, as the Node driver does.
     const importmap = `<script type="importmap">\n${safeJSON({imports: imports.addresses(file => served.urlOf(file))})}\n</script>\n`
     // The script goes in as the one file, at its URL under the run's path.
-    const evalPath = script == null ? null : `${channel.path}eval.js`
+    const evalPath = script == null ? null : `${channel.path}[eval].js`
     const configObj: TestSessionJSON = {session: {...session, files: evalPath == null ? files.map(file => served.urlOf(file)) : [evalPath]}}
     const configTag = `<script type="${TestSessionType}">\n${safeJSON(configObj)}\n</script>\n`
     const tags = scriptUrls.map(url => `<script src="${url}"></script>\n`).join("")
