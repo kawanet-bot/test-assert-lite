@@ -8,7 +8,7 @@ import {parseArgs} from "node:util"
 import {readJsonFile} from "../utils/read-json.ts"
 import type {Mode} from "./imports.ts"
 import {ImportAliasItem, Imports, cwdURL, readImportMap} from "./imports.ts"
-import type {BrowserCustom, EngineName, ModeOptions, SessionConfig, WebDriverCustom, WebModeOptions} from "./mode-options.ts"
+import type {BrowserCustom, EngineName, ModeOptions, TestSession, WebDriverCustom, WebModeOptions} from "./mode-options.ts"
 import {isEngineName} from "./mode-options.ts"
 import {createFiles} from "./server/files.ts"
 import {UsageError} from "./usage-error.ts"
@@ -162,7 +162,7 @@ export const readOptions = (args: string[]): ModeOptions => {
     // Only the flag given makes a value: the run's default stands otherwise.
     const summary = values["no-summary"] ? false : undefined
 
-    const session: SessionConfig = {
+    const session: TestSession = {
         files: files.map(file => resolve(file)),
         reporter: values.reporter,
         summary,

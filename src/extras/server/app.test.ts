@@ -83,7 +83,7 @@ describe(TITLE, () => {
             return i
         }
         const map = at('<script type="importmap">')
-        const config = at('<script type="application/vnd.session-config+json">')
+        const config = at('<script type="application/vnd.test-session+json">')
         assert.match(tests, /^\/@tal\/files\/[0-9a-f]{9}\/$/)
         const script = at(`<script src="${tests}setup.js"></script>`)
         const second = at(`<script src="${tests}set%2Bup%232.js"></script>`)
@@ -106,7 +106,7 @@ describe(TITLE, () => {
         const server = await serve({handler: odd.handler})
         try {
             const head = (await get(server.origin + "/")).body.split("</head>")[0] as string
-            const config = head.indexOf('<script type="application/vnd.session-config+json">')
+            const config = head.indexOf('<script type="application/vnd.test-session+json">')
             const json = head.slice(head.indexOf("{", config), head.indexOf("</script>", config))
             assert.equal(json.includes("</script>"), false)
             assert.deepEqual(JSON.parse(json), {session: {reporter: "</script><b>", files: []}})

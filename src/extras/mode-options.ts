@@ -3,10 +3,6 @@ import type {Imports} from "./imports.ts"
 const ENGINE_NAMES = ["chromium", "firefox", "webkit"] as const
 export type EngineName = typeof ENGINE_NAMES[number]
 
-export interface SessionConfigJSON {
-    session: SessionConfig
-}
-
 /** The request body of POST /session for WebDriver. */
 export interface WebDriverCustom {
     /** @see https://w3c.github.io/webdriver/#new-session */
@@ -22,7 +18,7 @@ export interface BrowserCustom {
     goto?: object
 }
 
-export interface SessionConfig {
+export interface TestSession {
     /** The reporter named on the command line; spec unless given. */
     reporter?: string
     /** The test files to import, in order: paths under Node, served URLs in a page. */
@@ -32,7 +28,7 @@ export interface SessionConfig {
 }
 
 interface TestModeOptions {
-    session: SessionConfig
+    session: TestSession
 
     /** From --import-map then --alias, a later item over an earlier one of the same specifier. */
     imports: Imports

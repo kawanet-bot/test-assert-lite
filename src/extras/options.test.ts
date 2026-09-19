@@ -1,7 +1,7 @@
 import {strict as assert} from "node:assert"
 import {resolve} from "node:path"
 import {describe, it} from "node:test"
-import type {SessionConfig} from "./mode-options.ts"
+import type {TestSession} from "./mode-options.ts"
 import {engineNameOf, mountOf, originOf, portOf, readOptions} from "./options.ts"
 
 const TITLE = "extras/options.test.ts"
@@ -125,14 +125,14 @@ describe(TITLE, () => {
         })
 
         it("reads --reporter as given, in every mode", () => {
-            const named = (args: string[]): string | undefined => (readOptions(args) as {session: SessionConfig}).session.reporter
+            const named = (args: string[]): string | undefined => (readOptions(args) as {session: TestSession}).session.reporter
             assert.equal(named(["--reporter", "tap", "a.test.ts"]), "tap")
             assert.equal(named(["--reporter", "html", "--serve"]), "html")
             assert.equal(named(["a.test.ts"]), undefined)
         })
 
         it("reads --no-summary as summary false, and leaves it unset otherwise", () => {
-            const summary = (args: string[]): boolean | undefined => (readOptions(args) as {session: SessionConfig}).session.summary
+            const summary = (args: string[]): boolean | undefined => (readOptions(args) as {session: TestSession}).session.summary
             assert.equal(summary(["--no-summary", "a.test.ts"]), false)
             assert.equal(summary(["--no-summary", "--serve"]), false)
             assert.equal(summary(["a.test.ts"]), undefined)
