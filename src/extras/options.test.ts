@@ -160,12 +160,12 @@ describe(TITLE, () => {
             const options = readOptions(["--webdriver", "suite.mjs"])
             assert.equal(options.mode, "webdriver")
             if (options.mode !== "webdriver") return
-            assert.equal(options.sessionReq, undefined)
+            assert.equal(options.custom, undefined)
             assert.equal(options.endpoint, undefined)
             const given = readOptions(["--webdriver", "--webdriver-config", "browser/webdriver/chrome-attach.json", "--endpoint", "http://127.0.0.1:9515", "suite.mjs"])
             assert.equal(given.mode, "webdriver")
             if (given.mode !== "webdriver") return
-            assert.equal(typeof given.sessionReq?.capabilities, "object")
+            assert.equal(typeof given.custom?.capabilities, "object")
             assert.equal(given.endpoint, "http://127.0.0.1:9515")
         })
 

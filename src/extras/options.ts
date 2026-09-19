@@ -8,7 +8,7 @@ import {parseArgs} from "node:util"
 import {readJsonFile} from "../utils/read-json.ts"
 import type {Mode} from "./imports.ts"
 import {ImportAliasItem, Imports, cwdURL, readImportMap} from "./imports.ts"
-import type {BrowserCustomConfig, EngineName, ModeOptions, SessionConfig, SessionReqJSON, WebModeOptions} from "./mode-options.ts"
+import type {BrowserCustom, EngineName, ModeOptions, SessionConfig, WebDriverCustom, WebModeOptions} from "./mode-options.ts"
 import {isEngineName} from "./mode-options.ts"
 import {createFiles} from "./server/files.ts"
 import {UsageError} from "./usage-error.ts"
@@ -190,13 +190,13 @@ export const readOptions = (args: string[]): ModeOptions => {
         origin: values.origin == null ? undefined : originOf(values.origin),
     }
     if (engine) {
-        const custom = !playwrightConfig ? undefined : readJsonFile<BrowserCustomConfig>(playwrightConfig)
+        const custom = !playwrightConfig ? undefined : readJsonFile<BrowserCustom>(playwrightConfig)
         return {...shared, mode: "playwright", engine, custom}
     }
 
     if (webdriver) {
-        const sessionReq = !webdriverConfig ? undefined : readJsonFile<SessionReqJSON>(webdriverConfig)
-        return {...shared, mode: "webdriver", sessionReq, endpoint: values.endpoint}
+        const sessionReq = !webdriverConfig ? undefined : readJsonFile<WebDriverCustom>(webdriverConfig)
+        return {...shared, mode: "webdriver", custom: sessionReq, endpoint: values.endpoint}
     }
 
     return {...shared, mode: "serve"}

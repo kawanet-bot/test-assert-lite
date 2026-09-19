@@ -2,24 +2,17 @@
 // What a driver needs beside that, a WebDriver endpoint or a Playwright
 // engine say, is its own `options`.
 
-import type {BrowserCustomConfig} from "../mode-options.ts"
+import type {BrowserCustom} from "../mode-options.ts"
 
-export interface WebRunOptions<T> {
+export interface RunInBrowserOptions {
     /** URL of the page to open, under the run's own path on the CLI's server. */
     url: string
     /** Settles when the run finishes or fails; the browser closes then. */
     completion: Promise<unknown>
-    /** What the driver itself takes, beside the page and its completion. */
-    options: T
 
-    custom?: BrowserCustomConfig
-}
-
-/**
- * Opens `url` in a browser and keeps it open until `completion` settles.
- */
-export interface WebRunFn<T> {
-    (options: WebRunOptions<T>): Promise<void>
+    browser: BrowserLike
+    /** Extended configuration via --webdriver-config */
+    custom?: BrowserCustom
 }
 
 export interface BrowserLike {
@@ -36,16 +29,11 @@ export interface PageLike {
     goto(url: string, options?: object): Promise<unknown>
 }
 
-export interface RunInBrowserOptions {
-    browser: BrowserLike
-}
-
 /**
  * Opens `url` in `browser`, a Playwright-like one already launched, and
  * closes it once `completion` settles. Rejects when the browser is gone.
  */
-export const runInBrowser: WebRunFn<RunInBrowserOptions> = async ({url, completion, options, custom}) => {
-    const {browser} = options
+export const runInBrowser = async ({url, completion, browser, custom}: RunInBrowserOptions): Promise<void> => {
     try {
         // A browser that goes away fails the run at once, ahead of the
         // silence bound the page's own word would otherwise run into.

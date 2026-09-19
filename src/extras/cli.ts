@@ -87,11 +87,11 @@ const runCLI = async (options: ModeOptions): Promise<number> => {
         const completion = app.done
 
         if (mode === "webdriver") {
-            const {sessionReq, endpoint} = options
-            await runInWebDriver({url, completion, options: {sessionReq, endpoint}})
+            const {custom, endpoint} = options
+            await runInWebDriver({url, completion, custom, endpoint})
         } else if (mode === "playwright") {
             const {custom, engine} = options
-            await runInPlaywright({url, completion, custom, options: {engine}})
+            await runInPlaywright({url, completion, custom, engine})
         } else {
             throw new Error(`Invalid mode: ${mode}`)
         }

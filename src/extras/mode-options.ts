@@ -8,11 +8,12 @@ export interface SessionConfigJSON {
 }
 
 /** The request body of POST /session for WebDriver. */
-export interface SessionReqJSON {
+export interface WebDriverCustom {
+    /** @see https://w3c.github.io/webdriver/#new-session */
     capabilities?: object
 }
 
-export interface BrowserCustomConfig {
+export interface BrowserCustom {
     /** @see https://playwright.dev/docs/api/class-browsertype#browser-type-launch */
     launch?: object
     /** @see https://playwright.dev/docs/api/class-browser#browser-new-page */
@@ -52,7 +53,7 @@ export type ModeOptions =
     | {mode: "version"}
     | TestModeOptions & {mode: "node"}
     | WebModeOptions & {mode: "serve"}
-    | WebModeOptions & {mode: "playwright", engine: EngineName, custom?: BrowserCustomConfig}
-    | WebModeOptions & {mode: "webdriver", endpoint?: string, sessionReq?: SessionReqJSON}
+    | WebModeOptions & {mode: "playwright", engine: EngineName, custom?: BrowserCustom}
+    | WebModeOptions & {mode: "webdriver", endpoint?: string, custom?: WebDriverCustom}
 
 export const isEngineName = (v: unknown): v is EngineName => ENGINE_NAMES.includes(v as EngineName)
