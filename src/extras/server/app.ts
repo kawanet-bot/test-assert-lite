@@ -121,8 +121,12 @@ export const createApp = (options: AppOptions): App => {
             ? proxy({path: "/", upstream: mounted})
             : serveStatic({path: "/", root: mounted})
 
-    const atRun = serveStatic({path: `${channel.path}run.html`, root: resolve(root, "browser", "run.html")})
-    const atEval: MiddlewareHandler = async (c, next) => (c.req.path === evalPath ? c.body(script ?? "", 200, {"content-type": "text/javascript; charset=utf-8"}) : next())
+const atRun = serveStatic({path: `${channel.path}run.html`, root: resolve(root, "browser", "run.html")})
+const atEval: MiddlewareHandler = async (c, next) => {
+    if (c.finalized || c.req.path !== evalPath) return next()
+    if (c.req.method !== "GET" && c.req.method !== "HEAD") return c.body(null, 405, {allow: "GET, HEAD"})
+    return c.body(script ?? "", 200, {"content-type": "text/javascript; charset=utf-8"})
+}
 
     // The CLI's own pages are named after what they run: the package each
     // suite belongs to, or the suite's own name where there is none.
