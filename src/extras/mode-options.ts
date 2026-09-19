@@ -29,6 +29,8 @@ export interface TestSession {
 
 interface TestModeOptions {
     session: TestSession
+    /** A script given on the command line, run in place of test files. */
+    eval?: string
 
     /** From --import-map then --alias, a later item over an earlier one of the same specifier. */
     imports: Imports

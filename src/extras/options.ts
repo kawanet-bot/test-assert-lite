@@ -15,6 +15,7 @@ import {UsageError} from "./usage-error.ts"
 
 export const USAGE = `Usage: test-assert [options] [file...]
   -v, --version               print this package's version
+  -e, --eval <script>         run the script in place of test files
   --alias <specifier>=<file>  what a specifier resolves to: a file, a URL for the page, or this package's own name (repeatable)
   --import-map <file>         JSON import map: a relative address is a file beside it, / and http(s):// go to the page as they are
   --reporter <name>           how the run is reported: spec, tap or html (default: spec)
@@ -107,6 +108,7 @@ const parse = (args: string[]) => {
                 webdriver: {type: "boolean", default: false},
                 "webdriver-config": {type: "string"},
                 endpoint: {type: "string"},
+                eval: {type: "string", short: "e"},
                 help: {type: "boolean", short: "h", default: false},
                 version: {type: "boolean", short: "v", default: false},
             },
@@ -132,6 +134,7 @@ export const readOptions = (args: string[]): ModeOptions => {
     const browsing = engine != null || webdriver || serve
     const webdriverConfig = values["webdriver-config"]
     const playwrightConfig = values["playwright-config"]
+    const {eval: script} = values
 
     if ((engine ? 1 : 0) + (webdriver ? 1 : 0) + (serve ? 1 : 0) > 1) {
         throw new UsageError("--playwright, --webdriver and --serve are exclusive")
@@ -145,7 +148,10 @@ export const readOptions = (args: string[]): ModeOptions => {
     if (!playwright && (values["playwright-config"] != null)) {
         throw new UsageError("--playwright-config applies to --playwright only")
     }
-    if (!serve && !files.length) {
+    if (script != null && files.length) {
+        throw new UsageError("-e takes the place of the test files")
+    }
+    if (!serve && !files.length && script == null) {
         throw new UsageError("no test files specified")
     }
 
@@ -168,7 +174,7 @@ export const readOptions = (args: string[]): ModeOptions => {
         summary,
     }
 
-    if (!browsing) return {mode: "node", imports, session}
+    if (!browsing) return {mode: "node", imports, session, eval: script}
 
     const scripts = values.script.map(script => resolve(script))
 
@@ -182,6 +188,7 @@ export const readOptions = (args: string[]): ModeOptions => {
 
     const shared: WebModeOptions = {
         session,
+        eval: script,
         scripts,
         imports,
         mount: values.mount == null ? undefined : mountOf(values.mount),
