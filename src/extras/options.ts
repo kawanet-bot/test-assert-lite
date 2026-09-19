@@ -19,7 +19,7 @@ export const USAGE = `Usage: test-assert [options] [file...]
   --alias <specifier>=<file>  what a specifier resolves to: a file, a URL for the page, or this package's own name (repeatable)
   --import-map <file>         JSON import map: a relative address is a file beside it, / and http(s):// go to the page as they are
   --reporter <name>           how the run is reported: spec, tap or html (default: spec)
-  -q, --quiet                 only the failures: no summary lines, no line per passing test, no access log
+  -q, --quiet                 only the failures: no summary lines, no line per passing test, an access log of 4xx and 5xx alone
   --serve                     serve for a browser and print the URL, with auto reload
   --host <address>            address the server listens on (browser modes, default: 127.0.0.1)
   --port <number>             port the server listens on (browser modes, default: a free one)

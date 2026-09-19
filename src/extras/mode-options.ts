@@ -23,7 +23,7 @@ export interface TestSession {
     reporter?: string
     /** The test files to import, in order: paths under Node, served URLs in a page. */
     files: string[]
-    /** true leaves the summary lines, the lines per passing test and the access log off. */
+    /** true leaves the summary lines, the lines per passing test and the access log for what went well off. */
     quiet?: boolean
 }
 

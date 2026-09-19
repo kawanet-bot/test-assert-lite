@@ -51,7 +51,7 @@ describe(TITLE, () => {
     })
 
     // quiet tunes the session's own spec; a run that passes says nothing at all.
-    it("quiet has the default reporter list the failures alone, and a passing run print nothing", async () => {
+    it("quiet has the default reporter list the failures alone, and a passing run prints nothing", async () => {
         const local = createTAL()
         const out: string[] = []
         local.session.session({quiet: true, output: t => {out.push(t)}})
