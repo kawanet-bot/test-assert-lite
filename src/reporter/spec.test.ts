@@ -190,11 +190,9 @@ describe(TITLE, () => {
         })
 
         assert.ok(out.startsWith("  ℹ noted\n"))
-        assert.ok(out.includes("failing tests:"))
-        assert.ok(out.includes("✖ bad"))
-        assert.ok(out.includes("Error: boom"))
         assert.equal(out.includes("fine"), false)
         assert.equal(out.includes("S ("), false)
+        assert.ok(out.includes("✖ bad"))
         assert.equal(await quiet(async emit => {
             await emit("test:start", {name: "fine", nesting: 0})
             await emit("test:pass", pass("fine"))

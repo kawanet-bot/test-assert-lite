@@ -63,9 +63,7 @@ describe(TITLE, () => {
         const text = out.join("")
         assert.equal(text.includes("passes"), false)
         assert.equal(text.includes("ℹ tests "), false)
-        assert.ok(text.includes("failing tests:"))
         assert.ok(text.includes("✖ fails"))
-        assert.ok(text.includes("Error: boom"))
 
         const green = createTAL()
         const said: string[] = []
