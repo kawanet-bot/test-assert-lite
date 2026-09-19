@@ -234,6 +234,8 @@ export declare namespace TAL {
     interface SpecOptions {
         // Defaults on for a Node TTY unless NO_COLOR or NODE_DISABLE_COLORS is set; off otherwise.
         colors?: boolean
+        /** Only the failures: no line per test, the failing list at the end alone. */
+        quiet?: boolean
     }
 
     // The reporters the package ships
@@ -267,8 +269,8 @@ export declare namespace TAL {
          * Node `true` means nothing yet.
          */
         capture?: boolean | EventTargetLike
-        /** false leaves the counts, the version and the user agent off the report; the summary event still comes. */
-        summary?: boolean
+        /** Only the failures: the summary lines stay off, and the default reporter lists the failures at the end alone. The summary event still comes. */
+        quiet?: boolean
     }
 
     // What end() resolves with: whether every test passed.

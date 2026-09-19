@@ -67,6 +67,9 @@ const formatFailures = (failed: TAL.TestFail[], colors: boolean): string => {
 
 export const spec = (options?: TAL.SpecOptions): ReporterFn => {
     const colors = options?.colors ?? defaultColors()
+    // Quiet keeps the failures for the list at the end and writes nothing
+    // per test; the headings have no lines to head, so none are stacked.
+    const quiet = options?.quiet ?? false
 
     return async function* (source: AsyncIterable<TestEvent>): AsyncIterable<string> {
         // Stack up test:start and, once a result arrives, emit the parents
@@ -76,7 +79,7 @@ export const spec = (options?: TAL.SpecOptions): ReporterFn => {
 
         for await (const event of source) {
             if (event.type === "test:start") {
-                stack.unshift(event.data)
+                if (!quiet) stack.unshift(event.data)
                 continue
             }
 
@@ -105,6 +108,8 @@ export const spec = (options?: TAL.SpecOptions): ReporterFn => {
             if (!isPass && !isFail) continue
 
             const data = event.data
+            if (isFail && !isSubtestsFailed(event.data.details.error)) failed.push(event.data)
+            if (quiet) continue
             let out = ""
 
             // Drop this test's own start, then turn the remaining parents into headings
@@ -115,8 +120,6 @@ export const spec = (options?: TAL.SpecOptions): ReporterFn => {
             }
 
             out += resultLine(data, isPass, colors, true) + "\n"
-
-            if (isFail && !isSubtestsFailed(event.data.details.error)) failed.push(event.data)
             yield out
         }
 
