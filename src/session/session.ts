@@ -78,11 +78,6 @@ const outlet = (): Outlet => {
 // base means nothing here.
 const CHANNEL = /^\/@tal\/run\//
 
-const defaultOutput: OutputFn = (text) => {
-    // console.log adds its own newline, so drop the trailing one
-    console.log(text.replace(/\n$/, ""))
-}
-
 // Node's process streams, where they exist.
 const local = (name: "stdout" | "stderr"): ((text: string) => void) | undefined => {
     const stream = "undefined" !== typeof process ? process[name] : undefined
@@ -187,6 +182,8 @@ export const createSessions = (harness: HarnessState): SessionControl => {
         const named = reporterOf(options.reporter) ?? spec({quiet: options.quiet})
         const reporter = options.quiet ? named : withFooter(named)
         const url = base == null ? null : new URL(base)
+        // The report goes where the console goes unless told otherwise.
+        const output = options.output ?? ((text: string) => stdout.write(text))
         const opened = (open: Omit<Open, "release" | "auto">): Open => {
             const target = targetOf(options.capture)
             const release = target == null ? () => undefined : capture(harness, target)
@@ -197,19 +194,11 @@ export const createSessions = (harness: HarnessState): SessionControl => {
             void channel.begin()
             stdout.connect(channel.stdout)
             stderr.connect(channel.stderr)
-            return opened({
-                reporter,
-                output: options.output ?? (text => channel.stdout(text)),
-                end: channel.end,
-            })
+            return opened({reporter, output, end: channel.end})
         }
         stdout.connect(local("stdout"))
         stderr.connect(local("stderr"))
-        return opened({
-            reporter,
-            output: options.output ?? defaultOutput,
-            end: async () => undefined,
-        })
+        return opened({reporter, output, end: async () => undefined})
     }
 
     const session: TAL.SessionAPI["session"] = (options = {}) => {
