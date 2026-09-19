@@ -30,7 +30,7 @@ jobs:
           path: |
             README.md
             browser/playwright/
-            browser/session/
+            browser/webdriver/
             builder/pack/
             builder/tests/
             sample/

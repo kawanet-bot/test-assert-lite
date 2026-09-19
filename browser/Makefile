@@ -66,7 +66,7 @@ test-webkit: all
 test-webdriver: all
 	cd .. && node bin/cli.js --webdriver \
 		$(if $(WEBDRIVER_ENDPOINT),--endpoint $(WEBDRIVER_ENDPOINT)) \
-		$(if $(WEBDRIVER_SESSION),--webdriver-session $(abspath $(WEBDRIVER_SESSION))) \
+		$(if $(WEBDRIVER_SESSION),--webdriver-config $(abspath $(WEBDRIVER_SESSION))) \
 		$(if $(WEBDRIVER_HOST),--host $(WEBDRIVER_HOST)) \
 		browser/tests/bundled.mjs
 

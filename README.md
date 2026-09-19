@@ -186,10 +186,10 @@ test-assert --playwright chromium test/browser.test.mjs
 - Runs the suite in the browser a [WebDriver](https://w3c.github.io/webdriver/) server drives, `safaridriver -p 4444` or `chromedriver --port=4444` say.
 - No extra dependency: the WebDriver server launches the browser, so Safari on a Mac runs the suite too, over an SSH tunnel if need be.
 
-### `--webdriver-session <file>`
+### `--webdriver-config <file>`
 
 - JSON sent as the body of `POST /session`: the capabilities the driver takes. Default: `{"capabilities": {}}`.
-- `browser/session/` has a few to pass as they are or to copy and edit: `chrome-headless.json`, `firefox-headless.json`, `chrome-attach.json`.
+- `browser/webdriver/` has a few to pass as they are or to copy and edit: `chrome-headless.json`, `firefox-headless.json`, `chrome-attach.json`.
 
 ### `--endpoint <url>`
 

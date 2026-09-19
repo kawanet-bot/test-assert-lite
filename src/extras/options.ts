@@ -26,7 +26,7 @@ export const USAGE = `Usage: test-assert [options] [file...]
   --script <file>             classic script to run first (browser modes, repeatable)
   --mount <dir|url>           what the root serves instead of htdocs: a directory, or an origin to proxy (browser modes)
   --webdriver                 run the suite through a WebDriver server: safaridriver, chromedriver
-  --webdriver-session <file>  JSON sent as the body of POST /session (default: no capabilities)
+  --webdriver-config <file>  JSON sent as the body of POST /session (default: no capabilities)
   --endpoint <url>            the WebDriver server (default: http://127.0.0.1:4444)
   --playwright <browser>      run the suite through Playwright: chromium, firefox or webkit
   --playwright-config <file>  JSON options for Playwright's launch, newPage and goto
@@ -105,7 +105,7 @@ const parse = (args: string[]) => {
                 playwright: {type: "string"},
                 "playwright-config": {type: "string"},
                 webdriver: {type: "boolean", default: false},
-                "webdriver-session": {type: "string"},
+                "webdriver-config": {type: "string"},
                 endpoint: {type: "string"},
                 help: {type: "boolean", short: "h", default: false},
                 version: {type: "boolean", short: "v", default: false},
@@ -130,7 +130,7 @@ export const readOptions = (args: string[]): ModeOptions => {
     const {playwright, webdriver, serve} = values
     const engine = playwright == null ? undefined : engineNameOf(playwright)
     const browsing = engine != null || webdriver || serve
-    const webdriverSession = values["webdriver-session"]
+    const webdriverConfig = values["webdriver-config"]
     const playwrightConfig = values["playwright-config"]
 
     if ((engine ? 1 : 0) + (webdriver ? 1 : 0) + (serve ? 1 : 0) > 1) {
@@ -139,8 +139,8 @@ export const readOptions = (args: string[]): ModeOptions => {
     if (!browsing && (values.script.length || values.mount != null || values.host != null || values.port != null || values.origin != null)) {
         throw new UsageError("--host, --port, --origin, --script and --mount apply to --playwright, --webdriver and --serve only")
     }
-    if (!webdriver && (webdriverSession != null || values.endpoint != null)) {
-        throw new UsageError("--webdriver-session and --endpoint apply to --webdriver only")
+    if (!webdriver && (webdriverConfig != null || values.endpoint != null)) {
+        throw new UsageError("--webdriver-config and --endpoint apply to --webdriver only")
     }
     if (!playwright && (values["playwright-config"] != null)) {
         throw new UsageError("--playwright-config applies to --playwright only")
@@ -195,7 +195,7 @@ export const readOptions = (args: string[]): ModeOptions => {
     }
 
     if (webdriver) {
-        const sessionReq = !webdriverSession ? undefined : readJsonFile<SessionReqJSON>(webdriverSession)
+        const sessionReq = !webdriverConfig ? undefined : readJsonFile<SessionReqJSON>(webdriverConfig)
         return {...shared, mode: "webdriver", sessionReq, endpoint: values.endpoint}
     }
 

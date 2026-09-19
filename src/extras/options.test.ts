@@ -162,7 +162,7 @@ describe(TITLE, () => {
             if (options.mode !== "webdriver") return
             assert.equal(options.sessionReq, undefined)
             assert.equal(options.endpoint, undefined)
-            const given = readOptions(["--webdriver", "--webdriver-session", "browser/session/chrome-attach.json", "--endpoint", "http://127.0.0.1:9515", "suite.mjs"])
+            const given = readOptions(["--webdriver", "--webdriver-config", "browser/webdriver/chrome-attach.json", "--endpoint", "http://127.0.0.1:9515", "suite.mjs"])
             assert.equal(given.mode, "webdriver")
             if (given.mode !== "webdriver") return
             assert.equal(typeof given.sessionReq?.capabilities, "object")
@@ -182,7 +182,7 @@ describe(TITLE, () => {
         })
 
         it("refuses the WebDriver flags outside --webdriver", () => {
-            assert.throws(() => readOptions(["--serve", "--webdriver-session", "s.json"]), /apply to --webdriver only$/)
+            assert.throws(() => readOptions(["--serve", "--webdriver-config", "s.json"]), /apply to --webdriver only$/)
             assert.throws(() => readOptions(["--playwright", "chromium", "--endpoint", "http://x", "suite.mjs"]), /apply to --webdriver only$/)
             assert.throws(() => readOptions(["--endpoint", "http://x", "a.test.ts"]), /apply to --webdriver only$/)
         })
