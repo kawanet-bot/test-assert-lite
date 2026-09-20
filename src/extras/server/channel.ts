@@ -5,13 +5,14 @@
 // nothing changes in the protocol here without a change in the client.
 
 import {randomInt} from "node:crypto"
+import type {TAL} from "test-assert-lite"
 import type {MiddlewareHandler} from "./middleware.ts"
 
 export interface ChannelOptions {
     /** Where the page's stdout goes; this process's own by default. */
-    stdout?: (text: string) => void
+    stdout?: TAL.Writer
     /** Where the page's stderr goes; this process's own by default. */
-    stderr?: (text: string) => void
+    stderr?: TAL.Writer
 }
 
 export interface Channel {
@@ -42,8 +43,8 @@ const SILENCE_MS = 30_000
  * within, and the verdict is what it says at its end.
  */
 export const createChannel = (options: ChannelOptions = {}): Channel => {
-    const stdout = options.stdout ?? (text => process.stdout.write(text))
-    const stderr = options.stderr ?? (text => process.stderr.write(text))
+    const stdout = options.stdout ?? process.stdout
+    const stderr = options.stderr ?? process.stderr
     const path = `/@tal/run/${runId()}/`
 
     // The verdict: true from the page's end alone passes, anything else
@@ -73,10 +74,10 @@ export const createChannel = (options: ChannelOptions = {}): Channel => {
             begun = true
         }],
         ["stdout", (body) => {
-            if (!ended) stdout(body)
+            if (!ended) stdout.write(body)
         }],
         ["stderr", (body) => {
-            if (!ended) stderr(body)
+            if (!ended) stderr.write(body)
         }],
         ["end", (body) => {
             ended = true

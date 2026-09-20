@@ -1,3 +1,6 @@
+// fetch() will do here: every URL below is well-formed, and what the
+// server has to refuse is the server's own tests' concern.
+
 import {strict as assert} from "node:assert"
 import {mkdir, mkdtemp, rm, writeFile} from "node:fs/promises"
 import {createServer} from "node:http"
@@ -5,6 +8,8 @@ import {tmpdir} from "node:os"
 import {join} from "node:path"
 import {after, before, describe, it} from "node:test"
 import {pathToFileURL} from "node:url"
+import type {TAL} from "test-assert-lite"
+import {createBufWriter} from "../../utils/buf-writer.ts"
 import {ImportAliasItem, ImportMapItem, Imports} from "../imports.ts"
 import type {App} from "./app.ts"
 import {createApp} from "./app.ts"
@@ -14,14 +19,14 @@ import {serve} from "./serve.ts"
 
 const TITLE = "extras/server/app.test.ts"
 
-// fetch() will do here: every URL below is well-formed, and what the
-// server has to refuse is the server's own tests' concern.
 const get = async (url: string): Promise<{status: number, type: string, body: string}> => {
     const res = await fetch(url)
     return {status: res.status, type: res.headers.get("content-type") ?? "", body: await res.text()}
 }
 
 const post = async (url: string, body: string): Promise<number> => (await fetch(url, {method: "POST", body})).status
+
+const nullWriter: TAL.Writer = {write: (() => undefined)}
 
 describe(TITLE, () => {
     let dir: string
@@ -30,7 +35,7 @@ describe(TITLE, () => {
     let lib: string
     let app: App
     let server: Server
-    const stdout: string[] = []
+    const stdout = createBufWriter()
     const url = (path: string): string => server.origin + path
     const cwd = pathToFileURL(`${process.cwd()}/`)
 
@@ -61,7 +66,7 @@ describe(TITLE, () => {
                 new ImportMapItem("mine", "/mine.js", pathToFileURL(join(dir, "map.json"))),
                 new ImportAliasItem(`mod=${join(dir, "lib", "mod.mjs")}`, cwd),
             ]),
-            stdout: text => stdout.push(text),
+            stdout,
         })
         server = await serve({handler: app.handler})
     })
@@ -102,7 +107,7 @@ describe(TITLE, () => {
     })
 
     it("escapes a < in the config, so a name cannot close the tag, and reads it back", async () => {
-        const odd = createApp({session: {files: [], reporter: "</script><b>"}, stdout: () => undefined})
+        const odd = createApp({session: {files: [], reporter: "</script><b>"}, stdout: nullWriter})
         const server = await serve({handler: odd.handler})
         try {
             const head = (await get(server.origin + "/")).body.split("</head>")[0] as string
@@ -117,7 +122,7 @@ describe(TITLE, () => {
     })
 
     it("serves a script given as [eval].js under the run's path, and names it as the one file", async () => {
-        const inline = createApp({session: {files: []}, eval: "console.log('<hi>')\n", stdout: () => undefined})
+        const inline = createApp({session: {files: []}, eval: "console.log('<hi>')\n", stdout: nullWriter})
         const server = await serve({handler: inline.handler})
         try {
             const path = inline.page.replace(/run\.html$/, "[eval].js")
@@ -188,7 +193,7 @@ describe(TITLE, () => {
         const run = app.page.slice(0, -"run.html".length)
         assert.equal(await post(url(`${run}begin`), ""), 204)
         assert.equal(await post(url(`${run}stdout`), "one\n"), 204)
-        assert.deepEqual(stdout, ["one\n"])
+        assert.equal(stdout.read(), "one\n")
         assert.equal((await get(url(`${run}stdout`))).status, 405)
         assert.equal(await post(url(`${run}nothing`), ""), 404)
         assert.equal(await post(url("/index.html"), ""), 405)
@@ -200,7 +205,7 @@ describe(TITLE, () => {
         assert.equal((await get(url("/"))).body.includes("/@tal/watch?after="), false)
         assert.equal((await get(url("/@tal/watch?after=0"))).status, 404)
         const files = [join(dir, "tests", "my suite.mjs")]
-        const watching = createApp({session: {files}, watch: true, stdout: () => undefined})
+        const watching = createApp({session: {files}, watch: true, stdout: nullWriter})
         const running = await serve({handler: watching.handler})
         try {
             const index = (await get(running.origin + "/")).body
@@ -219,8 +224,9 @@ describe(TITLE, () => {
 
     it("serves without the reload, and says so once, where it cannot watch", async () => {
         const lines: string[] = []
+        const stderr: TAL.Writer = {write: (chunk) => lines.push(chunk)}
         const files = [join(dir, "missing", "suite.mjs")]
-        const blind = createApp({session: {files}, watch: true, stdout: () => undefined, stderr: text => lines.push(text)})
+        const blind = createApp({session: {files}, watch: true, stdout: nullWriter, stderr})
         const running = await serve({handler: blind.handler})
         try {
             assert.equal(lines.length, 1)
@@ -244,10 +250,10 @@ describe(TITLE, () => {
         await mkdir(join(plain, "site"))
         await writeFile(join(plain, "site", "index.html"), "<html><head><title>{{title}}</title></head><body>{{title}}</body></html>")
         const namedFiles = [join(plain, "a.mjs"), join(plain, "b <c>.mjs"), join(plain, "a.mjs")]
-        const named = createApp({session: {files: namedFiles}, stdout: () => undefined})
+        const named = createApp({session: {files: namedFiles}, stdout: nullWriter})
         const mountedFiles = [join(plain, "a.mjs")]
-        const mounted = createApp({session: {files: mountedFiles}, mount: join(plain, "site"), stdout: () => undefined})
-        const bare = createApp({session: {files: []}, mount: join(plain, "site"), stdout: () => undefined})
+        const mounted = createApp({session: {files: mountedFiles}, mount: join(plain, "site"), stdout: nullWriter})
+        const bare = createApp({session: {files: []}, mount: join(plain, "site"), stdout: nullWriter})
         const servers = await Promise.all([named, mounted, bare].map(app => serve({handler: app.handler})))
         try {
             assert.ok((await get(servers[0]!.origin + named.page)).body.includes("<title>a.mjs b &#60;c&#62;.mjs</title>"))
@@ -265,7 +271,7 @@ describe(TITLE, () => {
         await mkdir(join(dir, "site"))
         await writeFile(join(dir, "site", "index.html"), "<html><head></head><body>mine</body></html>")
         const files = [join(dir, "tests", "my suite.mjs")]
-        const mounted = createApp({session: {files}, mount: join(dir, "site"), stdout: () => undefined})
+        const mounted = createApp({session: {files}, mount: join(dir, "site"), stdout: nullWriter})
         const running = await serve({handler: mounted.handler})
         try {
             const index = await get(running.origin + "/")
@@ -283,7 +289,7 @@ describe(TITLE, () => {
     it("serves a mounted directory without a suite: the library in the head, no suite tag, no suite mount", async () => {
         await mkdir(join(dir, "plain"))
         await writeFile(join(dir, "plain", "index.html"), "<html><head></head><body>plain</body></html>")
-        const bare = createApp({session: {files: []}, mount: join(dir, "plain"), watch: true, stdout: () => undefined})
+        const bare = createApp({session: {files: []}, mount: join(dir, "plain"), watch: true, stdout: nullWriter})
         const running = await serve({handler: bare.handler})
         try {
             const index = (await get(running.origin + "/")).body
@@ -300,8 +306,9 @@ describe(TITLE, () => {
         await mkdir(join(dir, "mapped"))
         await writeFile(join(dir, "mapped", "index.html"), '<html><head><script type="importmap">{"imports":{"mine":"/mine.mjs"}}</script></head><body>mapped</body></html>')
         const lines: string[] = []
+        const stderr: TAL.Writer = {write: (chunk) => lines.push(chunk)}
         const files = [join(dir, "tests", "my suite.mjs")]
-        const mapped = createApp({session: {files}, mount: join(dir, "mapped"), stdout: () => undefined, stderr: text => lines.push(text)})
+        const mapped = createApp({session: {files}, mount: join(dir, "mapped"), stdout: nullWriter, stderr})
         const running = await serve({handler: mapped.handler})
         try {
             const index = (await get(running.origin + "/")).body
@@ -328,7 +335,7 @@ describe(TITLE, () => {
         const address = upstream.address()
         const port = typeof address === "object" && address != null ? address.port : 0
         const files = [join(dir, "tests", "my suite.mjs")]
-        const mounted = createApp({session: {files}, mount: `http://127.0.0.1:${port}/app/`, stdout: () => undefined})
+        const mounted = createApp({session: {files}, mount: `http://127.0.0.1:${port}/app/`, stdout: nullWriter})
         const running = await serve({handler: mounted.handler})
         try {
             const index = await get(running.origin + "/")
@@ -348,7 +355,7 @@ describe(TITLE, () => {
 
     it("fails the verdict on anything but true", async () => {
         const files = [join(dir, "tests", "my suite.mjs")]
-        const other = createApp({session: {files}, stdout: () => undefined})
+        const other = createApp({session: {files}, stdout: nullWriter})
         const running = await serve({handler: other.handler})
         try {
             assert.equal(await post(running.origin + other.page.replace(/run\.html$/, "end"), "yes"), 204)
