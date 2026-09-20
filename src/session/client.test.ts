@@ -9,16 +9,18 @@ const TITLE = "session/client.test.ts"
 // posts, in what order, and with what verdict.
 
 const testStub = () => {
-    const seen: {path: string, body: string}[] = []
+    const pathLog: string[] = []
+    const bodyLog: string[] = []
 
     // Keeps each request in arrival order. A request to the run that is gone fails.
     const fetch: TAL.FetchLike = async (path, init) => {
-        seen.push({path, body: init.body})
+        pathLog.push(path)
+        bodyLog.push(init.body)
     }
 
     const output = () => undefined
 
-    return {seen, fetch, output}
+    return {pathLog, bodyLog, fetch, output}
 }
 
 const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms))
@@ -26,106 +28,102 @@ const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(r
 describe(TITLE, () => {
     it("posts begin first, then the streams, then end, in order", async () => {
         const {session} = createTAL()
-        const {seen, fetch, output} = testStub()
+        const {pathLog, bodyLog, fetch, output} = testStub()
         session.session({fetch, output})
         session.stdout.write("one\n")
         session.stderr.write("warned\n")
         session.stdout.write("two\n")
         await session.end()
-        assert.deepEqual(seen.map(({path}) => path), [
+        assert.deepEqual(pathLog, [
             "begin",
             "stdout",
             "stderr",
             "end",
         ])
-        assert.equal(seen[1]?.body, "one\ntwo\n")
-        assert.equal(seen[2]?.body, "warned\n")
-        assert.equal(seen[3]?.body, "true")
+        assert.equal(bodyLog[1], "one\ntwo\n")
+        assert.equal(bodyLog[2], "warned\n")
+        assert.equal(bodyLog[3], "true")
     })
 
     it("gathers a burst of lines into one request per stream", async () => {
         const {session} = createTAL()
-        const {seen, fetch, output} = testStub()
+        const {pathLog, bodyLog, fetch, output} = testStub()
         session.session({fetch, output})
         for (let i = 0; i < 100; i++) session.stdout.write(`line ${i}\n`)
         await session.end()
-        assert.deepEqual(seen.map(({path}) => path), ["begin", "stdout", "end"])
-        assert.equal((seen[1]?.body ?? "").split("\n").length - 1, 100)
-        assert.equal(seen[2]?.body, "true")
+        assert.deepEqual(pathLog, ["begin", "stdout", "end"])
+        assert.equal((bodyLog[1] ?? "").split("\n").length - 1, 100)
+        assert.equal(bodyLog[2], "true")
     })
 
     it("flushes on its own while the run goes on", async () => {
         const {session} = createTAL()
-        const {seen, fetch, output} = testStub()
+        const {pathLog, bodyLog, fetch, output} = testStub()
         session.session({fetch, output})
         session.stdout.write("early\n")
         await sleep(200)
-        assert.deepEqual(seen.map(({path, body}) => `${path} ${JSON.stringify(body)}`), ['begin ""', 'stdout "early\\n"'])
+        assert.deepEqual(pathLog, ["begin", "stdout"])
+        assert.deepEqual(bodyLog, ["", "early\n"])
         session.stdout.write("late\n")
         await session.end()
-        assert.equal(seen.length, 4)
-        assert.equal(seen[2]?.body, "late\n")
+        assert.equal(pathLog.length, 4)
+        assert.equal(bodyLog.length, 4)
+        assert.equal(bodyLog[2], "late\n")
     })
 
     it("sends the run's verdict: false once a test failed", async () => {
         const {session, test} = createTAL()
-        const {seen, fetch, output} = testStub()
+        const {bodyLog, fetch, output} = testStub()
         session.session({fetch, output})
         test.it("fails", () => {
             throw new Error("no")
         })
         await session.end()
-        assert.equal(seen.at(-1)?.body, "false")
+        assert.equal(bodyLog.at(-1), "false")
     })
 
     it("sends text as given, and an Error as its text with a newline", async () => {
         const {session} = createTAL()
-        const {seen, fetch, output} = testStub()
+        const {bodyLog, fetch, output} = testStub()
         session.session({fetch, output})
         session.stderr.write("as ")
         session.stderr.write("given\n")
         session.stderr.write(new TypeError("typed"))
         await session.end()
-        const lines = (seen[1]?.body ?? "").split("\n")
+        const lines = (bodyLog[1] ?? "").split("\n")
         assert.equal(lines[0], "as given")
         assert.match(lines[1] ?? "", /^TypeError: typed/)
-        assert.equal(seen[1]?.body.endsWith("\n"), true)
+        assert.equal(bodyLog[1]!.endsWith("\n"), true)
     })
 
     it("text written before session() goes out once the session is open", async () => {
         const {session} = createTAL()
-        const {seen, fetch, output} = testStub()
+        const {pathLog, bodyLog, fetch, output} = testStub()
         session.stdout.write("early\n")
         session.stderr.write("warned\n")
         session.session({fetch, output})
         await session.end()
-        assert.deepEqual(seen.map(({path, body}) => `${path} ${JSON.stringify(body)}`), [
-            'begin ""',
-            'stdout "early\\n"',
-            'stderr "warned\\n"',
-            'end "true"',
-        ])
+        assert.deepEqual(pathLog, ["begin", "stdout", "stderr", "end"])
+        assert.deepEqual(bodyLog, ["", "early\n", "warned\n", "true"])
     })
 
     it("text written after end() waits for the next session", async () => {
         const {session} = createTAL()
-        const {seen, fetch, output} = testStub()
+        const {pathLog, bodyLog, fetch, output} = testStub()
         session.session({fetch, output})
         await session.end()
         session.stdout.write("later\n")
-        assert.equal(seen.length, 2)
+        assert.equal(pathLog.length, 2)
+        assert.equal(bodyLog.length, 2)
         session.session({fetch, output})
         await session.end()
-        assert.deepEqual(seen.slice(2).map(({path, body}) => `${path} ${JSON.stringify(body)}`), [
-            'begin ""',
-            'stdout "later\\n"',
-            'end "true"',
-        ])
+        assert.deepEqual(pathLog.slice(2), ["begin", "stdout", "end"])
+        assert.deepEqual(bodyLog.slice(2), ["", "later\n", "true"])
     })
 
     // A console of the test's own stands in for the page's.
     it("takes a console: log to stdout, error to stderr, a call a line, and gives it back at the end", async () => {
-        const {seen, fetch, output} = testStub()
+        const {pathLog, bodyLog, fetch, output} = testStub()
         const fake = {
             debug: (..._: unknown[]) => undefined,
             log: (..._: unknown[]) => undefined,
@@ -145,10 +143,10 @@ describe(TITLE, () => {
         await session.end()
         assert.equal(fake.log, log)
         assert.equal(fake.warn, warn)
-        assert.equal(seen[1]?.path, "stdout")
-        assert.equal(seen[1]?.body, "a 1 b\ninfo\ndebug\n")
-        assert.equal(seen[2]?.path, "stderr")
-        const lines = (seen[2]?.body ?? "").split("\n")
+        assert.equal(pathLog[1], "stdout")
+        assert.equal(bodyLog[1], "a 1 b\ninfo\ndebug\n")
+        assert.equal(pathLog[2], "stderr")
+        const lines = (bodyLog[2] ?? "").split("\n")
         assert.equal(lines[0], "warned")
         assert.match(lines[1] ?? "", /^TypeError: typed/)
     })
