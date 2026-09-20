@@ -70,15 +70,9 @@ export const createChannel = (options: ChannelOptions = {}): Channel => {
     }
 
     const endpointList: [string, (body: string) => void][] = [
-        ["begin", () => {
-            begun = true
-        }],
-        ["stdout", (body) => {
-            stdout.write(body)
-        }],
-        ["stderr", (body) => {
-            stderr.write(body)
-        }],
+        ["begin", () => (begun = true)],
+        ["stdout", (body) => stdout.write(body)],
+        ["stderr", (body) => stderr.write(body)],
         ["end", (body) => {
             ended = true
             settle(body === "true")
@@ -92,7 +86,8 @@ export const createChannel = (options: ChannelOptions = {}): Channel => {
         path,
         handler: async (c, next) => {
             if (!c.req.path.startsWith(path)) return next()
-            const endpoint = endpointMap.get(c.req.path.slice(path.length))
+            const command = c.req.path.slice(path.length).replace(/\?.*$/, "")
+            const endpoint = endpointMap.get(command)
             if (endpoint == null) return next()
             if (c.req.method !== "POST") return c.body(null, 405, {allow: "POST"})
             heard()
