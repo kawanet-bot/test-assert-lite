@@ -12,7 +12,7 @@ const RUN = "http://127.0.0.1:1/@tal/run/abc/"
 const GONE = "http://127.0.0.1:1/@tal/run/gone/"
 const seen: {path: string, body: string}[] = []
 
-// Keeps each request in arrival order. The run that is gone refuses.
+// Keeps each request in arrival order. A request to the run that is gone fails.
 const stub: TAL.FetchLike = async (url, init) => {
     if (url.href.startsWith(GONE)) throw new TypeError("fetch failed")
     seen.push({path: url.pathname, body: init.body})
