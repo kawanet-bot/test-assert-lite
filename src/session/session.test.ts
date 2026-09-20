@@ -1,5 +1,4 @@
 import {strict as assert} from "node:assert"
-import {EventEmitter} from "node:events"
 import {describe, it} from "node:test"
 import type {TAL} from "test-assert-lite"
 import {createTAL} from "../index.ts"
@@ -16,6 +15,30 @@ const fire = (on: EventTarget, type: string, fields: object): void => {
     const event = new Event(type)
     for (const [key, value] of Object.entries(fields)) Object.defineProperty(event, key, {value})
     on.dispatchEvent(event)
+}
+
+// What stands in for the process: on, off and emit, as an EventEmitter
+// has them, with no node:events for the page running these suites.
+class Emitter {
+    private listeners = new Map<string, ((...args: unknown[]) => void)[]>()
+
+    on(event: string, listener: (...args: unknown[]) => void): this {
+        this.listeners.set(event, [...(this.listeners.get(event) ?? []), listener])
+        return this
+    }
+
+    off(event: string, listener: (...args: unknown[]) => void): this {
+        this.listeners.set(event, (this.listeners.get(event) ?? []).filter(fn => fn !== listener))
+        return this
+    }
+
+    emit(event: string, ...args: unknown[]): void {
+        for (const fn of this.listeners.get(event) ?? []) fn(...args)
+    }
+
+    listenerCount(event: string): number {
+        return this.listeners.get(event)?.length ?? 0
+    }
 }
 
 // The window's own type satisfies what uncaught asks for.
@@ -174,7 +197,7 @@ describe(TITLE, () => {
     // process's own event names and arguments.
     it("takes a process's uncaught exceptions and unhandled rejections, each one failed test", async () => {
         const local = createTAL()
-        const on = new EventEmitter()
+        const on = new Emitter()
         const events = capture(local, {uncaught: on})
         const thrown = new Error("thrown later")
         const reason = new Error("rejected later")
