@@ -1,6 +1,7 @@
 import json from "@rollup/plugin-json"
 import alias from "@rollup/plugin-alias"
 import multiEntry from "@rollup/plugin-multi-entry"
+import nodeResolve from "@rollup/plugin-node-resolve"
 import sucrase from "@rollup/plugin-sucrase"
 import type {RollupOptions} from "rollup"
 import {showFiles} from "./show-files.ts"
@@ -53,6 +54,13 @@ const rollupConfig: RollupOptions = {
             entries: [
                 {find: /^(\.\.?\/)+index\.ts$/, replacement: "test-assert-lite"},
             ],
+        }),
+
+        // What a suite takes from a devDependency is bundled in, as the
+        // library's own imports are, so the page needs no map for it.
+        nodeResolve({
+            browser: true,
+            preferBuiltins: false,
         }),
 
         multiEntry(),

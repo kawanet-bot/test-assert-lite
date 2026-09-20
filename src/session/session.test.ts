@@ -1,3 +1,4 @@
+import EventLite from "event-lite"
 import {strict as assert} from "node:assert"
 import {describe, it} from "node:test"
 import type {TAL} from "test-assert-lite"
@@ -15,30 +16,6 @@ const fire = (on: EventTarget, type: string, fields: object): void => {
     const event = new Event(type)
     for (const [key, value] of Object.entries(fields)) Object.defineProperty(event, key, {value})
     on.dispatchEvent(event)
-}
-
-// What stands in for the process: on, off and emit, as an EventEmitter
-// has them, with no node:events for the page running these suites.
-class Emitter {
-    private listeners = new Map<string, ((...args: unknown[]) => void)[]>()
-
-    on(event: string, listener: (...args: unknown[]) => void): this {
-        this.listeners.set(event, [...(this.listeners.get(event) ?? []), listener])
-        return this
-    }
-
-    off(event: string, listener: (...args: unknown[]) => void): this {
-        this.listeners.set(event, (this.listeners.get(event) ?? []).filter(fn => fn !== listener))
-        return this
-    }
-
-    emit(event: string, ...args: unknown[]): void {
-        for (const fn of this.listeners.get(event) ?? []) fn(...args)
-    }
-
-    listenerCount(event: string): number {
-        return this.listeners.get(event)?.length ?? 0
-    }
 }
 
 // The window's own type satisfies what uncaught asks for.
@@ -194,10 +171,11 @@ describe(TITLE, () => {
     })
 
     // An emitter of the test's own stands in for the process, with the
-    // process's own event names and arguments.
+    // process's own event names and arguments. emit() says whether anyone
+    // was listening.
     it("takes a process's uncaught exceptions and unhandled rejections, each one failed test", async () => {
         const local = createTAL()
-        const on = new Emitter()
+        const on = new EventLite()
         const events = capture(local, {uncaught: on})
         const thrown = new Error("thrown later")
         const reason = new Error("rejected later")
@@ -210,8 +188,8 @@ describe(TITLE, () => {
         assert.deepEqual(names(events, "test:fail"), ["uncaught exception", "unhandled rejection"])
         assert.deepEqual(ofType(events, "test:fail").map(e => e.data.details.error), [thrown, reason])
         assert.deepEqual(summary.counts, {tests: 3, suites: 0, passed: 1, failed: 2, cancelled: 0, skipped: 0, todo: 0})
-        assert.equal(on.listenerCount("uncaughtException"), 0)
-        assert.equal(on.listenerCount("unhandledRejection"), 0)
+        assert.equal(on.emit("uncaughtException", new Error("after the end")), false)
+        assert.equal(on.emit("unhandledRejection", new Error("after the end")), false)
     })
 
     it("refuses what is neither a window nor a process, and leaves no session open", async () => {
