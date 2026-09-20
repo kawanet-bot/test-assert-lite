@@ -66,6 +66,7 @@ export const client = (fetch: FetchLike): Client => {
         return inflight
     }
 
+    // A write arms the flush and counts as a word from the page.
     const wrap = (writer: TAL.Writer): TAL.Writer => {
         return {
             write: (chunk: string) => {

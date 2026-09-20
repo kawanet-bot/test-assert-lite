@@ -43,6 +43,8 @@ export interface SessionControl {
     stderr: Writer
 }
 
+// For a console, which adds a newline of its own. Only a string is
+// trimmed: at runtime a chunk may be something else.
 const trimEnd = (text: string) => {
     if ("string" === typeof text && text.endsWith("\n")) {
         return text.replace(/\n$/, "")

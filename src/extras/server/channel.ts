@@ -9,9 +9,9 @@ import type {TAL} from "test-assert-lite"
 import type {MiddlewareHandler} from "./middleware.ts"
 
 export interface ChannelOptions {
-    /** Where the page's stdout goes; this process's own by default. */
+    /** Where the page's stdout goes. */
     stdout: TAL.Writer
-    /** Where the page's stderr goes; this process's own by default. */
+    /** Where the page's stderr goes. */
     stderr: TAL.Writer
 }
 
@@ -46,8 +46,9 @@ export const createChannel = ({stdout, stderr}: ChannelOptions): Channel => {
     const path = `/@tal/run/${runId()}/`
 
     // The verdict: true from the page's end alone passes, anything else
-    // fails, and nothing more is taken once it is in. Every word from the
-    // page restarts the silence bound; a run nobody awaits, --serve, lapses.
+    // fails, and the first one counts; the streams still go through after
+    // it. Every word from the page restarts the silence bound; a run nobody
+    // awaits, --serve, lapses.
     let begun = false
     let ended = false
     let settle: (success: boolean) => void = () => undefined

@@ -1,4 +1,5 @@
-// The page's side, without a network: a POST under the run's path.
+// The channel on its own, without a network: each report of the page as
+// a POST under the run's path.
 
 import {strict as assert} from "node:assert"
 import {describe, it} from "node:test"
@@ -41,7 +42,7 @@ describe(TITLE, () => {
         run.close()
     })
 
-    it("fails the verdict on anything but true, and takes nothing after the end", async () => {
+    it("fails the verdict on anything but true, and still takes the streams after the end", async () => {
         const stdout = createBufWriter()
         const stderr = createBufWriter()
         const run = createChannel({stdout, stderr})

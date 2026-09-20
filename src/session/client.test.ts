@@ -1,12 +1,12 @@
+// The page's side of the channel, without a network: what the session
+// posts, in what order, and with what verdict.
+
 import {strict as assert} from "node:assert"
 import {describe, it} from "node:test"
 import type {TAL} from "test-assert-lite"
 import {createTAL} from "../index.ts"
 
 const TITLE = "session/client.test.ts"
-
-// The page's side of the channel, without a network: what the session
-// posts, in what order, and with what verdict.
 
 const testStub = () => {
     const pathLog: string[] = []
