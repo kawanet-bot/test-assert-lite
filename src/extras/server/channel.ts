@@ -5,13 +5,14 @@
 // nothing changes in the protocol here without a change in the client.
 
 import {randomInt} from "node:crypto"
+import type {TAL} from "test-assert-lite"
 import type {MiddlewareHandler} from "./middleware.ts"
 
 export interface ChannelOptions {
-    /** Where the page's stdout goes; this process's own by default. */
-    stdout?: (text: string) => void
-    /** Where the page's stderr goes; this process's own by default. */
-    stderr?: (text: string) => void
+    /** Where the page's stdout goes. */
+    stdout: TAL.Writer
+    /** Where the page's stderr goes. */
+    stderr: TAL.Writer
 }
 
 export interface Channel {
@@ -41,13 +42,13 @@ const SILENCE_MS = 30_000
  * Starts a run: from here on the page has the silence bound to report
  * within, and the verdict is what it says at its end.
  */
-export const createChannel = (options: ChannelOptions = {}): Channel => {
-    const {stdout = text => process.stdout.write(text), stderr = text => process.stderr.write(text)} = options
+export const createChannel = ({stdout, stderr}: ChannelOptions): Channel => {
     const path = `/@tal/run/${runId()}/`
 
     // The verdict: true from the page's end alone passes, anything else
-    // fails, and nothing more is taken once it is in. Every word from the
-    // page restarts the silence bound; a run nobody awaits, --serve, lapses.
+    // fails, and the first one counts; the streams still go through after
+    // it. Every word from the page restarts the silence bound; a run nobody
+    // awaits, --serve, lapses.
     let begun = false
     let ended = false
     let settle: (success: boolean) => void = () => undefined
@@ -66,33 +67,30 @@ export const createChannel = (options: ChannelOptions = {}): Channel => {
             : "The page never reported in: could the browser reach the server?")), SILENCE_MS)
         timer.unref()
     }
-    const stream = (write: (text: string) => void) => (body: string) => {
-        heard()
-        if (!ended) write(body)
-    }
 
-    const endpoints: Record<string, (body: string) => void> = {
-        begin: () => {
-            begun = true
-            heard()
-        },
-        stdout: stream(stdout),
-        stderr: stream(stderr),
-        end: body => {
+    const endpointList: [string, (body: string) => void][] = [
+        ["begin", () => (begun = true)],
+        ["stdout", (body) => stdout.write(body)],
+        ["stderr", (body) => stderr.write(body)],
+        ["end", (body) => {
             ended = true
-            heard()
             settle(body === "true")
-        },
-    }
+        }],
+    ]
+
+    const endpointMap = new Map(endpointList)
 
     heard()
     return {
         path,
         handler: async (c, next) => {
-            const endpoint = c.req.path.startsWith(path) ? endpoints[c.req.path.slice(path.length)] : undefined
+            if (!c.req.path.startsWith(path)) return next()
+            const command = c.req.path.slice(path.length)
+            const endpoint = endpointMap.get(command)
             if (endpoint == null) return next()
             if (c.req.method !== "POST") return c.body(null, 405, {allow: "POST"})
             endpoint(await c.req.text())
+            heard()
             return c.body(null, 204)
         },
         done,

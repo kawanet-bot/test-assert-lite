@@ -4,6 +4,7 @@
 // console lines is one round trip.
 
 import type {TAL} from "test-assert-lite"
+import {createBufWriter} from "../utils/buf-writer.ts"
 
 type FetchLike = TAL.FetchLike
 
@@ -12,10 +13,10 @@ export interface Client {
     begin(): Promise<void>
 
     /** Text for the CLI's stdout, buffered. */
-    stdout(text: string): void
+    stdout: TAL.Writer
 
     /** Text for the CLI's stderr, buffered. */
-    stderr(text: string): void
+    stderr: TAL.Writer
 
     /** The verdict, sent once the buffers have drained; true alone passes. */
     end(success: boolean): Promise<void>
@@ -38,7 +39,8 @@ const TICK_MS = 1_000
  * nothing about a CLI that went away.
  */
 export const client = (fetch: FetchLike): Client => {
-    const buffers = {stdout: [] as string[], stderr: [] as string[]} as const
+    const stdoutBuf = createBufWriter()
+    const stderrBuf = createBufWriter()
     let timer: ReturnType<typeof setTimeout> | null = null
     let alive: ReturnType<typeof setInterval> | null = null
     let started = 0
@@ -57,22 +59,30 @@ export const client = (fetch: FetchLike): Client => {
         if (timer != null) clearTimeout(timer)
         timer = null
         // Emptied and queued in one synchronous step, so end() cannot get ahead.
-        const stdoutText = buffers.stdout.splice(0).join("")
-        const stderrText = buffers.stderr.splice(0).join("")
+        const stdoutText = stdoutBuf.read()
+        const stderrText = stderrBuf.read()
         if (stdoutText) void post("stdout", stdoutText)
         if (stderrText) void post("stderr", stderrText)
         return inflight
     }
 
-    const write = (buf: string[], text: string): void => {
-        buf.push(text)
-        last = Date.now()
-        timer ??= setTimeout(flush, FLUSH_MS)
+    // A write arms the flush and counts as a word from the page.
+    const wrap = (writer: TAL.Writer): TAL.Writer => {
+        return {
+            write: (chunk: string) => {
+                writer.write(chunk)
+                last = Date.now()
+                timer ??= setTimeout(flush, FLUSH_MS)
+            },
+        }
     }
+
+    const stdout = wrap(stdoutBuf)
+    const stderr = wrap(stderrBuf)
 
     const tick = (): void => {
         if (Date.now() - last < QUIET_MS) return
-        write(buffers.stderr, `⏳ ${Math.round((Date.now() - started) / 1000)}s\n`)
+        stderr.write(`⏳ ${Math.round((Date.now() - started) / 1000)}s\n`)
     }
 
     return {
@@ -81,8 +91,8 @@ export const client = (fetch: FetchLike): Client => {
             alive ??= setInterval(tick, TICK_MS)
             return post("begin", "")
         },
-        stdout: text => write(buffers.stdout, text),
-        stderr: text => write(buffers.stderr, text),
+        stdout,
+        stderr,
         end: async success => {
             if (alive != null) clearInterval(alive)
             alive = null

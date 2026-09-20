@@ -299,10 +299,9 @@ export declare namespace TAL {
         success: boolean
     }
 
-    // One of the session's streams. Text goes as given; an Error goes as
-    // its text, with a newline at its end.
+    // One of the session's streams.
     interface Writer {
-        write(chunk: string | Error): void
+        write(chunk: string): void
     }
 
     // The session's own entry, `test-assert-lite/session`: opening it,

@@ -70,7 +70,7 @@ const M = (fn: MiddlewareHandler | undefined | false) => [fn].filter(Boolean) as
  * of the verdict the page at `page` reports back through it.
  */
 export const createApp = (options: AppOptions): App => {
-    const {scripts = [], imports = new Imports([]), mount: mounted, session, eval: script, stderr = text => process.stderr.write(text)} = options
+    const {scripts = [], imports = new Imports([]), mount: mounted, session, eval: script, stderr} = options
     const {files = []} = session
     const channel = createChannel(options)
 
@@ -82,7 +82,7 @@ export const createApp = (options: AppOptions): App => {
         try {
             watcher = createWatcher([...files, ...scripts, ...imports.paths()])
         } catch (error) {
-            stderr(`watch is off: ${error instanceof Error ? error.message : String(error)}\n`)
+            stderr.write(`watch is off: ${error instanceof Error ? error.message : String(error)}\n`)
         }
     }
 
@@ -110,7 +110,7 @@ export const createApp = (options: AppOptions): App => {
     // so the config and the scripts stay out too. stderr says so.
     const head = withHead((html, path) => {
         if (!hasImportMap(html)) return {ahead: importmap + configTag, end: tags}
-        stderr(`import map of its own, left as it is: ${path}\n`)
+        stderr.write(`import map of its own, left as it is: ${path}\n`)
         return ""
     })
 

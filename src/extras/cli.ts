@@ -52,6 +52,8 @@ const runCLI = async (options: ModeOptions): Promise<number> => {
         session,
         eval: options.eval,
         watch: mode === "serve",
+        stdout: process.stdout,
+        stderr: process.stderr,
     })
 
     // A server that cannot listen, its port taken say, is an error to show;

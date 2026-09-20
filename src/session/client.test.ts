@@ -1,12 +1,12 @@
+// The page's side of the channel, without a network: what the session
+// posts, in what order, and with what verdict.
+
 import {strict as assert} from "node:assert"
 import {describe, it} from "node:test"
 import type {TAL} from "test-assert-lite"
 import {createTAL} from "../index.ts"
 
 const TITLE = "session/client.test.ts"
-
-// The page's side of the channel, without a network: what the session
-// posts, in what order, and with what verdict.
 
 const testStub = () => {
     const pathLog: string[] = []
@@ -82,18 +82,15 @@ describe(TITLE, () => {
         assert.equal(bodyLog.at(-1), "false")
     })
 
-    it("sends text as given, and an Error as its text with a newline", async () => {
+    it("sends text as given", async () => {
         const {session} = createTAL()
         const {bodyLog, fetch, output} = testStub()
         session.session({fetch, output})
         session.stderr.write("as ")
         session.stderr.write("given\n")
-        session.stderr.write(new TypeError("typed"))
         await session.end()
         const lines = (bodyLog[1] ?? "").split("\n")
         assert.equal(lines[0], "as given")
-        assert.match(lines[1] ?? "", /^TypeError: typed/)
-        assert.equal(bodyLog[1]!.endsWith("\n"), true)
     })
 
     it("text written before session() goes out once the session is open", async () => {
