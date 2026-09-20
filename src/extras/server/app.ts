@@ -4,12 +4,13 @@
 // channel to the page; the server that runs it is another's, serve.ts today.
 // The CLI turns arguments into AppOptions; anything else could do the same.
 
+import {randomInt} from "node:crypto"
 import {basename, resolve} from "node:path"
 import {fileURLToPath} from "node:url"
+import type {TAL} from "test-assert-lite"
 import {Imports} from "../imports.ts"
 import type {TestSession} from "../mode-options.ts"
 import {packageNameOf, packageRoot} from "../package-root.ts"
-import type {ChannelOptions} from "./channel.ts"
 import {createChannel} from "./channel.ts"
 import {createFiles} from "./files.ts"
 import {hasImportMap, withHead} from "./head.ts"
@@ -22,7 +23,11 @@ import {withStrippedTypes} from "./typestrip.ts"
 import type {Watcher} from "./watch.ts"
 import {createWatcher} from "./watch.ts"
 
-export interface AppOptions extends ChannelOptions {
+export interface AppOptions {
+    /** Where the app's stdout goes. */
+    stdout: TAL.Writer
+    /** Where the app's stderr goes. */
+    stderr: TAL.Writer
     /** Classic scripts to run before the suites, absolute, in this order. */
     scripts?: string[]
     /** Specifiers and what they resolve to: a file, served from its directory, or a URL put into the map as it is. */
@@ -65,14 +70,20 @@ const safeJSON = (value: unknown): string => JSON.stringify(value, null, 4).repl
 
 const M = (fn: MiddlewareHandler | undefined | false) => [fn].filter(Boolean) as MiddlewareHandler[]
 
+// Nine base-36 characters, 46 bits: plenty for a run's lifetime, and short
+// enough to read in the access log.
+const random9 = (): string => randomInt(0, 36 ** 9).toString(36).padStart(9, "0")
+
 /**
  * Builds the application for the suites: its middleware, and the promise
  * of the verdict the page at `page` reports back through it.
  */
 export const createApp = (options: AppOptions): App => {
-    const {scripts = [], imports = new Imports([]), mount: mounted, session, eval: script, stderr} = options
+    const {scripts = [], imports = new Imports([]), mount: mounted, session, eval: script, stdout, stderr} = options
     const {files = []} = session
-    const channel = createChannel(options)
+    const prefix = `/@tal/run/${random9()}/`
+    const runPath = `${prefix}run.html`
+    const channel = createChannel({prefix, stdout, stderr})
 
     // Watching is a convenience of --serve, not what it is for: where the
     // file system refuses, the inotify limit reached say, the page is
@@ -101,7 +112,7 @@ export const createApp = (options: AppOptions): App => {
     // for the page to import in that order, as the Node driver does.
     const importmap = `<script type="importmap">\n${safeJSON({imports: imports.addresses(file => served.urlOf(file))})}\n</script>\n`
     // The script goes in as the one file, at its URL under the run's path.
-    const evalPath = script == null ? null : `${channel.path}[eval].js`
+    const evalPath = script == null ? null : `${prefix}[eval].js`
     const configObj: TestSessionJSON = {session: {...session, files: evalPath == null ? files.map(file => served.urlOf(file)) : [evalPath]}}
     const configTag = `<script type="${TestSessionType}">\n${safeJSON(configObj)}\n</script>\n`
     const tags = scriptUrls.map(url => `<script src="${url}"></script>\n`).join("")
@@ -121,7 +132,7 @@ export const createApp = (options: AppOptions): App => {
             ? proxy({path: "/", upstream: mounted})
             : serveStatic({path: "/", root: mounted})
 
-    const atRun = serveStatic({path: `${channel.path}run.html`, root: resolve(root, "browser", "run.html")})
+    const atRun = serveStatic({path: runPath, root: resolve(root, "browser", "run.html")})
     const atEval: MiddlewareHandler = async (c, next) => {
         if (c.finalized || c.req.path !== evalPath) return next()
         if (c.req.method !== "GET" && c.req.method !== "HEAD") return c.body(null, 405, {allow: "GET, HEAD"})
@@ -148,7 +159,7 @@ export const createApp = (options: AppOptions): App => {
 
     return {
         handler,
-        page: `${channel.path}run.html`,
+        page: runPath,
         done: channel.done,
         close: () => {
             channel.close()

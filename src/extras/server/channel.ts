@@ -4,7 +4,6 @@
 // and the verdict at the end. What comes in goes to the streams given;
 // nothing changes in the protocol here without a change in the client.
 
-import {randomInt} from "node:crypto"
 import type {TAL} from "test-assert-lite"
 import type {MiddlewareHandler} from "./middleware.ts"
 
@@ -13,11 +12,11 @@ export interface ChannelOptions {
     stdout: TAL.Writer
     /** Where the page's stderr goes. */
     stderr: TAL.Writer
+    /** Prefix for channel path: `/@tal/run/xxxxxxxxx/` */
+    prefix: string
 }
 
 export interface Channel {
-    /** The run's own path, ending in "/": the page lives and reports under it. */
-    path: string
     /** Takes the page's reports, each a POST under the path, and answers 204; 405 to any other method. */
     handler: MiddlewareHandler
     /** The verdict the page reports at its end; rejects if it never begins. */
@@ -26,10 +25,6 @@ export interface Channel {
     /** Stops waiting for the page. */
     close(): void
 }
-
-// Nine base-36 characters, 46 bits: plenty for a run's lifetime, and short
-// enough to read in the access log.
-const runId = (): string => randomInt(0, 36 ** 9).toString(36).padStart(9, "0")
 
 // How long the page may stay silent. Before it has begun, the browser
 // could not reach the server, most likely; after that, a quiet page says
@@ -42,9 +37,7 @@ const SILENCE_MS = 30_000
  * Starts a run: from here on the page has the silence bound to report
  * within, and the verdict is what it says at its end.
  */
-export const createChannel = ({stdout, stderr}: ChannelOptions): Channel => {
-    const path = `/@tal/run/${runId()}/`
-
+export const createChannel = ({prefix, stdout, stderr}: ChannelOptions): Channel => {
     // The verdict: true from the page's end alone passes, anything else
     // fails, and the first one counts; the streams still go through after
     // it. Every word from the page restarts the silence bound; a run nobody
@@ -82,10 +75,9 @@ export const createChannel = ({stdout, stderr}: ChannelOptions): Channel => {
 
     heard()
     return {
-        path,
         handler: async (c, next) => {
-            if (!c.req.path.startsWith(path)) return next()
-            const command = c.req.path.slice(path.length)
+            if (!c.req.path.startsWith(prefix)) return next()
+            const command = c.req.path.slice(prefix.length)
             const endpoint = endpointMap.get(command)
             if (endpoint == null) return next()
             if (c.req.method !== "POST") return c.body(null, 405, {allow: "POST"})
