@@ -139,9 +139,9 @@ describe(TITLE, () => {
     it("takes a console: log to stdout, error to stderr, a call a line, and gives it back at the end", async () => {
         seen.length = 0
         const fake = {
+            debug: (..._: unknown[]) => undefined,
             log: (..._: unknown[]) => undefined,
             info: (..._: unknown[]) => undefined,
-            debug: (..._: unknown[]) => undefined,
             warn: (..._: unknown[]) => undefined,
             error: (..._: unknown[]) => undefined,
         }

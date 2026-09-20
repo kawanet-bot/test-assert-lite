@@ -254,9 +254,9 @@ export declare namespace TAL {
 
     // What a session takes over: the five methods a page's console has.
     interface ConsoleLike {
+        debug(...args: unknown[]): void
         log(...args: unknown[]): void
         info(...args: unknown[]): void
-        debug(...args: unknown[]): void
         warn(...args: unknown[]): void
         error(...args: unknown[]): void
     }
@@ -279,7 +279,7 @@ export declare namespace TAL {
          */
         capture?: boolean | EventTargetLike
         /**
-         * A console the session takes over until end(): log, info and debug
+         * A console the session takes over until end(): debug, log and info
          * go to `stdout`, warn and error to `stderr`, each call one line.
          */
         console?: ConsoleLike

@@ -121,7 +121,7 @@ const capture = (harness: HarnessState, target: EventTargetLike): (() => void) =
 // The console's methods go to the writers until released, a call a line:
 // a string as it is, an Error with its stack, anything else as an
 // assertion would show it.
-const STDOUT_LEVELS = ["log", "info", "debug"] as const
+const STDOUT_LEVELS = ["debug", "log", "info"] as const
 const STDERR_LEVELS = ["warn", "error"] as const
 
 const consoleLine = (args: unknown[]): string =>
@@ -131,8 +131,8 @@ const consoleLine = (args: unknown[]): string =>
 // on the console they came from: the fallback writes with them, and
 // end() puts them back.
 const saveConsole = (target: ConsoleLike): ConsoleLike => {
-    const {log, info, debug, warn, error} = target
-    return {log, info, debug, warn, error}
+    const {debug, log, info, warn, error} = target
+    return {debug, log, info, warn, error}
 }
 
 const takeConsole = (target: ConsoleLike, saved: ConsoleLike, stdout: Writer, stderr: Writer): (() => void) => {
