@@ -35,7 +35,9 @@ describe(TITLE, () => {
     let lib: string
     let app: App
     let server: Server
-    const stdout = createBufWriter()
+    const sharedStdout = createBufWriter()
+    const stdout = nullWriter
+    const stderr = nullWriter
     const url = (path: string): string => server.origin + path
     const cwd = pathToFileURL(`${process.cwd()}/`)
 
@@ -66,7 +68,8 @@ describe(TITLE, () => {
                 new ImportMapItem("mine", "/mine.js", pathToFileURL(join(dir, "map.json"))),
                 new ImportAliasItem(`mod=${join(dir, "lib", "mod.mjs")}`, cwd),
             ]),
-            stdout,
+            stdout: sharedStdout,
+            stderr,
         })
         server = await serve({handler: app.handler})
     })
@@ -107,7 +110,7 @@ describe(TITLE, () => {
     })
 
     it("escapes a < in the config, so a name cannot close the tag, and reads it back", async () => {
-        const odd = createApp({session: {files: [], reporter: "</script><b>"}, stdout: nullWriter})
+        const odd = createApp({session: {files: [], reporter: "</script><b>"}, stdout, stderr})
         const server = await serve({handler: odd.handler})
         try {
             const head = (await get(server.origin + "/")).body.split("</head>")[0] as string
@@ -122,7 +125,7 @@ describe(TITLE, () => {
     })
 
     it("serves a script given as [eval].js under the run's path, and names it as the one file", async () => {
-        const inline = createApp({session: {files: []}, eval: "console.log('<hi>')\n", stdout: nullWriter})
+        const inline = createApp({session: {files: []}, eval: "console.log('<hi>')\n", stdout, stderr})
         const server = await serve({handler: inline.handler})
         try {
             const path = inline.page.replace(/run\.html$/, "[eval].js")
@@ -193,7 +196,7 @@ describe(TITLE, () => {
         const run = app.page.slice(0, -"run.html".length)
         assert.equal(await post(url(`${run}begin`), ""), 204)
         assert.equal(await post(url(`${run}stdout`), "one\n"), 204)
-        assert.equal(stdout.read(), "one\n")
+        assert.equal(sharedStdout.read(), "one\n")
         assert.equal((await get(url(`${run}stdout`))).status, 405)
         assert.equal(await post(url(`${run}nothing`), ""), 404)
         assert.equal(await post(url("/index.html"), ""), 405)
@@ -205,7 +208,7 @@ describe(TITLE, () => {
         assert.equal((await get(url("/"))).body.includes("/@tal/watch?after="), false)
         assert.equal((await get(url("/@tal/watch?after=0"))).status, 404)
         const files = [join(dir, "tests", "my suite.mjs")]
-        const watching = createApp({session: {files}, watch: true, stdout: nullWriter})
+        const watching = createApp({session: {files}, watch: true, stdout, stderr})
         const running = await serve({handler: watching.handler})
         try {
             const index = (await get(running.origin + "/")).body
@@ -226,7 +229,7 @@ describe(TITLE, () => {
         const lines: string[] = []
         const stderr: TAL.Writer = {write: (chunk) => lines.push(chunk)}
         const files = [join(dir, "missing", "suite.mjs")]
-        const blind = createApp({session: {files}, watch: true, stdout: nullWriter, stderr})
+        const blind = createApp({session: {files}, watch: true, stdout, stderr})
         const running = await serve({handler: blind.handler})
         try {
             assert.equal(lines.length, 1)
@@ -250,10 +253,10 @@ describe(TITLE, () => {
         await mkdir(join(plain, "site"))
         await writeFile(join(plain, "site", "index.html"), "<html><head><title>{{title}}</title></head><body>{{title}}</body></html>")
         const namedFiles = [join(plain, "a.mjs"), join(plain, "b <c>.mjs"), join(plain, "a.mjs")]
-        const named = createApp({session: {files: namedFiles}, stdout: nullWriter})
+        const named = createApp({session: {files: namedFiles}, stdout, stderr})
         const mountedFiles = [join(plain, "a.mjs")]
-        const mounted = createApp({session: {files: mountedFiles}, mount: join(plain, "site"), stdout: nullWriter})
-        const bare = createApp({session: {files: []}, mount: join(plain, "site"), stdout: nullWriter})
+        const mounted = createApp({session: {files: mountedFiles}, mount: join(plain, "site"), stdout, stderr})
+        const bare = createApp({session: {files: []}, mount: join(plain, "site"), stdout, stderr})
         const servers = await Promise.all([named, mounted, bare].map(app => serve({handler: app.handler})))
         try {
             assert.ok((await get(servers[0]!.origin + named.page)).body.includes("<title>a.mjs b &#60;c&#62;.mjs</title>"))
@@ -271,7 +274,7 @@ describe(TITLE, () => {
         await mkdir(join(dir, "site"))
         await writeFile(join(dir, "site", "index.html"), "<html><head></head><body>mine</body></html>")
         const files = [join(dir, "tests", "my suite.mjs")]
-        const mounted = createApp({session: {files}, mount: join(dir, "site"), stdout: nullWriter})
+        const mounted = createApp({session: {files}, mount: join(dir, "site"), stdout, stderr})
         const running = await serve({handler: mounted.handler})
         try {
             const index = await get(running.origin + "/")
@@ -289,7 +292,7 @@ describe(TITLE, () => {
     it("serves a mounted directory without a suite: the library in the head, no suite tag, no suite mount", async () => {
         await mkdir(join(dir, "plain"))
         await writeFile(join(dir, "plain", "index.html"), "<html><head></head><body>plain</body></html>")
-        const bare = createApp({session: {files: []}, mount: join(dir, "plain"), watch: true, stdout: nullWriter})
+        const bare = createApp({session: {files: []}, mount: join(dir, "plain"), watch: true, stdout, stderr})
         const running = await serve({handler: bare.handler})
         try {
             const index = (await get(running.origin + "/")).body
@@ -308,7 +311,7 @@ describe(TITLE, () => {
         const lines: string[] = []
         const stderr: TAL.Writer = {write: (chunk) => lines.push(chunk)}
         const files = [join(dir, "tests", "my suite.mjs")]
-        const mapped = createApp({session: {files}, mount: join(dir, "mapped"), stdout: nullWriter, stderr})
+        const mapped = createApp({session: {files}, mount: join(dir, "mapped"), stdout, stderr})
         const running = await serve({handler: mapped.handler})
         try {
             const index = (await get(running.origin + "/")).body
@@ -335,7 +338,7 @@ describe(TITLE, () => {
         const address = upstream.address()
         const port = typeof address === "object" && address != null ? address.port : 0
         const files = [join(dir, "tests", "my suite.mjs")]
-        const mounted = createApp({session: {files}, mount: `http://127.0.0.1:${port}/app/`, stdout: nullWriter})
+        const mounted = createApp({session: {files}, mount: `http://127.0.0.1:${port}/app/`, stdout, stderr})
         const running = await serve({handler: mounted.handler})
         try {
             const index = await get(running.origin + "/")
@@ -355,7 +358,7 @@ describe(TITLE, () => {
 
     it("fails the verdict on anything but true", async () => {
         const files = [join(dir, "tests", "my suite.mjs")]
-        const other = createApp({session: {files}, stdout: nullWriter})
+        const other = createApp({session: {files}, stdout, stderr})
         const running = await serve({handler: other.handler})
         try {
             assert.equal(await post(running.origin + other.page.replace(/run\.html$/, "end"), "yes"), 204)

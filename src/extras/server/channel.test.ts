@@ -55,8 +55,8 @@ describe(TITLE, () => {
     })
 
     it("runs of its own do not share a path", () => {
-        const a = createChannel()
-        const b = createChannel()
+        const a = createChannel({stdout: nullWriter, stderr: nullWriter})
+        const b = createChannel({stdout: nullWriter, stderr: nullWriter})
         assert.notEqual(a.path, b.path)
         a.close()
         b.close()

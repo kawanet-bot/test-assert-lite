@@ -10,9 +10,9 @@ import type {MiddlewareHandler} from "./middleware.ts"
 
 export interface ChannelOptions {
     /** Where the page's stdout goes; this process's own by default. */
-    stdout?: TAL.Writer
+    stdout: TAL.Writer
     /** Where the page's stderr goes; this process's own by default. */
-    stderr?: TAL.Writer
+    stderr: TAL.Writer
 }
 
 export interface Channel {
@@ -42,9 +42,7 @@ const SILENCE_MS = 30_000
  * Starts a run: from here on the page has the silence bound to report
  * within, and the verdict is what it says at its end.
  */
-export const createChannel = (options: ChannelOptions = {}): Channel => {
-    const stdout = options.stdout ?? process.stdout
-    const stderr = options.stderr ?? process.stderr
+export const createChannel = ({stdout, stderr}: ChannelOptions): Channel => {
     const path = `/@tal/run/${runId()}/`
 
     // The verdict: true from the page's end alone passes, anything else

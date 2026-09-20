@@ -70,7 +70,7 @@ const M = (fn: MiddlewareHandler | undefined | false) => [fn].filter(Boolean) as
  * of the verdict the page at `page` reports back through it.
  */
 export const createApp = (options: AppOptions): App => {
-    const {scripts = [], imports = new Imports([]), mount: mounted, session, eval: script, stderr = process.stderr} = options
+    const {scripts = [], imports = new Imports([]), mount: mounted, session, eval: script, stderr} = options
     const {files = []} = session
     const channel = createChannel(options)
 
