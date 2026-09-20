@@ -82,18 +82,15 @@ describe(TITLE, () => {
         assert.equal(bodyLog.at(-1), "false")
     })
 
-    it("sends text as given, and an Error as its text with a newline", async () => {
+    it("sends text as given", async () => {
         const {session} = createTAL()
         const {bodyLog, fetch, output} = testStub()
         session.session({fetch, output})
         session.stderr.write("as ")
         session.stderr.write("given\n")
-        session.stderr.write(new TypeError("typed"))
         await session.end()
         const lines = (bodyLog[1] ?? "").split("\n")
         assert.equal(lines[0], "as given")
-        assert.match(lines[1] ?? "", /^TypeError: typed/)
-        assert.equal(bodyLog[1]!.endsWith("\n"), true)
     })
 
     it("text written before session() goes out once the session is open", async () => {

@@ -2,6 +2,7 @@ import type {TAL} from "test-assert-lite"
 import {html} from "../reporter/html.ts"
 import {spec} from "../reporter/spec.ts"
 import {tap} from "../reporter/tap.ts"
+import {createConnectWriter, pureWriter} from "../utils/buf-writer.ts"
 import {isError} from "../utils/is-error.ts"
 import {stringify} from "../utils/stringify.ts"
 import {errorText} from "../utils/tester-error.ts"
@@ -42,37 +43,11 @@ export interface SessionControl {
     stderr: Writer
 }
 
-// One of the two streams. With a sink the text goes through as it comes;
-// without one, before a session and after it, the text is held.
-interface Outlet extends Writer {
-    connect: (sink: (text: string) => void) => void
-    disconnect: () => void
-}
-
-const textOf = (chunk: string | Error): string => {
-    if ("string" === typeof chunk) return chunk
-    const text = errorText(chunk)
-    return text.endsWith("\n") ? text : `${text}\n`
-}
-
-const outlet = (): Outlet => {
-    let sink: ((text: string) => void) | null = null
-    let held = ""
-    return {
-        write: chunk => {
-            const text = textOf(chunk)
-            if (sink != null) sink(text)
-            else held += text
-        },
-        connect: fn => {
-            sink = fn
-            const text = held
-            held = ""
-            if (text) fn(text)
-        },
-        disconnect: () => {
-            sink = null
-        },
+const trimEnd = (text: string) => {
+    if ("string" === typeof text && text.endsWith("\n")) {
+        return text.replace(/\n$/, "")
+    } else {
+        return text
     }
 }
 
@@ -138,8 +113,14 @@ const takeUncaught = (harness: HarnessState, target: EventTargetLike | EventEmit
 // The console's methods go to the writers until released, a call a line:
 // a string as it is, an Error with its stack, anything else as an
 // assertion would show it.
-const consoleLine = (args: unknown[]): string =>
-    `${args.map(v => "string" === typeof v ? v : isError(v) ? errorText(v) : stringify(v)).join(" ")}\n`
+const consoleLine = (args: unknown[]): string => {
+    const text = args.map(toString).join(" ")
+    return text.endsWith("\n") ? text : `${text}\n`
+}
+
+const toString = (v: unknown): string => {
+    return "string" === typeof v ? v : isError(v) ? errorText(v) : stringify(v)
+}
 
 // The methods as the session found them, wrappers included, to be called
 // on the console they came from: the fallback writes with them, and
@@ -181,8 +162,8 @@ const reporterMap = new Map<string, () => ReporterFn>([
 
 export const createSessions = (harness: HarnessState): SessionControl => {
     let current: Open | null = null
-    const stdout = outlet()
-    const stderr = outlet()
+    const stdout = createConnectWriter()
+    const stderr = createConnectWriter()
 
     // An unsupported reporter becomes a root failure. With none named,
     // the session uses spec and lets quiet tune it.
@@ -222,7 +203,6 @@ export const createSessions = (harness: HarnessState): SessionControl => {
         // Saved before anything is taken over, so nothing here loops back.
         const found = options.console ?? globalThis.console
         const saved = saveConsole(found)
-        const fallback = (level: "log" | "error") => (text: string) => saved[level].call(found, text.replace(/\n$/, ""))
         const releaseErrors = options.uncaught == null ? () => undefined : takeUncaught(harness, options.uncaught)
         const releaseConsole = options.console == null ? () => undefined : takeConsole(found, saved, stdout, stderr)
         const release = (): void => {
@@ -239,11 +219,11 @@ export const createSessions = (harness: HarnessState): SessionControl => {
         // Node's process streams where they exist, the console the session found otherwise.
         const hasProcess = "undefined" !== typeof process && process.stdout?.write != null
         if (hasProcess) {
-            stdout.connect(text => void process.stdout.write(text))
-            stderr.connect(text => void process.stderr.write(text))
+            stdout.connect(process.stdout)
+            stderr.connect(process.stderr)
         } else {
-            stdout.connect(fallback("log"))
-            stderr.connect(fallback("error"))
+            stdout.connect({write: (text => saved.log(trimEnd(text)))})
+            stderr.connect({write: (text => saved.error(trimEnd(text)))})
         }
         return {reporter, output, end: async () => undefined, auto, release}
     }
@@ -275,7 +255,7 @@ export const createSessions = (harness: HarnessState): SessionControl => {
             current ??= create({}, true)
             stream.attach(current.reporter, current.output)
         },
-        stdout,
-        stderr,
+        stdout: pureWriter(stdout),
+        stderr: pureWriter(stderr),
     }
 }
