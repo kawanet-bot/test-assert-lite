@@ -15,11 +15,11 @@
     const options = json && JSON.parse(json)?.session || {}
 
     // The run's URL is this page's own directory: the session reports
-    // there, takes the errors outside the tests, and the console goes
-    // the same way.
+    // there, takes the window's errors outside the tests, and the console
+    // goes the same way.
     session({
         base: new URL("./", import.meta.url),
-        capture: true,
+        uncaught: window,
         console: console,
         reporter: options.reporter,
         quiet: options.quiet,

@@ -1,4 +1,5 @@
 import {strict as assert} from "node:assert"
+import {EventEmitter} from "node:events"
 import {describe, it} from "node:test"
 import type {TAL} from "test-assert-lite"
 import {createTAL} from "../index.ts"
@@ -6,7 +7,7 @@ import {capture, names, ofType, summaryOf} from "../test-utils/capture.ts"
 
 const TITLE = "session/session.test.ts"
 
-// capture listens on what it is given: a window in a page, and here an
+// uncaught listens on what it is given: a window in a page, and here an
 // EventTarget of the test's own, so nothing reaches the real one, which
 // the page running these suites in a browser listens on itself.
 const target = (): EventTarget => new EventTarget()
@@ -17,7 +18,7 @@ const fire = (on: EventTarget, type: string, fields: object): void => {
     on.dispatchEvent(event)
 }
 
-// The window's own type satisfies what capture asks for.
+// The window's own type satisfies what uncaught asks for.
 const check: typeof globalThis extends TAL.EventTargetLike ? true : never = true
 void check
 
@@ -135,7 +136,7 @@ describe(TITLE, () => {
     it("an uncaught error is one failed test, named after the script by its served path", async () => {
         const local = createTAL()
         const on = target()
-        const events = capture(local, {capture: on})
+        const events = capture(local, {uncaught: on})
         const thrown = new Error("at the top level")
         fire(on, "error", {error: thrown, filename: "http://127.0.0.1:1/@tal/files/012345678/suite.mjs"})
         fire(on, "error", {target: {src: "http://127.0.0.1:1/@tal/files/012345678/missing.mjs"}})
@@ -156,7 +157,7 @@ describe(TITLE, () => {
     it("an error while a test body is open is a failed test after it", async () => {
         const local = createTAL()
         const on = target()
-        const events = capture(local, {capture: on})
+        const events = capture(local, {uncaught: on})
         local.test.it("open", async () => {
             fire(on, "unhandledrejection", {reason: new Error("meanwhile")})
             await new Promise(r => setTimeout(r, 0))
@@ -169,14 +170,44 @@ describe(TITLE, () => {
         assert.deepEqual(summary.counts, {tests: 2, suites: 0, passed: 1, failed: 1, cancelled: 0, skipped: 0, todo: 0})
     })
 
-    it("end() lets go of the events, and a session without capture takes none", async () => {
+    // An emitter of the test's own stands in for the process, with the
+    // process's own event names and arguments.
+    it("takes a process's uncaught exceptions and unhandled rejections, each one failed test", async () => {
+        const local = createTAL()
+        const on = new EventEmitter()
+        const events = capture(local, {uncaught: on})
+        const thrown = new Error("thrown later")
+        const reason = new Error("rejected later")
+        on.emit("uncaughtException", thrown, "uncaughtException")
+        on.emit("unhandledRejection", reason, Promise.resolve())
+        local.test.it("declared", () => undefined)
+        await local.session.end()
+        const summary = summaryOf(events)
+
+        assert.deepEqual(names(events, "test:fail"), ["uncaught exception", "unhandled rejection"])
+        assert.deepEqual(ofType(events, "test:fail").map(e => e.data.details.error), [thrown, reason])
+        assert.deepEqual(summary.counts, {tests: 3, suites: 0, passed: 1, failed: 2, cancelled: 0, skipped: 0, todo: 0})
+        assert.equal(on.listenerCount("uncaughtException"), 0)
+        assert.equal(on.listenerCount("unhandledRejection"), 0)
+    })
+
+    it("refuses what is neither a window nor a process, and leaves no session open", async () => {
+        const local = createTAL()
+        assert.throws(() => local.session.session({uncaught: {} as TAL.EventTargetLike}), /uncaught/)
+        const events = capture(local)
+        local.test.it("still declares", () => undefined)
+        assert.equal((await local.session.end()).success, true)
+        assert.deepEqual(names(events, "test:pass"), ["still declares"])
+    })
+
+    it("end() lets go of the events, and a session without uncaught takes none", async () => {
         const local = createTAL()
         const on = target()
-        capture(local, {capture: on})
+        capture(local, {uncaught: on})
         await local.session.end()
         fire(on, "unhandledrejection", {reason: new Error("after the end")})
         const again = capture(local)
-        fire(on, "unhandledrejection", {reason: new Error("without capture")})
+        fire(on, "unhandledrejection", {reason: new Error("without uncaught")})
         await local.session.end()
 
         assert.equal(summaryOf(again).counts.tests, 0)
