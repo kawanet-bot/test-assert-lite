@@ -39,8 +39,8 @@ const TICK_MS = 1_000
  * nothing about a CLI that went away.
  */
 export const client = (fetch: FetchLike): Client => {
-    const stdout = createBufWriter()
-    const stderr = createBufWriter()
+    const stdoutBuf = createBufWriter()
+    const stderrBuf = createBufWriter()
     let timer: ReturnType<typeof setTimeout> | null = null
     let alive: ReturnType<typeof setInterval> | null = null
     let started = 0
@@ -59,8 +59,8 @@ export const client = (fetch: FetchLike): Client => {
         if (timer != null) clearTimeout(timer)
         timer = null
         // Emptied and queued in one synchronous step, so end() cannot get ahead.
-        const stdoutText = stdout.read()
-        const stderrText = stderr.read()
+        const stdoutText = stdoutBuf.read()
+        const stderrText = stderrBuf.read()
         if (stdoutText) void post("stdout", stdoutText)
         if (stderrText) void post("stderr", stderrText)
         return inflight
@@ -77,6 +77,9 @@ export const client = (fetch: FetchLike): Client => {
         }
     }
 
+    const stdout = wrap(stdoutBuf)
+    const stderr = wrap(stderrBuf)
+
     const tick = (): void => {
         if (Date.now() - last < QUIET_MS) return
         stderr.write(`⏳ ${Math.round((Date.now() - started) / 1000)}s\n`)
@@ -88,8 +91,8 @@ export const client = (fetch: FetchLike): Client => {
             alive ??= setInterval(tick, TICK_MS)
             return post("begin", "")
         },
-        stdout: wrap(stdout),
-        stderr: wrap(stderr),
+        stdout,
+        stderr,
         end: async success => {
             if (alive != null) clearInterval(alive)
             alive = null
