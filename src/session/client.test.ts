@@ -5,14 +5,14 @@ import {createTAL} from "../index.ts"
 
 const TITLE = "session/client.test.ts"
 
-// The CLI's side without a network: the session is handed a fetch of the
-// test's own, which keeps each request's path and body in arrival order,
-// and refuses what goes to the run that is gone. The global fetch is left
-// alone, which the page running these suites reports its own run with.
+// The page's side of the channel, without a network: what the session
+// posts, in what order, and with what verdict.
+
 const RUN = "http://127.0.0.1:1/@tal/run/abc/"
 const GONE = "http://127.0.0.1:1/@tal/run/gone/"
 const seen: {path: string, body: string}[] = []
 
+// Keeps each request in arrival order. The run that is gone refuses.
 const stub: TAL.FetchLike = async (url, init) => {
     if (url.href.startsWith(GONE)) throw new TypeError("fetch failed")
     seen.push({path: url.pathname, body: init.body})
