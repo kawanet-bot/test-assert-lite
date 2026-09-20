@@ -36,7 +36,7 @@ const TICK_MS = 1_000
  * Connects to the CLI at `base`, the run's URL ending in "/". Sending
  * never rejects: the page can do nothing about a CLI that went away.
  */
-export const client = (base: string | URL, fetch: FetchLike): Client => {
+export const client = (fetch: FetchLike): Client => {
     const buffers = {stdout: [] as string[], stderr: [] as string[]} as const
     let timer: ReturnType<typeof setTimeout> | null = null
     let alive: ReturnType<typeof setInterval> | null = null
@@ -47,7 +47,7 @@ export const client = (base: string | URL, fetch: FetchLike): Client => {
 
     const post = (path: string, body: string): Promise<void> => {
         inflight = inflight
-            .then(() => fetch(new URL(path, base), {method: "POST", body}))
+            .then(() => fetch(path, {method: "POST", body}))
             .then(() => undefined, () => undefined)
         return inflight
     }

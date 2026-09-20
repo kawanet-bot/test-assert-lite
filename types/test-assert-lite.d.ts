@@ -260,7 +260,7 @@ export declare namespace TAL {
     }
 
     // What the session sends to the CLI with: a POST, whose response it never reads.
-    type FetchLike = (url: URL, init: {method: "POST", body: string}) => Promise<unknown>
+    type FetchLike = (url: string, init: {method: "POST", body: string}) => Promise<unknown>
 
     // What a session takes over: the five methods a page's console has.
     interface ConsoleLike {
@@ -276,12 +276,7 @@ export declare namespace TAL {
         reporter?: ReporterFn | string
         /** Where the formatted text goes; the session's `stdout` unless given. */
         output?: OutputFn
-        /**
-         * The run's URL, ending in "/", when the CLI drives the page: the
-         * session reports to the CLI through it. Any other base means nothing.
-         */
-        base?: string | URL
-        /** What the session sends to the CLI with, under a run's URL; the global fetch unless given. */
+        /** What the session sends to the CLI with. */
         fetch?: FetchLike
         /**
          * Takes the errors outside the tests, until end(): the uncaught

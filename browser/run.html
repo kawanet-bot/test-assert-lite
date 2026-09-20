@@ -18,7 +18,7 @@
     // there, takes the window's errors outside the tests, and the console
     // goes the same way.
     session({
-        base: new URL("./", import.meta.url),
+        fetch: fetch,
         uncaught: window,
         console: console,
         reporter: options.reporter,
