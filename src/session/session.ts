@@ -236,7 +236,7 @@ export const createSessions = (harness: HarnessState): SessionControl => {
             releaseConsole()
         }
         if (url != null && CHANNEL.test(url.pathname)) {
-            const channel = client(url)
+            const channel = client(url, options.fetch ?? ((u, init) => fetch(u, init)))
             void channel.begin()
             stdout.connect(channel.stdout)
             stderr.connect(channel.stderr)

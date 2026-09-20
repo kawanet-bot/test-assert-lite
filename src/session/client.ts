@@ -1,7 +1,11 @@
 // The page's side of the channel to the CLI: one call per endpoint under
 // the run's base URL. Text is buffered per stream and sent in one request
 // per flush, so a burst of a hundred console lines is one round trip.
-// Node's fetch() is all it uses, so it runs anywhere with a base to reach.
+// A POST is all it sends, with the fetch it is given.
+
+import type {TAL} from "test-assert-lite"
+
+type FetchLike = TAL.FetchLike
 
 export interface Client {
     /** Tells the CLI the page is up; it waits for this with a timeout. */
@@ -32,7 +36,7 @@ const TICK_MS = 1_000
  * Connects to the CLI at `base`, the run's URL ending in "/". Sending
  * never rejects: the page can do nothing about a CLI that went away.
  */
-export const client = (base: string | URL): Client => {
+export const client = (base: string | URL, fetch: FetchLike): Client => {
     const buffers = {stdout: [] as string[], stderr: [] as string[]} as const
     let timer: ReturnType<typeof setTimeout> | null = null
     let alive: ReturnType<typeof setInterval> | null = null
@@ -51,6 +55,7 @@ export const client = (base: string | URL): Client => {
     const flush = (): Promise<void> => {
         if (timer != null) clearTimeout(timer)
         timer = null
+        // Emptied and queued in one synchronous step, so end() cannot get ahead.
         const stdoutText = buffers.stdout.splice(0).join("")
         const stderrText = buffers.stderr.splice(0).join("")
         if (stdoutText) void post("stdout", stdoutText)
