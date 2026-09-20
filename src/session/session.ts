@@ -2,6 +2,8 @@ import type {TAL} from "test-assert-lite"
 import {html} from "../reporter/html.ts"
 import {spec} from "../reporter/spec.ts"
 import {tap} from "../reporter/tap.ts"
+import {isError} from "../utils/is-error.ts"
+import {stringify} from "../utils/stringify.ts"
 import {errorText} from "../utils/tester-error.ts"
 import {client} from "./client.ts"
 import {withFooter} from "./footer.ts"
@@ -13,6 +15,7 @@ type OutputFn = TAL.OutputFn
 type SessionOptions = TAL.SessionOptions
 type Writer = TAL.Writer
 type EventTargetLike = TAL.EventTargetLike
+type ConsoleLike = TAL.ConsoleLike
 
 // What a run reports with: opened by session(), or with the defaults on
 // the first declaration, until end() closes it with the verdict.
@@ -22,7 +25,7 @@ interface Open {
     end: (success: boolean) => Promise<void>
     // Opened by a declaration rather than by session(): the refusal differs.
     auto: boolean
-    // Lets go of the errors outside the tests, where capture took them.
+    // Lets go of what the session took: the errors outside the tests, and the console.
     release: () => void
 }
 
@@ -39,10 +42,9 @@ export interface SessionControl {
 }
 
 // One of the two streams. With a sink the text goes through as it comes;
-// without one, before a session and after it, or in a page with no run
-// URL, the text is held.
+// without one, before a session and after it, the text is held.
 interface Outlet extends Writer {
-    connect: (sink: ((text: string) => void) | undefined) => void
+    connect: (sink: (text: string) => void) => void
     disconnect: () => void
 }
 
@@ -62,7 +64,6 @@ const outlet = (): Outlet => {
             else held += text
         },
         connect: fn => {
-            if (fn == null) return
             sink = fn
             const text = held
             held = ""
@@ -77,17 +78,6 @@ const outlet = (): Outlet => {
 // A base under a run's own URL connects the page to the CLI; any other
 // base means nothing here.
 const CHANNEL = /^\/@tal\/run\//
-
-const defaultOutput: OutputFn = (text) => {
-    // console.log adds its own newline, so drop the trailing one
-    console.log(text.replace(/\n$/, ""))
-}
-
-// Node's process streams, where they exist.
-const local = (name: "stdout" | "stderr"): ((text: string) => void) | undefined => {
-    const stream = "undefined" !== typeof process ? process[name] : undefined
-    return stream?.write == null ? undefined : text => void stream.write(text)
-}
 
 // The suites are served under a digest-named directory; the name a
 // person knows is what follows it.
@@ -125,6 +115,34 @@ const capture = (harness: HarnessState, target: EventTargetLike): (() => void) =
     return () => {
         target.removeEventListener("error", onError, true)
         target.removeEventListener("unhandledrejection", onRejection)
+    }
+}
+
+// The console's methods go to the writers until released, a call a line:
+// a string as it is, an Error with its stack, anything else as an
+// assertion would show it.
+const consoleLine = (args: unknown[]): string =>
+    `${args.map(v => "string" === typeof v ? v : isError(v) ? errorText(v) : stringify(v)).join(" ")}\n`
+
+// The methods as the session found them, wrappers included, to be called
+// on the console they came from: the fallback writes with them, and
+// end() puts them back.
+const saveConsole = (target: ConsoleLike): ConsoleLike => {
+    const {debug, log, info, warn, error} = target
+    return {debug, log, info, warn, error}
+}
+
+const takeConsole = (target: ConsoleLike, saved: ConsoleLike, stdout: Writer, stderr: Writer): (() => void) => {
+    const out = (...args: unknown[]): void => stdout.write(consoleLine(args))
+    const err = (...args: unknown[]): void => stderr.write(consoleLine(args))
+    target.debug = target.log = target.info = out
+    target.warn = target.error = err
+    return () => {
+        target.debug = saved.debug
+        target.log = saved.log
+        target.info = saved.info
+        target.warn = saved.warn
+        target.error = saved.error
     }
 }
 
@@ -187,29 +205,36 @@ export const createSessions = (harness: HarnessState): SessionControl => {
         const named = reporterOf(options.reporter) ?? spec({quiet: options.quiet})
         const reporter = options.quiet ? named : withFooter(named)
         const url = base == null ? null : new URL(base)
-        const opened = (open: Omit<Open, "release" | "auto">): Open => {
-            const target = targetOf(options.capture)
-            const release = target == null ? () => undefined : capture(harness, target)
-            return {...open, auto, release}
+        // The report goes where the console goes unless told otherwise.
+        const output = options.output ?? ((text: string) => stdout.write(text))
+        // Saved before anything is taken over, so nothing here loops back.
+        const found = options.console ?? globalThis.console
+        const saved = saveConsole(found)
+        const fallback = (level: "log" | "error") => (text: string) => saved[level].call(found, text.replace(/\n$/, ""))
+        const target = targetOf(options.capture)
+        const releaseErrors = target == null ? () => undefined : capture(harness, target)
+        const releaseConsole = options.console == null ? () => undefined : takeConsole(found, saved, stdout, stderr)
+        const release = (): void => {
+            releaseErrors()
+            releaseConsole()
         }
         if (url != null && CHANNEL.test(url.pathname)) {
             const channel = client(url)
             void channel.begin()
             stdout.connect(channel.stdout)
             stderr.connect(channel.stderr)
-            return opened({
-                reporter,
-                output: options.output ?? (text => channel.stdout(text)),
-                end: channel.end,
-            })
+            return {reporter, output, end: channel.end, auto, release}
         }
-        stdout.connect(local("stdout"))
-        stderr.connect(local("stderr"))
-        return opened({
-            reporter,
-            output: options.output ?? defaultOutput,
-            end: async () => undefined,
-        })
+        // Node's process streams where they exist, the console the session found otherwise.
+        const hasProcess = "undefined" !== typeof process && process.stdout?.write != null
+        if (hasProcess) {
+            stdout.connect(text => void process.stdout.write(text))
+            stderr.connect(text => void process.stderr.write(text))
+        } else {
+            stdout.connect(fallback("log"))
+            stderr.connect(fallback("error"))
+        }
+        return {reporter, output, end: async () => undefined, auto, release}
     }
 
     const session: TAL.SessionAPI["session"] = (options = {}) => {
