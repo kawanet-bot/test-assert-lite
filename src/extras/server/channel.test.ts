@@ -15,11 +15,13 @@ const nullWriter: TAL.Writer = {write: (() => undefined)}
 const prefix = "/@tal/run/000000000/"
 const otherPrefix = "/@tal/run/000000001/"
 
-const post = async (channel: Channel, endpoint: string, body: string, method = "POST", path: string = prefix): Promise<number> => {
+const post = async (channel: Channel, endpoint: string, body: string, method = "POST", path: string = prefix): Promise<number | "next" | undefined> => {
     const url = `http://127.0.0.1${path}${endpoint}`
     const c = createContext(new Request(url, {method, body: method === "POST" ? body : null}))
-    const res = await channel.handler(c, async () => undefined)
-    return res?.status ?? 0
+    let next: "next" | undefined = undefined
+    const res = await channel.handler(c, async () => void (next = "next"))
+    if (next) return next
+    return res?.status
 }
 
 describe(TITLE, () => {
@@ -40,8 +42,8 @@ describe(TITLE, () => {
     it("leaves another path to the next middleware, and refuses another method", async () => {
         const run = createChannel({prefix, stdout: nullWriter, stderr: nullWriter})
         assert.equal(await post(run, "stdout", "", "GET"), 405)
-        assert.equal(await post(run, "nothing", ""), 0)
-        assert.equal(await post(run, "end", "true", "POST", otherPrefix), 0)
+        assert.equal(await post(run, "nothing", ""), "next")
+        assert.equal(await post(run, "end", "true", "POST", otherPrefix), "next")
         run.close()
     })
 
