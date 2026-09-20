@@ -12,7 +12,7 @@ const testStub = () => {
     const pathLog: string[] = []
     const bodyLog: string[] = []
 
-    // Keeps each request in arrival order. A request to the run that is gone fails.
+    // Keeps each request in arrival order.
     const fetch: TAL.FetchLike = async (path, init) => {
         pathLog.push(path)
         bodyLog.push(init.body)
