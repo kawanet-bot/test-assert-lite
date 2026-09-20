@@ -10,11 +10,13 @@ export type Next = () => Promise<void>
 /** Answers with a Response, or leaves it to the rest of the chain with next(). */
 export type MiddlewareHandler = (c: Context, next: Next) => Promise<Response | void>
 
-/** The request as the middleware sees it: the parts of Hono's HonoRequest used here, under a name of its own as it is not that type. */
+/** The request as the middleware sees it: the parts of Hono's HonoRequest. */
 export interface HonyRequest {
     /** The web-standard Request. */
     raw: Request
+
     method: string
+
     url: string
     /** The path alone, percent-decoded in full, so a file's name arrives as it is on disk. */
     path: string
@@ -29,10 +31,12 @@ export interface HonyRequest {
  * Response once some middleware has answered. An interface, not a class,
  * so that a Hono Context, which has all of this, fits it as it is.
  */
-export interface Context {
+export interface Context extends ContextLike {
     req: HonyRequest
+
     /** The Response so far; setting one finalizes the context. */
     res: Response
+
     /** True once a Response is set; the rest of the chain leaves it be. */
     finalized: boolean
 
@@ -43,6 +47,16 @@ export interface Context {
 
     /** May come as a promise, as Hono's does. */
     notFound(): Response | Promise<Response>
+}
+
+export interface ContextLike {
+    req: {
+        method: string
+        path: string
+        text(): Promise<string>
+    }
+
+    body(data: null, status?: number, headers?: Record<string, string>): Response
 }
 
 // Decoded once and in full, unlike Hono, which leaves a reserved character

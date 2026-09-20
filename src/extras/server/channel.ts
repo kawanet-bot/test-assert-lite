@@ -5,7 +5,7 @@
 // nothing changes in the protocol here without a change in the client.
 
 import type {TAL} from "test-assert-lite"
-import type {MiddlewareHandler} from "./middleware.ts"
+import type {ContextLike, Next} from "./middleware.ts"
 
 export interface ChannelOptions {
     /** Where the page's stdout goes. */
@@ -18,7 +18,8 @@ export interface ChannelOptions {
 
 export interface Channel {
     /** Takes the page's reports, each a POST under the path, and answers 204; 405 to any other method. */
-    handler: MiddlewareHandler
+    handler: (c: ContextLike, next: Next) => Promise<Response | void>
+
     /** The verdict the page reports at its end; rejects if it never begins. */
     done: Promise<boolean>
 
@@ -73,18 +74,20 @@ export const createChannel = ({prefix, stdout, stderr}: ChannelOptions): Channel
 
     const endpointMap = new Map(endpointList)
 
+    const handler = async (c: ContextLike, next: Next) => {
+        if (!c.req.path.startsWith(prefix)) return next()
+        const command = c.req.path.slice(prefix.length)
+        const endpoint = endpointMap.get(command)
+        if (endpoint == null) return next()
+        if (c.req.method !== "POST") return c.body(null, 405, {allow: "POST"})
+        endpoint(await c.req.text())
+        heard()
+        return c.body(null, 204)
+    }
+
     heard()
     return {
-        handler: async (c, next) => {
-            if (!c.req.path.startsWith(prefix)) return next()
-            const command = c.req.path.slice(prefix.length)
-            const endpoint = endpointMap.get(command)
-            if (endpoint == null) return next()
-            if (c.req.method !== "POST") return c.body(null, 405, {allow: "POST"})
-            endpoint(await c.req.text())
-            heard()
-            return c.body(null, 204)
-        },
+        handler,
         done,
         close: () => {
             if (timer != null) clearTimeout(timer)
