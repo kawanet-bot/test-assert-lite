@@ -7,9 +7,8 @@ import {capture, names, ofType, summaryOf} from "../test-utils/capture.ts"
 
 const TITLE = "session/session.test.ts"
 
-// uncaught listens on what it is given: a window in a page, and here an
-// EventTarget of the test's own, so nothing reaches the real one, which
-// the page running these suites in a browser listens on itself.
+// An EventTarget of the test's own stands in for the window. Nothing
+// reaches the real one.
 const target = (): EventTarget => new EventTarget()
 // Defined rather than assigned: target, for one, is a getter on an Event.
 const fire = (on: EventTarget, type: string, fields: object): void => {

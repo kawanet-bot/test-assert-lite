@@ -1,46 +1,34 @@
 import {strict as assert} from "node:assert"
-import {after, before, describe, it} from "node:test"
+import {describe, it} from "node:test"
+import type {TAL} from "test-assert-lite"
 import {createTAL} from "../index.ts"
 
 const TITLE = "session/client.test.ts"
 
-// The CLI's side without a network: fetch() is all the session sends with,
-// so a stand-in takes what goes to the run below and keeps each request's
-// path and body in arrival order, and refuses what goes to the run that
-// is gone. Anything else goes on to the real fetch(): in a browser, the
-// page's own session reports this very run through the same function.
+// The page's side of the channel, without a network: what the session
+// posts, in what order, and with what verdict.
+
 const RUN = "http://127.0.0.1:1/@tal/run/abc/"
 const GONE = "http://127.0.0.1:1/@tal/run/gone/"
 const seen: {path: string, body: string}[] = []
-const real = globalThis.fetch
 
-const stub: typeof fetch = (input, init) => {
-    const url = String(input)
-    if (url.startsWith(GONE)) return Promise.reject(new TypeError("fetch failed"))
-    if (!url.startsWith(RUN)) return real.call(globalThis, input, init)
-    seen.push({path: new URL(url).pathname, body: String(init?.body ?? "")})
-    return Promise.resolve(new Response(null, {status: 204}))
+// Keeps each request in arrival order. A request to the run that is gone fails.
+const stub: TAL.FetchLike = async (url, init) => {
+    if (url.href.startsWith(GONE)) throw new TypeError("fetch failed")
+    seen.push({path: url.pathname, body: init.body})
 }
 
 // A harness per session, since a session stays open until its end(); the
 // report itself is kept off the channel, so what is seen is what is sent.
 const connect = (base: string | URL) => {
     const local = createTAL()
-    local.session.session({base, output: () => undefined})
+    local.session.session({base, fetch: stub, output: () => undefined})
     return {...local.session, it: local.test.it}
 }
 
 const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms))
 
 describe(TITLE, () => {
-    before(() => {
-        globalThis.fetch = stub
-    })
-
-    after(() => {
-        globalThis.fetch = real
-    })
-
     it("posts begin first, then the streams, then end, in order", async () => {
         seen.length = 0
         const client = connect(RUN)
@@ -109,7 +97,7 @@ describe(TITLE, () => {
         const local = createTAL()
         local.session.stdout.write("early\n")
         local.session.stderr.write("warned\n")
-        local.session.session({base: RUN, output: () => undefined})
+        local.session.session({base: RUN, fetch: stub, output: () => undefined})
         await local.session.end()
         assert.deepEqual(seen.map(({path, body}) => `${path} ${JSON.stringify(body)}`), [
             '/@tal/run/abc/begin ""',
@@ -122,11 +110,11 @@ describe(TITLE, () => {
     it("text written after end() waits for the next session", async () => {
         seen.length = 0
         const local = createTAL()
-        local.session.session({base: RUN, output: () => undefined})
+        local.session.session({base: RUN, fetch: stub, output: () => undefined})
         await local.session.end()
         local.session.stdout.write("later\n")
         assert.equal(seen.length, 2)
-        local.session.session({base: RUN, output: () => undefined})
+        local.session.session({base: RUN, fetch: stub, output: () => undefined})
         await local.session.end()
         assert.deepEqual(seen.slice(2).map(({path, body}) => `${path} ${JSON.stringify(body)}`), [
             '/@tal/run/abc/begin ""',
@@ -147,7 +135,7 @@ describe(TITLE, () => {
         }
         const {log, warn} = fake
         const local = createTAL()
-        local.session.session({base: RUN, output: () => undefined, console: fake})
+        local.session.session({base: RUN, fetch: stub, output: () => undefined, console: fake})
         assert.notEqual(fake.log, log)
         fake.log("a", 1, "b")
         fake.info("info")
