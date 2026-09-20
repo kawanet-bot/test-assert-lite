@@ -259,8 +259,9 @@ export declare namespace TAL {
         off(event: string, listener: (...args: unknown[]) => void): unknown
     }
 
-    // What the session sends to the CLI with: a POST, whose response it never reads.
-    type FetchLike = (url: URL, init: {method: "POST", body: string}) => Promise<unknown>
+    // What the session reports to the CLI with: a POST to one of `begin`,
+    // `stdout`, `stderr` and `end`, relative to the page. The response is never read.
+    type FetchLike = (url: string, init: {method: "POST", body: string}) => Promise<unknown>
 
     // What a session takes over: the five methods a page's console has.
     interface ConsoleLike {
@@ -276,12 +277,7 @@ export declare namespace TAL {
         reporter?: ReporterFn | string
         /** Where the formatted text goes; the session's `stdout` unless given. */
         output?: OutputFn
-        /**
-         * The run's URL, ending in "/", when the CLI drives the page: the
-         * session reports to the CLI through it. Any other base means nothing.
-         */
-        base?: string | URL
-        /** What the session sends to the CLI with, under a run's URL; the global fetch unless given. */
+        /** Reports the run to the CLI, with this. Nothing is sent without it. */
         fetch?: FetchLike
         /**
          * Takes the errors outside the tests, until end(): the uncaught
@@ -319,7 +315,7 @@ export declare namespace TAL {
         /** Runs every registered test, and closes the session. */
         end(): Promise<SessionResult>
         /**
-         * The console of the run: the CLI under a run's URL, Node's own
+         * The console of the run: the CLI when a fetch is given, Node's own
          * streams, or the console as the session found it. Text
          * written outside a session, before session() or after end(), waits for the next one.
          */

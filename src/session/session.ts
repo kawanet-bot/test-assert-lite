@@ -76,10 +76,6 @@ const outlet = (): Outlet => {
     }
 }
 
-// A base under a run's own URL connects the page to the CLI; any other
-// base means nothing here.
-const CHANNEL = /^\/@tal\/run\//
-
 // The suites are served under a digest-named directory; the name a
 // person knows is what follows it.
 const SERVED = /^\/@tal\/files\/[0-9a-f]{9}\//
@@ -218,11 +214,9 @@ export const createSessions = (harness: HarnessState): SessionControl => {
     }
 
     const create = (options: SessionOptions, auto: boolean): Open => {
-        const {base} = options
         // The footer is the session's to leave off, for a script that is no suite.
         const named = reporterOf(options.reporter) ?? spec({quiet: options.quiet})
         const reporter = options.quiet ? named : withFooter(named)
-        const url = base == null ? null : new URL(base)
         // The report goes where the console goes unless told otherwise.
         const output = options.output ?? ((text: string) => stdout.write(text))
         // Saved before anything is taken over, so nothing here loops back.
@@ -235,8 +229,8 @@ export const createSessions = (harness: HarnessState): SessionControl => {
             releaseErrors()
             releaseConsole()
         }
-        if (url != null && CHANNEL.test(url.pathname)) {
-            const channel = client(url, options.fetch ?? fetch)
+        if (options.fetch != null) {
+            const channel = client(options.fetch)
             void channel.begin()
             stdout.connect(channel.stdout)
             stderr.connect(channel.stderr)

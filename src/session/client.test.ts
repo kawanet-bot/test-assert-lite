@@ -8,124 +8,133 @@ const TITLE = "session/client.test.ts"
 // The page's side of the channel, without a network: what the session
 // posts, in what order, and with what verdict.
 
-const RUN = "http://127.0.0.1:1/@tal/run/abc/"
-const GONE = "http://127.0.0.1:1/@tal/run/gone/"
-const seen: {path: string, body: string}[] = []
+const testStub = () => {
+    const pathLog: string[] = []
+    const bodyLog: string[] = []
 
-// Keeps each request in arrival order. A request to the run that is gone fails.
-const stub: TAL.FetchLike = async (url, init) => {
-    if (url.href.startsWith(GONE)) throw new TypeError("fetch failed")
-    seen.push({path: url.pathname, body: init.body})
-}
+    // Keeps each request in arrival order.
+    const fetch: TAL.FetchLike = async (path, init) => {
+        pathLog.push(path)
+        bodyLog.push(init.body)
+    }
 
-// A harness per session, since a session stays open until its end(); the
-// report itself is kept off the channel, so what is seen is what is sent.
-const connect = (base: string | URL) => {
-    const local = createTAL()
-    local.session.session({base, fetch: stub, output: () => undefined})
-    return {...local.session, it: local.test.it}
+    const output = () => undefined
+
+    return {pathLog, bodyLog, fetch, output}
 }
 
 const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms))
 
 describe(TITLE, () => {
     it("posts begin first, then the streams, then end, in order", async () => {
-        seen.length = 0
-        const client = connect(RUN)
-        client.stdout.write("one\n")
-        client.stderr.write("warned\n")
-        client.stdout.write("two\n")
-        await client.end()
-        assert.deepEqual(seen.map(({path}) => path), [
-            "/@tal/run/abc/begin",
-            "/@tal/run/abc/stdout",
-            "/@tal/run/abc/stderr",
-            "/@tal/run/abc/end",
+        const {session} = createTAL()
+        const {pathLog, bodyLog, fetch, output} = testStub()
+        session.session({fetch, output})
+        session.stdout.write("one\n")
+        session.stderr.write("warned\n")
+        session.stdout.write("two\n")
+        await session.end()
+        assert.deepEqual(pathLog, [
+            "begin",
+            "stdout",
+            "stderr",
+            "end",
         ])
-        assert.equal(seen[1]?.body, "one\ntwo\n")
-        assert.equal(seen[2]?.body, "warned\n")
-        assert.equal(seen[3]?.body, "true")
+        assert.equal(bodyLog[1], "one\ntwo\n")
+        assert.equal(bodyLog[2], "warned\n")
+        assert.equal(bodyLog[3], "true")
     })
 
     it("gathers a burst of lines into one request per stream", async () => {
-        seen.length = 0
-        const client = connect(RUN)
-        for (let i = 0; i < 100; i++) client.stdout.write(`line ${i}\n`)
-        await client.end()
-        assert.deepEqual(seen.map(({path}) => path), ["/@tal/run/abc/begin", "/@tal/run/abc/stdout", "/@tal/run/abc/end"])
-        assert.equal((seen[1]?.body ?? "").split("\n").length - 1, 100)
-        assert.equal(seen[2]?.body, "true")
+        const {session} = createTAL()
+        const {pathLog, bodyLog, fetch, output} = testStub()
+        session.session({fetch, output})
+        for (let i = 0; i < 100; i++) session.stdout.write(`line ${i}\n`)
+        await session.end()
+        assert.deepEqual(pathLog, ["begin", "stdout", "end"])
+        assert.equal((bodyLog[1] ?? "").split("\n").length - 1, 100)
+        assert.equal(bodyLog[2], "true")
     })
 
     it("flushes on its own while the run goes on", async () => {
-        seen.length = 0
-        const client = connect(RUN)
-        client.stdout.write("early\n")
+        const {session} = createTAL()
+        const {pathLog, bodyLog, fetch, output} = testStub()
+        session.session({fetch, output})
+        session.stdout.write("early\n")
         await sleep(200)
-        assert.deepEqual(seen.map(({path, body}) => `${path} ${JSON.stringify(body)}`), ['/@tal/run/abc/begin ""', '/@tal/run/abc/stdout "early\\n"'])
-        client.stdout.write("late\n")
-        await client.end()
-        assert.equal(seen.length, 4)
-        assert.equal(seen[2]?.body, "late\n")
+        assert.deepEqual(pathLog, ["begin", "stdout"])
+        assert.deepEqual(bodyLog, ["", "early\n"])
+        session.stdout.write("late\n")
+        await session.end()
+        assert.equal(pathLog.length, 4)
+        assert.equal(bodyLog.length, 4)
+        assert.equal(bodyLog[2], "late\n")
     })
 
     it("sends the run's verdict: false once a test failed", async () => {
-        seen.length = 0
-        const client = connect(RUN)
-        client.it("fails", () => {
+        const {session, test} = createTAL()
+        const {bodyLog, fetch, output} = testStub()
+        session.session({fetch, output})
+        test.it("fails", () => {
             throw new Error("no")
         })
-        await client.end()
-        assert.equal(seen.at(-1)?.body, "false")
+        await session.end()
+        assert.equal(bodyLog.at(-1), "false")
     })
 
     it("sends text as given, and an Error as its text with a newline", async () => {
-        seen.length = 0
-        const client = connect(RUN)
-        client.stderr.write("as ")
-        client.stderr.write("given\n")
-        client.stderr.write(new TypeError("typed"))
-        await client.end()
-        const lines = (seen[1]?.body ?? "").split("\n")
+        const {session} = createTAL()
+        const {bodyLog, fetch, output} = testStub()
+        session.session({fetch, output})
+        session.stderr.write("as ")
+        session.stderr.write("given\n")
+        session.stderr.write(new TypeError("typed"))
+        await session.end()
+        const lines = (bodyLog[1] ?? "").split("\n")
         assert.equal(lines[0], "as given")
         assert.match(lines[1] ?? "", /^TypeError: typed/)
-        assert.equal(seen[1]?.body.endsWith("\n"), true)
+        assert.equal(bodyLog[1]!.endsWith("\n"), true)
     })
 
     it("text written before session() goes out once the session is open", async () => {
-        seen.length = 0
-        const local = createTAL()
-        local.session.stdout.write("early\n")
-        local.session.stderr.write("warned\n")
-        local.session.session({base: RUN, fetch: stub, output: () => undefined})
-        await local.session.end()
-        assert.deepEqual(seen.map(({path, body}) => `${path} ${JSON.stringify(body)}`), [
-            '/@tal/run/abc/begin ""',
-            '/@tal/run/abc/stdout "early\\n"',
-            '/@tal/run/abc/stderr "warned\\n"',
-            '/@tal/run/abc/end "true"',
-        ])
+        const {session} = createTAL()
+        const {pathLog, bodyLog, fetch, output} = testStub()
+        session.stdout.write("early\n")
+        session.stderr.write("warned\n")
+        session.session({fetch, output})
+        await session.end()
+        assert.deepEqual(pathLog, ["begin", "stdout", "stderr", "end"])
+        assert.deepEqual(bodyLog, ["", "early\n", "warned\n", "true"])
+    })
+
+    it("does not reject when the fetch does", async () => {
+        const {session} = createTAL()
+        const {output} = testStub()
+        const fetch: TAL.FetchLike = async () => {
+            throw new TypeError("fetch failed")
+        }
+        session.session({fetch, output})
+        session.stdout.write("lost\n")
+        assert.equal((await session.end()).success, true)
     })
 
     it("text written after end() waits for the next session", async () => {
-        seen.length = 0
-        const local = createTAL()
-        local.session.session({base: RUN, fetch: stub, output: () => undefined})
-        await local.session.end()
-        local.session.stdout.write("later\n")
-        assert.equal(seen.length, 2)
-        local.session.session({base: RUN, fetch: stub, output: () => undefined})
-        await local.session.end()
-        assert.deepEqual(seen.slice(2).map(({path, body}) => `${path} ${JSON.stringify(body)}`), [
-            '/@tal/run/abc/begin ""',
-            '/@tal/run/abc/stdout "later\\n"',
-            '/@tal/run/abc/end "true"',
-        ])
+        const {session} = createTAL()
+        const {pathLog, bodyLog, fetch, output} = testStub()
+        session.session({fetch, output})
+        await session.end()
+        session.stdout.write("later\n")
+        assert.equal(pathLog.length, 2)
+        assert.equal(bodyLog.length, 2)
+        session.session({fetch, output})
+        await session.end()
+        assert.deepEqual(pathLog.slice(2), ["begin", "stdout", "end"])
+        assert.deepEqual(bodyLog.slice(2), ["", "later\n", "true"])
     })
 
     // A console of the test's own stands in for the page's.
     it("takes a console: log to stdout, error to stderr, a call a line, and gives it back at the end", async () => {
-        seen.length = 0
+        const {pathLog, bodyLog, fetch, output} = testStub()
         const fake = {
             debug: (..._: unknown[]) => undefined,
             log: (..._: unknown[]) => undefined,
@@ -134,45 +143,22 @@ describe(TITLE, () => {
             error: (..._: unknown[]) => undefined,
         }
         const {log, warn} = fake
-        const local = createTAL()
-        local.session.session({base: RUN, fetch: stub, output: () => undefined, console: fake})
+        const {session} = createTAL()
+        session.session({fetch, output, console: fake})
         assert.notEqual(fake.log, log)
         fake.log("a", 1, "b")
         fake.info("info")
         fake.debug("debug")
         fake.warn("warned")
         fake.error(new TypeError("typed"))
-        await local.session.end()
+        await session.end()
         assert.equal(fake.log, log)
         assert.equal(fake.warn, warn)
-        assert.equal(seen[1]?.path, "/@tal/run/abc/stdout")
-        assert.equal(seen[1]?.body, "a 1 b\ninfo\ndebug\n")
-        assert.equal(seen[2]?.path, "/@tal/run/abc/stderr")
-        const lines = (seen[2]?.body ?? "").split("\n")
+        assert.equal(pathLog[1], "stdout")
+        assert.equal(bodyLog[1], "a 1 b\ninfo\ndebug\n")
+        assert.equal(pathLog[2], "stderr")
+        const lines = (bodyLog[2] ?? "").split("\n")
         assert.equal(lines[0], "warned")
         assert.match(lines[1] ?? "", /^TypeError: typed/)
-    })
-
-    it("takes a URL for the base as well as a string", async () => {
-        seen.length = 0
-        const client = connect(new URL(RUN))
-        await client.end()
-        assert.deepEqual(seen.map(({path}) => path), ["/@tal/run/abc/begin", "/@tal/run/abc/end"])
-    })
-
-    it("does not reject when a request fails", async () => {
-        const client = connect(GONE)
-        client.stdout.write("lost\n")
-        await client.end()
-    })
-
-    // A base outside a run's URL opens no channel: the session reports as
-    // it would with none, and end() sends nothing.
-    it("a base outside a run's URL sends nothing", async () => {
-        seen.length = 0
-        const client = connect("http://127.0.0.1:1/")
-        client.stdout.write("")
-        await client.end()
-        assert.equal(seen.length, 0)
     })
 })
