@@ -79,12 +79,6 @@ const outlet = (): Outlet => {
 // base means nothing here.
 const CHANNEL = /^\/@tal\/run\//
 
-// Node's process streams, where they exist.
-const local = (name: "stdout" | "stderr"): ((text: string) => void) | undefined => {
-    const stream = "undefined" !== typeof process ? process[name] : undefined
-    return stream?.write == null ? undefined : text => void stream.write(text)
-}
-
 // The suites are served under a digest-named directory; the name a
 // person knows is what follows it.
 const SERVED = /^\/@tal\/files\/[0-9a-f]{9}\//
@@ -231,8 +225,15 @@ export const createSessions = (harness: HarnessState): SessionControl => {
             stderr.connect(channel.stderr)
             return opened({reporter, output, end: channel.end})
         }
-        stdout.connect(local("stdout") ?? fallback("log"))
-        stderr.connect(local("stderr") ?? fallback("error"))
+        // Node's process streams where they exist, the console the session found otherwise.
+        const hasProcess = "undefined" !== typeof process && process.stdout?.write != null
+        if (hasProcess) {
+            stdout.connect(text => void process.stdout.write(text))
+            stderr.connect(text => void process.stderr.write(text))
+        } else {
+            stdout.connect(fallback("log"))
+            stderr.connect(fallback("error"))
+        }
         return opened({reporter, output, end: async () => undefined})
     }
 
