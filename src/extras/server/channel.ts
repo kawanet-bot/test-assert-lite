@@ -84,12 +84,12 @@ export const createChannel = ({stdout, stderr}: ChannelOptions): Channel => {
         path,
         handler: async (c, next) => {
             if (!c.req.path.startsWith(path)) return next()
-            const command = c.req.path.slice(path.length).replace(/\?.*$/, "")
+            const command = c.req.path.slice(path.length)
             const endpoint = endpointMap.get(command)
             if (endpoint == null) return next()
             if (c.req.method !== "POST") return c.body(null, 405, {allow: "POST"})
-            heard()
             endpoint(await c.req.text())
+            heard()
             return c.body(null, 204)
         },
         done,

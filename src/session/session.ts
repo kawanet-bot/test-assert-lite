@@ -114,8 +114,7 @@ const takeUncaught = (harness: HarnessState, target: EventTargetLike | EventEmit
 // a string as it is, an Error with its stack, anything else as an
 // assertion would show it.
 const consoleLine = (args: unknown[]): string => {
-    const text = args.map(toString).join(" ")
-    return text.endsWith("\n") ? text : `${text}\n`
+    return `${args.map(toString).join(" ")}\n`
 }
 
 const toString = (v: unknown): string => {

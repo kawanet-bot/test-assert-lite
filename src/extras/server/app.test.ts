@@ -35,7 +35,7 @@ describe(TITLE, () => {
     let lib: string
     let app: App
     let server: Server
-    const sharedStdout = createBufWriter()
+    const bufStdout = createBufWriter()
     const stdout = nullWriter
     const stderr = nullWriter
     const url = (path: string): string => server.origin + path
@@ -68,7 +68,7 @@ describe(TITLE, () => {
                 new ImportMapItem("mine", "/mine.js", pathToFileURL(join(dir, "map.json"))),
                 new ImportAliasItem(`mod=${join(dir, "lib", "mod.mjs")}`, cwd),
             ]),
-            stdout: sharedStdout,
+            stdout: bufStdout,
             stderr,
         })
         server = await serve({handler: app.handler})
@@ -196,7 +196,7 @@ describe(TITLE, () => {
         const run = app.page.slice(0, -"run.html".length)
         assert.equal(await post(url(`${run}begin`), ""), 204)
         assert.equal(await post(url(`${run}stdout`), "one\n"), 204)
-        assert.equal(sharedStdout.read(), "one\n")
+        assert.equal(bufStdout.read(), "one\n")
         assert.equal((await get(url(`${run}stdout`))).status, 405)
         assert.equal(await post(url(`${run}nothing`), ""), 404)
         assert.equal(await post(url("/index.html"), ""), 405)
@@ -226,14 +226,12 @@ describe(TITLE, () => {
     })
 
     it("serves without the reload, and says so once, where it cannot watch", async () => {
-        const lines: string[] = []
-        const stderr: TAL.Writer = {write: (chunk) => lines.push(chunk)}
+        const bufStderr = createBufWriter()
         const files = [join(dir, "missing", "suite.mjs")]
-        const blind = createApp({session: {files}, watch: true, stdout, stderr})
+        const blind = createApp({session: {files}, watch: true, stdout, stderr: bufStderr})
         const running = await serve({handler: blind.handler})
         try {
-            assert.equal(lines.length, 1)
-            assert.match(lines[0] ?? "", /^watch is off: ENOENT/)
+            assert.match(bufStderr.read(), /^watch is off: ENOENT/)
             const index = await get(running.origin + "/")
             assert.equal(index.status, 200)
             assert.equal(index.body.includes("/@tal/watch"), false)
@@ -308,17 +306,16 @@ describe(TITLE, () => {
     it("leaves a mounted page with an import map of its own as it is, and says so on stderr", async () => {
         await mkdir(join(dir, "mapped"))
         await writeFile(join(dir, "mapped", "index.html"), '<html><head><script type="importmap">{"imports":{"mine":"/mine.mjs"}}</script></head><body>mapped</body></html>')
-        const lines: string[] = []
-        const stderr: TAL.Writer = {write: (chunk) => lines.push(chunk)}
+        const bufStderr = createBufWriter()
         const files = [join(dir, "tests", "my suite.mjs")]
-        const mapped = createApp({session: {files}, mount: join(dir, "mapped"), stdout, stderr})
+        const mapped = createApp({session: {files}, mount: join(dir, "mapped"), stdout, stderr: bufStderr})
         const running = await serve({handler: mapped.handler})
         try {
             const index = (await get(running.origin + "/")).body
             assert.equal(index.split("importmap").length - 1, 1)
             assert.ok(index.includes('"mine":"/mine.mjs"'))
             assert.equal(index.includes("/@tal/"), false)
-            assert.deepEqual(lines, ["import map of its own, left as it is: /\n"])
+            assert.deepEqual(bufStderr.read(), "import map of its own, left as it is: /\n")
             const run = (await get(running.origin + mapped.page)).body
             assert.ok(run.includes('<script type="importmap">'))
         } finally {
