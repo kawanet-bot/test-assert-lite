@@ -309,7 +309,7 @@ export declare namespace TAL {
         end(): Promise<SessionResult>
         /**
          * The console of the run: the CLI under a run's URL, Node's own
-         * streams, or the console as it was when the package loaded. Text
+         * streams, or the console as the session found it. Text
          * written outside a session, before session() or after end(), waits for the next one.
          */
         stdout: Writer

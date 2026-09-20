@@ -79,16 +79,10 @@ const outlet = (): Outlet => {
 // base means nothing here.
 const CHANNEL = /^\/@tal\/run\//
 
-// The console as it was when this module loaded, ahead of any page code:
-// what a page's session takes over never loops back through here.
-const native = {stdout: console.log, stderr: console.error}
-
-// Node's process streams where they exist, the console as loaded otherwise.
-const local = (name: "stdout" | "stderr"): ((text: string) => void) => {
+// Node's process streams, where they exist.
+const local = (name: "stdout" | "stderr"): ((text: string) => void) | undefined => {
     const stream = "undefined" !== typeof process ? process[name] : undefined
-    if (stream?.write != null) return text => void stream.write(text)
-    const log = native[name]
-    return text => log(text.replace(/\n$/, ""))
+    return stream?.write == null ? undefined : text => void stream.write(text)
 }
 
 // The suites are served under a digest-named directory; the name a
@@ -135,21 +129,23 @@ const capture = (harness: HarnessState, target: EventTargetLike): (() => void) =
 // assertion would show it.
 const STDOUT_LEVELS = ["log", "info", "debug"] as const
 const STDERR_LEVELS = ["warn", "error"] as const
-type Level = keyof ConsoleLike
 
 const consoleLine = (args: unknown[]): string =>
     `${args.map(v => "string" === typeof v ? v : isError(v) ? errorText(v) : stringify(v)).join(" ")}\n`
 
-const takeConsole = (target: ConsoleLike, stdout: Writer, stderr: Writer): (() => void) => {
-    const saved = new Map<Level, ConsoleLike[Level]>()
-    const take = (level: Level, writer: Writer): void => {
-        saved.set(level, target[level])
-        target[level] = (...args) => writer.write(consoleLine(args))
-    }
-    for (const level of STDOUT_LEVELS) take(level, stdout)
-    for (const level of STDERR_LEVELS) take(level, stderr)
+// The methods as the session found them, wrappers included, to be called
+// on the console they came from: the fallback writes with them, and
+// end() puts them back.
+const saveConsole = (target: ConsoleLike): ConsoleLike => {
+    const {log, info, debug, warn, error} = target
+    return {log, info, debug, warn, error}
+}
+
+const takeConsole = (target: ConsoleLike, saved: ConsoleLike, stdout: Writer, stderr: Writer): (() => void) => {
+    for (const level of STDOUT_LEVELS) target[level] = (...args) => stdout.write(consoleLine(args))
+    for (const level of STDERR_LEVELS) target[level] = (...args) => stderr.write(consoleLine(args))
     return () => {
-        for (const [level, fn] of saved) target[level] = fn
+        for (const level of [...STDOUT_LEVELS, ...STDERR_LEVELS]) target[level] = saved[level]
     }
 }
 
@@ -214,10 +210,14 @@ export const createSessions = (harness: HarnessState): SessionControl => {
         const url = base == null ? null : new URL(base)
         // The report goes where the console goes unless told otherwise.
         const output = options.output ?? ((text: string) => stdout.write(text))
+        // Saved before anything is taken over, so nothing here loops back.
+        const found = options.console ?? globalThis.console
+        const saved = saveConsole(found)
+        const fallback = (level: "log" | "error") => (text: string) => saved[level].call(found, text.replace(/\n$/, ""))
         const opened = (open: Omit<Open, "release" | "auto">): Open => {
             const target = targetOf(options.capture)
             const releaseErrors = target == null ? () => undefined : capture(harness, target)
-            const releaseConsole = options.console == null ? () => undefined : takeConsole(options.console, stdout, stderr)
+            const releaseConsole = options.console == null ? () => undefined : takeConsole(found, saved, stdout, stderr)
             const release = (): void => {
                 releaseErrors()
                 releaseConsole()
@@ -231,8 +231,8 @@ export const createSessions = (harness: HarnessState): SessionControl => {
             stderr.connect(channel.stderr)
             return opened({reporter, output, end: channel.end})
         }
-        stdout.connect(local("stdout"))
-        stderr.connect(local("stderr"))
+        stdout.connect(local("stdout") ?? fallback("log"))
+        stderr.connect(local("stderr") ?? fallback("error"))
         return opened({reporter, output, end: async () => undefined})
     }
 
