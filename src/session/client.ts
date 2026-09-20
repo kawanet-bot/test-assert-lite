@@ -35,7 +35,7 @@ const TICK_MS = 1_000
  * never rejects: the page can do nothing about a CLI that went away.
  */
 export const client = (base: string | URL): Client => {
-    const buffers: Record<Stream, string> = {stdout: "", stderr: ""}
+    const buffers = {stdout: [] as string[], stderr: [] as string[]} as const
     let timer: ReturnType<typeof setTimeout> | null = null
     let alive: ReturnType<typeof setInterval> | null = null
     let started = 0
@@ -53,17 +53,15 @@ export const client = (base: string | URL): Client => {
     const flush = (): Promise<void> => {
         if (timer != null) clearTimeout(timer)
         timer = null
-        for (const stream of ["stdout", "stderr"] as const) {
-            const text = buffers[stream]
-            if (!text) continue
-            buffers[stream] = ""
-            void post(stream, text)
-        }
+        const stdoutText = buffers.stdout.splice(0).join("")
+        const stderrText = buffers.stderr.splice(0).join("")
+        if (stdoutText) void post("stdout", stdoutText)
+        if (stderrText) void post("stderr", stderrText)
         return inflight
     }
 
     const write = (stream: Stream, text: string): void => {
-        buffers[stream] += text
+        buffers[stream].push(text)
         last = Date.now()
         timer ??= setTimeout(flush, FLUSH_MS)
     }
