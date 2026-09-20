@@ -247,9 +247,16 @@ export declare namespace TAL {
 
     // --- session ---
 
+    // A window, or what stands in for one: its `error` and `unhandledrejection` events.
     interface EventTargetLike {
         addEventListener(type: string, listener: (event: unknown) => void, capture?: boolean): void
         removeEventListener(type: string, listener: (event: unknown) => void, capture?: boolean): void
+    }
+
+    // Node's process, or what stands in for it: its `uncaughtException` and `unhandledRejection` events.
+    interface EventEmitterLike {
+        on(event: string, listener: (...args: unknown[]) => void): unknown
+        off(event: string, listener: (...args: unknown[]) => void): unknown
     }
 
     // What a session takes over: the five methods a page's console has.
@@ -273,11 +280,10 @@ export declare namespace TAL {
         base?: string | URL
         /**
          * Takes the errors outside the tests, until end(): the uncaught
-         * errors and unhandled rejections of the window, for `true`, or of
-         * the target given, each one failed test at the top level. Under
-         * Node `true` means nothing yet.
+         * exceptions and unhandled rejections of the window or the process
+         * given, each one failed test at the top level.
          */
-        capture?: boolean | EventTargetLike
+        uncaught?: EventTargetLike | EventEmitterLike
         /**
          * A console the session takes over until end(): debug, log and info
          * go to `stdout`, warn and error to `stderr`, each call one line.

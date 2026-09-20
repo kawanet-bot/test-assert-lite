@@ -59,7 +59,7 @@ export const runInNode = async (options: RunInNodeOptions): Promise<TAL.SessionR
     const data: HookData = {aliases, virtual}
     register(`data:text/javascript,${encodeURIComponent(HOOK)}`, {data})
 
-    session({reporter, quiet})
+    session({reporter, quiet, uncaught: process})
 
     const urlList = evalURL == null
         ? files.map(file => pathToFileURL(resolve(file)).href)

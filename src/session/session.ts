@@ -15,6 +15,7 @@ type OutputFn = TAL.OutputFn
 type SessionOptions = TAL.SessionOptions
 type Writer = TAL.Writer
 type EventTargetLike = TAL.EventTargetLike
+type EventEmitterLike = TAL.EventEmitterLike
 type ConsoleLike = TAL.ConsoleLike
 
 // What a run reports with: opened by session(), or with the defaults on
@@ -83,17 +84,14 @@ const CHANNEL = /^\/@tal\/run\//
 // person knows is what follows it.
 const SERVED = /^\/@tal\/files\/[0-9a-f]{9}\//
 
-// The uncaught errors and unhandled rejections of a window, or of what
-// stands in for one, each one failed test at the root, named after the
-// script it came from where the event says, as a suite that threw is
-// under Node. Declared on the root itself, since one may arrive while a
-// test body is open, and the walk takes it.
-const capture = (harness: HarnessState, target: EventTargetLike): (() => void) => {
-    const take = (name: string, error: unknown): void => {
-        harness.root.declareTest(name, {}, () => {
-            throw error
-        })
-    }
+// The errors outside the tests, each one failed test at the root. Declared
+// on the root itself, since one may arrive while a test body is open, and
+// the walk takes it.
+type Take = (name: string, error: unknown) => void
+
+// A window's: named after the script the event says it came from, as a
+// suite that threw is under Node.
+const takeFromTarget = (take: Take, target: EventTargetLike): (() => void) => {
     const nameOf = (url: string | undefined): string | undefined => {
         try {
             return url ? new URL(url).pathname.replace(SERVED, "") : undefined
@@ -116,6 +114,29 @@ const capture = (harness: HarnessState, target: EventTargetLike): (() => void) =
         target.removeEventListener("error", onError, true)
         target.removeEventListener("unhandledrejection", onRejection)
     }
+}
+
+// A process's: while listened to, an exception no longer ends the process.
+const takeFromEmitter = (take: Take, target: EventEmitterLike): (() => void) => {
+    const onException = (error: unknown): void => take("uncaught exception", error)
+    const onRejection = (reason: unknown): void => take("unhandled rejection", reason)
+    target.on("uncaughtException", onException)
+    target.on("unhandledRejection", onRejection)
+    return () => {
+        target.off("uncaughtException", onException)
+        target.off("unhandledRejection", onRejection)
+    }
+}
+
+const takeUncaught = (harness: HarnessState, target: EventTargetLike | EventEmitterLike): (() => void) => {
+    const take: Take = (name, error) => {
+        harness.root.declareTest(name, {}, () => {
+            throw error
+        })
+    }
+    if (isEventTarget(target)) return takeFromTarget(take, target)
+    if (isEventEmitter(target)) return takeFromEmitter(take, target)
+    throw new Error("uncaught takes a window or a process: an EventTarget or an EventEmitter")
 }
 
 // The console's methods go to the writers until released, a call a line:
@@ -146,17 +167,14 @@ const takeConsole = (target: ConsoleLike, saved: ConsoleLike, stdout: Writer, st
     }
 }
 
-// What takes a listener: a window has it, Node's global does not.
 const isEventTarget = (value: unknown): value is EventTargetLike => {
     const v = value as Partial<EventTargetLike> | null | undefined
     return "function" === typeof v?.addEventListener && "function" === typeof v?.removeEventListener
 }
 
-// true is the window, where there is one; under Node, whose errors nothing
-// takes yet, true means nothing. Anything else is listened on as given.
-const targetOf = (capture: SessionOptions["capture"]): EventTargetLike | undefined => {
-    const target = capture === true ? globalThis : capture
-    return isEventTarget(target) ? target : undefined
+const isEventEmitter = (value: unknown): value is EventEmitterLike => {
+    const v = value as Partial<EventEmitterLike> | null | undefined
+    return "function" === typeof v?.on && "function" === typeof v?.off
 }
 
 const reporterMap = new Map<string, () => ReporterFn>([
@@ -211,8 +229,7 @@ export const createSessions = (harness: HarnessState): SessionControl => {
         const found = options.console ?? globalThis.console
         const saved = saveConsole(found)
         const fallback = (level: "log" | "error") => (text: string) => saved[level].call(found, text.replace(/\n$/, ""))
-        const target = targetOf(options.capture)
-        const releaseErrors = target == null ? () => undefined : capture(harness, target)
+        const releaseErrors = options.uncaught == null ? () => undefined : takeUncaught(harness, options.uncaught)
         const releaseConsole = options.console == null ? () => undefined : takeConsole(found, saved, stdout, stderr)
         const release = (): void => {
             releaseErrors()

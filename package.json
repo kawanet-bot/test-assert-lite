@@ -18,6 +18,7 @@
     "@rollup/plugin-sucrase": "^5.1.0",
     "@rollup/plugin-terser": "^1.0.0",
     "@types/node": "^24.13.3",
+    "event-lite": "^1.0.1",
     "rollup": "^4.63.1",
     "simple-git-hooks": "^2.14.0",
     "ts-refine": "^0.6.3",
