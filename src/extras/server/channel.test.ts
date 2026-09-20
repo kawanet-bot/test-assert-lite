@@ -43,11 +43,14 @@ describe(TITLE, () => {
 
     it("fails the verdict on anything but true, and takes nothing after the end", async () => {
         const stdout = createBufWriter()
-        const run = createChannel({stdout, stderr: nullWriter})
+        const stderr = createBufWriter()
+        const run = createChannel({stdout, stderr})
         assert.equal(await post(run, "end", "yes"), 204)
         assert.equal(await run.done, false)
-        assert.equal(await post(run, "stdout", "late\n"), 204)
-        assert.equal(stdout.read(), "")
+        assert.equal(await post(run, "stdout", "after end 1\n"), 204)
+        assert.equal(await post(run, "stderr", "after end 2\n"), 204)
+        assert.equal(stdout.read(), "after end 1\n")
+        assert.equal(stderr.read(), "after end 2\n")
         run.close()
     })
 

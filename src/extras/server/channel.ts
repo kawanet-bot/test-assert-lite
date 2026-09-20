@@ -74,10 +74,10 @@ export const createChannel = (options: ChannelOptions = {}): Channel => {
             begun = true
         }],
         ["stdout", (body) => {
-            if (!ended) stdout.write(body)
+            stdout.write(body)
         }],
         ["stderr", (body) => {
-            if (!ended) stderr.write(body)
+            stderr.write(body)
         }],
         ["end", (body) => {
             ended = true
