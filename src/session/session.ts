@@ -223,8 +223,8 @@ export const createSessions = (harness: HarnessState): SessionControl => {
             stdout.connect(process.stdout)
             stderr.connect(process.stderr)
         } else {
-            stdout.connect({write: (text => saved.log(trimEnd(text)))})
-            stderr.connect({write: (text => saved.error(trimEnd(text)))})
+            stdout.connect({write: (text) => saved.log.call(found, trimEnd(text))})
+            stderr.connect({write: (text) => saved.error.call(found, trimEnd(text))})
         }
         return {reporter, output, end: async () => undefined, auto, release}
     }
