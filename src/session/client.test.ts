@@ -107,6 +107,17 @@ describe(TITLE, () => {
         assert.deepEqual(bodyLog, ["", "early\n", "warned\n", "true"])
     })
 
+    it("does not reject when the fetch does", async () => {
+        const {session} = createTAL()
+        const {output} = testStub()
+        const fetch: TAL.FetchLike = async () => {
+            throw new TypeError("fetch failed")
+        }
+        session.session({fetch, output})
+        session.stdout.write("lost\n")
+        assert.equal((await session.end()).success, true)
+    })
+
     it("text written after end() waits for the next session", async () => {
         const {session} = createTAL()
         const {pathLog, bodyLog, fetch, output} = testStub()
