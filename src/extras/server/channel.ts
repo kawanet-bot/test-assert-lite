@@ -42,7 +42,8 @@ const SILENCE_MS = 30_000
  * within, and the verdict is what it says at its end.
  */
 export const createChannel = (options: ChannelOptions = {}): Channel => {
-    const {stdout = text => process.stdout.write(text), stderr = text => process.stderr.write(text)} = options
+    const stdout = options.stdout ?? (text => process.stdout.write(text))
+    const stderr = options.stderr ?? (text => process.stderr.write(text))
     const path = `/@tal/run/${runId()}/`
 
     // The verdict: true from the page's end alone passes, anything else
@@ -66,32 +67,34 @@ export const createChannel = (options: ChannelOptions = {}): Channel => {
             : "The page never reported in: could the browser reach the server?")), SILENCE_MS)
         timer.unref()
     }
-    const stream = (write: (text: string) => void) => (body: string) => {
-        heard()
-        if (!ended) write(body)
-    }
 
-    const endpoints: Record<string, (body: string) => void> = {
-        begin: () => {
+    const endpointList: [string, (body: string) => void][] = [
+        ["begin", () => {
             begun = true
-            heard()
-        },
-        stdout: stream(stdout),
-        stderr: stream(stderr),
-        end: body => {
+        }],
+        ["stdout", (body) => {
+            if (!ended) stdout(body)
+        }],
+        ["stderr", (body) => {
+            if (!ended) stderr(body)
+        }],
+        ["end", (body) => {
             ended = true
-            heard()
             settle(body === "true")
-        },
-    }
+        }],
+    ]
+
+    const endpointMap = new Map(endpointList)
 
     heard()
     return {
         path,
         handler: async (c, next) => {
-            const endpoint = c.req.path.startsWith(path) ? endpoints[c.req.path.slice(path.length)] : undefined
+            if (!c.req.path.startsWith(path)) return next()
+            const endpoint = endpointMap.get(c.req.path.slice(path.length))
             if (endpoint == null) return next()
             if (c.req.method !== "POST") return c.body(null, 405, {allow: "POST"})
+            heard()
             endpoint(await c.req.text())
             return c.body(null, 204)
         },

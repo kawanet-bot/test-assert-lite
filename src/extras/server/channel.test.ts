@@ -1,15 +1,14 @@
 import {strict as assert} from "node:assert"
 import {describe, it} from "node:test"
-import {createChannel} from "./channel.ts"
-import type {Context} from "./middleware.ts"
+import {createChannel, type Channel} from "./channel.ts"
 import {createContext} from "./middleware.ts"
 
 const TITLE = "extras/server/channel.test.ts"
 
 // The page's side, without a network: a POST under the run's path.
-const post = async (run: {path: string, handler: (c: Context, next: () => Promise<void>) => Promise<Response | void>}, endpoint: string, body: string, method = "POST"): Promise<number> => {
-    const c = createContext(new Request(`http://127.0.0.1${run.path}${endpoint}`, {method, body: method === "POST" ? body : null}))
-    const res = await run.handler(c, async () => undefined)
+const post = async (channel: Channel, endpoint: string, body: string, method = "POST"): Promise<number> => {
+    const c = createContext(new Request(`http://127.0.0.1${channel.path}${endpoint}`, {method, body: method === "POST" ? body : null}))
+    const res = await channel.handler(c, async () => undefined)
     return res?.status ?? 0
 }
 
