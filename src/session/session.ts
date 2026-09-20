@@ -121,9 +121,6 @@ const capture = (harness: HarnessState, target: EventTargetLike): (() => void) =
 // The console's methods go to the writers until released, a call a line:
 // a string as it is, an Error with its stack, anything else as an
 // assertion would show it.
-const STDOUT_LEVELS = ["debug", "log", "info"] as const
-const STDERR_LEVELS = ["warn", "error"] as const
-
 const consoleLine = (args: unknown[]): string =>
     `${args.map(v => "string" === typeof v ? v : isError(v) ? errorText(v) : stringify(v)).join(" ")}\n`
 
@@ -136,10 +133,16 @@ const saveConsole = (target: ConsoleLike): ConsoleLike => {
 }
 
 const takeConsole = (target: ConsoleLike, saved: ConsoleLike, stdout: Writer, stderr: Writer): (() => void) => {
-    for (const level of STDOUT_LEVELS) target[level] = (...args) => stdout.write(consoleLine(args))
-    for (const level of STDERR_LEVELS) target[level] = (...args) => stderr.write(consoleLine(args))
+    const out = (...args: unknown[]): void => stdout.write(consoleLine(args))
+    const err = (...args: unknown[]): void => stderr.write(consoleLine(args))
+    target.debug = target.log = target.info = out
+    target.warn = target.error = err
     return () => {
-        for (const level of [...STDOUT_LEVELS, ...STDERR_LEVELS]) target[level] = saved[level]
+        target.debug = saved.debug
+        target.log = saved.log
+        target.info = saved.info
+        target.warn = saved.warn
+        target.error = saved.error
     }
 }
 
@@ -208,22 +211,19 @@ export const createSessions = (harness: HarnessState): SessionControl => {
         const found = options.console ?? globalThis.console
         const saved = saveConsole(found)
         const fallback = (level: "log" | "error") => (text: string) => saved[level].call(found, text.replace(/\n$/, ""))
-        const opened = (open: Omit<Open, "release" | "auto">): Open => {
-            const target = targetOf(options.capture)
-            const releaseErrors = target == null ? () => undefined : capture(harness, target)
-            const releaseConsole = options.console == null ? () => undefined : takeConsole(found, saved, stdout, stderr)
-            const release = (): void => {
-                releaseErrors()
-                releaseConsole()
-            }
-            return {...open, auto, release}
+        const target = targetOf(options.capture)
+        const releaseErrors = target == null ? () => undefined : capture(harness, target)
+        const releaseConsole = options.console == null ? () => undefined : takeConsole(found, saved, stdout, stderr)
+        const release = (): void => {
+            releaseErrors()
+            releaseConsole()
         }
         if (url != null && CHANNEL.test(url.pathname)) {
             const channel = client(url)
             void channel.begin()
             stdout.connect(channel.stdout)
             stderr.connect(channel.stderr)
-            return opened({reporter, output, end: channel.end})
+            return {reporter, output, end: channel.end, auto, release}
         }
         // Node's process streams where they exist, the console the session found otherwise.
         const hasProcess = "undefined" !== typeof process && process.stdout?.write != null
@@ -234,7 +234,7 @@ export const createSessions = (harness: HarnessState): SessionControl => {
             stdout.connect(fallback("log"))
             stderr.connect(fallback("error"))
         }
-        return opened({reporter, output, end: async () => undefined})
+        return {reporter, output, end: async () => undefined, auto, release}
     }
 
     const session: TAL.SessionAPI["session"] = (options = {}) => {
