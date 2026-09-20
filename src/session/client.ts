@@ -17,8 +17,6 @@ export interface Client {
     end(success: boolean): Promise<void>
 }
 
-type Stream = "stdout" | "stderr"
-
 // How long lines gather before a flush: a test's burst of output becomes
 // one request, while a person watching still sees it as it comes.
 const FLUSH_MS = 50
@@ -60,15 +58,15 @@ export const client = (base: string | URL): Client => {
         return inflight
     }
 
-    const write = (stream: Stream, text: string): void => {
-        buffers[stream].push(text)
+    const write = (buf: string[], text: string): void => {
+        buf.push(text)
         last = Date.now()
         timer ??= setTimeout(flush, FLUSH_MS)
     }
 
     const tick = (): void => {
         if (Date.now() - last < QUIET_MS) return
-        write("stderr", `⏳ ${Math.round((Date.now() - started) / 1000)}s\n`)
+        write(buffers.stderr, `⏳ ${Math.round((Date.now() - started) / 1000)}s\n`)
     }
 
     return {
@@ -77,8 +75,8 @@ export const client = (base: string | URL): Client => {
             alive ??= setInterval(tick, TICK_MS)
             return post("begin", "")
         },
-        stdout: text => write("stdout", text),
-        stderr: text => write("stderr", text),
+        stdout: text => write(buffers.stdout, text),
+        stderr: text => write(buffers.stderr, text),
         end: async success => {
             if (alive != null) clearInterval(alive)
             alive = null
