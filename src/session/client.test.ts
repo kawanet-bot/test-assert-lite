@@ -8,27 +8,26 @@ const TITLE = "session/client.test.ts"
 // The page's side of the channel, without a network: what the session
 // posts, in what order, and with what verdict.
 
-const seen: {path: string, body: string}[] = []
+const testStub = () => {
+    const seen: {path: string, body: string}[] = []
 
-// Keeps each request in arrival order. A request to the run that is gone fails.
-const stub: TAL.FetchLike = async (path, init) => {
-    seen.push({path, body: init.body})
-}
+    // Keeps each request in arrival order. A request to the run that is gone fails.
+    const fetch: TAL.FetchLike = async (path, init) => {
+        seen.push({path, body: init.body})
+    }
 
-// A harness per session, since a session stays open until its end(); the
-// report itself is kept off the channel, so what is seen is what is sent.
-const connect = () => {
-    const local = createTAL()
-    local.session.session({fetch: stub, output: () => undefined})
-    return local
+    const output = () => undefined
+
+    return {seen, fetch, output}
 }
 
 const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms))
 
 describe(TITLE, () => {
     it("posts begin first, then the streams, then end, in order", async () => {
-        seen.length = 0
-        const {session} = connect()
+        const {session} = createTAL()
+        const {seen, fetch, output} = testStub()
+        session.session({fetch, output})
         session.stdout.write("one\n")
         session.stderr.write("warned\n")
         session.stdout.write("two\n")
@@ -45,8 +44,9 @@ describe(TITLE, () => {
     })
 
     it("gathers a burst of lines into one request per stream", async () => {
-        seen.length = 0
-        const {session} = connect()
+        const {session} = createTAL()
+        const {seen, fetch, output} = testStub()
+        session.session({fetch, output})
         for (let i = 0; i < 100; i++) session.stdout.write(`line ${i}\n`)
         await session.end()
         assert.deepEqual(seen.map(({path}) => path), ["begin", "stdout", "end"])
@@ -55,8 +55,9 @@ describe(TITLE, () => {
     })
 
     it("flushes on its own while the run goes on", async () => {
-        seen.length = 0
-        const {session} = connect()
+        const {session} = createTAL()
+        const {seen, fetch, output} = testStub()
+        session.session({fetch, output})
         session.stdout.write("early\n")
         await sleep(200)
         assert.deepEqual(seen.map(({path, body}) => `${path} ${JSON.stringify(body)}`), ['begin ""', 'stdout "early\\n"'])
@@ -67,8 +68,9 @@ describe(TITLE, () => {
     })
 
     it("sends the run's verdict: false once a test failed", async () => {
-        seen.length = 0
-        const {session, test} = connect()
+        const {session, test} = createTAL()
+        const {seen, fetch, output} = testStub()
+        session.session({fetch, output})
         test.it("fails", () => {
             throw new Error("no")
         })
@@ -77,8 +79,9 @@ describe(TITLE, () => {
     })
 
     it("sends text as given, and an Error as its text with a newline", async () => {
-        seen.length = 0
-        const {session} = connect()
+        const {session} = createTAL()
+        const {seen, fetch, output} = testStub()
+        session.session({fetch, output})
         session.stderr.write("as ")
         session.stderr.write("given\n")
         session.stderr.write(new TypeError("typed"))
@@ -90,11 +93,11 @@ describe(TITLE, () => {
     })
 
     it("text written before session() goes out once the session is open", async () => {
-        seen.length = 0
         const {session} = createTAL()
+        const {seen, fetch, output} = testStub()
         session.stdout.write("early\n")
         session.stderr.write("warned\n")
-        session.session({fetch: stub, output: () => undefined})
+        session.session({fetch, output})
         await session.end()
         assert.deepEqual(seen.map(({path, body}) => `${path} ${JSON.stringify(body)}`), [
             'begin ""',
@@ -105,13 +108,13 @@ describe(TITLE, () => {
     })
 
     it("text written after end() waits for the next session", async () => {
-        seen.length = 0
         const {session} = createTAL()
-        session.session({fetch: stub, output: () => undefined})
+        const {seen, fetch, output} = testStub()
+        session.session({fetch, output})
         await session.end()
         session.stdout.write("later\n")
         assert.equal(seen.length, 2)
-        session.session({fetch: stub, output: () => undefined})
+        session.session({fetch, output})
         await session.end()
         assert.deepEqual(seen.slice(2).map(({path, body}) => `${path} ${JSON.stringify(body)}`), [
             'begin ""',
@@ -122,7 +125,7 @@ describe(TITLE, () => {
 
     // A console of the test's own stands in for the page's.
     it("takes a console: log to stdout, error to stderr, a call a line, and gives it back at the end", async () => {
-        seen.length = 0
+        const {seen, fetch, output} = testStub()
         const fake = {
             debug: (..._: unknown[]) => undefined,
             log: (..._: unknown[]) => undefined,
@@ -132,7 +135,7 @@ describe(TITLE, () => {
         }
         const {log, warn} = fake
         const {session} = createTAL()
-        session.session({fetch: stub, output: () => undefined, console: fake})
+        session.session({fetch, output, console: fake})
         assert.notEqual(fake.log, log)
         fake.log("a", 1, "b")
         fake.info("info")
