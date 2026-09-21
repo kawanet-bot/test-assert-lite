@@ -12,18 +12,23 @@ const TITLE = "extras/server/channel.test.ts"
 
 const nullWriter: TAL.Writer = {write: (() => undefined)}
 
-const post = async (channel: Channel, endpoint: string, body: string, method = "POST"): Promise<number> => {
-    const c = createContext(new Request(`http://127.0.0.1${channel.path}${endpoint}`, {method, body: method === "POST" ? body : null}))
-    const res = await channel.handler(c, async () => undefined)
-    return res?.status ?? 0
+const prefix = "/@tal/run/000000000/"
+const otherPrefix = "/@tal/run/000000001/"
+
+const post = async (channel: Channel, endpoint: string, body: string, method = "POST", path: string = prefix): Promise<number | "next" | undefined> => {
+    const url = `http://127.0.0.1${path}${endpoint}`
+    const c = createContext(new Request(url, {method, body: method === "POST" ? body : null}))
+    let next: "next" | undefined = undefined
+    const res = await channel.handler(c, async () => void (next = "next"))
+    if (next) return next
+    return res?.status
 }
 
 describe(TITLE, () => {
     it("has a path of its own, and takes each report by POST under it", async () => {
         const stdout = createBufWriter()
         const stderr = createBufWriter()
-        const run = createChannel({stdout, stderr})
-        assert.match(run.path, /^\/@tal\/run\/[0-9a-z]{9}\/$/)
+        const run = createChannel({prefix, stdout, stderr})
         assert.equal(await post(run, "begin", ""), 204)
         assert.equal(await post(run, "stdout", "one\n"), 204)
         assert.equal(await post(run, "stderr", "warned\n"), 204)
@@ -35,17 +40,17 @@ describe(TITLE, () => {
     })
 
     it("leaves another path to the next middleware, and refuses another method", async () => {
-        const run = createChannel({stdout: nullWriter, stderr: nullWriter})
+        const run = createChannel({prefix, stdout: nullWriter, stderr: nullWriter})
         assert.equal(await post(run, "stdout", "", "GET"), 405)
-        assert.equal(await post(run, "nothing", ""), 0)
-        assert.equal(await post({...run, path: "/@tal/run/000000000/"}, "end", "true"), 0)
+        assert.equal(await post(run, "nothing", ""), "next")
+        assert.equal(await post(run, "end", "true", "POST", otherPrefix), "next")
         run.close()
     })
 
     it("fails the verdict on anything but true, and still takes the streams after the end", async () => {
         const stdout = createBufWriter()
         const stderr = createBufWriter()
-        const run = createChannel({stdout, stderr})
+        const run = createChannel({prefix, stdout, stderr})
         assert.equal(await post(run, "end", "yes"), 204)
         assert.equal(await run.done, false)
         assert.equal(await post(run, "stdout", "after end 1\n"), 204)
@@ -53,13 +58,5 @@ describe(TITLE, () => {
         assert.equal(stdout.read(), "after end 1\n")
         assert.equal(stderr.read(), "after end 2\n")
         run.close()
-    })
-
-    it("runs of its own do not share a path", () => {
-        const a = createChannel({stdout: nullWriter, stderr: nullWriter})
-        const b = createChannel({stdout: nullWriter, stderr: nullWriter})
-        assert.notEqual(a.path, b.path)
-        a.close()
-        b.close()
     })
 })
