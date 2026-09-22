@@ -1,4 +1,5 @@
 import type {TAL} from "test-assert-lite"
+import {stringify} from "../utils/stringify.ts"
 
 /** Host-side streams and lifecycle shared for one browser run. */
 export interface HostServices {
@@ -40,22 +41,29 @@ export const createHostServices = ({stdout, stderr}: Partial<HostServices> = {})
     services.beginning = new Promise(resolve => (services.begin = resolve))
     services.ending = new Promise(resolve => (services.end = resolve))
 
-    let cleaning = new Promise<void>(resolve => {
+    const showError = (e: unknown): void => {
+        services.stderr.write(`${stringify(e)}\n`)
+    }
+
+    let cleaning = false
+    let cleanups = new Promise<void>(resolve => {
         services.cleanup = () => {
+            cleaning = true
             resolve()
-            return cleaning
+            return cleanups
         }
     })
 
     services.onCleanup = (fn) => {
-        cleaning = cleaning.finally(() => fn())
+        if (cleaning) fn = () => Promise.resolve().then(fn).catch(showError)
+        cleanups = cleanups.finally(() => fn())
     }
 
     // The first resolve or reject owns the result and starts cleanup.
     let finished: Promise<void> | null = null
     services.finished = new Promise((resolve, reject) => {
         services.resolve = (result) => (finished ??= services.cleanup().then(() => resolve(result), reject))
-        services.reject = (error) => (finished ??= services.cleanup().catch(console.error).finally(() => reject(error)))
+        services.reject = (error) => (finished ??= services.cleanup().catch(showError).finally(() => reject(error)))
     })
 
     return services as HostServices

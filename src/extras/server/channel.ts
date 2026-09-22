@@ -5,7 +5,7 @@
 // nothing changes in the protocol here without a change in the client.
 
 import type {TAL} from "test-assert-lite"
-import {messageOf} from "../../utils/stringify.ts"
+import {stringify} from "../../utils/stringify.ts"
 import type {HostServices} from "../host-services.ts"
 import type {ContextLike, Next} from "./middleware.ts"
 
@@ -55,7 +55,7 @@ export const createChannel = ({prefix, services, timeout}: ChannelOptions): Chan
                 services.begin(payload)
                 begun = true
             } catch (e) {
-                services.stderr.write(`${messageOf(e)}\n`)
+                services.stderr.write(`${stringify(e)}\n`)
                 return 400
             }
         },
@@ -63,12 +63,12 @@ export const createChannel = ({prefix, services, timeout}: ChannelOptions): Chan
         stderr: (body) => void services.stderr.write(body),
         end: (body) => {
             try {
-                const payload = body && JSON.parse(body) as TAL.SessionResult
+                const payload = body ? JSON.parse(body) as TAL.SessionResult : undefined
                 if (!isTestResult(payload)) return 400
                 services.end(payload)
                 ended = true
             } catch (e) {
-                services.stderr.write(messageOf(e))
+                services.stderr.write(`${stringify(e)}\n`)
                 return 400
             }
         },
