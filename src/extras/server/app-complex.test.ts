@@ -37,10 +37,9 @@ describe(TITLE, () => {
     let lib: string
     let app: App
     let server: Server
-    const bufStdout = createBufWriter()
-    const stdout = nullWriter
+    const stdout = createBufWriter()
     const stderr = nullWriter
-    const sharedServices = createHostServices({stdout: bufStdout, stderr})
+    const sharedServices = createHostServices({stdout, stderr})
     const url = (path: string): string => server.origin + path
     const cwd = pathToFileURL(`${process.cwd()}/`)
 
@@ -172,62 +171,11 @@ describe(TITLE, () => {
         const run = app.page.slice(0, -"run.html".length)
         assert.equal(await post(url(`${run}begin`), ""), 204)
         assert.equal(await post(url(`${run}stdout`), "one\n"), 204)
-        assert.equal(bufStdout.read(), "one\n")
+        assert.equal(stdout.read(), "one\n")
         assert.equal((await get(url(`${run}stdout`))).status, 405)
         assert.equal(await post(url(`${run}nothing`), ""), 404)
         assert.equal(await post(url("/index.html"), ""), 405)
         assert.equal(await post(url(`${run}end`), SUCCESS), 204)
         assert.equal((await sharedServices.finished)?.success, true)
-    })
-
-    it("asks about changes from both pages, and only with watch on", async () => {
-        const files = [join(dir, "tests", "my suite.mjs")]
-        const services = createHostServices({stdout, stderr})
-        const watching = createApp({session: {files}, watch: true, services})
-        const running = await serve({handler: watching.handler, services})
-        try {
-            const index = (await get(running.origin + "/")).body
-            assert.ok(index.includes("/@tal/watch?after=${after}"))
-            assert.ok(index.includes("})(0)\n</script>\n</head>"))
-            assert.equal((await get(running.origin + watching.page)).body.includes("/@tal/watch"), true)
-            const pending = get(running.origin + "/@tal/watch?after=0")
-            await writeFile(join(dir, "tests", "my suite.mjs"), "export const suite = 2")
-            assert.equal((await pending).status, 200)
-            assert.ok((await get(running.origin + "/")).body.includes("})(1)\n</script>"))
-        } finally {
-            await services.cleanup()
-        }
-    })
-
-    it("names its own pages after the suites' package, or the suites, and never a mounted page", async () => {
-        const plain = await mkdtemp(join(tmpdir(), "tal-nopkg-"))
-        await writeFile(join(plain, "a.mjs"), "")
-        await writeFile(join(plain, "b <c>.mjs"), "")
-        await mkdir(join(plain, "site"))
-        await writeFile(join(plain, "site", "index.html"), "<html><head><title>{{title}}</title></head><body>{{title}}</body></html>")
-        const servicesN = createHostServices({stdout, stderr})
-        const servicesM = createHostServices({stdout, stderr})
-        const servicesB = createHostServices({stdout, stderr})
-        const namedFiles = [join(plain, "a.mjs"), join(plain, "b <c>.mjs"), join(plain, "a.mjs")]
-        const named = createApp({session: {files: namedFiles}, services: servicesN})
-        const mountedFiles = [join(plain, "a.mjs")]
-        const mounted = createApp({session: {files: mountedFiles}, mount: join(plain, "site"), services: servicesM})
-        const bare = createApp({session: {files: []}, mount: join(plain, "site"), services: servicesB})
-        const servers = await Promise.all([
-            serve({handler: named.handler, services: servicesN}),
-            serve({handler: mounted.handler, services: servicesM}),
-            serve({handler: bare.handler, services: servicesB}),
-        ])
-        try {
-            assert.ok((await get(servers[0]!.origin + named.page)).body.includes("<title>a.mjs b &#60;c&#62;.mjs</title>"))
-            assert.ok((await get(servers[1]!.origin + "/")).body.includes("<title>{{title}}</title>"))
-            assert.ok((await get(servers[1]!.origin + mounted.page)).body.includes("<title>a.mjs</title>"))
-            assert.ok((await get(servers[2]!.origin + bare.page)).body.includes("<title>test-assert-lite</title>"))
-        } finally {
-            await servicesN.cleanup()
-            await servicesM.cleanup()
-            await servicesB.cleanup()
-            await rm(plain, {recursive: true, force: true})
-        }
     })
 })

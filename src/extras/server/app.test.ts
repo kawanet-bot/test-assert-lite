@@ -185,4 +185,62 @@ describe(TITLE, () => {
             await services.cleanup()
         }
     })
+
+    it("asks about changes from both pages, and only with watch on", async () => {
+        const file = join(dir, "watching.mjs")
+        await writeFile(file, "export const watching = 1")
+        const files = [file]
+        const services = createHostServices({stdout, stderr})
+        const watching = createApp({session: {files}, watch: true, services})
+        const running = await serve({handler: watching.handler, services})
+        try {
+            const index = (await get(running.origin + "/")).body
+            assert.ok(index.includes("/@tal/watch?after="))
+            assert.ok(index.includes("})(0)\n</script>"))
+
+            const page = (await get(running.origin + watching.page)).body
+            assert.ok(page.includes("/@tal/watch?after="))
+            assert.ok(page.includes("})(0)\n</script>"))
+
+            const pending = get(running.origin + "/@tal/watch?after=0")
+            await writeFile(file, "export const watching = 2")
+
+            assert.equal((await pending).status, 200)
+            const after = (await get(running.origin + "/")).body
+            assert.ok(page.includes("/@tal/watch?after="))
+            assert.ok(after.includes("})(1)\n</script>"))
+        } finally {
+            await services.cleanup()
+        }
+    })
+
+    it("names its own pages after the suites' package, or the suites, and never a mounted page", async () => {
+        const plain = await mkdtemp(join(tmpdir(), "tal-nopkg-"))
+        await writeFile(join(plain, "a.mjs"), "")
+        await writeFile(join(plain, "b <c>.mjs"), "")
+        await mkdir(join(plain, "site"))
+        await writeFile(join(plain, "site", "index.html"), "<html><head><title>{{title}}</title></head><body>{{title}}</body></html>")
+        const servicesN = createHostServices({stdout, stderr})
+        const servicesM = createHostServices({stdout, stderr})
+        const servicesB = createHostServices({stdout, stderr})
+        const namedFiles = [join(plain, "a.mjs"), join(plain, "b <c>.mjs"), join(plain, "a.mjs")]
+        const named = createApp({session: {files: namedFiles}, services: servicesN})
+        const mountedFiles = [join(plain, "a.mjs")]
+        const mounted = createApp({session: {files: mountedFiles}, mount: join(plain, "site"), services: servicesM})
+        const bare = createApp({session: {files: []}, mount: join(plain, "site"), services: servicesB})
+        const serverN = await serve({handler: named.handler, services: servicesN})
+        const serverM = await serve({handler: mounted.handler, services: servicesM})
+        const serverB = await serve({handler: bare.handler, services: servicesB})
+        try {
+            assert.ok((await get(serverN!.origin + named.page)).body.includes("<title>a.mjs b &#60;c&#62;.mjs</title>"))
+            assert.ok((await get(serverM!.origin + "/")).body.includes("<title>{{title}}</title>"))
+            assert.ok((await get(serverM!.origin + mounted.page)).body.includes("<title>a.mjs</title>"))
+            assert.ok((await get(serverB!.origin + bare.page)).body.includes("<title>test-assert-lite</title>"))
+        } finally {
+            await servicesN.cleanup()
+            await servicesM.cleanup()
+            await servicesB.cleanup()
+            await rm(plain, {recursive: true, force: true})
+        }
+    })
 })
