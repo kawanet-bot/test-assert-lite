@@ -59,6 +59,38 @@ describe(TITLE, () => {
         assert.equal(await post(run, "end", "INVALID"), 400)
     })
 
+    // The bound is short here; its messages tell before and after begin apart.
+    it("fails the run when the page never begins within the silence given", async () => {
+        const services = createHostServices({stdout: nullWriter, stderr: nullWriter})
+        createChannel({prefix, services, timeout: 50})
+        await assert.rejects(services.finished, /never reported in/)
+    })
+
+    it("fails the run when a page that has begun falls silent", async () => {
+        const services = createHostServices({stdout: nullWriter, stderr: nullWriter})
+        const run = createChannel({prefix, services, timeout: 50})
+        assert.equal(await post(run, "begin", ""), 204)
+        await assert.rejects(services.finished, /No word from the page/)
+    })
+
+    it("keeps the bound after a report it refused", async () => {
+        const services = createHostServices({stdout: nullWriter, stderr: nullWriter})
+        const run = createChannel({prefix, services, timeout: 50})
+        assert.equal(await post(run, "begin", ""), 204)
+        assert.equal(await post(run, "end", "INVALID"), 400)
+        await assert.rejects(services.finished, /No word from the page/)
+    })
+
+    it("waits without a bound when no timeout is given", async () => {
+        const services = createHostServices({stdout: nullWriter, stderr: nullWriter})
+        createChannel({prefix, services})
+        const outcome = await Promise.race([
+            services.finished.then(() => "settled", () => "settled"),
+            new Promise(resolve => setTimeout(() => resolve("pending"), 100)),
+        ])
+        assert.equal(outcome, "pending")
+    })
+
     it("takes the streams after the end", async () => {
         const stdout = createBufWriter()
         const stderr = createBufWriter()

@@ -22,6 +22,10 @@ export interface CLIOptions {
     args: string[]
 }
 
+// How long a browser run, --playwright or --webdriver, may stay silent.
+// Before begin, the browser most likely could not reach the server. After
+// begin, a quiet page still reports every ten seconds, so this long means
+// the browser or its tab is gone. A hung test keeps reporting, so it waits.
 const SILENCE_MS = 30_000
 
 const runCLI = async (options: ModeOptions): Promise<number> => {

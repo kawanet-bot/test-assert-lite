@@ -18,7 +18,7 @@ export interface Client {
     /** Text for the CLI's stderr, buffered. */
     stderr: TAL.Writer
 
-    /** The verdict, sent once the buffers have drained; true alone passes. */
+    /** The verdict as JSON, sent once the buffers have drained. */
     end: (success: boolean) => Promise<void>
 }
 

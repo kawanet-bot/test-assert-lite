@@ -26,7 +26,7 @@ export interface HostServices {
 
     /** Runs the registered cleanup functions once. */
     cleanup: () => Promise<void>
-    /** Cleanup functions, run in insertion order. */
+    /** Cleanup functions, run once in insertion order. Add them before cleanup starts. */
     cleanups: Set<(() => unknown) | (() => Promise<unknown>)>
 }
 
