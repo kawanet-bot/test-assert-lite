@@ -33,9 +33,10 @@ describe(TITLE, () => {
     it("does not start the reporter when session() rejects", () => {
         const local = createTAL()
         let started = 0
-        const reporter: TAL.ReporterFn = async function* (source) {
+        const tap = local.reporter.tap()
+        const reporter: TAL.ReporterFn = source => {
             started++
-            yield* local.reporter.tap()(source)
+            return tap(source)
         }
 
         assert.throws(() => local.session.session({uncaught: {} as any, reporter}))
