@@ -8,16 +8,6 @@ export interface HostServices {
     /** Receives the page's standard error and host logs. */
     stderr: TAL.Writer
 
-    /** Reports that the page has started. */
-    begin: (payload?: unknown) => void
-    /** The first payload reported at begin. */
-    beginning: Promise<unknown>
-
-    /** Reports the page's session result. */
-    end: (result: TAL.SessionResult) => void
-    /** The first session result reported at end. */
-    ending: Promise<TAL.SessionResult>
-
     /** Finishes successfully after cleanup. */
     resolve: (result: TAL.SessionResult) => void
     /** Fails with the error after cleanup. */
@@ -37,9 +27,6 @@ export const createHostServices = ({stdout, stderr}: Partial<HostServices> = {})
 
     services.stdout = stdout ?? process.stdout
     services.stderr = stderr ?? process.stderr
-
-    services.beginning = new Promise(resolve => (services.begin = resolve))
-    services.ending = new Promise(resolve => (services.end = resolve))
 
     const showError = (e: unknown): void => {
         services.stderr.write(`${stringify(e)}\n`)

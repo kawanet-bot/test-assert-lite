@@ -39,7 +39,7 @@ describe(TITLE, () => {
         assert.equal(await post(run, "end", SUCCESS), 204)
         assert.equal(stdout.read(), "one\n")
         assert.equal(stderr.read(), "warned\n")
-        assert.equal((await services.ending)?.success, true)
+        assert.equal((await services.finished)?.success, true)
         await services.cleanup()
     })
 
@@ -98,7 +98,7 @@ describe(TITLE, () => {
         const services = createHostServices({stdout, stderr})
         const run = createChannel({prefix, services})
         assert.equal(await post(run, "end", SUCCESS), 204)
-        assert.equal((await services.ending)?.success, true)
+        assert.equal((await services.finished)?.success, true)
         assert.equal(await post(run, "stdout", "after end 1\n"), 204)
         assert.equal(await post(run, "stderr", "after end 2\n"), 204)
         assert.equal(stdout.read(), "after end 1\n")

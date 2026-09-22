@@ -161,6 +161,13 @@ describe(TITLE, () => {
         assert.equal((await get(url("/@tal/"))).status, 404)
     })
 
+    it("serves the default page without reload, named after the suite package", async () => {
+        assert.equal((await get(url("/"))).body.includes("/@tal/watch?after="), false)
+        assert.equal((await get(url("/@tal/watch?after=0"))).status, 404)
+        assert.ok((await get(url("/"))).body.includes("<title>fixture-pkg</title>\n"))
+        assert.ok((await get(url("/"))).body.includes("<h1>fixture-pkg</h1>"))
+    })
+
     it("takes the run's reports by POST under its path, and the verdict from end", async () => {
         const run = app.page.slice(0, -"run.html".length)
         assert.equal(await post(url(`${run}begin`), ""), 204)
@@ -170,12 +177,10 @@ describe(TITLE, () => {
         assert.equal(await post(url(`${run}nothing`), ""), 404)
         assert.equal(await post(url("/index.html"), ""), 405)
         assert.equal(await post(url(`${run}end`), SUCCESS), 204)
-        assert.equal((await sharedServices.ending)?.success, true)
+        assert.equal((await sharedServices.finished)?.success, true)
     })
 
     it("asks about changes from both pages, and only with watch on", async () => {
-        assert.equal((await get(url("/"))).body.includes("/@tal/watch?after="), false)
-        assert.equal((await get(url("/@tal/watch?after=0"))).status, 404)
         const files = [join(dir, "tests", "my suite.mjs")]
         const services = createHostServices({stdout, stderr})
         const watching = createApp({session: {files}, watch: true, services})
@@ -195,8 +200,6 @@ describe(TITLE, () => {
     })
 
     it("names its own pages after the suites' package, or the suites, and never a mounted page", async () => {
-        assert.ok((await get(url("/"))).body.includes("<title>fixture-pkg</title>\n"))
-        assert.ok((await get(url("/"))).body.includes("<h1>fixture-pkg</h1>"))
         const plain = await mkdtemp(join(tmpdir(), "tal-nopkg-"))
         await writeFile(join(plain, "a.mjs"), "")
         await writeFile(join(plain, "b <c>.mjs"), "")

@@ -52,8 +52,6 @@ export const runWebMode = async (options: ModeOptions & WebModeOptions) => {
             return await services.finished
         }
 
-        services.ending.then(result => services.resolve(result))
-
         if (mode === "webdriver") {
             const {custom, endpoint} = options
             await runInWebDriver({url, services, custom, endpoint})

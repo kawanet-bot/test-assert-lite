@@ -5,18 +5,6 @@ import {createHostServices} from "./host-services.ts"
 const TITLE = "extras/host-services.test.ts"
 
 describe(TITLE, () => {
-    it("carries the first begin and end payloads", async () => {
-        const services = createHostServices()
-        const payload = {name: "page"}
-        const result = {success: true}
-        services.begin(payload)
-        services.begin({name: "late"})
-        services.end(result)
-        services.end({success: false})
-        assert.equal(await services.beginning, payload)
-        assert.equal(await services.ending, result)
-    })
-
     it("runs cleanup once, in registration order", async () => {
         const services = createHostServices()
         const calls: number[] = []

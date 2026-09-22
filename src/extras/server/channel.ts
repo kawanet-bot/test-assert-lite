@@ -49,15 +49,8 @@ export const createChannel = ({prefix, services, timeout}: ChannelOptions): Chan
     }
 
     const commands: Record<CommandName, (body: string) => undefined | number> = {
-        begin: (body) => {
-            try {
-                const payload = body ? JSON.parse(body) as unknown : undefined
-                services.begin(payload)
-                begun = true
-            } catch (e) {
-                services.stderr.write(`${stringify(e)}\n`)
-                return 400
-            }
+        begin: () => {
+            begun = true
         },
         stdout: (body) => void services.stdout.write(body),
         stderr: (body) => void services.stderr.write(body),
@@ -65,7 +58,7 @@ export const createChannel = ({prefix, services, timeout}: ChannelOptions): Chan
             try {
                 const payload = body ? JSON.parse(body) as TAL.SessionResult : undefined
                 if (!isTestResult(payload)) return 400
-                services.end(payload)
+                services.resolve(payload)
                 ended = true
             } catch (e) {
                 services.stderr.write(`${stringify(e)}\n`)
