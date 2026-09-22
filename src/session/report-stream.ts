@@ -15,6 +15,13 @@ interface QueueItem {
     reject: (error: unknown) => void
 }
 
+// What the reporter's loop came to. Its failure is the run's once an
+// emit() has delivered it, and close()'s to throw until then.
+interface Failed {
+    failure: unknown
+    delivered: boolean
+}
+
 export interface ReportStream {
     emit: (event: TestEvent) => Promise<void>
 }
@@ -31,20 +38,14 @@ export interface ReportStreamOptions {
 // Makes the stream of one run. Events go in through emit() and come out
 // as text through the reporter. The stream closes as a cleanup of the run.
 export const createReportStream = ({reporter, output, services}: ReportStreamOptions): ReportStream => {
+    // The events not yet consumed. The head is the one the reporter holds.
     const pending: QueueItem[] = []
-    let active: QueueItem | null = null
+    // Resumes the source while it waits for an event, or for the end.
     let wake: (() => void) | null = null
+    // Set by close(). The input ends once the queue is empty.
     let closed = false
-    let failed = false
-    let failure: unknown
-    // Set once an emit() has rejected with the failure. close() then keeps quiet about it.
-    let delivered = false
-
-    const rejected = (error: unknown): Promise<void> => {
-        const promise = Promise.reject(error)
-        void promise.catch(() => undefined)
-        return promise
-    }
+    // What the reporter's loop failed with, if it did.
+    let failed: Failed | null = null
 
     const wakeUp = (): void => {
         const fn = wake
@@ -53,36 +54,24 @@ export const createReportStream = ({reporter, output, services}: ReportStreamOpt
     }
 
     const fail = (error: unknown): void => {
-        if (failed) return
-        failed = true
-        failure = error
-        delivered = active != null || pending.length > 0
-        active?.reject(error)
-        active = null
+        if (failed != null) return
+        failed = {failure: error, delivered: pending.length > 0}
         for (const item of pending.splice(0)) item.reject(error)
         wakeUp()
     }
 
+    // Consumed once the reporter asks for the next event. Iterator cleanup
+    // leaves the head where it is, for fail() to reject.
     async function* source(): AsyncGenerator<TestEvent> {
         for (;;) {
             while (!pending.length) {
-                if (closed) return
+                if (closed || failed != null) return
                 await new Promise<void>(resolve => (wake = resolve))
             }
-            const item = pending.shift()!
-            active = item
-            let consumed = false
-            try {
-                yield item.event
-                consumed = true
-            } finally {
-                // A normal next() resumes after yield. Iterator cleanup jumps
-                // straight to finally, leaving the item for fail() to reject.
-                if (consumed) {
-                    if (active === item) active = null
-                    item.resolve()
-                }
-            }
+            const item = pending[0]!
+            yield item.event
+            pending.shift()
+            item.resolve()
         }
     }
 
@@ -100,36 +89,37 @@ export const createReportStream = ({reporter, output, services}: ReportStreamOpt
         throw error
     })
     // close() observes the rejection. This handler only prevents an
-    // unhandledRejection in the interval before end() reaches close().
+    // unhandledRejection in the interval before the cleanups reach close().
     void loop.catch(() => undefined)
 
-    const emit: ReportStream["emit"] = (event) => {
-        if (closed) return rejected(new Error("Reporter is closed"))
-        if (failed) {
-            delivered = true
-            return rejected(failure)
+    const take = async (event: TestEvent): Promise<void> => {
+        if (failed != null) {
+            failed.delivered = true
+            throw failed.failure
         }
-
-        const promise = new Promise<void>((resolve, reject) => {
+        if (closed) throw new Error("Reporter is closed")
+        await new Promise<void>((resolve, reject) => {
             pending.push({event, resolve, reject})
             wakeUp()
         })
-        // emit() is normally awaited, but TestContext.diagnostic() is
-        // deliberately synchronous. Mark every rejection handled here while
-        // preserving it for awaiters and close().
+    }
+
+    // emit() is normally awaited, but TestContext.diagnostic() is
+    // deliberately synchronous. Mark every rejection handled here while
+    // preserving it for awaiters.
+    const emit: ReportStream["emit"] = (event) => {
+        const promise = take(event)
         void promise.catch(() => undefined)
         return promise
     }
 
-    // A failure that reached an emit() is the run's already. One that met
-    // nobody, after the last event, is close()'s to throw.
     const close = async (): Promise<void> => {
         closed = true
         wakeUp()
         try {
             await loop
         } catch (error) {
-            if (!delivered) throw error
+            if (!failed?.delivered) throw error
         }
     }
 
