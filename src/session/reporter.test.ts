@@ -42,6 +42,39 @@ describe(TITLE, () => {
         assert.equal(await caught(local.session.end()), failure)
     })
 
+    it("rejects end() when the reporter throws after the last event", async () => {
+        const local = createTAL()
+        const failure = new Error("reporter failed at the end")
+        local.session.session({
+            reporter: async function* (source) {
+                for await (const _event of source) continue
+                throw failure
+            },
+        })
+        local.test.it("one", () => undefined)
+
+        assert.equal(await caught(local.session.end()), failure)
+    })
+
+    // The failure fails end() and the cleanups say nothing more. Under a
+    // CLI, a line from a cleanup would reach it as stderr.
+    it("reports a reporter failure once", async () => {
+        const local = createTAL()
+        const failure = new Error("reporter failed")
+        const posts: string[] = []
+        local.session.session({
+            fetch: async path => void posts.push(path),
+            output: () => undefined,
+            reporter: async function* (source) {
+                for await (const _event of source) throw failure
+            },
+        })
+        local.test.it("one", () => undefined)
+
+        assert.equal(await caught(local.session.end()), failure)
+        assert.deepEqual(posts, ["begin", "end"])
+    })
+
     it("preserves an undefined reporter rejection reason", async () => {
         const local = createTAL()
         local.session.session({
