@@ -8,7 +8,7 @@ import type {BrowserLike} from "./browser.ts"
 import {runInBrowser} from "./browser.ts"
 
 export interface RunInPlaywrightOptions {
-    /** Shared host-side streams, lifecycle and cleanup. */
+    /** The run's streams, outcome and cleanup, shared by every part. */
     services: RunServices
     /** URL of the page to open, under the run's own path on the CLI's server. */
     url: string

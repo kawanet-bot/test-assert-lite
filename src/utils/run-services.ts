@@ -1,7 +1,7 @@
 import type {TAL} from "test-assert-lite"
 import {stringify} from "./stringify.ts"
 
-/** Host-side streams and lifecycle shared for one browser run. */
+/** What one run offers its parts: where output goes, how it ends, what to undo. */
 export interface RunServices {
     /** Receives the page's standard output. */
     stdout: TAL.Writer
@@ -28,7 +28,7 @@ export interface RunServicesOptions {
 
 const nullWriter: TAL.Writer = {write: (() => undefined)}
 
-/** Creates the host-side services shared by the server and browser driver. */
+/** Creates the services of one run, on either side of the channel. */
 export const createRunServices = (options: RunServicesOptions = {}): RunServices => {
     const services = {} as RunServices
 

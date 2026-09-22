@@ -24,7 +24,7 @@ import type {Watcher} from "./watch.ts"
 import {createWatcher} from "./watch.ts"
 
 export interface AppOptions {
-    /** Shared host-side streams, lifecycle and cleanup. */
+    /** The run's streams, outcome and cleanup, shared by every part. */
     services: RunServices
     /** Classic scripts to run before the suites, absolute, in this order. */
     scripts?: string[]

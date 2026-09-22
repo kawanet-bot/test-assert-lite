@@ -10,7 +10,7 @@ import {stringify} from "../../utils/stringify.ts"
 import type {ContextLike, Next} from "./middleware.ts"
 
 export interface ChannelOptions {
-    /** Shared host-side streams, lifecycle and cleanup. */
+    /** The run's streams, outcome and cleanup, shared by every part. */
     services: RunServices
     /** Prefix for channel path: `/@tal/run/xxxxxxxxx/` */
     prefix: string
