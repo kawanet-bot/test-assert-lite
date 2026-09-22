@@ -40,7 +40,6 @@ describe(TITLE, () => {
         assert.equal(stdout.read(), "one\n")
         assert.equal(stderr.read(), "warned\n")
         assert.equal((await services.finished)?.success, true)
-        await services.cleanup()
     })
 
     it("leaves another path to the next middleware, and refuses another method", async () => {
@@ -58,6 +57,7 @@ describe(TITLE, () => {
         const services = createHostServices({stdout, stderr})
         const run = createChannel({prefix, services})
         assert.equal(await post(run, "end", "INVALID"), 400)
+        await services.cleanup()
     })
 
     // The bound is short here; its messages tell before and after begin apart.
@@ -90,6 +90,7 @@ describe(TITLE, () => {
             sleep(100).then(() => "pending"),
         ])
         assert.equal(outcome, "pending")
+        await services.cleanup()
     })
 
     it("takes the streams after the end", async () => {
@@ -103,6 +104,5 @@ describe(TITLE, () => {
         assert.equal(await post(run, "stderr", "after end 2\n"), 204)
         assert.equal(stdout.read(), "after end 1\n")
         assert.equal(stderr.read(), "after end 2\n")
-        await services.cleanup()
     })
 })
