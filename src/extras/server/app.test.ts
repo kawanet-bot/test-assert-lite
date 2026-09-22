@@ -207,7 +207,7 @@ describe(TITLE, () => {
 
             assert.equal((await pending).status, 200)
             const after = (await get(running.origin + "/")).body
-            assert.ok(page.includes("/@tal/watch?after="))
+            assert.ok(after.includes("/@tal/watch?after="))
             assert.ok(after.includes("})(1)\n</script>"))
         } finally {
             await services.cleanup()
