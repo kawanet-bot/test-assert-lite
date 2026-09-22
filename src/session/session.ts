@@ -24,7 +24,7 @@ export interface Open {
     services: RunServices
     reporter: ReporterFn
     output: OutputFn
-    // Tells the CLI the verdict; nothing to tell without a channel.
+    // Tells the CLI the verdict. Without a channel there is nothing to tell.
     report: (result: SessionResult) => Promise<void>
     // Opened by a declaration rather than by session(): the refusal differs.
     auto: boolean

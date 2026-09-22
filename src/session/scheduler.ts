@@ -66,7 +66,7 @@ export const createScheduler = (
     }
 
     // Waits for the tests, reports, tells the CLI the verdict, lets the
-    // session clean up, and resets; a failure on the way still reports a failed run.
+    // session clean up, and resets. A failure on the way still reports a failed run.
     const end: TAL.SessionAPI["end"] = async () => {
         if (running) throw new Error("end() is already running")
         running = true

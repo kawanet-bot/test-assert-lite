@@ -11,7 +11,7 @@ type EventEmitterLike = TAL.EventEmitterLike
 
 type Take = (name: string, error: unknown) => void
 
-// The suites are served under a digest-named directory; the name a
+// The suites are served under a digest-named directory. The name a
 // person knows is what follows it.
 const SERVED = /^\/@tal\/files\/[0-9a-f]{9}\//
 
