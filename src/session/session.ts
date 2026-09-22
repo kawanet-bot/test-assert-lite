@@ -60,7 +60,7 @@ export const createSessions = (harness: HarnessState): SessionControl => {
                     : consoleWriters(found, saved),
         )
         // Made first, so its close comes ahead of the writers' disconnect among the cleanups.
-        const stream = createReportStream(reporter, output, services)
+        const stream = createReportStream({reporter, output, services})
         const open: Open = {services, stream, report: channel == null ? async () => undefined : channel.end, auto}
         // The next session() is taken once this one is through.
         services.onCleanup(() => {

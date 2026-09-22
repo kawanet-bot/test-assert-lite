@@ -19,16 +19,25 @@ export interface ReportStream {
     emit: (event: TestEvent) => Promise<void>
 }
 
-// The stream closes with the run, as one of its cleanups: the reporter's
-// input ends and its last lines are written.
-export const createReportStream = (reporter: ReporterFn, output: OutputFn, services: RunServices): ReportStream => {
+export interface ReportStreamOptions {
+    /** The run's streams, outcome and cleanup, shared by every part. */
+    services: RunServices
+    /** What the events are formatted with. */
+    reporter: ReporterFn
+    /** Where the formatted text goes. */
+    output: OutputFn
+}
+
+// Makes the stream of one run. Events go in through emit() and come out
+// as text through the reporter. The stream closes as a cleanup of the run.
+export const createReportStream = ({reporter, output, services}: ReportStreamOptions): ReportStream => {
     const pending: QueueItem[] = []
     let active: QueueItem | null = null
     let wake: (() => void) | null = null
     let closed = false
     let failed = false
     let failure: unknown
-    // Whether an emit() has rejected with the failure: close() then keeps quiet about it.
+    // Set once an emit() has rejected with the failure. close() then keeps quiet about it.
     let delivered = false
 
     const rejected = (error: unknown): Promise<void> => {
