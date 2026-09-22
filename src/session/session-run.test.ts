@@ -3,7 +3,7 @@ import {describe, it} from "node:test"
 import {createTAL} from "../index.ts"
 import {capture, names, ofType, summaryOf} from "../test-utils/capture.ts"
 
-const TITLE = "session/scheduler.test.ts"
+const TITLE = "session/session-run.test.ts"
 
 // end() as a whole: what it counts, in what order it runs and reports, and
 // how one harness behaves across calls.
