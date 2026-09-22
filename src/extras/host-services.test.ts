@@ -20,12 +20,12 @@ describe(TITLE, () => {
     it("runs cleanup once, in registration order", async () => {
         const services = createHostServices()
         const calls: number[] = []
-        services.cleanups.add(async () => {
+        services.onCleanup(async () => {
             calls.push(1)
             await Promise.resolve()
             calls.push(2)
         })
-        services.cleanups.add(() => void calls.push(3))
+        services.onCleanup(() => void calls.push(3))
         const cleaning = services.cleanup()
         assert.equal(services.cleanup(), cleaning)
         await cleaning
@@ -36,7 +36,7 @@ describe(TITLE, () => {
     it("takes the first resolution after cleanup", async () => {
         const services = createHostServices()
         const calls: string[] = []
-        services.cleanups.add(() => void calls.push("cleanup"))
+        services.onCleanup(() => void calls.push("cleanup"))
         services.resolve(7)
         services.reject(new Error("late"))
         assert.equal(await services.finished, 7)
@@ -47,7 +47,7 @@ describe(TITLE, () => {
         const services = createHostServices()
         const error = new Error("first")
         const calls: string[] = []
-        services.cleanups.add(() => void calls.push("cleanup"))
+        services.onCleanup(() => void calls.push("cleanup"))
         services.reject(error)
         services.resolve(7)
         await assert.rejects(services.finished, reason => reason === error)

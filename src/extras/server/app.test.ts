@@ -346,7 +346,7 @@ describe(TITLE, () => {
         })
         await new Promise<void>(listening => upstream.listen(0, "127.0.0.1", listening))
         const services = createHostServices({stdout, stderr})
-        services.cleanups.add(() => upstream.close())
+        services.onCleanup(() => upstream.close())
         const address = upstream.address()
         const port = typeof address === "object" && address != null ? address.port : 0
         const files = [join(dir, "tests", "my suite.mjs")]

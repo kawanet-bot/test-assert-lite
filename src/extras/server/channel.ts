@@ -89,7 +89,7 @@ export const createChannel = ({prefix, services, timeout}: ChannelOptions): Chan
     }
 
     if (timeout) {
-        services.cleanups.add(() => {
+        services.onCleanup(() => {
             if (timer != null) clearTimeout(timer)
         })
         heard()

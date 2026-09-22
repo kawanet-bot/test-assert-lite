@@ -49,7 +49,7 @@ export const runInWebDriver = async ({url, services, endpoint, custom}: RunInWeb
 
     const base = `/session/${created.sessionId}`
 
-    services.cleanups.add(async () => {
+    services.onCleanup(async () => {
         await call(endpoint, "DELETE", base)
     })
 

@@ -152,7 +152,7 @@ export const createApp = (options: AppOptions): App => {
         scoped(compose([...M(watcher?.inject), head, ...M(!mounted && title), atRoot])),
     ])
 
-    services.cleanups.add(() => {
+    services.onCleanup(() => {
         watcher?.close()
     })
 

@@ -24,10 +24,10 @@ export interface HostServices {
     /** The first resolve or reject, settled after cleanup. */
     finished: Promise<number>
 
-    /** Runs the registered cleanup functions once. */
+    /** Runs the registered cleanup functions. */
     cleanup: () => Promise<void>
-    /** Cleanup functions, run once in insertion order. Add them before cleanup starts. */
-    cleanups: Set<(() => unknown) | (() => Promise<unknown>)>
+    /** Register a cleanup function. */
+    onCleanup: (fn: () => unknown) => void
 }
 
 /** Creates the host-side services shared by the server and browser driver. */
@@ -40,16 +40,15 @@ export const createHostServices = ({stdout, stderr}: Partial<HostServices> = {})
     services.beginning = new Promise(resolve => (services.begin = resolve))
     services.ending = new Promise(resolve => (services.end = resolve))
 
-    services.cleanups = new Set()
+    let cleaning = new Promise<void>(resolve => {
+        services.cleanup = () => {
+            resolve()
+            return cleaning
+        }
+    })
 
-    // Concurrent callers wait for the same cleanup pass.
-    let cleaned: Promise<void> | null = null
-    services.cleanup = () => {
-        return cleaned ??= Promise.resolve().then(async () => {
-            for (const fn of services.cleanups!) {
-                await fn()
-            }
-        })
+    services.onCleanup = (fn) => {
+        cleaning = cleaning.finally(() => fn())
     }
 
     // The first resolve or reject owns the result and starts cleanup.

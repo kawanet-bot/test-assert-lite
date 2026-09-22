@@ -39,7 +39,7 @@ export const runInBrowser = async ({url, services, browser, custom}: RunInBrowse
         services.reject(new Error("The browser closed before the page reported its end"))
     }
 
-    services.cleanups.add(async () => {
+    services.onCleanup(async () => {
         browser.off("disconnected", onDisconnected)
         await browser.close()
     })
