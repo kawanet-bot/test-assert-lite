@@ -8,7 +8,6 @@ import type {RunServices} from "../utils/run-services.ts"
 import {createRunServices} from "../utils/run-services.ts"
 import {client} from "./client.ts"
 import {consoleWriters, saveConsole, takeConsole} from "./console.ts"
-import type {ReportStream} from "./report-stream.ts"
 import {chooseReporter} from "./reporters.ts"
 import type {HarnessState} from "./state.ts"
 import {takeUncaught} from "./uncaught.ts"
@@ -20,12 +19,12 @@ type SessionResult = TAL.SessionResult
 type Writer = TAL.Writer
 
 // What a run reports with: opened by session(), or with the defaults on
-// the first declaration, until end() closes it with the verdict.
-interface Open {
+// the first declaration, until its services are resolved with the verdict.
+export interface Open {
     services: RunServices
     reporter: ReporterFn
     output: OutputFn
-    // Tells the CLI the verdict, once the cleanups are through.
+    // Tells the CLI the verdict; nothing to tell without a channel.
     report: (result: SessionResult) => Promise<void>
     // Opened by a declaration rather than by session(): the refusal differs.
     auto: boolean
@@ -33,12 +32,8 @@ interface Open {
 
 export interface SessionControl {
     session: TAL.SessionAPI["session"]
-    // Closes the session with the run's verdict; nothing to close is fine.
-    close: (result: SessionResult) => Promise<void>
-    // Opens the default session unless one is open already.
-    open: () => void
-    // Gives a run's stream the settings of the session.
-    attach: (stream: ReportStream) => void
+    // The session of the run under way, opened with the defaults if none is.
+    open: () => Open
     stdout: Writer
     stderr: Writer
 }
@@ -64,6 +59,11 @@ export const createSessions = (harness: HarnessState): SessionControl => {
                 : hasProcess() ? {}
                     : consoleWriters(found, saved),
         )
+        const open: Open = {services, reporter, output, report: channel == null ? async () => undefined : channel.end, auto}
+        // The next session() is taken once this one is through.
+        services.onCleanup(() => {
+            if (current === open) current = null
+        })
         if (options.uncaught != null) services.onCleanup(takeUncaught(harness, options.uncaught))
         if (options.console != null) services.onCleanup(takeConsole(found, saved, services.stdout, services.stderr))
         stdout.connect(services.stdout)
@@ -73,8 +73,7 @@ export const createSessions = (harness: HarnessState): SessionControl => {
             stderr.disconnect()
         })
         void channel?.begin()
-        const report = channel == null ? async () => undefined : channel.end
-        return {services, reporter, output, report, auto}
+        return open
     }
 
     const session: TAL.SessionAPI["session"] = (options = {}) => {
@@ -84,25 +83,9 @@ export const createSessions = (harness: HarnessState): SessionControl => {
         current = create(options, false)
     }
 
-    const close = async (result: SessionResult): Promise<void> => {
-        const open = current
-        if (open == null) return
-        current = null
-        open.services.resolve(result)
-        await open.services.finished
-        await open.report(result)
-    }
-
     return {
         session,
-        close,
-        open: () => {
-            current ??= create({}, true)
-        },
-        attach: (stream) => {
-            current ??= create({}, true)
-            stream.attach(current.reporter, current.output)
-        },
+        open: () => (current ??= create({}, true)),
         stdout: pureWriter(stdout),
         stderr: pureWriter(stderr),
     }

@@ -1,7 +1,7 @@
 import type {TAL} from "test-assert-lite"
 import type {Run} from "../suite/job.ts"
 import {ReportStream} from "./report-stream.ts"
-import type {SessionControl} from "./session.ts"
+import type {Open, SessionControl} from "./session.ts"
 import type {HarnessState} from "./state.ts"
 import {resetHarnessState} from "./state.ts"
 
@@ -10,6 +10,7 @@ import {resetHarnessState} from "./state.ts"
 // still loading cannot declare into one already running.
 interface Cycle {
     run: Run
+    session: Open
     stream: ReportStream
     startedAt: number
     held: boolean
@@ -37,7 +38,7 @@ export const createScheduler = (
     let running = false
 
     const open = (): Cycle => {
-        sessions.open()
+        const session = sessions.open()
         const stream = new ReportStream()
         const run: Run = {
             counters: {tests: 0, suites: 0, passed: 0, failed: 0, cancelled: 0, skipped: 0, todo: 0},
@@ -46,7 +47,7 @@ export const createScheduler = (
             assert,
             closed: false,
         }
-        return {run, stream, startedAt: performance.now(), held: true, walk: null, closing: false, failure: undefined}
+        return {run, session, stream, startedAt: performance.now(), held: true, walk: null, closing: false, failure: undefined}
     }
 
     // A walk that ends picks up what was declared while it wound down.
@@ -64,8 +65,8 @@ export const createScheduler = (
             })
     }
 
-    // Waits for the tests, reports, closes the session with the verdict, and
-    // resets; a failure on the way still tells the session the run failed.
+    // Waits for the tests, reports, tells the CLI the verdict, lets the
+    // session clean up, and resets; a failure on the way still reports a failed run.
     const end: TAL.SessionAPI["end"] = async () => {
         if (running) throw new Error("end() is already running")
         running = true
@@ -79,7 +80,7 @@ export const createScheduler = (
         let failed = false
         let failure: unknown
         try {
-            sessions.attach(current.stream)
+            current.stream.attach(current.session.reporter, current.session.output)
             while (current.walk != null) await current.walk
             if (current.failure != null) throw current.failure.error
             // Hooks declared since the last walk, or with no test at all.
@@ -104,7 +105,11 @@ export const createScheduler = (
         }
 
         try {
-            await sessions.close({success: !failed && result!.success})
+            const {services, report} = current.session
+            const verdict = {success: !failed && result!.success}
+            await report(verdict)
+            services.resolve(verdict)
+            await services.finished
         } catch (error) {
             if (!failed) {
                 failed = true
