@@ -25,6 +25,9 @@ const testStub = () => {
 
 const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms))
 
+const SUCCESS = JSON.stringify({success: true})
+const FAILURE = JSON.stringify({success: false})
+
 describe(TITLE, () => {
     it("posts begin first, then the streams, then end, in order", async () => {
         const {session} = createTAL()
@@ -42,7 +45,7 @@ describe(TITLE, () => {
         ])
         assert.equal(bodyLog[1], "one\ntwo\n")
         assert.equal(bodyLog[2], "warned\n")
-        assert.equal(bodyLog[3], "true")
+        assert.equal(bodyLog[3], SUCCESS)
     })
 
     it("gathers a burst of lines into one request per stream", async () => {
@@ -53,7 +56,7 @@ describe(TITLE, () => {
         await session.end()
         assert.deepEqual(pathLog, ["begin", "stdout", "end"])
         assert.equal((bodyLog[1] ?? "").split("\n").length - 1, 100)
-        assert.equal(bodyLog[2], "true")
+        assert.equal(bodyLog[2], SUCCESS)
     })
 
     it("flushes on its own while the run goes on", async () => {
@@ -79,7 +82,7 @@ describe(TITLE, () => {
             throw new Error("no")
         })
         await session.end()
-        assert.equal(bodyLog.at(-1), "false")
+        assert.equal(bodyLog.at(-1), FAILURE)
     })
 
     it("sends text as given", async () => {
@@ -101,7 +104,7 @@ describe(TITLE, () => {
         session.session({fetch, output})
         await session.end()
         assert.deepEqual(pathLog, ["begin", "stdout", "stderr", "end"])
-        assert.deepEqual(bodyLog, ["", "early\n", "warned\n", "true"])
+        assert.deepEqual(bodyLog, ["", "early\n", "warned\n", SUCCESS])
     })
 
     it("does not reject when the fetch does", async () => {
@@ -126,7 +129,7 @@ describe(TITLE, () => {
         session.session({fetch, output})
         await session.end()
         assert.deepEqual(pathLog.slice(2), ["begin", "stdout", "end"])
-        assert.deepEqual(bodyLog.slice(2), ["", "later\n", "true"])
+        assert.deepEqual(bodyLog.slice(2), ["", "later\n", SUCCESS])
     })
 
     // A console of the test's own stands in for the page's.

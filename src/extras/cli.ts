@@ -10,6 +10,7 @@ import {VERSION} from "../utils/version.ts"
 import {runInNode} from "./drivers/node.ts"
 import {runInPlaywright} from "./drivers/playwright.ts"
 import {runInWebDriver} from "./drivers/webdriver.ts"
+import {createHostServices} from "./host-services.ts"
 import type {ModeOptions} from "./mode-options.ts"
 import {readOptions, USAGE} from "./options.ts"
 import {createApp} from "./server/app.ts"
@@ -20,6 +21,8 @@ export interface CLIOptions {
     /** The arguments as the executable gets them: process.argv.slice(2). */
     args: string[]
 }
+
+const SILENCE_MS = 30_000
 
 const runCLI = async (options: ModeOptions): Promise<number> => {
     const {mode} = options
@@ -43,69 +46,60 @@ const runCLI = async (options: ModeOptions): Promise<number> => {
         return result?.success ? 0 : 1
     }
 
-    // The application is the middleware. Reports go to stdout.
-    // Server logs go to stderr.
-    const app = createApp({
-        scripts: options.scripts,
-        imports,
-        mount: options.mount,
-        session,
-        eval: options.eval,
-        watch: mode === "serve",
-        stdout: process.stdout,
-        stderr: process.stderr,
-    })
-
-    // A server that cannot listen, its port taken say, is an error to show;
-    // the application, with its watch, must not keep the process up for it.
-    const server = await serve({
-        handler: app.handler,
-        host: options.host,
-        port: options.port,
-        origin: options.origin,
-        log: line => process.stderr.write(`${line}\n`),
-        quiet: session.quiet,
-    }).catch((error: unknown) => {
-        app.close()
-        throw error
-    })
-
-    const url = `${server.origin}${app.page}`
-    const close = (): void => {
-        app.close()
-        server.close()
-    }
-
-    if (mode === "serve") {
-        // Only the URL goes to stdout, so it can be piped. The server keeps
-        // the process alive until an interrupt, which resolves this.
-        const entryURL = options.session.files?.length || options.eval != null ? url : `${server.origin}/`
-        process.stdout.write(`${entryURL}\n`)
-        process.stderr.write("Serving; press Ctrl-C to stop.\n")
-        await new Promise<void>(stop => process.once("SIGINT", () => stop()))
-        close()
-        return 0
-    }
+    const services = createHostServices()
 
     try {
-        const completion = app.done
+        // The application is the middleware. Reports go to stdout.
+        // Server logs go to stderr.
+        const app = createApp({
+            scripts: options.scripts,
+            imports,
+            mount: options.mount,
+            session,
+            eval: options.eval,
+            watch: mode === "serve",
+            services,
+            timeout: (mode !== "serve" ? SILENCE_MS : undefined),
+        })
+
+        // A server that cannot listen, its port taken say, is an error to show;
+        // the application, with its watch, must not keep the process up for it.
+        const server = await serve({
+            handler: app.handler,
+            host: options.host,
+            port: options.port,
+            origin: options.origin,
+            quiet: session.quiet,
+            services,
+        })
+
+        const url = `${server.origin}${app.page}`
+
+        if (mode === "serve") {
+            // Only the URL goes to stdout, so it can be piped. The server keeps
+            // the process alive until an interrupt, which resolves this.
+            const entryURL = options.session.files?.length || options.eval != null ? url : `${server.origin}/`
+            process.stdout.write(`${entryURL}\n`)
+            process.stderr.write("Serving; press Ctrl-C to stop.\n")
+            process.once("SIGINT", () => services.resolve(0))
+            return await services.finished
+        }
+
+        services.ending.then(result => services.resolve(result?.success ? 0 : 1))
 
         if (mode === "webdriver") {
             const {custom, endpoint} = options
-            await runInWebDriver({url, completion, custom, endpoint})
+            await runInWebDriver({url, services, custom, endpoint})
         } else if (mode === "playwright") {
             const {custom, engine} = options
-            await runInPlaywright({url, completion, custom, engine})
+            await runInPlaywright({url, services, custom, engine})
         } else {
             throw new Error(`Invalid mode: ${mode}`)
         }
-
-        // The exit code alone, as in Node mode and node --test: the summary
-        // on stdout already says what failed, and no tests is not a failure.
-        return (await app.done) ? 0 : 1
-    } finally {
-        close()
+    } catch (error: unknown) {
+        services.reject(error as Error)
     }
+    return await services.finished
 }
 
 /**

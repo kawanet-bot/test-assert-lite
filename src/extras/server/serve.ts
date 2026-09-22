@@ -6,10 +6,14 @@
 
 import type {IncomingMessage} from "node:http"
 import {createServer} from "node:http"
+import {messageOf} from "../../utils/stringify.ts"
+import type {HostServices} from "../host-services.ts"
 import type {Context, MiddlewareHandler} from "./middleware.ts"
 import {createContext} from "./middleware.ts"
 
 export interface ServeOptions {
+    /** TBD */
+    services: HostServices
     /** The chain every request goes to, a Response returned or set on the context; unanswered is a 404. */
     handler: MiddlewareHandler
     /** Address to listen on; 127.0.0.1 by default. */
@@ -18,8 +22,6 @@ export interface ServeOptions {
     port?: number
     /** What a browser reaches the server as, scheme://host[:port], when not the address listened on. */
     origin?: string
-    /** Receives access and error logs. */
-    log?: (line: string) => void
     /** Limits access logs to unsuccessful responses. */
     quiet?: boolean
 }
@@ -27,8 +29,6 @@ export interface ServeOptions {
 export interface Server {
     /** Where a browser reaches the server: the origin given, or else the address listened on. */
     origin: string
-
-    close(): void
 }
 
 // A Host header is an authority, a host and maybe a port, and nothing a
@@ -78,7 +78,7 @@ const quote = (v: string | number | null | undefined) => {
 // localhost to ::1 while this listens on IPv4 only. Port 0 picks a free one.
 // A wildcard address listens on every interface but names none, so the
 // loopback of its family stands in; an IPv6 literal needs brackets.
-export const serve = async ({handler, log, quiet, ...options}: ServeOptions): Promise<Server> => {
+export const serve = async ({handler, quiet, services, ...options}: ServeOptions): Promise<Server> => {
     // An empty --host= is the default too, not the unspecified address.
     const host = options.host || "127.0.0.1"
     const named = host === "0.0.0.0" ? "127.0.0.1" : host === "::" ? "[::1]" : host.includes(":") ? `[${host}]` : host
@@ -101,8 +101,9 @@ export const serve = async ({handler, log, quiet, ...options}: ServeOptions): Pr
             if (cookies.length) headers["set-cookie"] = cookies
             return {status: response.status, headers, body: Buffer.from(await response.arrayBuffer())}
         } catch (error) {
-            log?.(error instanceof Error ? error.stack ?? error.message : String(error))
-            return {status: c == null ? 400 : 500, headers: {}, body: Buffer.alloc(0)}
+            const log = error instanceof Error && error.stack || messageOf(error)
+            services.stderr.write(`${log}\n`)
+            return {status: (c == null ? 400 : 500), headers: {}, body: Buffer.alloc(0)}
         }
     }
 
@@ -111,9 +112,18 @@ export const serve = async ({handler, log, quiet, ...options}: ServeOptions): Pr
         void respond(req).then(({status, headers, body}) => {
             res.writeHead(status, {...headers, "content-length": String(body.length)})
             res.end(body)
-            if (!quiet || status >= 400) log?.(tiny(req, status, body.length, performance.now() - started))
+            if (!quiet || status >= 400) {
+                const log = tiny(req, status, body.length, performance.now() - started)
+                services.stderr.write(`${log}\n`)
+            }
         })
     })
+
+    services.cleanups.add(() => {
+        server.close()
+        server.closeAllConnections()
+    })
+
     // A port already taken is an error to the caller, not to the process.
     await new Promise<void>((listening, refused) => {
         server.once("error", refused)
@@ -122,14 +132,12 @@ export const serve = async ({handler, log, quiet, ...options}: ServeOptions): Pr
             listening()
         })
     })
+
     const address = server.address()
     const port = (typeof address === "object" && address != null) ? address.port : 0
     bound = `${named}:${port}`
+
     return {
         origin: options.origin ?? `http://${bound}`,
-        close: () => {
-            server.close()
-            server.closeAllConnections()
-        },
     }
 }

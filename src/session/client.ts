@@ -10,7 +10,7 @@ type FetchLike = TAL.FetchLike
 
 export interface Client {
     /** Tells the CLI the page is up; it waits for this with a timeout. */
-    begin(): Promise<void>
+    begin: () => Promise<void>
 
     /** Text for the CLI's stdout, buffered. */
     stdout: TAL.Writer
@@ -19,7 +19,7 @@ export interface Client {
     stderr: TAL.Writer
 
     /** The verdict, sent once the buffers have drained; true alone passes. */
-    end(success: boolean): Promise<void>
+    end: (success: boolean) => Promise<void>
 }
 
 // How long lines gather before a flush: a test's burst of output becomes
@@ -97,7 +97,7 @@ export const client = (fetch: FetchLike): Client => {
             if (alive != null) clearInterval(alive)
             alive = null
             await flush()
-            await post("end", JSON.stringify(success === true))
+            await post("end", JSON.stringify({success}))
         },
     }
 }
