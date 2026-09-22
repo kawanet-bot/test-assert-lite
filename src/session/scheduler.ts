@@ -1,6 +1,5 @@
 import type {TAL} from "test-assert-lite"
 import type {Run} from "../suite/job.ts"
-import {ReportStream} from "./report-stream.ts"
 import type {Open, SessionControl} from "./session.ts"
 import type {HarnessState} from "./state.ts"
 import {resetHarnessState} from "./state.ts"
@@ -11,7 +10,6 @@ import {resetHarnessState} from "./state.ts"
 interface Cycle {
     run: Run
     session: Open
-    stream: ReportStream
     startedAt: number
     held: boolean
     // The walk under way, or null while idle between declarations.
@@ -39,15 +37,14 @@ export const createScheduler = (
 
     const open = (): Cycle => {
         const session = sessions.open()
-        const stream = new ReportStream()
         const run: Run = {
             counters: {tests: 0, suites: 0, passed: 0, failed: 0, cancelled: 0, skipped: 0, todo: 0},
             success: true,
-            emit: (type, data) => stream.emit({type, data} as TAL.TestEvent),
+            emit: (type, data) => session.stream.emit({type, data} as TAL.TestEvent),
             assert,
             closed: false,
         }
-        return {run, session, stream, startedAt: performance.now(), held: true, walk: null, closing: false, failure: undefined}
+        return {run, session, startedAt: performance.now(), held: true, walk: null, closing: false, failure: undefined}
     }
 
     // A walk that ends picks up what was declared while it wound down.
@@ -90,11 +87,9 @@ export const createScheduler = (
         current.held = false
         schedule()
         current.closing = true
-        const {services, report, reporter, output} = current.session
-        current.stream.attach(reporter, output)
-        // The stream closes either way, so the reporter writes all it was given.
+        const {services, report} = current.session
         try {
-            services.resolve(await conclude(current).finally(() => current.stream.close()))
+            services.resolve(await conclude(current))
         } catch (error) {
             services.reject(error)
         }

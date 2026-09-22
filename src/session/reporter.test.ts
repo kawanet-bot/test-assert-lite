@@ -1,5 +1,6 @@
 import {strict as assert} from "node:assert"
 import {describe, it} from "node:test"
+import type {TAL} from "test-assert-lite"
 import {createTAL} from "../index.ts"
 import {capture, names, summaryOf} from "../test-utils/capture.ts"
 
@@ -29,6 +30,19 @@ describe(TITLE, () => {
         assert.equal(await caught(local.session.end()), failure)
     })
 
+    it("does not start the reporter when session() rejects", () => {
+        const local = createTAL()
+        let started = 0
+        const tap = local.reporter.tap()
+        const reporter: TAL.ReporterFn = source => {
+            started++
+            return tap(source)
+        }
+
+        assert.throws(() => local.session.session({uncaught: {} as any, reporter}))
+        assert.equal(started, 0)
+    })
+
     it("rejects end() when async reporter work rejects", async () => {
         const local = createTAL()
         const failure = new Error("async reporter failed")
@@ -40,6 +54,39 @@ describe(TITLE, () => {
         local.test.it("one", () => undefined)
 
         assert.equal(await caught(local.session.end()), failure)
+    })
+
+    it("rejects end() when the reporter throws after the last event", async () => {
+        const local = createTAL()
+        const failure = new Error("reporter failed at the end")
+        local.session.session({
+            reporter: async function* (source) {
+                for await (const _event of source) continue
+                throw failure
+            },
+        })
+        local.test.it("one", () => undefined)
+
+        assert.equal(await caught(local.session.end()), failure)
+    })
+
+    // The failure fails end() and the cleanups say nothing more. Under a
+    // CLI, a line from a cleanup would reach it as stderr.
+    it("reports a reporter failure once", async () => {
+        const local = createTAL()
+        const failure = new Error("reporter failed")
+        const posts: string[] = []
+        local.session.session({
+            fetch: async path => void posts.push(path),
+            output: () => undefined,
+            reporter: async function* (source) {
+                for await (const _event of source) throw failure
+            },
+        })
+        local.test.it("one", () => undefined)
+
+        assert.equal(await caught(local.session.end()), failure)
+        assert.deepEqual(posts, ["begin", "end"])
     })
 
     it("preserves an undefined reporter rejection reason", async () => {

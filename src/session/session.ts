@@ -8,12 +8,12 @@ import type {RunServices} from "../utils/run-services.ts"
 import {createRunServices} from "../utils/run-services.ts"
 import {client} from "./client.ts"
 import {consoleWriters, saveConsole, takeConsole} from "./console.ts"
+import type {ReportStream} from "./report-stream.ts"
+import {createReportStream} from "./report-stream.ts"
 import {chooseReporter} from "./reporters.ts"
 import type {HarnessState} from "./state.ts"
 import {takeUncaught} from "./uncaught.ts"
 
-type ReporterFn = TAL.ReporterFn
-type OutputFn = TAL.OutputFn
 type SessionOptions = TAL.SessionOptions
 type SessionResult = TAL.SessionResult
 type Writer = TAL.Writer
@@ -22,8 +22,8 @@ type Writer = TAL.Writer
 // the first declaration, until its services are resolved with the verdict.
 export interface Open {
     services: RunServices
-    reporter: ReporterFn
-    output: OutputFn
+    // What the run's events go through, on the way to the reporter.
+    stream: ReportStream
     // Tells the CLI the verdict. Without a channel there is nothing to tell.
     report: (result: SessionResult) => Promise<void>
     // Opened by a declaration rather than by session(): the refusal differs.
@@ -59,12 +59,16 @@ export const createSessions = (harness: HarnessState): SessionControl => {
                 : hasProcess() ? {}
                     : consoleWriters(found, saved),
         )
-        const open: Open = {services, reporter, output, report: channel == null ? async () => undefined : channel.end, auto}
+        // Taken before the reporter starts, since it refuses what is not a window or a process.
+        const releaseUncaught = options.uncaught == null ? null : takeUncaught(harness, options.uncaught)
+        // Made first, so its close comes ahead of the writers' disconnect among the cleanups.
+        const stream = createReportStream({reporter, output, services})
+        const open: Open = {services, stream, report: channel == null ? async () => undefined : channel.end, auto}
         // The next session() is taken once this one is through.
         services.onCleanup(() => {
             if (current === open) current = null
         })
-        if (options.uncaught != null) services.onCleanup(takeUncaught(harness, options.uncaught))
+        if (releaseUncaught != null) services.onCleanup(releaseUncaught)
         if (options.console != null) services.onCleanup(takeConsole(found, saved, services.stdout, services.stderr))
         stdout.connect(services.stdout)
         stderr.connect(services.stderr)
