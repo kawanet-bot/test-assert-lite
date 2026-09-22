@@ -19,7 +19,7 @@ export interface Client {
     stderr: TAL.Writer
 
     /** The verdict as JSON, sent once the buffers have drained. */
-    end: (success: boolean) => Promise<void>
+    end: (result: TAL.SessionResult) => Promise<void>
 }
 
 // How long lines gather before a flush: a test's burst of output becomes
@@ -93,11 +93,11 @@ export const client = (fetch: FetchLike): Client => {
         },
         stdout,
         stderr,
-        end: async success => {
+        end: async (result) => {
             if (alive != null) clearInterval(alive)
             alive = null
             await flush()
-            await post("end", JSON.stringify({success}))
+            await post("end", JSON.stringify(result))
         },
     }
 }

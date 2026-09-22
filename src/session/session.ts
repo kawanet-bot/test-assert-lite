@@ -24,7 +24,7 @@ type ConsoleLike = TAL.ConsoleLike
 interface Open {
     reporter: ReporterFn
     output: OutputFn
-    end: (success: boolean) => Promise<void>
+    end: (result: TAL.SessionResult) => Promise<void>
     // Opened by a declaration rather than by session(): the refusal differs.
     auto: boolean
     // Lets go of what the session took: the errors outside the tests, and the console.
@@ -243,7 +243,7 @@ export const createSessions = (harness: HarnessState): SessionControl => {
         stdout.disconnect()
         stderr.disconnect()
         open.release()
-        await open.end(success)
+        await open.end({success})
     }
 
     return {

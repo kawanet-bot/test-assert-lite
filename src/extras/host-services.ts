@@ -19,11 +19,11 @@ export interface HostServices {
     ending: Promise<TAL.SessionResult>
 
     /** Finishes successfully after cleanup. */
-    resolve: (exitCode: number) => void
+    resolve: (result: TAL.SessionResult) => void
     /** Fails with the error after cleanup. */
     reject: (error: unknown) => void
     /** The first resolve or reject, settled after cleanup. */
-    finished: Promise<number>
+    finished: Promise<TAL.SessionResult>
 
     /** Runs the registered cleanup functions. */
     cleanup: () => Promise<void>

@@ -39,7 +39,7 @@ describe(TITLE, () => {
         const said: string[] = []
         const services = createHostServices({stderr: {write: chunk => void said.push(chunk)}})
         const calls: string[] = []
-        services.resolve(0)
+        services.resolve({success: true})
         await services.finished
         services.onCleanup(() => void calls.push("late"))
         services.onCleanup(() => Promise.reject(new Error("late fails")))
@@ -53,9 +53,9 @@ describe(TITLE, () => {
         const services = createHostServices()
         const calls: string[] = []
         services.onCleanup(() => void calls.push("cleanup"))
-        services.resolve(7)
+        services.resolve({success: true})
         services.reject(new Error("late"))
-        assert.equal(await services.finished, 7)
+        assert.deepEqual(await services.finished, {success: true})
         assert.deepEqual(calls, ["cleanup"])
     })
 
@@ -65,7 +65,7 @@ describe(TITLE, () => {
         const calls: string[] = []
         services.onCleanup(() => void calls.push("cleanup"))
         services.reject(error)
-        services.resolve(7)
+        services.resolve({success: true})
         await assert.rejects(services.finished, reason => reason === error)
         assert.deepEqual(calls, ["cleanup"])
     })
