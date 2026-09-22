@@ -1,8 +1,9 @@
-// The session: what a run reports with, where its console goes, and what
-// it lets go of at the end. Each session is one RunServices: the entry's
-// writers pass through its streams, and its cleanups undo what was taken.
+// The sessions of one harness, one cycle each: what the run reports with,
+// where its console goes, the walk of the tests declared, and the end()
+// that reports the verdict and lets go of what was taken.
 
 import type {TAL} from "test-assert-lite"
+import type {Run} from "../suite/job.ts"
 import {createConnectWriter, pureWriter} from "../utils/buf-writer.ts"
 import type {RunServices} from "../utils/run-services.ts"
 import {createRunServices} from "../utils/run-services.ts"
@@ -12,15 +13,17 @@ import type {ReportStream} from "./report-stream.ts"
 import {createReportStream} from "./report-stream.ts"
 import {chooseReporter} from "./reporters.ts"
 import type {HarnessState} from "./state.ts"
+import {resetHarnessState} from "./state.ts"
 import {takeUncaught} from "./uncaught.ts"
 
 type SessionOptions = TAL.SessionOptions
 type SessionResult = TAL.SessionResult
 type Writer = TAL.Writer
 
-// What a run reports with: opened by session(), or with the defaults on
-// the first declaration, until its services are resolved with the verdict.
-export interface Open {
+// One cycle of the harness: from session(), or the first declaration, to
+// the end() that reports it. The tests are held until end() lets them go,
+// so a suite still loading cannot declare into one already running.
+interface Cycle {
     services: RunServices
     // What the run's events go through, on the way to the reporter.
     stream: ReportStream
@@ -28,24 +31,35 @@ export interface Open {
     report: (result: SessionResult) => Promise<void>
     // Opened by a declaration rather than by session(): the refusal differs.
     auto: boolean
+    run: Run
+    startedAt: number
+    held: boolean
+    // The walk under way, or null while idle between declarations.
+    walk: Promise<void> | null
+    // end() is closing the cycle and drives the rest itself.
+    closing: boolean
+    // What the walk failed with, kept for end() to reject with.
+    failure: {error: unknown} | undefined
 }
 
-export interface SessionControl {
+export interface Sessions {
     session: TAL.SessionAPI["session"]
-    // The session of the run under way, opened with the defaults if none is.
-    open: () => Open
+    end: TAL.SessionAPI["end"]
     stdout: Writer
     stderr: Writer
+    // Called on a declaration at the root: starts the walk, once end() has
+    // let it, unless one is under way.
+    schedule: () => void
 }
 
 const hasProcess = (): boolean => "undefined" !== typeof process && process.stdout?.write != null
 
-export const createSessions = (harness: HarnessState): SessionControl => {
-    let current: Open | null = null
+export const createSessions = (harness: HarnessState, assert: TAL.TestContextAssert): Sessions => {
+    let cycle: Cycle | null = null
     const stdout = createConnectWriter()
     const stderr = createConnectWriter()
 
-    const create = (options: SessionOptions, auto: boolean): Open => {
+    const open = (options: SessionOptions, auto: boolean): Cycle => {
         const reporter = chooseReporter(harness, options)
         // The report goes where the console goes unless told otherwise.
         const output = options.output ?? ((text: string) => stdout.write(text))
@@ -63,11 +77,6 @@ export const createSessions = (harness: HarnessState): SessionControl => {
         const releaseUncaught = options.uncaught == null ? null : takeUncaught(harness, options.uncaught)
         // Made first, so its close comes ahead of the writers' disconnect among the cleanups.
         const stream = createReportStream({reporter, output, services})
-        const open: Open = {services, stream, report: channel == null ? async () => undefined : channel.end, auto}
-        // The next session() is taken once this one is through.
-        services.onCleanup(() => {
-            if (current === open) current = null
-        })
         if (releaseUncaught != null) services.onCleanup(releaseUncaught)
         if (options.console != null) services.onCleanup(takeConsole(found, saved, services.stdout, services.stderr))
         stdout.connect(services.stdout)
@@ -77,20 +86,82 @@ export const createSessions = (harness: HarnessState): SessionControl => {
             stderr.disconnect()
         })
         void channel?.begin()
-        return open
+        const run: Run = {
+            counters: {tests: 0, suites: 0, passed: 0, failed: 0, cancelled: 0, skipped: 0, todo: 0},
+            success: true,
+            emit: (type, data) => stream.emit({type, data} as TAL.TestEvent),
+            assert,
+            closed: false,
+        }
+        const report = channel == null ? async () => undefined : channel.end
+        return {services, stream, report, auto, run, startedAt: performance.now(), held: true, walk: null, closing: false, failure: undefined}
     }
 
     const session: TAL.SessionAPI["session"] = (options = {}) => {
-        if (current != null) {
-            throw new Error(current.auto ? "session() must come before the first test is declared" : "session() is already open")
+        if (cycle != null) {
+            throw new Error(cycle.auto ? "session() must come before the first test is declared" : "session() is already open")
         }
-        current = create(options, false)
+        cycle = open(options, false)
     }
 
-    return {
-        session,
-        open: () => (current ??= create({}, true)),
-        stdout: pureWriter(stdout),
-        stderr: pureWriter(stderr),
+    // A walk that ends picks up what was declared while it wound down.
+    const schedule = (): void => {
+        const current = cycle ??= open({}, true)
+        if (current.held || current.walk != null || current.closing || current.failure != null) return
+        current.walk = new Promise<void>(resolve => queueMicrotask(resolve))
+            .then(() => harness.root.walk(current.run))
+            .catch(error => {
+                current.failure = {error}
+            })
+            .finally(() => {
+                current.walk = null
+                if (harness.root.hasPendingChildren) schedule()
+            })
     }
+
+    // Runs what is left, ends the root and reports the summary. The verdict
+    // is what the run came to, and a failure on the way is thrown.
+    const conclude = async (current: Cycle): Promise<SessionResult> => {
+        while (current.walk != null) await current.walk
+        if (current.failure != null) throw current.failure.error
+        // Hooks declared since the last walk, or with no test at all.
+        await harness.root.walk(current.run)
+        // The root's teardown, then the summary: the root has no result
+        // of its own, so the summary is what stands for it.
+        await harness.root.end()
+        const summary = summaryOf(current)
+        await current.run.emit("test:summary", summary)
+        return {success: summary.success}
+    }
+
+    // The outcome settles the services, a failure included. The CLI hears
+    // the verdict once the cleanups are through, and the harness is reset.
+    const end: TAL.SessionAPI["end"] = async () => {
+        if (cycle?.closing) throw new Error("end() is already running")
+        // An empty run still reports, and root hooks alone still run.
+        const current = cycle ??= open({}, true)
+        current.held = false
+        schedule()
+        current.closing = true
+        const {services, report} = current
+        try {
+            services.resolve(await conclude(current))
+        } catch (error) {
+            services.reject(error)
+        }
+        await services.finished.then(report, () => report({success: false}))
+        // A partially executed registry is unsafe to retry.
+        resetHarnessState(harness)
+        cycle = null
+        return await services.finished
+    }
+
+    return {session, end, stdout: pureWriter(stdout), stderr: pureWriter(stderr), schedule}
 }
+
+// What the run came to: the counts, the time and the verdict.
+const summaryOf = ({run, startedAt}: Cycle): TAL.TestSummary => ({
+    counts: {...run.counters},
+    duration_ms: performance.now() - startedAt,
+    success: run.success,
+})
