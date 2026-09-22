@@ -1,7 +1,6 @@
 // Bridges emit() to an async generator reporter. A request for the next
 // event means the previous one has been written, and that is when emit()'s
-// promise settles, so end() stays in step by awaiting emit alone. Until
-// attach() the events are only kept, and emit() settles at once.
+// promise settles, so end() stays in step by awaiting emit alone.
 
 import type {TAL} from "test-assert-lite"
 
@@ -16,23 +15,18 @@ interface QueueItem {
 }
 
 export interface ReportStream {
-    // Takes the settings and starts writing, what was kept going first.
-    attach: (reporter: ReporterFn, output: OutputFn) => void
     emit: (event: TestEvent) => Promise<void>
     // Ends the reporter's input and waits for it to write the rest.
     close: () => Promise<void>
 }
 
-export const createReportStream = (): ReportStream => {
-    let reporter: ReporterFn | null = null
-    let output: OutputFn | null = null
+export const createReportStream = (reporter: ReporterFn, output: OutputFn): ReportStream => {
     const pending: QueueItem[] = []
     let active: QueueItem | null = null
     let wake: (() => void) | null = null
     let closed = false
     let failed = false
     let failure: unknown
-    let loop: Promise<void> | null = null
 
     const rejected = (error: unknown): Promise<void> => {
         const promise = Promise.reject(error)
@@ -80,30 +74,21 @@ export const createReportStream = (): ReportStream => {
     }
 
     const consume = async (): Promise<void> => {
-        for await (const chunk of reporter!(source())) {
-            if (chunk) await output!(chunk)
+        for await (const chunk of reporter(source())) {
+            if (chunk) await output(chunk)
         }
         if (!closed) {
             throw new Error("Reporter ended before its input")
         }
     }
 
-    const start = (): void => {
-        if (loop != null) return
-        loop = consume().catch(error => {
-            fail(error)
-            throw error
-        })
-        // close() observes the rejection. This handler only prevents an
-        // unhandledRejection in the interval before end() reaches close().
-        void loop.catch(() => undefined)
-    }
-
-    const attach: ReportStream["attach"] = (fn, out) => {
-        reporter = fn
-        output = out
-        start()
-    }
+    const loop = consume().catch(error => {
+        fail(error)
+        throw error
+    })
+    // close() observes the rejection. This handler only prevents an
+    // unhandledRejection in the interval before end() reaches close().
+    void loop.catch(() => undefined)
 
     const emit: ReportStream["emit"] = (event) => {
         if (closed) return rejected(new Error("Reporter is closed"))
@@ -111,23 +96,20 @@ export const createReportStream = (): ReportStream => {
 
         const promise = new Promise<void>((resolve, reject) => {
             pending.push({event, resolve, reject})
-            if (reporter == null) resolve()
             wakeUp()
         })
         // emit() is normally awaited, but TestContext.diagnostic() is
         // deliberately synchronous. Mark every rejection handled here while
         // preserving it for awaiters and close().
         void promise.catch(() => undefined)
-        if (reporter != null) start()
         return promise
     }
 
     const close: ReportStream["close"] = async () => {
-        if (loop == null) return
         closed = true
         wakeUp()
         await loop
     }
 
-    return {attach, emit, close}
+    return {emit, close}
 }

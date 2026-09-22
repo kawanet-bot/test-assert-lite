@@ -40,7 +40,7 @@ export const createScheduler = (
 
     const open = (): Cycle => {
         const session = sessions.open()
-        const stream = createReportStream()
+        const stream = createReportStream(session.reporter, session.output)
         const run: Run = {
             counters: {tests: 0, suites: 0, passed: 0, failed: 0, cancelled: 0, skipped: 0, todo: 0},
             success: true,
@@ -91,8 +91,7 @@ export const createScheduler = (
         current.held = false
         schedule()
         current.closing = true
-        const {services, report, reporter, output} = current.session
-        current.stream.attach(reporter, output)
+        const {services, report} = current.session
         // The stream closes either way, so the reporter writes all it was given.
         try {
             services.resolve(await conclude(current).finally(() => current.stream.close()))
