@@ -82,9 +82,9 @@ describe(TITLE, () => {
         await assert.rejects(services.finished, /No word from the page/)
     })
 
-    it("waits without a bound when no timeout is given", async () => {
+    it("waits without a bound when multiple runs are allowed", async () => {
         const services = createHostServices({stdout: nullWriter, stderr: nullWriter})
-        createChannel({prefix, services})
+        createChannel({prefix, services, singleRun: false})
         const outcome = await Promise.race([
             services.finished.then(() => "settled", () => "settled"),
             sleep(100).then(() => "pending"),

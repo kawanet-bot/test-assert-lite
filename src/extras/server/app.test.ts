@@ -20,6 +20,7 @@ const get = async (url: string): Promise<{status: number, type: string, body: st
 const post = async (url: string, body: string): Promise<number> => (await fetch(url, {method: "POST", body})).status
 
 const nullWriter: TAL.Writer = {write: (() => undefined)}
+const SUCCESS = JSON.stringify({success: true})
 
 describe(TITLE, () => {
     let dir: string
@@ -191,7 +192,7 @@ describe(TITLE, () => {
         await writeFile(file, "export const watching = 1")
         const files = [file]
         const services = createHostServices({stdout, stderr})
-        const watching = createApp({session: {files}, watch: true, services})
+        const watching = createApp({session: {files}, watch: true, singleRun: false, services})
         const running = await serve({handler: watching.handler, services})
         try {
             const index = (await get(running.origin + "/")).body
@@ -201,6 +202,9 @@ describe(TITLE, () => {
             const page = (await get(running.origin + watching.page)).body
             assert.ok(page.includes("/@tal/watch?after="))
             assert.ok(page.includes("})(0)\n</script>"))
+
+            const endpoint = running.origin + watching.page.replace(/run\.html$/, "end")
+            assert.equal(await post(endpoint, SUCCESS), 204)
 
             const pending = get(running.origin + "/@tal/watch?after=0")
             await writeFile(file, "export const watching = 2")

@@ -14,7 +14,7 @@ export interface ChannelOptions {
     services: HostServices
     /** Prefix for channel path: `/@tal/run/xxxxxxxxx/` */
     prefix: string
-    /** Allowed silence in milliseconds; unlimited when omitted. */
+    /** Allowed silence in milliseconds; 30 seconds for a single run, unlimited otherwise. */
     timeout?: number
     /** Finishes after the first test run. Defaults to `true`. */
     singleRun?: boolean
@@ -37,7 +37,7 @@ const SILENCE_MS = 30_000
 
 /**
  * Creates the endpoints that receive the page's reports and result.
- * Applies a silence timeout when one is given.
+ * Applies a silence timeout when configured or running once.
  */
 export const createChannel = ({prefix, services, timeout, singleRun = true}: ChannelOptions): Channel => {
     let begun = false
