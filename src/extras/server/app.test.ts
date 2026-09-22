@@ -1,4 +1,4 @@
-import {strict as assert} from "assert"
+import {strict as assert} from "node:assert"
 import {mkdir, mkdtemp, rm, writeFile} from "node:fs/promises"
 import {createServer} from "node:http"
 import {tmpdir} from "node:os"
