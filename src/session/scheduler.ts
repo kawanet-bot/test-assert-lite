@@ -1,6 +1,7 @@
 import type {TAL} from "test-assert-lite"
 import type {Run} from "../suite/job.ts"
-import {ReportStream} from "./report-stream.ts"
+import type {ReportStream} from "./report-stream.ts"
+import {createReportStream} from "./report-stream.ts"
 import type {Open, SessionControl} from "./session.ts"
 import type {HarnessState} from "./state.ts"
 import {resetHarnessState} from "./state.ts"
@@ -39,7 +40,7 @@ export const createScheduler = (
 
     const open = (): Cycle => {
         const session = sessions.open()
-        const stream = new ReportStream()
+        const stream = createReportStream()
         const run: Run = {
             counters: {tests: 0, suites: 0, passed: 0, failed: 0, cancelled: 0, skipped: 0, todo: 0},
             success: true,

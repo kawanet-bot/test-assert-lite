@@ -1,3 +1,8 @@
+// Bridges emit() to an async generator reporter. A request for the next
+// event means the previous one has been written, and that is when emit()'s
+// promise settles, so end() stays in step by awaiting emit alone. Until
+// attach() the events are only kept, and emit() settles at once.
+
 import type {TAL} from "test-assert-lite"
 
 type TestEvent = TAL.TestEvent
@@ -10,102 +15,55 @@ interface QueueItem {
     reject: (error: unknown) => void
 }
 
-// Bridges emit() to an async generator reporter. A request for the next
-// event means the previous one has been written, and that is when emit()'s
-// promise settles, so end() stays in step by awaiting emit alone. Until
-// attach() the events are only kept, and emit() settles at once.
-export class ReportStream {
-    private reporter: ReporterFn | null = null
-    private output: OutputFn | null = null
-    private pending: QueueItem[] = []
-    private active: QueueItem | null = null
-    private wake: (() => void) | null = null
-    private closed = false
-    private failed = false
-    private failure: unknown
-    private loop: Promise<void> | null = null
-
+export interface ReportStream {
     // Takes the settings and starts writing, what was kept going first.
-    attach(reporter: ReporterFn, output: OutputFn): void {
-        this.reporter = reporter
-        this.output = output
-        this.start()
-    }
+    attach: (reporter: ReporterFn, output: OutputFn) => void
+    emit: (event: TestEvent) => Promise<void>
+    // Ends the reporter's input and waits for it to write the rest.
+    close: () => Promise<void>
+}
 
-    emit(event: TestEvent): Promise<void> {
-        if (this.closed) return this.rejected(new Error("Reporter is closed"))
-        if (this.failed) return this.rejected(this.failure)
+export const createReportStream = (): ReportStream => {
+    let reporter: ReporterFn | null = null
+    let output: OutputFn | null = null
+    const pending: QueueItem[] = []
+    let active: QueueItem | null = null
+    let wake: (() => void) | null = null
+    let closed = false
+    let failed = false
+    let failure: unknown
+    let loop: Promise<void> | null = null
 
-        const promise = new Promise<void>((resolve, reject) => {
-            this.pending.push({event, resolve, reject})
-            if (this.reporter == null) resolve()
-            const wake = this.wake
-            this.wake = null
-            wake?.()
-        })
-        // emit() is normally awaited, but TestContext.diagnostic() is
-        // deliberately synchronous. Mark every rejection handled here while
-        // preserving it for awaiters and close().
-        void promise.catch(() => undefined)
-        if (this.reporter != null) this.start()
-        return promise
-    }
-
-    async close(): Promise<void> {
-        if (this.loop == null) return
-        this.closed = true
-        const wake = this.wake
-        this.wake = null
-        wake?.()
-        await this.loop
-    }
-
-    private rejected(error: unknown): Promise<void> {
+    const rejected = (error: unknown): Promise<void> => {
         const promise = Promise.reject(error)
         void promise.catch(() => undefined)
         return promise
     }
 
-    private fail(error: unknown): void {
-        if (this.failed) return
-        this.failed = true
-        this.failure = error
-        this.active?.reject(error)
-        this.active = null
-        for (const item of this.pending.splice(0)) item.reject(error)
-        const wake = this.wake
-        this.wake = null
-        wake?.()
+    const wakeUp = (): void => {
+        const fn = wake
+        wake = null
+        fn?.()
     }
 
-    private start(): void {
-        if (this.loop != null) return
-        this.loop = this.consume().catch(error => {
-            this.fail(error)
-            throw error
-        })
-        // close() observes the rejection. This handler only prevents an
-        // unhandledRejection in the interval before end() reaches close().
-        void this.loop.catch(() => undefined)
+    const fail = (error: unknown): void => {
+        if (failed) return
+        failed = true
+        failure = error
+        active?.reject(error)
+        active = null
+        for (const item of pending.splice(0)) item.reject(error)
+        wakeUp()
     }
 
-    private async consume(): Promise<void> {
-        for await (const chunk of this.reporter!(this.source())) {
-            if (chunk) await this.output!(chunk)
-        }
-        if (!this.closed) {
-            throw new Error("Reporter ended before its input")
-        }
-    }
-
-    private async* source(): AsyncGenerator<TestEvent> {
+    async function* source(): AsyncGenerator<TestEvent> {
         for (;;) {
-            while (!this.pending.length) {
-                if (this.closed) return
-                await new Promise<void>(resolve => (this.wake = resolve))
+            while (!pending.length) {
+                if (closed) return
+                await new Promise<void>(resolve => (wake = resolve))
             }
-            const item = this.pending.shift()!
-            this.active = item
+            const item = pending.shift()!
+            active = item
             let consumed = false
             try {
                 yield item.event
@@ -114,10 +72,62 @@ export class ReportStream {
                 // A normal next() resumes after yield. Iterator cleanup jumps
                 // straight to finally, leaving the item for fail() to reject.
                 if (consumed) {
-                    if (this.active === item) this.active = null
+                    if (active === item) active = null
                     item.resolve()
                 }
             }
         }
     }
+
+    const consume = async (): Promise<void> => {
+        for await (const chunk of reporter!(source())) {
+            if (chunk) await output!(chunk)
+        }
+        if (!closed) {
+            throw new Error("Reporter ended before its input")
+        }
+    }
+
+    const start = (): void => {
+        if (loop != null) return
+        loop = consume().catch(error => {
+            fail(error)
+            throw error
+        })
+        // close() observes the rejection. This handler only prevents an
+        // unhandledRejection in the interval before end() reaches close().
+        void loop.catch(() => undefined)
+    }
+
+    const attach: ReportStream["attach"] = (fn, out) => {
+        reporter = fn
+        output = out
+        start()
+    }
+
+    const emit: ReportStream["emit"] = (event) => {
+        if (closed) return rejected(new Error("Reporter is closed"))
+        if (failed) return rejected(failure)
+
+        const promise = new Promise<void>((resolve, reject) => {
+            pending.push({event, resolve, reject})
+            if (reporter == null) resolve()
+            wakeUp()
+        })
+        // emit() is normally awaited, but TestContext.diagnostic() is
+        // deliberately synchronous. Mark every rejection handled here while
+        // preserving it for awaiters and close().
+        void promise.catch(() => undefined)
+        if (reporter != null) start()
+        return promise
+    }
+
+    const close: ReportStream["close"] = async () => {
+        if (loop == null) return
+        closed = true
+        wakeUp()
+        await loop
+    }
+
+    return {attach, emit, close}
 }
