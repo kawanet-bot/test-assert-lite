@@ -104,7 +104,7 @@ export const createScheduler = (
         }
 
         try {
-            await sessions.close(!failed && result!.success)
+            await sessions.close({success: !failed && result!.success})
         } catch (error) {
             if (!failed) {
                 failed = true
