@@ -21,7 +21,7 @@ export interface RunServices {
     onCleanup: (fn: () => unknown) => void
 }
 
-interface RunServicesOptions {
+export interface RunServicesOptions {
     stdout?: TAL.Writer
     stderr?: TAL.Writer
 }

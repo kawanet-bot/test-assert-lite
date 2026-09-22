@@ -43,7 +43,7 @@ export const createChannel = ({prefix, services, timeout, singleRun = true}: Cha
     let begun = false
     let ended = false
     let timer: ReturnType<typeof setTimeout> | null = null
-    if (singleRun && !timeout) timeout = SILENCE_MS
+    if (singleRun) timeout ??= SILENCE_MS
 
     const heard = (): void => {
         if (timer != null) clearTimeout(timer)

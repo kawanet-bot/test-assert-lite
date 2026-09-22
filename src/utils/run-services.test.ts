@@ -2,7 +2,7 @@ import {strict as assert} from "node:assert"
 import {describe, it} from "node:test"
 import {createRunServices} from "./run-services.ts"
 
-const TITLE = "extras/host-services.test.ts"
+const TITLE = "utils/run-services.test.ts"
 
 describe(TITLE, () => {
     it("runs cleanup once, in registration order", async () => {
