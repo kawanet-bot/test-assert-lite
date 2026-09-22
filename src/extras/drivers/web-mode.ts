@@ -7,7 +7,10 @@ import {runInWebDriver} from "./webdriver.ts"
 
 export const runWebMode = async (options: ModeOptions & WebModeOptions) => {
     const {mode, session, imports} = options
-    const services = createRunServices()
+    const services = createRunServices({
+        stdout: process.stdout,
+        stderr: process.stderr,
+    })
 
     try {
         // The application is the middleware. Reports go to stdout.

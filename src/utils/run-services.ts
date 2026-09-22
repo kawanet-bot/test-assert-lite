@@ -21,12 +21,20 @@ export interface RunServices {
     onCleanup: (fn: () => unknown) => void
 }
 
+interface RunServicesOptions {
+    stdout?: TAL.Writer
+    stderr?: TAL.Writer
+}
+
+const nullWriter: TAL.Writer = {write: (() => undefined)}
+
 /** Creates the host-side services shared by the server and browser driver. */
-export const createRunServices = ({stdout, stderr}: Partial<RunServices> = {}): RunServices => {
+export const createRunServices = (options: RunServicesOptions = {}): RunServices => {
     const services = {} as RunServices
 
-    services.stdout = stdout ?? process.stdout
-    services.stderr = stderr ?? process.stderr
+    const P: RunServicesOptions = "undefined" !== typeof process && process || {}
+    services.stdout = options.stdout ?? P.stdout ?? nullWriter
+    services.stderr = options.stderr ?? P.stderr ?? nullWriter
 
     const showError = (e: unknown): void => {
         services.stderr.write(`${stringify(e)}\n`)
