@@ -59,6 +59,8 @@ export const createSessions = (harness: HarnessState): SessionControl => {
                 : hasProcess() ? {}
                     : consoleWriters(found, saved),
         )
+        // Taken before the reporter starts, since it refuses what is not a window or a process.
+        const releaseUncaught = options.uncaught == null ? null : takeUncaught(harness, options.uncaught)
         // Made first, so its close comes ahead of the writers' disconnect among the cleanups.
         const stream = createReportStream({reporter, output, services})
         const open: Open = {services, stream, report: channel == null ? async () => undefined : channel.end, auto}
@@ -66,7 +68,7 @@ export const createSessions = (harness: HarnessState): SessionControl => {
         services.onCleanup(() => {
             if (current === open) current = null
         })
-        if (options.uncaught != null) services.onCleanup(takeUncaught(harness, options.uncaught))
+        if (releaseUncaught != null) services.onCleanup(releaseUncaught)
         if (options.console != null) services.onCleanup(takeConsole(found, saved, services.stdout, services.stderr))
         stdout.connect(services.stdout)
         stderr.connect(services.stderr)

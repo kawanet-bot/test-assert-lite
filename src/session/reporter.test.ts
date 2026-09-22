@@ -1,5 +1,6 @@
 import {strict as assert} from "node:assert"
 import {describe, it} from "node:test"
+import type {TAL} from "test-assert-lite"
 import {createTAL} from "../index.ts"
 import {capture, names, summaryOf} from "../test-utils/capture.ts"
 
@@ -27,6 +28,18 @@ describe(TITLE, () => {
         local.test.it("one", () => undefined)
 
         assert.equal(await caught(local.session.end()), failure)
+    })
+
+    it("does not start the reporter when session() rejects", () => {
+        const local = createTAL()
+        let started = 0
+        const reporter: TAL.ReporterFn = async function* (source) {
+            started++
+            yield* local.reporter.tap()(source)
+        }
+
+        assert.throws(() => local.session.session({uncaught: {} as any, reporter}))
+        assert.equal(started, 0)
     })
 
     it("rejects end() when async reporter work rejects", async () => {
