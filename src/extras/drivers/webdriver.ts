@@ -7,7 +7,7 @@ import type {HostServices} from "../host-services.ts"
 import type {WebDriverCustom} from "../mode-options.ts"
 
 export interface RunInWebDriverOptions {
-    /** TBD */
+    /** Shared host-side streams, lifecycle and cleanup. */
     services: HostServices
     /** URL of the page to open, under the run's own path on the CLI's server. */
     url: string
@@ -30,10 +30,8 @@ const call = async (endpoint: string, method: string, path: string, body?: strin
 }
 
 /**
- * Opens `url` in the browser the WebDriver server at `endpoint` drives, and
- * ends the session once `completion` settles. The driver only opens the
- * page: from there the page reports on its own, so no command waits on the
- * run and no script timeout is in play.
+ * Opens `url` in a new WebDriver session and registers its cleanup. The
+ * page reports on its own, so no driver command waits for the run.
  */
 export const runInWebDriver = async ({url, services, endpoint, custom}: RunInWebDriverOptions): Promise<void> => {
     if (!endpoint) endpoint = "http://127.0.0.1:4444"

@@ -24,7 +24,7 @@ import type {Watcher} from "./watch.ts"
 import {createWatcher} from "./watch.ts"
 
 export interface AppOptions {
-    /** TBD */
+    /** Shared host-side streams, lifecycle and cleanup. */
     services: HostServices
     /** Classic scripts to run before the suites, absolute, in this order. */
     scripts?: string[]
@@ -38,7 +38,7 @@ export interface AppOptions {
     eval?: string
     /** Reloads the page people open when a suite, a script or an imported file changes; off where it cannot watch. */
     watch?: boolean
-    /** How long the page may stay silent. */
+    /** Allowed silence in milliseconds; unlimited when omitted. */
     timeout?: number
 }
 
@@ -70,8 +70,7 @@ const M = (fn: MiddlewareHandler | undefined | false) => [fn].filter(Boolean) as
 const random9 = (): string => randomInt(0, 36 ** 9).toString(36).padStart(9, "0")
 
 /**
- * Builds the application for the suites: its middleware, and the promise
- * of the verdict the page at `page` reports back through it.
+ * Builds the browser application: its middleware and run page path.
  */
 export const createApp = (options: AppOptions): App => {
     const {scripts = [], imports = new Imports([]), mount: mounted, session, eval: script, services, timeout} = options

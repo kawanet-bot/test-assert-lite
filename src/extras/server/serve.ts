@@ -12,7 +12,7 @@ import type {Context, MiddlewareHandler} from "./middleware.ts"
 import {createContext} from "./middleware.ts"
 
 export interface ServeOptions {
-    /** TBD */
+    /** Shared host-side streams, lifecycle and cleanup. */
     services: HostServices
     /** The chain every request goes to, a Response returned or set on the context; unanswered is a 404. */
     handler: MiddlewareHandler

@@ -8,11 +8,11 @@ import type {HostServices} from "../host-services.ts"
 import type {ContextLike, Next} from "./middleware.ts"
 
 export interface ChannelOptions {
-    /** TBD */
+    /** Shared host-side streams, lifecycle and cleanup. */
     services: HostServices
     /** Prefix for channel path: `/@tal/run/xxxxxxxxx/` */
     prefix: string
-    /** How long the page may stay silent. */
+    /** Allowed silence in milliseconds; unlimited when omitted. */
     timeout?: number
 }
 
@@ -24,8 +24,8 @@ export interface Channel {
 type CommandName = "begin" | "stdout" | "stderr" | "end"
 
 /**
- * Starts a run: from here on the page has the silence bound to report
- * within, and the verdict is what it says at its end.
+ * Creates the endpoints that receive the page's reports and result.
+ * Applies a silence timeout when one is given.
  */
 export const createChannel = ({prefix, services, timeout}: ChannelOptions): Channel => {
     let begun = false
