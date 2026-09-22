@@ -51,7 +51,7 @@ export const createChannel = ({prefix, services, timeout}: ChannelOptions): Chan
     const commands: Record<CommandName, (body: string) => undefined | number> = {
         begin: (body) => {
             try {
-                const payload = body && JSON.parse(body) as unknown
+                const payload = body ? JSON.parse(body) as unknown : undefined
                 services.begin(payload)
                 begun = true
             } catch (e) {
