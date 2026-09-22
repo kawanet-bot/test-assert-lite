@@ -8,12 +8,12 @@ import type {RunServices} from "../utils/run-services.ts"
 import {createRunServices} from "../utils/run-services.ts"
 import {client} from "./client.ts"
 import {consoleWriters, saveConsole, takeConsole} from "./console.ts"
+import type {ReportStream} from "./report-stream.ts"
+import {createReportStream} from "./report-stream.ts"
 import {chooseReporter} from "./reporters.ts"
 import type {HarnessState} from "./state.ts"
 import {takeUncaught} from "./uncaught.ts"
 
-type ReporterFn = TAL.ReporterFn
-type OutputFn = TAL.OutputFn
 type SessionOptions = TAL.SessionOptions
 type SessionResult = TAL.SessionResult
 type Writer = TAL.Writer
@@ -22,8 +22,8 @@ type Writer = TAL.Writer
 // the first declaration, until its services are resolved with the verdict.
 export interface Open {
     services: RunServices
-    reporter: ReporterFn
-    output: OutputFn
+    // What the run's events go through, on the way to the reporter.
+    stream: ReportStream
     // Tells the CLI the verdict. Without a channel there is nothing to tell.
     report: (result: SessionResult) => Promise<void>
     // Opened by a declaration rather than by session(): the refusal differs.
@@ -49,6 +49,7 @@ export const createSessions = (harness: HarnessState): SessionControl => {
         const reporter = chooseReporter(harness, options)
         // The report goes where the console goes unless told otherwise.
         const output = options.output ?? ((text: string) => stdout.write(text))
+        const stream = createReportStream(reporter, output)
         // Saved before anything is taken over, so nothing here loops back.
         const found = options.console ?? globalThis.console
         const saved = saveConsole(found)
@@ -59,13 +60,15 @@ export const createSessions = (harness: HarnessState): SessionControl => {
                 : hasProcess() ? {}
                     : consoleWriters(found, saved),
         )
-        const open: Open = {services, reporter, output, report: channel == null ? async () => undefined : channel.end, auto}
+        const open: Open = {services, stream, report: channel == null ? async () => undefined : channel.end, auto}
         // The next session() is taken once this one is through.
         services.onCleanup(() => {
             if (current === open) current = null
         })
         if (options.uncaught != null) services.onCleanup(takeUncaught(harness, options.uncaught))
         if (options.console != null) services.onCleanup(takeConsole(found, saved, services.stdout, services.stderr))
+        // The reporter writes its last lines before the writers disconnect.
+        services.onCleanup(stream.close)
         stdout.connect(services.stdout)
         stderr.connect(services.stderr)
         services.onCleanup(() => {
