@@ -55,7 +55,7 @@ export const createChannel = ({prefix, services, timeout}: ChannelOptions): Chan
                 services.begin(payload)
                 begun = true
             } catch (e) {
-                services.stderr.write(messageOf(e))
+                services.stderr.write(`${messageOf(e)}\n`)
                 return 400
             }
         },
