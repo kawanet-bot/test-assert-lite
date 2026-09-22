@@ -40,7 +40,6 @@ const runCLI = async (options: ModeOptions): Promise<number> => {
         return result?.success ? 0 : 1
     } else {
         const result = await runWebMode(options)
-        if (mode === "serve") return 0
         return result?.success ? 0 : 1
     }
 }

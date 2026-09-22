@@ -48,7 +48,7 @@ export const runWebMode = async (options: ModeOptions & WebModeOptions) => {
             const entryURL = options.session.files?.length || options.eval != null ? url : `${server.origin}/`
             process.stdout.write(`${entryURL}\n`)
             process.stderr.write("Serving; press Ctrl-C to stop.\n")
-            process.once("SIGINT", () => services.resolve())
+            process.once("SIGINT", () => services.resolve({success: true}))
             return await services.finished
         }
 

@@ -39,7 +39,7 @@ describe(TITLE, () => {
         const said: string[] = []
         const services = createHostServices({stderr: {write: chunk => void said.push(chunk)}})
         const calls: string[] = []
-        services.resolve()
+        services.resolve({success: true})
         await services.finished
         services.onCleanup(() => void calls.push("late"))
         services.onCleanup(() => Promise.reject(new Error("late fails")))
