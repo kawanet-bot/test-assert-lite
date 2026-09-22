@@ -4,7 +4,6 @@ import {createAssert} from "./assert/assert.ts"
 import {html} from "./reporter/html.ts"
 import {spec} from "./reporter/spec.ts"
 import {tap} from "./reporter/tap.ts"
-import {createScheduler} from "./session/scheduler.ts"
 import {createSessions} from "./session/session.ts"
 import {createHarnessState} from "./session/state.ts"
 import {createRegistrar} from "./suite/registrar.ts"
@@ -12,9 +11,8 @@ import {createRegistrar} from "./suite/registrar.ts"
 // Binds everything the package exposes to one tree.
 export const createTAL: typeof declared.createTAL = () => {
     const state = createHarnessState()
-    const sessions = createSessions(state)
     const {assert, tca} = createAssert()
-    const {schedule, end} = createScheduler(state, sessions, tca)
+    const {session, stdout, stderr, schedule, end} = createSessions(state, tca)
     const registrar = createRegistrar(state, schedule)
     const reporter: TAL.Reporter = {spec, tap, html}
 
@@ -29,13 +27,10 @@ export const createTAL: typeof declared.createTAL = () => {
             })
         }
     }
-    const {stdout, stderr} = sessions
-    const session: TAL.SessionAPI = {session: sessions.session, load, end, stdout, stderr}
-
     return {
         assert,
         reporter,
-        session,
+        session: {session, load, end, stdout, stderr},
         test: registrar,
     }
 }
