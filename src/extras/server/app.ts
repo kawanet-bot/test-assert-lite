@@ -7,7 +7,7 @@
 import {randomInt} from "node:crypto"
 import {basename, resolve} from "node:path"
 import {fileURLToPath} from "node:url"
-import type {HostServices} from "../host-services.ts"
+import type {RunServices} from "../../utils/run-services.ts"
 import {Imports} from "../imports.ts"
 import type {TestSession} from "../mode-options.ts"
 import {packageNameOf, packageRoot} from "../package-root.ts"
@@ -25,7 +25,7 @@ import {createWatcher} from "./watch.ts"
 
 export interface AppOptions {
     /** Shared host-side streams, lifecycle and cleanup. */
-    services: HostServices
+    services: RunServices
     /** Classic scripts to run before the suites, absolute, in this order. */
     scripts?: string[]
     /** Specifiers and what they resolve to: a file, served from its directory, or a URL put into the map as it is. */

@@ -6,7 +6,7 @@ import {join} from "node:path"
 import {after, before, describe, it} from "node:test"
 import type {TAL} from "test-assert-lite"
 import {createBufWriter} from "../../utils/buf-writer.ts"
-import {createHostServices} from "../host-services.ts"
+import {createRunServices} from "../../utils/run-services.ts"
 import {createApp} from "./app.ts"
 import {serve} from "./serve.ts"
 
@@ -36,7 +36,7 @@ describe(TITLE, () => {
     })
 
     it("escapes a < in the config, so a name cannot close the tag, and reads it back", async () => {
-        const services = createHostServices({stdout, stderr})
+        const services = createRunServices({stdout, stderr})
         const odd = createApp({session: {files: [], reporter: "</script><b>"}, services})
         const server = await serve({handler: odd.handler, services})
         try {
@@ -53,7 +53,7 @@ describe(TITLE, () => {
     it("serves without the reload, and says so once, where it cannot watch", async () => {
         const bufStderr = createBufWriter()
         const files = [join(dir, "missing", "suite.mjs")]
-        const services = createHostServices({stdout, stderr: bufStderr})
+        const services = createRunServices({stdout, stderr: bufStderr})
         const blind = createApp({session: {files}, watch: true, services})
         const running = await serve({handler: blind.handler, services})
         try {
@@ -70,7 +70,7 @@ describe(TITLE, () => {
     it("serves a mounted directory at the root in place of htdocs, its HTML with the head", async () => {
         await mkdir(join(dir, "site"))
         await writeFile(join(dir, "site", "index.html"), "<html><head></head><body>mine</body></html>")
-        const services = createHostServices({stdout, stderr})
+        const services = createRunServices({stdout, stderr})
         const files = [join(dir, "tests", "my suite.mjs")]
         const mounted = createApp({session: {files}, mount: join(dir, "site"), services})
         const running = await serve({handler: mounted.handler, services})
@@ -89,7 +89,7 @@ describe(TITLE, () => {
     it("serves a mounted directory without a suite: the library in the head, no suite tag, no suite mount", async () => {
         await mkdir(join(dir, "plain"))
         await writeFile(join(dir, "plain", "index.html"), "<html><head></head><body>plain</body></html>")
-        const services = createHostServices({stdout, stderr})
+        const services = createRunServices({stdout, stderr})
         const bare = createApp({session: {files: []}, mount: join(dir, "plain"), watch: true, services})
         const running = await serve({handler: bare.handler, services})
         try {
@@ -106,7 +106,7 @@ describe(TITLE, () => {
         await mkdir(join(dir, "mapped"))
         await writeFile(join(dir, "mapped", "index.html"), '<html><head><script type="importmap">{"imports":{"mine":"/mine.mjs"}}</script></head><body>mapped</body></html>')
         const bufStderr = createBufWriter()
-        const services = createHostServices({stdout, stderr: bufStderr})
+        const services = createRunServices({stdout, stderr: bufStderr})
         const files = [join(dir, "tests", "my suite.mjs")]
         const mapped = createApp({session: {files}, mount: join(dir, "mapped"), services})
         const running = await serve({handler: mapped.handler, services, quiet: true})
@@ -131,7 +131,7 @@ describe(TITLE, () => {
             res.writeHead(404).end()
         })
         await new Promise<void>(listening => upstream.listen(0, "127.0.0.1", listening))
-        const services = createHostServices({stdout, stderr})
+        const services = createRunServices({stdout, stderr})
         services.onCleanup(() => upstream.close())
         const address = upstream.address()
         const port = typeof address === "object" && address != null ? address.port : 0
@@ -153,7 +153,7 @@ describe(TITLE, () => {
     })
 
     it("serves a script given as [eval].js under the run's path, and names it as the one file", async () => {
-        const services = createHostServices({stdout, stderr})
+        const services = createRunServices({stdout, stderr})
         const inline = createApp({session: {files: []}, eval: "console.log('<hi>')\n", services})
         const server = await serve({handler: inline.handler, services})
         try {
@@ -172,7 +172,7 @@ describe(TITLE, () => {
     })
 
     it("fails the verdict on anything but true", async () => {
-        const services = createHostServices({stdout, stderr})
+        const services = createRunServices({stdout, stderr})
         const files = [join(dir, "tests", "my suite.mjs")]
         const other = createApp({session: {files}, services})
         const running = await serve({handler: other.handler, services})
@@ -191,7 +191,7 @@ describe(TITLE, () => {
         const file = join(dir, "watching.mjs")
         await writeFile(file, "export const watching = 1")
         const files = [file]
-        const services = createHostServices({stdout, stderr})
+        const services = createRunServices({stdout, stderr})
         const watching = createApp({session: {files}, watch: true, singleRun: false, services})
         const running = await serve({handler: watching.handler, services})
         try {
@@ -224,9 +224,9 @@ describe(TITLE, () => {
         await writeFile(join(plain, "b <c>.mjs"), "")
         await mkdir(join(plain, "site"))
         await writeFile(join(plain, "site", "index.html"), "<html><head><title>{{title}}</title></head><body>{{title}}</body></html>")
-        const servicesN = createHostServices({stdout, stderr})
-        const servicesM = createHostServices({stdout, stderr})
-        const servicesB = createHostServices({stdout, stderr})
+        const servicesN = createRunServices({stdout, stderr})
+        const servicesM = createRunServices({stdout, stderr})
+        const servicesB = createRunServices({stdout, stderr})
         const namedFiles = [join(plain, "a.mjs"), join(plain, "b <c>.mjs"), join(plain, "a.mjs")]
         const named = createApp({session: {files: namedFiles}, services: servicesN})
         const mountedFiles = [join(plain, "a.mjs")]

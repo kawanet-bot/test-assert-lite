@@ -3,12 +3,12 @@
 // cannot launch, Safari on a Mac say, runs the suites too. Node's fetch()
 // is all it takes, so no optional dependency is kept out of tsc here.
 
-import type {HostServices} from "../host-services.ts"
+import type {RunServices} from "../../utils/run-services.ts"
 import type {WebDriverCustom} from "../mode-options.ts"
 
 export interface RunInWebDriverOptions {
     /** Shared host-side streams, lifecycle and cleanup. */
-    services: HostServices
+    services: RunServices
     /** URL of the page to open, under the run's own path on the CLI's server. */
     url: string
     /** The WebDriver server, such as http://127.0.0.1:4444 */

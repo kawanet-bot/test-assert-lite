@@ -1,9 +1,9 @@
-import type {HostServices} from "../host-services.ts"
+import type {RunServices} from "../../utils/run-services.ts"
 import type {BrowserCustom} from "../mode-options.ts"
 
 export interface RunInBrowserOptions {
     /** Shared host-side streams, lifecycle and cleanup. */
-    services: HostServices
+    services: RunServices
     /** URL of the page to open, under the run's own path on the CLI's server. */
     url: string
     /** A launched Playwright-like browser. */

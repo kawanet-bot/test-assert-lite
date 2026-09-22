@@ -1,4 +1,4 @@
-import {createHostServices} from "../host-services.ts"
+import {createRunServices} from "../../utils/run-services.ts"
 import type {ModeOptions, WebModeOptions} from "../mode-options.ts"
 import {createApp} from "../server/app.ts"
 import {serve} from "../server/serve.ts"
@@ -7,7 +7,7 @@ import {runInWebDriver} from "./webdriver.ts"
 
 export const runWebMode = async (options: ModeOptions & WebModeOptions) => {
     const {mode, session, imports} = options
-    const services = createHostServices()
+    const services = createRunServices()
 
     try {
         // The application is the middleware. Reports go to stdout.

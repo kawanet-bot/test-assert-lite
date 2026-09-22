@@ -1,8 +1,8 @@
 import type {TAL} from "test-assert-lite"
-import {stringify} from "../utils/stringify.ts"
+import {stringify} from "./stringify.ts"
 
 /** Host-side streams and lifecycle shared for one browser run. */
-export interface HostServices {
+export interface RunServices {
     /** Receives the page's standard output. */
     stdout: TAL.Writer
     /** Receives the page's standard error and host logs. */
@@ -22,8 +22,8 @@ export interface HostServices {
 }
 
 /** Creates the host-side services shared by the server and browser driver. */
-export const createHostServices = ({stdout, stderr}: Partial<HostServices> = {}): HostServices => {
-    const services = {} as HostServices
+export const createRunServices = ({stdout, stderr}: Partial<RunServices> = {}): RunServices => {
+    const services = {} as RunServices
 
     services.stdout = stdout ?? process.stdout
     services.stderr = stderr ?? process.stderr
@@ -53,5 +53,5 @@ export const createHostServices = ({stdout, stderr}: Partial<HostServices> = {})
         services.reject = (error) => (finished ??= services.cleanup().catch(showError).finally(() => reject(error)))
     })
 
-    return services as HostServices
+    return services as RunServices
 }

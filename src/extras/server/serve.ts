@@ -6,14 +6,14 @@
 
 import type {IncomingMessage} from "node:http"
 import {createServer} from "node:http"
+import type {RunServices} from "../../utils/run-services.ts"
 import {messageOf} from "../../utils/stringify.ts"
-import type {HostServices} from "../host-services.ts"
 import type {Context, MiddlewareHandler} from "./middleware.ts"
 import {createContext} from "./middleware.ts"
 
 export interface ServeOptions {
     /** Shared host-side streams, lifecycle and cleanup. */
-    services: HostServices
+    services: RunServices
     /** The chain every request goes to, a Response returned or set on the context; unanswered is a 404. */
     handler: MiddlewareHandler
     /** Address to listen on; 127.0.0.1 by default. */

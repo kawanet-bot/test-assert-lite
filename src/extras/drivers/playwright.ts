@@ -1,7 +1,7 @@
 // Playwright adapter for the browser test CLI: the one file that imports
 // playwright, which is not a dependency of this package.
 
-import type {HostServices} from "../host-services.ts"
+import type {RunServices} from "../../utils/run-services.ts"
 import type {BrowserCustom} from "../mode-options.ts"
 import {tryImport} from "../try-import.ts"
 import type {BrowserLike} from "./browser.ts"
@@ -9,7 +9,7 @@ import {runInBrowser} from "./browser.ts"
 
 export interface RunInPlaywrightOptions {
     /** Shared host-side streams, lifecycle and cleanup. */
-    services: HostServices
+    services: RunServices
     /** URL of the page to open, under the run's own path on the CLI's server. */
     url: string
     /** Which browser engine Playwright launches. */

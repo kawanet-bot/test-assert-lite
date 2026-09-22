@@ -5,13 +5,13 @@
 // nothing changes in the protocol here without a change in the client.
 
 import type {TAL} from "test-assert-lite"
+import type {RunServices} from "../../utils/run-services.ts"
 import {stringify} from "../../utils/stringify.ts"
-import type {HostServices} from "../host-services.ts"
 import type {ContextLike, Next} from "./middleware.ts"
 
 export interface ChannelOptions {
     /** Shared host-side streams, lifecycle and cleanup. */
-    services: HostServices
+    services: RunServices
     /** Prefix for channel path: `/@tal/run/xxxxxxxxx/` */
     prefix: string
     /** Allowed silence in milliseconds; 30 seconds for a single run, unlimited otherwise. */

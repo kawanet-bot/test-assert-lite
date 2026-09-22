@@ -9,7 +9,7 @@ import {after, before, describe, it} from "node:test"
 import {pathToFileURL} from "node:url"
 import type {TAL} from "test-assert-lite"
 import {createBufWriter} from "../../utils/buf-writer.ts"
-import {createHostServices} from "../host-services.ts"
+import {createRunServices} from "../../utils/run-services.ts"
 import {ImportAliasItem, ImportMapItem, Imports} from "../imports.ts"
 import type {App} from "./app.ts"
 import {createApp} from "./app.ts"
@@ -39,7 +39,7 @@ describe(TITLE, () => {
     let server: Server
     const stdout = createBufWriter()
     const stderr = nullWriter
-    const sharedServices = createHostServices({stdout, stderr})
+    const sharedServices = createRunServices({stdout, stderr})
     const url = (path: string): string => server.origin + path
     const cwd = pathToFileURL(`${process.cwd()}/`)
 

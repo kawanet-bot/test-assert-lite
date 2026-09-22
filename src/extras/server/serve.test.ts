@@ -6,7 +6,7 @@ import {tmpdir} from "node:os"
 import {join} from "node:path"
 import {after, before, describe, it} from "node:test"
 import {createBufWriter} from "../../utils/buf-writer.ts"
-import {createHostServices} from "../host-services.ts"
+import {createRunServices} from "../../utils/run-services.ts"
 import {compose} from "./middleware.ts"
 import type {Server} from "./serve.ts"
 import {serve} from "./serve.ts"
@@ -73,7 +73,7 @@ describe(TITLE, () => {
     let server: Server
     const stderr = createBufWriter()
     const posted: string[] = []
-    const sharedServices = createHostServices({stderr})
+    const sharedServices = createRunServices({stderr})
 
     before(async () => {
         dir = await mkdtemp(join(tmpdir(), "tal-server-"))
@@ -172,7 +172,7 @@ describe(TITLE, () => {
     })
 
     it("listens on the loopback address for an empty host as for none", async () => {
-        const services = createHostServices()
+        const services = createRunServices()
         const other = await serve({handler: async c => c.body("x"), host: "", services})
         try {
             assert.match(other.origin, /^http:\/\/127\.0\.0\.1:\d+$/)
@@ -229,7 +229,7 @@ describe(TITLE, () => {
     })
 
     it("writes every Set-Cookie a Response carries as a line of its own", async () => {
-        const services = createHostServices()
+        const services = createRunServices()
         const cookies = await serve({
             handler: async () => {
                 const headers = new Headers({"content-type": "text/plain"})
@@ -300,7 +300,7 @@ describe(TITLE, () => {
 
     it("listens on the port asked for, and refuses one already taken", async () => {
         const port = await freePort()
-        const services = createHostServices()
+        const services = createRunServices()
         const fixed = await serve({handler: async c => c.body("fixed"), port, services})
         try {
             assert.equal(fixed.origin, `http://127.0.0.1:${port}`)
@@ -313,7 +313,7 @@ describe(TITLE, () => {
 
     it("names itself by the origin given, while the requests keep their own URL", async () => {
         const port = await freePort()
-        const services = createHostServices()
+        const services = createRunServices()
         const named = await serve({handler: async c => c.body(c.req.url), port, origin: "https://test.invalid", services})
         try {
             assert.equal(named.origin, "https://test.invalid")
@@ -324,8 +324,8 @@ describe(TITLE, () => {
     })
 
     it("names the loopback of the family for a wildcard address", async () => {
-        const service4 = createHostServices()
-        const service6 = createHostServices()
+        const service4 = createRunServices()
+        const service6 = createRunServices()
         const v4 = await serve({handler: async c => c.body("4"), host: "0.0.0.0", services: service4})
         const v6 = await serve({handler: async c => c.body("6"), host: "::", services: service6})
         try {
@@ -341,7 +341,7 @@ describe(TITLE, () => {
     // Quiet keeps unsuccessful responses and their errors in the log.
     it("logs the 4xx and 5xx lines alone under quiet, the errors with them", async () => {
         const stderr = createBufWriter()
-        const services = createHostServices({stderr})
+        const services = createRunServices({stderr})
         const quiet = await serve({
             handler: compose([
                 async (c, next) => (c.req.path === "/boom" ? Promise.reject(new Error("boom")) : next()),
