@@ -3,13 +3,14 @@
 // cannot launch, Safari on a Mac say, runs the suites too. Node's fetch()
 // is all it takes, so no optional dependency is kept out of tsc here.
 
+import type {HostServices} from "../host-services.ts"
 import type {WebDriverCustom} from "../mode-options.ts"
 
 export interface RunInWebDriverOptions {
+    /** Shared host-side streams, lifecycle and cleanup. */
+    services: HostServices
     /** URL of the page to open, under the run's own path on the CLI's server. */
     url: string
-    /** Settles when the run finishes or fails; the browser closes then. */
-    completion: Promise<unknown>
     /** The WebDriver server, such as http://127.0.0.1:4444 */
     endpoint?: string
     /** Extended configuration via --webdriver-config */
@@ -29,12 +30,10 @@ const call = async (endpoint: string, method: string, path: string, body?: strin
 }
 
 /**
- * Opens `url` in the browser the WebDriver server at `endpoint` drives, and
- * ends the session once `completion` settles. The driver only opens the
- * page: from there the page reports on its own, so no command waits on the
- * run and no script timeout is in play.
+ * Opens `url` in a new WebDriver session and registers its cleanup. The
+ * page reports on its own, so no driver command waits for the run.
  */
-export const runInWebDriver = async ({url, completion, endpoint, custom}: RunInWebDriverOptions): Promise<void> => {
+export const runInWebDriver = async ({url, services, endpoint, custom}: RunInWebDriverOptions): Promise<void> => {
     if (!endpoint) endpoint = "http://127.0.0.1:4444"
     let created: Reply["value"]
 
@@ -50,20 +49,9 @@ export const runInWebDriver = async ({url, completion, endpoint, custom}: RunInW
 
     const base = `/session/${created.sessionId}`
 
-    let failure: unknown
-    try {
-        await call(endpoint, "POST", `${base}/url`, JSON.stringify({url}))
-        await completion
-        return
-    } catch (error) {
-        failure = error
-        throw error
-    } finally {
-        // A session gone with its browser rejects this too: the error in
-        // flight says why, so this one is reported beside it, not in its place.
-        await call(endpoint, "DELETE", base).catch(error => {
-            if (failure == null) throw error
-            console.error(error)
-        })
-    }
+    services.onCleanup(async () => {
+        await call(endpoint, "DELETE", base)
+    })
+
+    await call(endpoint, "POST", `${base}/url`, JSON.stringify({url}))
 }

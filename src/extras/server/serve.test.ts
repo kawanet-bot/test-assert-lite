@@ -5,6 +5,8 @@ import {connect, createServer as listen} from "node:net"
 import {tmpdir} from "node:os"
 import {join} from "node:path"
 import {after, before, describe, it} from "node:test"
+import {createBufWriter} from "../../utils/buf-writer.ts"
+import {createHostServices} from "../host-services.ts"
 import {compose} from "./middleware.ts"
 import type {Server} from "./serve.ts"
 import {serve} from "./serve.ts"
@@ -69,8 +71,9 @@ const freePort = (): Promise<number> => new Promise(resolve => {
 describe(TITLE, () => {
     let dir: string
     let server: Server
-    const lines: string[] = []
+    const stderr = createBufWriter()
     const posted: string[] = []
+    const sharedServices = createHostServices({stderr})
 
     before(async () => {
         dir = await mkdtemp(join(tmpdir(), "tal-server-"))
@@ -115,12 +118,12 @@ describe(TITLE, () => {
                 serveStatic({path: "/@tal/tests/0/my suite.mjs", root: join(dir, "elsewhere", "suite.mjs")}),
                 serveStatic({path: "/", root: join(dir, "htdocs")}),
             ]),
-            log: line => lines.push(line),
+            services: sharedServices,
         })
     })
 
     after(async () => {
-        server.close()
+        await sharedServices.cleanup()
         await rm(dir, {recursive: true, force: true})
     })
 
@@ -169,12 +172,13 @@ describe(TITLE, () => {
     })
 
     it("listens on the loopback address for an empty host as for none", async () => {
-        const other = await serve({handler: async c => c.body("x"), host: ""})
+        const services = createHostServices()
+        const other = await serve({handler: async c => c.body("x"), host: "", services})
         try {
             assert.match(other.origin, /^http:\/\/127\.0\.0\.1:\d+$/)
             assert.equal((await get(other.origin, "/")).body, "x")
         } finally {
-            other.close()
+            await services.cleanup()
         }
     })
 
@@ -225,6 +229,7 @@ describe(TITLE, () => {
     })
 
     it("writes every Set-Cookie a Response carries as a line of its own", async () => {
+        const services = createHostServices()
         const cookies = await serve({
             handler: async () => {
                 const headers = new Headers({"content-type": "text/plain"})
@@ -232,12 +237,13 @@ describe(TITLE, () => {
                 headers.append("set-cookie", "b=2; Path=/; Expires=Wed, 21 Oct 2026 07:28:00 GMT")
                 return new Response("in", {headers})
             },
+            services,
         })
         try {
             const res = await fetch(cookies.origin + "/")
             assert.deepEqual(res.headers.getSetCookie(), ["a=1; Path=/", "b=2; Path=/; Expires=Wed, 21 Oct 2026 07:28:00 GMT"])
         } finally {
-            cookies.close()
+            await services.cleanup()
         }
     })
 
@@ -261,24 +267,26 @@ describe(TITLE, () => {
     })
 
     it("answers 500 when the chain throws, and logs the error", async () => {
-        const from = lines.length
+        stderr.read()
         assert.equal((await get(server.origin, "/boom")).status, 500)
-        assert.match(lines[from] ?? "", /^Error: boom\n/)
-        assert.match(lines[from + 1] ?? "", /^GET \/boom 500 0 - /)
+        const lines = stderr.read().split(/(?<=\n)(?=\S)/)
+        assert.match(lines[0] ?? "", /^Error: boom\n/)
+        assert.match(lines[1] ?? "", /^GET \/boom 500 0 - /)
     })
 
     it("answers 500 when the Response's body fails to be read, rather than hanging", async () => {
-        const from = lines.length
+        stderr.read()
         assert.equal((await get(server.origin, "/broken")).status, 500)
-        assert.match(lines[from] ?? "", /^Error: broken body\n/)
-        assert.match(lines[from + 1] ?? "", /^GET \/broken 500 0 - /)
+        const lines = stderr.read().split(/(?<=\n)(?=\S)/)
+        assert.match(lines[0] ?? "", /^Error: broken body\n/)
+        assert.match(lines[1] ?? "", /^GET \/broken 500 0 - /)
     })
 
     it("answers 400 to a target that is not a path, or a Host that is no host", async () => {
         assert.equal((await raw(server.origin, "GET * HTTP/1.0\r\nHost: x\r\n\r\n")).status, "400")
         assert.equal((await raw(server.origin, "GET /url HTTP/1.0\r\nHost: no host\r\n\r\n")).status, "400")
         // A Host with more than a host in it would make a URL, and another path.
-        for (const host of ["example.test?x=", "example.test/foo", "u@example.test", "example.test#f", "[::1"]) {
+        for (const host of ["test.invalid?x=", "test.invalid/foo", "u@test.invalid", "test.invalid#f", "[::1"]) {
             assert.equal((await raw(server.origin, `GET /url HTTP/1.0\r\nHost: ${host}\r\n\r\n`)).status, "400", host)
         }
         assert.equal((await raw(server.origin, "GET /url HTTP/1.0\r\nHost: [::1]:3000\r\n\r\n")).body, "http://[::1]:3000/url")
@@ -286,64 +294,70 @@ describe(TITLE, () => {
 
     it("takes the request's URL from its Host header, and from the address listened on without one", async () => {
         assert.equal((await get(server.origin, "/url")).body, `${server.origin}/url`)
-        assert.equal((await raw(server.origin, "GET /url HTTP/1.0\r\nHost: example.test:8080\r\n\r\n")).body, "http://example.test:8080/url")
+        assert.equal((await raw(server.origin, "GET /url HTTP/1.0\r\nHost: test.invalid:8080\r\n\r\n")).body, "http://test.invalid:8080/url")
         assert.equal((await raw(server.origin, "GET /url HTTP/1.0\r\n\r\n")).body, `${server.origin}/url`)
     })
 
     it("listens on the port asked for, and refuses one already taken", async () => {
         const port = await freePort()
-        const fixed = await serve({handler: async c => c.body("fixed"), port})
+        const services = createHostServices()
+        const fixed = await serve({handler: async c => c.body("fixed"), port, services})
         try {
             assert.equal(fixed.origin, `http://127.0.0.1:${port}`)
             assert.equal((await get(fixed.origin, "/")).body, "fixed")
-            await assert.rejects(serve({handler: async c => c.body(""), port}), /EADDRINUSE/)
+            await assert.rejects(serve({handler: async c => c.body(""), port, services}), /EADDRINUSE/)
         } finally {
-            fixed.close()
+            await services.cleanup()
         }
     })
 
     it("names itself by the origin given, while the requests keep their own URL", async () => {
         const port = await freePort()
-        const named = await serve({handler: async c => c.body(c.req.url), port, origin: "https://tal.example"})
+        const services = createHostServices()
+        const named = await serve({handler: async c => c.body(c.req.url), port, origin: "https://test.invalid", services})
         try {
-            assert.equal(named.origin, "https://tal.example")
+            assert.equal(named.origin, "https://test.invalid")
             assert.equal((await get(`http://127.0.0.1:${port}`, "/x")).body, `http://127.0.0.1:${port}/x`)
         } finally {
-            named.close()
+            await services.cleanup()
         }
     })
 
     it("names the loopback of the family for a wildcard address", async () => {
-        const v4 = await serve({handler: async c => c.body("4"), host: "0.0.0.0"})
-        const v6 = await serve({handler: async c => c.body("6"), host: "::"})
+        const service4 = createHostServices()
+        const service6 = createHostServices()
+        const v4 = await serve({handler: async c => c.body("4"), host: "0.0.0.0", services: service4})
+        const v6 = await serve({handler: async c => c.body("6"), host: "::", services: service6})
         try {
             assert.match(v4.origin, /^http:\/\/127\.0\.0\.1:\d+$/)
             assert.match(v6.origin, /^http:\/\/\[::1\]:\d+$/)
             assert.equal((await get(v6.origin, "/")).body, "6")
         } finally {
-            v4.close()
-            v6.close()
+            await service4.cleanup()
+            await service6.cleanup()
         }
     })
 
     // Quiet keeps unsuccessful responses and their errors in the log.
     it("logs the 4xx and 5xx lines alone under quiet, the errors with them", async () => {
-        const said: string[] = []
+        const stderr = createBufWriter()
+        const services = createHostServices({stderr})
         const quiet = await serve({
             handler: compose([
                 async (c, next) => (c.req.path === "/boom" ? Promise.reject(new Error("boom")) : next()),
                 serveStatic({path: "/", root: join(dir, "htdocs")}),
             ]),
-            log: line => said.push(line),
             quiet: true,
+            services,
         })
         try {
             assert.equal((await get(quiet.origin, "/page.html")).status, 200)
             assert.equal((await get(quiet.origin, "/missing.html")).status, 404)
             assert.equal((await get(quiet.origin, "/boom")).status, 500)
         } finally {
-            quiet.close()
+            await services.cleanup()
         }
+        const said = stderr.read().split(/(?<=\n)(?=\S)/)
         assert.equal(said.length, 3)
         assert.match(said[0] ?? "", /^GET \/missing\.html 404 0 - /)
         assert.match(said[1] ?? "", /^Error: boom\n/)
@@ -351,14 +365,14 @@ describe(TITLE, () => {
     })
 
     it("logs one line per response, in morgan's tiny format", async () => {
-        const from = lines.length
+        stderr.read()
         await get(server.origin, "/dist/lib.mjs")
         await get(server.origin, "/missing.html")
         await get(server.origin, "/dist/notes.txt")
-        assert.deepEqual(lines.slice(from).map(line => line.replace(/ \d+\.\d{3} ms$/, " N ms")), [
-            "GET /dist/lib.mjs 200 20 - N ms",
-            "GET /missing.html 404 0 - N ms",
-            "GET /dist/notes.txt 403 0 - N ms",
-        ])
+        const lines = stderr.read().split(/(?<=\n)(?=\S)/)
+        assert.equal(lines.length, 3)
+        assert.match(lines[0] ?? "", /^GET \/dist\/lib.mjs 200 20 - \d+\.\d+ ms/)
+        assert.match(lines[1] ?? "", /^GET \/missing.html 404 0 - \d+\.\d+ ms/)
+        assert.match(lines[2] ?? "", /^GET \/dist\/notes.txt 403 0 - \d+\.\d+ ms/)
     })
 })

@@ -7,7 +7,7 @@
 import {randomInt} from "node:crypto"
 import {basename, resolve} from "node:path"
 import {fileURLToPath} from "node:url"
-import type {TAL} from "test-assert-lite"
+import type {HostServices} from "../host-services.ts"
 import {Imports} from "../imports.ts"
 import type {TestSession} from "../mode-options.ts"
 import {packageNameOf, packageRoot} from "../package-root.ts"
@@ -24,10 +24,8 @@ import type {Watcher} from "./watch.ts"
 import {createWatcher} from "./watch.ts"
 
 export interface AppOptions {
-    /** Where the app's stdout goes. */
-    stdout: TAL.Writer
-    /** Where the app's stderr goes. */
-    stderr: TAL.Writer
+    /** Shared host-side streams, lifecycle and cleanup. */
+    services: HostServices
     /** Classic scripts to run before the suites, absolute, in this order. */
     scripts?: string[]
     /** Specifiers and what they resolve to: a file, served from its directory, or a URL put into the map as it is. */
@@ -40,6 +38,8 @@ export interface AppOptions {
     eval?: string
     /** Reloads the page people open when a suite, a script or an imported file changes; off where it cannot watch. */
     watch?: boolean
+    /** Allowed silence in milliseconds; unlimited when omitted. */
+    timeout?: number
 }
 
 export interface App {
@@ -47,11 +47,6 @@ export interface App {
     handler: MiddlewareHandler
     /** Path of the page a browser is sent to, under the run's own path. */
     page: string
-    /** The verdict the page reports at its end; rejects if it never begins. */
-    done: Promise<boolean>
-
-    /** Stops waiting for the page. */
-    close(): void
 }
 
 interface TestSessionJSON {
@@ -75,15 +70,14 @@ const M = (fn: MiddlewareHandler | undefined | false) => [fn].filter(Boolean) as
 const random9 = (): string => randomInt(0, 36 ** 9).toString(36).padStart(9, "0")
 
 /**
- * Builds the application for the suites: its middleware, and the promise
- * of the verdict the page at `page` reports back through it.
+ * Builds the browser application: its middleware and run page path.
  */
 export const createApp = (options: AppOptions): App => {
-    const {scripts = [], imports = new Imports([]), mount: mounted, session, eval: script, stdout, stderr} = options
+    const {scripts = [], imports = new Imports([]), mount: mounted, session, eval: script, services, timeout} = options
     const {files = []} = session
     const prefix = `/@tal/run/${random9()}/`
     const runPath = `${prefix}run.html`
-    const channel = createChannel({prefix, stdout, stderr})
+    const channel = createChannel({prefix, services, timeout})
 
     // Watching is a convenience of --serve, not what it is for: where the
     // file system refuses, the inotify limit reached say, the page is
@@ -93,7 +87,7 @@ export const createApp = (options: AppOptions): App => {
         try {
             watcher = createWatcher([...files, ...scripts, ...imports.paths()])
         } catch (error) {
-            stderr.write(`watch is off: ${error instanceof Error ? error.message : String(error)}\n`)
+            services.stderr.write(`watch is off: ${error instanceof Error ? error.message : String(error)}\n`)
         }
     }
 
@@ -121,7 +115,7 @@ export const createApp = (options: AppOptions): App => {
     // so the config and the scripts stay out too. stderr says so.
     const head = withHead((html, path) => {
         if (!hasImportMap(html)) return {ahead: importmap + configTag, end: tags}
-        stderr.write(`import map of its own, left as it is: ${path}\n`)
+        services.stderr.write(`import map of its own, left as it is: ${path}\n`)
         return ""
     })
 
@@ -146,7 +140,8 @@ export const createApp = (options: AppOptions): App => {
     const handler = compose([
         channel.handler,
         ...M(watcher?.handler),
-        scoped(compose([...M(watcher?.inject), head, title, atRun, atEval])),
+        scoped(compose([...M(watcher?.inject), head, title, atRun])),
+        atEval,
         ...served.own.map(dir => serveStatic(dir)),
         // A .ts among the files given goes out as JavaScript; the root
         // mount is served as it is.
@@ -157,13 +152,12 @@ export const createApp = (options: AppOptions): App => {
         scoped(compose([...M(watcher?.inject), head, ...M(!mounted && title), atRoot])),
     ])
 
+    services.onCleanup(() => {
+        watcher?.close()
+    })
+
     return {
         handler,
         page: runPath,
-        done: channel.done,
-        close: () => {
-            channel.close()
-            watcher?.close()
-        },
     }
 }

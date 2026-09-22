@@ -5,92 +5,95 @@
 // nothing changes in the protocol here without a change in the client.
 
 import type {TAL} from "test-assert-lite"
+import {stringify} from "../../utils/stringify.ts"
+import type {HostServices} from "../host-services.ts"
 import type {ContextLike, Next} from "./middleware.ts"
 
 export interface ChannelOptions {
-    /** Where the page's stdout goes. */
-    stdout: TAL.Writer
-    /** Where the page's stderr goes. */
-    stderr: TAL.Writer
+    /** Shared host-side streams, lifecycle and cleanup. */
+    services: HostServices
     /** Prefix for channel path: `/@tal/run/xxxxxxxxx/` */
     prefix: string
+    /** Allowed silence in milliseconds; unlimited when omitted. */
+    timeout?: number
 }
 
 export interface Channel {
     /** Takes the page's reports, each a POST under the path, and answers 204; 405 to any other method. */
     handler: (c: ContextLike, next: Next) => Promise<Response | void>
-
-    /** The verdict the page reports at its end; rejects if it never begins. */
-    done: Promise<boolean>
-
-    /** Stops waiting for the page. */
-    close(): void
 }
 
-// How long the page may stay silent. Before it has begun, the browser
-// could not reach the server, most likely; after that, a quiet page says
-// so every ten seconds, so silence this long means the browser, its tab
-// or the session is gone. A hung test is not silence, and waits as it would
-// under node --test.
-const SILENCE_MS = 30_000
+type CommandName = "begin" | "stdout" | "stderr" | "end"
+
+const isTestResult = (v: unknown): v is TAL.SessionResult => ("boolean" === typeof (v as TAL.SessionResult)?.success)
 
 /**
- * Starts a run: from here on the page has the silence bound to report
- * within, and the verdict is what it says at its end.
+ * Creates the endpoints that receive the page's reports and result.
+ * Applies a silence timeout when one is given.
  */
-export const createChannel = ({prefix, stdout, stderr}: ChannelOptions): Channel => {
-    // The verdict: true from the page's end alone passes, anything else
-    // fails, and the first one counts; the streams still go through after
-    // it. Every word from the page restarts the silence bound; a run nobody
-    // awaits, --serve, lapses.
+export const createChannel = ({prefix, services, timeout}: ChannelOptions): Channel => {
     let begun = false
     let ended = false
-    let settle: (success: boolean) => void = () => undefined
-    let lapse: (error: Error) => void = () => undefined
-    const done = new Promise<boolean>((resolve, reject) => {
-        settle = resolve
-        lapse = reject
-    })
-    void done.catch(() => undefined)
     let timer: ReturnType<typeof setTimeout> | null = null
+
     const heard = (): void => {
         if (timer != null) clearTimeout(timer)
         if (ended) return
-        timer = setTimeout(() => lapse(new Error(begun
-            ? "No word from the page for 30 seconds: the browser, its tab or the session is gone"
-            : "The page never reported in: could the browser reach the server?")), SILENCE_MS)
-        timer.unref()
+        timer = setTimeout(() => {
+            if (begun) {
+                services.reject(new Error(`No word from the page for ${timeout! / 1000} seconds: the browser, its tab or the session is gone`))
+            } else {
+                services.reject(new Error("The page never reported in: could the browser reach the server?"))
+            }
+        }, timeout)
     }
 
-    const endpointList: [string, (body: string) => void][] = [
-        ["begin", () => (begun = true)],
-        ["stdout", (body) => stdout.write(body)],
-        ["stderr", (body) => stderr.write(body)],
-        ["end", (body) => {
-            ended = true
-            settle(body === "true")
-        }],
-    ]
+    const commands: Record<CommandName, (body: string) => undefined | number> = {
+        begin: (body) => {
+            try {
+                const payload = body ? JSON.parse(body) as unknown : undefined
+                services.begin(payload)
+                begun = true
+            } catch (e) {
+                services.stderr.write(`${stringify(e)}\n`)
+                return 400
+            }
+        },
+        stdout: (body) => void services.stdout.write(body),
+        stderr: (body) => void services.stderr.write(body),
+        end: (body) => {
+            try {
+                const payload = body ? JSON.parse(body) as TAL.SessionResult : undefined
+                if (!isTestResult(payload)) return 400
+                services.end(payload)
+                ended = true
+            } catch (e) {
+                services.stderr.write(`${stringify(e)}\n`)
+                return 400
+            }
+        },
+    }
 
-    const endpointMap = new Map(endpointList)
+    const commandNames = Object.keys(commands)
+    const isCommandName = (v: string): v is CommandName => commandNames.includes(v)
 
     const handler = async (c: ContextLike, next: Next) => {
         if (!c.req.path.startsWith(prefix)) return next()
         const command = c.req.path.slice(prefix.length)
-        const endpoint = endpointMap.get(command)
-        if (endpoint == null) return next()
+        const endpoint = isCommandName(command) && commands[command]
+        if (!endpoint) return next()
         if (c.req.method !== "POST") return c.body(null, 405, {allow: "POST"})
-        endpoint(await c.req.text())
-        heard()
-        return c.body(null, 204)
+        const status = endpoint(await c.req.text()) ?? 204
+        if (timeout) heard()
+        return c.body(null, status)
     }
 
-    heard()
-    return {
-        handler,
-        done,
-        close: () => {
+    if (timeout) {
+        services.onCleanup(() => {
             if (timer != null) clearTimeout(timer)
-        },
+        })
+        heard()
     }
+
+    return {handler}
 }

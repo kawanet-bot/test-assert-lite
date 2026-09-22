@@ -10,6 +10,7 @@ import {after, before, describe, it} from "node:test"
 import {pathToFileURL} from "node:url"
 import type {TAL} from "test-assert-lite"
 import {createBufWriter} from "../../utils/buf-writer.ts"
+import {createHostServices} from "../host-services.ts"
 import {ImportAliasItem, ImportMapItem, Imports} from "../imports.ts"
 import type {App} from "./app.ts"
 import {createApp} from "./app.ts"
@@ -28,6 +29,8 @@ const post = async (url: string, body: string): Promise<number> => (await fetch(
 
 const nullWriter: TAL.Writer = {write: (() => undefined)}
 
+const SUCCESS = JSON.stringify({success: true})
+
 describe(TITLE, () => {
     let dir: string
     // Where the suites and the scripts are served from, and the alias.
@@ -38,6 +41,7 @@ describe(TITLE, () => {
     const bufStdout = createBufWriter()
     const stdout = nullWriter
     const stderr = nullWriter
+    const sharedServices = createHostServices({stdout: bufStdout, stderr})
     const url = (path: string): string => server.origin + path
     const cwd = pathToFileURL(`${process.cwd()}/`)
 
@@ -68,15 +72,16 @@ describe(TITLE, () => {
                 new ImportMapItem("mine", "/mine.js", pathToFileURL(join(dir, "map.json"))),
                 new ImportAliasItem(`mod=${join(dir, "lib", "mod.mjs")}`, cwd),
             ]),
-            stdout: bufStdout,
-            stderr,
+            services: sharedServices,
         })
-        server = await serve({handler: app.handler})
+        server = await serve({
+            handler: app.handler,
+            services: sharedServices,
+        })
     })
 
     after(async () => {
-        app.close()
-        server.close()
+        await sharedServices.cleanup()
         await rm(dir, {recursive: true, force: true})
     })
 
@@ -110,8 +115,9 @@ describe(TITLE, () => {
     })
 
     it("escapes a < in the config, so a name cannot close the tag, and reads it back", async () => {
-        const odd = createApp({session: {files: [], reporter: "</script><b>"}, stdout, stderr})
-        const server = await serve({handler: odd.handler})
+        const services = createHostServices({stdout, stderr})
+        const odd = createApp({session: {files: [], reporter: "</script><b>"}, services})
+        const server = await serve({handler: odd.handler, services})
         try {
             const head = (await get(server.origin + "/")).body.split("</head>")[0] as string
             const config = head.indexOf('<script type="application/vnd.test-session+json">')
@@ -119,14 +125,14 @@ describe(TITLE, () => {
             assert.equal(json.includes("</script>"), false)
             assert.deepEqual(JSON.parse(json), {session: {reporter: "</script><b>", files: []}})
         } finally {
-            odd.close()
-            server.close()
+            await services.cleanup()
         }
     })
 
     it("serves a script given as [eval].js under the run's path, and names it as the one file", async () => {
-        const inline = createApp({session: {files: []}, eval: "console.log('<hi>')\n", stdout, stderr})
-        const server = await serve({handler: inline.handler})
+        const services = createHostServices({stdout, stderr})
+        const inline = createApp({session: {files: []}, eval: "console.log('<hi>')\n", services})
+        const server = await serve({handler: inline.handler, services})
         try {
             const path = inline.page.replace(/run\.html$/, "[eval].js")
             const res = await get(server.origin + path)
@@ -139,8 +145,7 @@ describe(TITLE, () => {
             assert.deepEqual(JSON.parse(json), {session: {files: [path]}})
             assert.equal((await get(url(app.page.replace(/run\.html$/, "[eval].js")))).status, 404)
         } finally {
-            inline.close()
-            server.close()
+            await services.cleanup()
         }
     })
 
@@ -200,16 +205,17 @@ describe(TITLE, () => {
         assert.equal((await get(url(`${run}stdout`))).status, 405)
         assert.equal(await post(url(`${run}nothing`), ""), 404)
         assert.equal(await post(url("/index.html"), ""), 405)
-        assert.equal(await post(url(`${run}end`), "true"), 204)
-        assert.equal(await app.done, true)
+        assert.equal(await post(url(`${run}end`), SUCCESS), 204)
+        assert.equal((await sharedServices.ending)?.success, true)
     })
 
     it("asks about changes from both pages, and only with watch on", async () => {
         assert.equal((await get(url("/"))).body.includes("/@tal/watch?after="), false)
         assert.equal((await get(url("/@tal/watch?after=0"))).status, 404)
         const files = [join(dir, "tests", "my suite.mjs")]
-        const watching = createApp({session: {files}, watch: true, stdout, stderr})
-        const running = await serve({handler: watching.handler})
+        const services = createHostServices({stdout, stderr})
+        const watching = createApp({session: {files}, watch: true, services})
+        const running = await serve({handler: watching.handler, services})
         try {
             const index = (await get(running.origin + "/")).body
             assert.ok(index.includes("/@tal/watch?after=${after}"))
@@ -220,16 +226,16 @@ describe(TITLE, () => {
             assert.equal((await pending).status, 200)
             assert.ok((await get(running.origin + "/")).body.includes("})(1)\n</script>"))
         } finally {
-            watching.close()
-            running.close()
+            await services.cleanup()
         }
     })
 
     it("serves without the reload, and says so once, where it cannot watch", async () => {
         const bufStderr = createBufWriter()
         const files = [join(dir, "missing", "suite.mjs")]
-        const blind = createApp({session: {files}, watch: true, stdout, stderr: bufStderr})
-        const running = await serve({handler: blind.handler})
+        const services = createHostServices({stdout, stderr: bufStderr})
+        const blind = createApp({session: {files}, watch: true, services})
+        const running = await serve({handler: blind.handler, services})
         try {
             assert.match(bufStderr.read(), /^watch is off: ENOENT/)
             const index = await get(running.origin + "/")
@@ -237,8 +243,7 @@ describe(TITLE, () => {
             assert.equal(index.body.includes("/@tal/watch"), false)
             assert.equal((await get(running.origin + "/@tal/watch?after=0")).status, 404)
         } finally {
-            blind.close()
-            running.close()
+            await services.cleanup()
         }
     })
 
@@ -250,20 +255,28 @@ describe(TITLE, () => {
         await writeFile(join(plain, "b <c>.mjs"), "")
         await mkdir(join(plain, "site"))
         await writeFile(join(plain, "site", "index.html"), "<html><head><title>{{title}}</title></head><body>{{title}}</body></html>")
+        const servicesN = createHostServices({stdout, stderr})
+        const servicesM = createHostServices({stdout, stderr})
+        const servicesB = createHostServices({stdout, stderr})
         const namedFiles = [join(plain, "a.mjs"), join(plain, "b <c>.mjs"), join(plain, "a.mjs")]
-        const named = createApp({session: {files: namedFiles}, stdout, stderr})
+        const named = createApp({session: {files: namedFiles}, services: servicesN})
         const mountedFiles = [join(plain, "a.mjs")]
-        const mounted = createApp({session: {files: mountedFiles}, mount: join(plain, "site"), stdout, stderr})
-        const bare = createApp({session: {files: []}, mount: join(plain, "site"), stdout, stderr})
-        const servers = await Promise.all([named, mounted, bare].map(app => serve({handler: app.handler})))
+        const mounted = createApp({session: {files: mountedFiles}, mount: join(plain, "site"), services: servicesM})
+        const bare = createApp({session: {files: []}, mount: join(plain, "site"), services: servicesB})
+        const servers = await Promise.all([
+            serve({handler: named.handler, services: servicesN}),
+            serve({handler: mounted.handler, services: servicesM}),
+            serve({handler: bare.handler, services: servicesB}),
+        ])
         try {
             assert.ok((await get(servers[0]!.origin + named.page)).body.includes("<title>a.mjs b &#60;c&#62;.mjs</title>"))
             assert.ok((await get(servers[1]!.origin + "/")).body.includes("<title>{{title}}</title>"))
             assert.ok((await get(servers[1]!.origin + mounted.page)).body.includes("<title>a.mjs</title>"))
             assert.ok((await get(servers[2]!.origin + bare.page)).body.includes("<title>test-assert-lite</title>"))
         } finally {
-            for (const app of [named, mounted, bare]) app.close()
-            for (const server of servers) server.close()
+            await servicesN.cleanup()
+            await servicesM.cleanup()
+            await servicesB.cleanup()
             await rm(plain, {recursive: true, force: true})
         }
     })
@@ -271,9 +284,10 @@ describe(TITLE, () => {
     it("serves a mounted directory at the root in place of htdocs, its HTML with the head", async () => {
         await mkdir(join(dir, "site"))
         await writeFile(join(dir, "site", "index.html"), "<html><head></head><body>mine</body></html>")
+        const services = createHostServices({stdout, stderr})
         const files = [join(dir, "tests", "my suite.mjs")]
-        const mounted = createApp({session: {files}, mount: join(dir, "site"), stdout, stderr})
-        const running = await serve({handler: mounted.handler})
+        const mounted = createApp({session: {files}, mount: join(dir, "site"), services})
+        const running = await serve({handler: mounted.handler, services})
         try {
             const index = await get(running.origin + "/")
             assert.equal(index.status, 200)
@@ -282,24 +296,23 @@ describe(TITLE, () => {
             assert.equal((await get(running.origin + "/styles/test-assert-lite.css")).status, 404)
             assert.equal((await get(running.origin + mounted.page)).status, 200)
         } finally {
-            mounted.close()
-            running.close()
+            await services.cleanup()
         }
     })
 
     it("serves a mounted directory without a suite: the library in the head, no suite tag, no suite mount", async () => {
         await mkdir(join(dir, "plain"))
         await writeFile(join(dir, "plain", "index.html"), "<html><head></head><body>plain</body></html>")
-        const bare = createApp({session: {files: []}, mount: join(dir, "plain"), watch: true, stdout, stderr})
-        const running = await serve({handler: bare.handler})
+        const services = createHostServices({stdout, stderr})
+        const bare = createApp({session: {files: []}, mount: join(dir, "plain"), watch: true, services})
+        const running = await serve({handler: bare.handler, services})
         try {
             const index = (await get(running.origin + "/")).body
             assert.ok(index.includes('<script type="importmap">'))
             assert.equal(index.includes('type="module" src="/@tal/files/'), false)
             assert.equal((await get(running.origin + "/@tal/files/000000000/anything.mjs")).status, 404)
         } finally {
-            bare.close()
-            running.close()
+            await services.cleanup()
         }
     })
 
@@ -307,9 +320,10 @@ describe(TITLE, () => {
         await mkdir(join(dir, "mapped"))
         await writeFile(join(dir, "mapped", "index.html"), '<html><head><script type="importmap">{"imports":{"mine":"/mine.mjs"}}</script></head><body>mapped</body></html>')
         const bufStderr = createBufWriter()
+        const services = createHostServices({stdout, stderr: bufStderr})
         const files = [join(dir, "tests", "my suite.mjs")]
-        const mapped = createApp({session: {files}, mount: join(dir, "mapped"), stdout, stderr: bufStderr})
-        const running = await serve({handler: mapped.handler})
+        const mapped = createApp({session: {files}, mount: join(dir, "mapped"), services})
+        const running = await serve({handler: mapped.handler, services, quiet: true})
         try {
             const index = (await get(running.origin + "/")).body
             assert.equal(index.split("importmap").length - 1, 1)
@@ -319,8 +333,7 @@ describe(TITLE, () => {
             const run = (await get(running.origin + mapped.page)).body
             assert.ok(run.includes('<script type="importmap">'))
         } finally {
-            mapped.close()
-            running.close()
+            await services.cleanup()
         }
     })
 
@@ -332,11 +345,13 @@ describe(TITLE, () => {
             res.writeHead(404).end()
         })
         await new Promise<void>(listening => upstream.listen(0, "127.0.0.1", listening))
+        const services = createHostServices({stdout, stderr})
+        services.onCleanup(() => upstream.close())
         const address = upstream.address()
         const port = typeof address === "object" && address != null ? address.port : 0
         const files = [join(dir, "tests", "my suite.mjs")]
-        const mounted = createApp({session: {files}, mount: `http://127.0.0.1:${port}/app/`, stdout, stderr})
-        const running = await serve({handler: mounted.handler})
+        const mounted = createApp({session: {files}, mount: `http://127.0.0.1:${port}/app/`, services})
+        const running = await serve({handler: mounted.handler, services})
         try {
             const index = await get(running.origin + "/")
             assert.equal(index.status, 200)
@@ -347,22 +362,23 @@ describe(TITLE, () => {
             assert.equal((await get(running.origin + "/@tal/nothing")).status, 404)
             assert.equal(asked.includes("/@tal/nothing"), false)
         } finally {
-            mounted.close()
-            running.close()
-            upstream.close()
+            await services.cleanup()
         }
     })
 
     it("fails the verdict on anything but true", async () => {
+        const services = createHostServices({stdout, stderr})
         const files = [join(dir, "tests", "my suite.mjs")]
-        const other = createApp({session: {files}, stdout, stderr})
-        const running = await serve({handler: other.handler})
+        const other = createApp({session: {files}, services})
+        const running = await serve({handler: other.handler, services})
+        const endpoint = running.origin + other.page.replace(/run\.html$/, "end")
         try {
-            assert.equal(await post(running.origin + other.page.replace(/run\.html$/, "end"), "yes"), 204)
-            assert.equal(await other.done, false)
+            assert.equal(await post(endpoint, "BROKEN"), 400)
+            assert.equal(await post(endpoint, "null"), 400)
+            assert.equal(await post(endpoint, "true"), 400)
+            assert.equal(await post(endpoint, "{}"), 400)
         } finally {
-            other.close()
-            running.close()
+            await services.cleanup()
         }
     })
 })

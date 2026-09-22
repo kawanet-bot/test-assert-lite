@@ -1,18 +1,23 @@
+import type {HostServices} from "../host-services.ts"
 import type {BrowserCustom} from "../mode-options.ts"
 
 export interface RunInBrowserOptions {
+    /** Shared host-side streams, lifecycle and cleanup. */
+    services: HostServices
     /** URL of the page to open, under the run's own path on the CLI's server. */
     url: string
-    /** Settles when the run finishes or fails; the browser closes then. */
-    completion: Promise<unknown>
-
+    /** A launched Playwright-like browser. */
     browser: BrowserLike
     /** Extended configuration via --playwright-config */
     custom?: BrowserCustom
 }
 
 export interface BrowserLike {
+    /** Watches for an unexpected browser exit. */
     on(event: "disconnected", listener: () => any): this
+
+    /** Stops watching for the browser exit. */
+    off(event: "disconnected", listener: () => any): this
 
     /** @see https://playwright.dev/docs/api/class-browser#browser-new-page */
     newPage(options?: object): Promise<PageLike>
@@ -26,23 +31,20 @@ export interface PageLike {
 }
 
 /**
- * Opens `url` in `browser`, a Playwright-like one already launched, and
- * closes it once `completion` settles. Rejects when the browser is gone.
+ * Opens `url` in an already launched browser and registers its cleanup.
+ * An unexpected browser disconnect fails the host run.
  */
-export const runInBrowser = async ({url, completion, browser, custom}: RunInBrowserOptions): Promise<void> => {
-    try {
-        // A browser that goes away fails the run at once, ahead of the
-        // silence bound the page's own word would otherwise run into.
-        const gone = new Promise((_, reject) => {
-            browser.on("disconnected", () => reject(new Error("The browser closed before the page reported its end")))
-        })
-        // Handled here as well: close() below fires this too when something
-        // else failed first, and that must not add an unhandled rejection.
-        void gone.catch(() => undefined)
-        const page = await browser.newPage(custom?.newPage)
-        await page.goto(url, custom?.goto)
-        await Promise.race([completion, gone])
-    } finally {
-        await browser.close()
+export const runInBrowser = async ({url, services, browser, custom}: RunInBrowserOptions): Promise<void> => {
+    const onDisconnected = () => {
+        services.reject(new Error("The browser closed before the page reported its end"))
     }
+
+    services.onCleanup(async () => {
+        browser.off("disconnected", onDisconnected)
+        await browser.close()
+    })
+
+    browser.on("disconnected", onDisconnected)
+    const page = await browser.newPage(custom?.newPage)
+    await page.goto(url, custom?.goto)
 }
