@@ -1,19 +1,16 @@
-import {createHostServices} from "../host-services.ts"
+import {createRunServices} from "../../utils/run-services.ts"
 import type {ModeOptions, WebModeOptions} from "../mode-options.ts"
 import {createApp} from "../server/app.ts"
 import {serve} from "../server/serve.ts"
 import {runInPlaywright} from "./playwright.ts"
 import {runInWebDriver} from "./webdriver.ts"
 
-// How long a browser run, --playwright or --webdriver, may stay silent.
-// Before begin, the browser most likely could not reach the server. After
-// begin, a quiet page still reports every ten seconds, so this long means
-// the browser or its tab is gone. A hung test keeps reporting, so it waits.
-const SILENCE_MS = 30_000
-
 export const runWebMode = async (options: ModeOptions & WebModeOptions) => {
     const {mode, session, imports} = options
-    const services = createHostServices()
+    const services = createRunServices({
+        stdout: process.stdout,
+        stderr: process.stderr,
+    })
 
     try {
         // The application is the middleware. Reports go to stdout.
@@ -24,9 +21,9 @@ export const runWebMode = async (options: ModeOptions & WebModeOptions) => {
             mount: options.mount,
             session,
             eval: options.eval,
-            watch: mode === "serve",
+            watch: (mode === "serve"),
             services,
-            timeout: (mode !== "serve" ? SILENCE_MS : undefined),
+            singleRun: (mode !== "serve"),
         })
 
         // A server that cannot listen, its port taken say, is an error to show;
@@ -51,8 +48,6 @@ export const runWebMode = async (options: ModeOptions & WebModeOptions) => {
             process.once("SIGINT", () => services.resolve({success: true}))
             return await services.finished
         }
-
-        services.ending.then(result => services.resolve(result))
 
         if (mode === "webdriver") {
             const {custom, endpoint} = options

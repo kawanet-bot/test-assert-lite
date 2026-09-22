@@ -7,7 +7,7 @@
 import {randomInt} from "node:crypto"
 import {basename, resolve} from "node:path"
 import {fileURLToPath} from "node:url"
-import type {HostServices} from "../host-services.ts"
+import type {RunServices} from "../../utils/run-services.ts"
 import {Imports} from "../imports.ts"
 import type {TestSession} from "../mode-options.ts"
 import {packageNameOf, packageRoot} from "../package-root.ts"
@@ -24,8 +24,8 @@ import type {Watcher} from "./watch.ts"
 import {createWatcher} from "./watch.ts"
 
 export interface AppOptions {
-    /** Shared host-side streams, lifecycle and cleanup. */
-    services: HostServices
+    /** The run's streams, outcome and cleanup, shared by every part. */
+    services: RunServices
     /** Classic scripts to run before the suites, absolute, in this order. */
     scripts?: string[]
     /** Specifiers and what they resolve to: a file, served from its directory, or a URL put into the map as it is. */
@@ -38,8 +38,8 @@ export interface AppOptions {
     eval?: string
     /** Reloads the page people open when a suite, a script or an imported file changes; off where it cannot watch. */
     watch?: boolean
-    /** Allowed silence in milliseconds; unlimited when omitted. */
-    timeout?: number
+    /** Finishes after the first test run. Defaults to `true`. */
+    singleRun?: boolean
 }
 
 export interface App {
@@ -73,11 +73,11 @@ const random9 = (): string => randomInt(0, 36 ** 9).toString(36).padStart(9, "0"
  * Builds the browser application: its middleware and run page path.
  */
 export const createApp = (options: AppOptions): App => {
-    const {scripts = [], imports = new Imports([]), mount: mounted, session, eval: script, services, timeout} = options
+    const {scripts = [], imports = new Imports([]), mount: mounted, session, eval: script, services, singleRun} = options
     const {files = []} = session
     const prefix = `/@tal/run/${random9()}/`
     const runPath = `${prefix}run.html`
-    const channel = createChannel({prefix, services, timeout})
+    const channel = createChannel({prefix, services, singleRun})
 
     // Watching is a convenience of --serve, not what it is for: where the
     // file system refuses, the inotify limit reached say, the page is

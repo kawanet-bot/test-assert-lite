@@ -5,17 +5,19 @@
 // nothing changes in the protocol here without a change in the client.
 
 import type {TAL} from "test-assert-lite"
+import type {RunServices} from "../../utils/run-services.ts"
 import {stringify} from "../../utils/stringify.ts"
-import type {HostServices} from "../host-services.ts"
 import type {ContextLike, Next} from "./middleware.ts"
 
 export interface ChannelOptions {
-    /** Shared host-side streams, lifecycle and cleanup. */
-    services: HostServices
+    /** The run's streams, outcome and cleanup, shared by every part. */
+    services: RunServices
     /** Prefix for channel path: `/@tal/run/xxxxxxxxx/` */
     prefix: string
-    /** Allowed silence in milliseconds; unlimited when omitted. */
+    /** Allowed silence in milliseconds; 30 seconds for a single run, unlimited otherwise. */
     timeout?: number
+    /** Finishes after the first test run. Defaults to `true`. */
+    singleRun?: boolean
 }
 
 export interface Channel {
@@ -27,14 +29,21 @@ type CommandName = "begin" | "stdout" | "stderr" | "end"
 
 const isTestResult = (v: unknown): v is TAL.SessionResult => ("boolean" === typeof (v as TAL.SessionResult)?.success)
 
+// How long a browser run, --playwright or --webdriver, may stay silent.
+// Before begin, the browser most likely could not reach the server. After
+// begin, a quiet page still reports every ten seconds, so this long means
+// the browser or its tab is gone. A hung test keeps reporting, so it waits.
+const SILENCE_MS = 30_000
+
 /**
  * Creates the endpoints that receive the page's reports and result.
- * Applies a silence timeout when one is given.
+ * Applies a silence timeout when configured or running once.
  */
-export const createChannel = ({prefix, services, timeout}: ChannelOptions): Channel => {
+export const createChannel = ({prefix, services, timeout, singleRun = true}: ChannelOptions): Channel => {
     let begun = false
     let ended = false
     let timer: ReturnType<typeof setTimeout> | null = null
+    if (singleRun) timeout ??= SILENCE_MS
 
     const heard = (): void => {
         if (timer != null) clearTimeout(timer)
@@ -49,15 +58,8 @@ export const createChannel = ({prefix, services, timeout}: ChannelOptions): Chan
     }
 
     const commands: Record<CommandName, (body: string) => undefined | number> = {
-        begin: (body) => {
-            try {
-                const payload = body ? JSON.parse(body) as unknown : undefined
-                services.begin(payload)
-                begun = true
-            } catch (e) {
-                services.stderr.write(`${stringify(e)}\n`)
-                return 400
-            }
+        begin: () => {
+            begun = true
         },
         stdout: (body) => void services.stdout.write(body),
         stderr: (body) => void services.stderr.write(body),
@@ -65,7 +67,7 @@ export const createChannel = ({prefix, services, timeout}: ChannelOptions): Chan
             try {
                 const payload = body ? JSON.parse(body) as TAL.SessionResult : undefined
                 if (!isTestResult(payload)) return 400
-                services.end(payload)
+                if (singleRun) services.resolve(payload)
                 ended = true
             } catch (e) {
                 services.stderr.write(`${stringify(e)}\n`)

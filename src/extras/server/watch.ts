@@ -35,9 +35,9 @@ const WAIT_MS = 30_000
 // again at once; anything else, the server gone say, a second later, then
 // two, then three, so a page left behind does not hammer.
 const asks = (after: number): string => `<script>
-(async after => {
+(async (after) => {
     for (let wait = 1; ; wait++) {
-        const res = await fetch(\`/@tal/watch?after=\${after}\`).catch(() => null)
+        const res = await fetch("/@tal/watch?after=" + after).catch(() => null)
         if (res?.status === 200) return location.reload()
         if (res?.status === 204) wait = 0
         await new Promise(next => setTimeout(next, wait * 1000))

@@ -1,24 +1,12 @@
 import {strict as assert} from "node:assert"
 import {describe, it} from "node:test"
-import {createHostServices} from "./host-services.ts"
+import {createRunServices} from "./run-services.ts"
 
-const TITLE = "extras/host-services.test.ts"
+const TITLE = "utils/run-services.test.ts"
 
 describe(TITLE, () => {
-    it("carries the first begin and end payloads", async () => {
-        const services = createHostServices()
-        const payload = {name: "page"}
-        const result = {success: true}
-        services.begin(payload)
-        services.begin({name: "late"})
-        services.end(result)
-        services.end({success: false})
-        assert.equal(await services.beginning, payload)
-        assert.equal(await services.ending, result)
-    })
-
     it("runs cleanup once, in registration order", async () => {
-        const services = createHostServices()
+        const services = createRunServices()
         const calls: number[] = []
         services.onCleanup(async () => {
             calls.push(1)
@@ -37,7 +25,7 @@ describe(TITLE, () => {
     // failure among them is written out rather than left unhandled.
     it("runs a cleanup added after cleanup began, and reports its failure", async () => {
         const said: string[] = []
-        const services = createHostServices({stderr: {write: chunk => void said.push(chunk)}})
+        const services = createRunServices({stderr: {write: chunk => void said.push(chunk)}})
         const calls: string[] = []
         services.resolve({success: true})
         await services.finished
@@ -50,7 +38,7 @@ describe(TITLE, () => {
     })
 
     it("takes the first resolution after cleanup", async () => {
-        const services = createHostServices()
+        const services = createRunServices()
         const calls: string[] = []
         services.onCleanup(() => void calls.push("cleanup"))
         services.resolve({success: true})
@@ -60,7 +48,7 @@ describe(TITLE, () => {
     })
 
     it("takes the first rejection after cleanup", async () => {
-        const services = createHostServices()
+        const services = createRunServices()
         const error = new Error("first")
         const calls: string[] = []
         services.onCleanup(() => void calls.push("cleanup"))

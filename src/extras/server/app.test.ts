@@ -1,4 +1,4 @@
-import {strict as assert} from "assert"
+import {strict as assert} from "node:assert"
 import {mkdir, mkdtemp, rm, writeFile} from "node:fs/promises"
 import {createServer} from "node:http"
 import {tmpdir} from "node:os"
@@ -6,7 +6,7 @@ import {join} from "node:path"
 import {after, before, describe, it} from "node:test"
 import type {TAL} from "test-assert-lite"
 import {createBufWriter} from "../../utils/buf-writer.ts"
-import {createHostServices} from "../host-services.ts"
+import {createRunServices} from "../../utils/run-services.ts"
 import {createApp} from "./app.ts"
 import {serve} from "./serve.ts"
 
@@ -20,6 +20,7 @@ const get = async (url: string): Promise<{status: number, type: string, body: st
 const post = async (url: string, body: string): Promise<number> => (await fetch(url, {method: "POST", body})).status
 
 const nullWriter: TAL.Writer = {write: (() => undefined)}
+const SUCCESS = JSON.stringify({success: true})
 
 describe(TITLE, () => {
     let dir: string
@@ -35,7 +36,7 @@ describe(TITLE, () => {
     })
 
     it("escapes a < in the config, so a name cannot close the tag, and reads it back", async () => {
-        const services = createHostServices({stdout, stderr})
+        const services = createRunServices({stdout, stderr})
         const odd = createApp({session: {files: [], reporter: "</script><b>"}, services})
         const server = await serve({handler: odd.handler, services})
         try {
@@ -52,7 +53,7 @@ describe(TITLE, () => {
     it("serves without the reload, and says so once, where it cannot watch", async () => {
         const bufStderr = createBufWriter()
         const files = [join(dir, "missing", "suite.mjs")]
-        const services = createHostServices({stdout, stderr: bufStderr})
+        const services = createRunServices({stdout, stderr: bufStderr})
         const blind = createApp({session: {files}, watch: true, services})
         const running = await serve({handler: blind.handler, services})
         try {
@@ -69,7 +70,7 @@ describe(TITLE, () => {
     it("serves a mounted directory at the root in place of htdocs, its HTML with the head", async () => {
         await mkdir(join(dir, "site"))
         await writeFile(join(dir, "site", "index.html"), "<html><head></head><body>mine</body></html>")
-        const services = createHostServices({stdout, stderr})
+        const services = createRunServices({stdout, stderr})
         const files = [join(dir, "tests", "my suite.mjs")]
         const mounted = createApp({session: {files}, mount: join(dir, "site"), services})
         const running = await serve({handler: mounted.handler, services})
@@ -88,7 +89,7 @@ describe(TITLE, () => {
     it("serves a mounted directory without a suite: the library in the head, no suite tag, no suite mount", async () => {
         await mkdir(join(dir, "plain"))
         await writeFile(join(dir, "plain", "index.html"), "<html><head></head><body>plain</body></html>")
-        const services = createHostServices({stdout, stderr})
+        const services = createRunServices({stdout, stderr})
         const bare = createApp({session: {files: []}, mount: join(dir, "plain"), watch: true, services})
         const running = await serve({handler: bare.handler, services})
         try {
@@ -105,7 +106,7 @@ describe(TITLE, () => {
         await mkdir(join(dir, "mapped"))
         await writeFile(join(dir, "mapped", "index.html"), '<html><head><script type="importmap">{"imports":{"mine":"/mine.mjs"}}</script></head><body>mapped</body></html>')
         const bufStderr = createBufWriter()
-        const services = createHostServices({stdout, stderr: bufStderr})
+        const services = createRunServices({stdout, stderr: bufStderr})
         const files = [join(dir, "tests", "my suite.mjs")]
         const mapped = createApp({session: {files}, mount: join(dir, "mapped"), services})
         const running = await serve({handler: mapped.handler, services, quiet: true})
@@ -130,7 +131,7 @@ describe(TITLE, () => {
             res.writeHead(404).end()
         })
         await new Promise<void>(listening => upstream.listen(0, "127.0.0.1", listening))
-        const services = createHostServices({stdout, stderr})
+        const services = createRunServices({stdout, stderr})
         services.onCleanup(() => upstream.close())
         const address = upstream.address()
         const port = typeof address === "object" && address != null ? address.port : 0
@@ -152,7 +153,7 @@ describe(TITLE, () => {
     })
 
     it("serves a script given as [eval].js under the run's path, and names it as the one file", async () => {
-        const services = createHostServices({stdout, stderr})
+        const services = createRunServices({stdout, stderr})
         const inline = createApp({session: {files: []}, eval: "console.log('<hi>')\n", services})
         const server = await serve({handler: inline.handler, services})
         try {
@@ -171,7 +172,7 @@ describe(TITLE, () => {
     })
 
     it("fails the verdict on anything but true", async () => {
-        const services = createHostServices({stdout, stderr})
+        const services = createRunServices({stdout, stderr})
         const files = [join(dir, "tests", "my suite.mjs")]
         const other = createApp({session: {files}, services})
         const running = await serve({handler: other.handler, services})
@@ -183,6 +184,67 @@ describe(TITLE, () => {
             assert.equal(await post(endpoint, "{}"), 400)
         } finally {
             await services.cleanup()
+        }
+    })
+
+    it("asks about changes from both pages, and only with watch on", async () => {
+        const file = join(dir, "watching.mjs")
+        await writeFile(file, "export const watching = 1")
+        const files = [file]
+        const services = createRunServices({stdout, stderr})
+        const watching = createApp({session: {files}, watch: true, singleRun: false, services})
+        const running = await serve({handler: watching.handler, services})
+        try {
+            const index = (await get(running.origin + "/")).body
+            assert.ok(index.includes("/@tal/watch?after="))
+            assert.ok(index.includes("})(0)\n</script>"))
+
+            const page = (await get(running.origin + watching.page)).body
+            assert.ok(page.includes("/@tal/watch?after="))
+            assert.ok(page.includes("})(0)\n</script>"))
+
+            const endpoint = running.origin + watching.page.replace(/run\.html$/, "end")
+            assert.equal(await post(endpoint, SUCCESS), 204)
+
+            const pending = get(running.origin + "/@tal/watch?after=0")
+            await writeFile(file, "export const watching = 2")
+
+            assert.equal((await pending).status, 200)
+            const after = (await get(running.origin + "/")).body
+            assert.ok(after.includes("/@tal/watch?after="))
+            assert.ok(after.includes("})(1)\n</script>"))
+        } finally {
+            await services.cleanup()
+        }
+    })
+
+    it("names its own pages after the suites' package, or the suites, and never a mounted page", async () => {
+        const plain = await mkdtemp(join(tmpdir(), "tal-nopkg-"))
+        await writeFile(join(plain, "a.mjs"), "")
+        await writeFile(join(plain, "b <c>.mjs"), "")
+        await mkdir(join(plain, "site"))
+        await writeFile(join(plain, "site", "index.html"), "<html><head><title>{{title}}</title></head><body>{{title}}</body></html>")
+        const servicesN = createRunServices({stdout, stderr})
+        const servicesM = createRunServices({stdout, stderr})
+        const servicesB = createRunServices({stdout, stderr})
+        const namedFiles = [join(plain, "a.mjs"), join(plain, "b <c>.mjs"), join(plain, "a.mjs")]
+        const named = createApp({session: {files: namedFiles}, services: servicesN})
+        const mountedFiles = [join(plain, "a.mjs")]
+        const mounted = createApp({session: {files: mountedFiles}, mount: join(plain, "site"), services: servicesM})
+        const bare = createApp({session: {files: []}, mount: join(plain, "site"), services: servicesB})
+        const serverN = await serve({handler: named.handler, services: servicesN})
+        const serverM = await serve({handler: mounted.handler, services: servicesM})
+        const serverB = await serve({handler: bare.handler, services: servicesB})
+        try {
+            assert.ok((await get(serverN!.origin + named.page)).body.includes("<title>a.mjs b &#60;c&#62;.mjs</title>"))
+            assert.ok((await get(serverM!.origin + "/")).body.includes("<title>{{title}}</title>"))
+            assert.ok((await get(serverM!.origin + mounted.page)).body.includes("<title>a.mjs</title>"))
+            assert.ok((await get(serverB!.origin + bare.page)).body.includes("<title>test-assert-lite</title>"))
+        } finally {
+            await servicesN.cleanup()
+            await servicesM.cleanup()
+            await servicesB.cleanup()
+            await rm(plain, {recursive: true, force: true})
         }
     })
 })

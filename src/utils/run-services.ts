@@ -1,22 +1,12 @@
 import type {TAL} from "test-assert-lite"
-import {stringify} from "../utils/stringify.ts"
+import {stringify} from "./stringify.ts"
 
-/** Host-side streams and lifecycle shared for one browser run. */
-export interface HostServices {
+/** What one run offers its parts: where output goes, how it ends, what to undo. */
+export interface RunServices {
     /** Receives the page's standard output. */
     stdout: TAL.Writer
     /** Receives the page's standard error and host logs. */
     stderr: TAL.Writer
-
-    /** Reports that the page has started. */
-    begin: (payload?: unknown) => void
-    /** The first payload reported at begin. */
-    beginning: Promise<unknown>
-
-    /** Reports the page's session result. */
-    end: (result: TAL.SessionResult) => void
-    /** The first session result reported at end. */
-    ending: Promise<TAL.SessionResult>
 
     /** Finishes successfully after cleanup. */
     resolve: (result: TAL.SessionResult) => void
@@ -31,15 +21,20 @@ export interface HostServices {
     onCleanup: (fn: () => unknown) => void
 }
 
-/** Creates the host-side services shared by the server and browser driver. */
-export const createHostServices = ({stdout, stderr}: Partial<HostServices> = {}): HostServices => {
-    const services = {} as HostServices
+export interface RunServicesOptions {
+    stdout?: TAL.Writer
+    stderr?: TAL.Writer
+}
 
-    services.stdout = stdout ?? process.stdout
-    services.stderr = stderr ?? process.stderr
+const nullWriter: TAL.Writer = {write: (() => undefined)}
 
-    services.beginning = new Promise(resolve => (services.begin = resolve))
-    services.ending = new Promise(resolve => (services.end = resolve))
+/** Creates the services of one run, on either side of the channel. */
+export const createRunServices = (options: RunServicesOptions = {}): RunServices => {
+    const services = {} as RunServices
+
+    const P: RunServicesOptions = "undefined" !== typeof process && process || {}
+    services.stdout = options.stdout ?? P.stdout ?? nullWriter
+    services.stderr = options.stderr ?? P.stderr ?? nullWriter
 
     const showError = (e: unknown): void => {
         services.stderr.write(`${stringify(e)}\n`)
@@ -66,5 +61,5 @@ export const createHostServices = ({stdout, stderr}: Partial<HostServices> = {})
         services.reject = (error) => (finished ??= services.cleanup().catch(showError).finally(() => reject(error)))
     })
 
-    return services as HostServices
+    return services as RunServices
 }

@@ -5,7 +5,7 @@ import {strict as assert} from "node:assert"
 import {describe, it} from "node:test"
 import type {TAL} from "test-assert-lite"
 import {createBufWriter} from "../../utils/buf-writer.ts"
-import {createHostServices} from "../host-services.ts"
+import {createRunServices} from "../../utils/run-services.ts"
 import {createChannel, type Channel} from "./channel.ts"
 import {createContext} from "./middleware.ts"
 
@@ -31,7 +31,7 @@ describe(TITLE, () => {
     it("takes each report by POST under the given prefix", async () => {
         const stdout = createBufWriter()
         const stderr = createBufWriter()
-        const services = createHostServices({stdout, stderr})
+        const services = createRunServices({stdout, stderr})
         const run = createChannel({prefix, services})
         assert.equal(await post(run, "begin", ""), 204)
         assert.equal(await post(run, "stdout", "one\n"), 204)
@@ -39,12 +39,11 @@ describe(TITLE, () => {
         assert.equal(await post(run, "end", SUCCESS), 204)
         assert.equal(stdout.read(), "one\n")
         assert.equal(stderr.read(), "warned\n")
-        assert.equal((await services.ending)?.success, true)
-        await services.cleanup()
+        assert.equal((await services.finished)?.success, true)
     })
 
     it("leaves another path to the next middleware, and refuses another method", async () => {
-        const services = createHostServices({stdout: nullWriter, stderr: nullWriter})
+        const services = createRunServices({stdout: nullWriter, stderr: nullWriter})
         const run = createChannel({prefix, services})
         assert.equal(await post(run, "stdout", "", "GET"), 405)
         assert.equal(await post(run, "nothing", ""), "next")
@@ -55,54 +54,55 @@ describe(TITLE, () => {
     it("fails with an invalid verdict", async () => {
         const stdout = createBufWriter()
         const stderr = createBufWriter()
-        const services = createHostServices({stdout, stderr})
+        const services = createRunServices({stdout, stderr})
         const run = createChannel({prefix, services})
         assert.equal(await post(run, "end", "INVALID"), 400)
+        await services.cleanup()
     })
 
     // The bound is short here; its messages tell before and after begin apart.
     it("fails the run when the page never begins within the silence given", async () => {
-        const services = createHostServices({stdout: nullWriter, stderr: nullWriter})
+        const services = createRunServices({stdout: nullWriter, stderr: nullWriter})
         createChannel({prefix, services, timeout: 50})
         await assert.rejects(services.finished, /never reported in/)
     })
 
     it("fails the run when a page that has begun falls silent", async () => {
-        const services = createHostServices({stdout: nullWriter, stderr: nullWriter})
+        const services = createRunServices({stdout: nullWriter, stderr: nullWriter})
         const run = createChannel({prefix, services, timeout: 50})
         assert.equal(await post(run, "begin", ""), 204)
         await assert.rejects(services.finished, /No word from the page/)
     })
 
     it("keeps the bound after a report it refused", async () => {
-        const services = createHostServices({stdout: nullWriter, stderr: nullWriter})
+        const services = createRunServices({stdout: nullWriter, stderr: nullWriter})
         const run = createChannel({prefix, services, timeout: 50})
         assert.equal(await post(run, "begin", ""), 204)
         assert.equal(await post(run, "end", "INVALID"), 400)
         await assert.rejects(services.finished, /No word from the page/)
     })
 
-    it("waits without a bound when no timeout is given", async () => {
-        const services = createHostServices({stdout: nullWriter, stderr: nullWriter})
-        createChannel({prefix, services})
+    it("waits without a bound when multiple runs are allowed", async () => {
+        const services = createRunServices({stdout: nullWriter, stderr: nullWriter})
+        createChannel({prefix, services, singleRun: false})
         const outcome = await Promise.race([
             services.finished.then(() => "settled", () => "settled"),
             sleep(100).then(() => "pending"),
         ])
         assert.equal(outcome, "pending")
+        await services.cleanup()
     })
 
     it("takes the streams after the end", async () => {
         const stdout = createBufWriter()
         const stderr = createBufWriter()
-        const services = createHostServices({stdout, stderr})
+        const services = createRunServices({stdout, stderr})
         const run = createChannel({prefix, services})
         assert.equal(await post(run, "end", SUCCESS), 204)
-        assert.equal((await services.ending)?.success, true)
+        assert.equal((await services.finished)?.success, true)
         assert.equal(await post(run, "stdout", "after end 1\n"), 204)
         assert.equal(await post(run, "stderr", "after end 2\n"), 204)
         assert.equal(stdout.read(), "after end 1\n")
         assert.equal(stderr.read(), "after end 2\n")
-        await services.cleanup()
     })
 })
