@@ -1,7 +1,7 @@
 import type {TAL} from "test-assert-lite"
 import type {Run} from "../suite/job.ts"
 import {ReportStream} from "./report-stream.ts"
-import type {SessionControl} from "./session.ts"
+import type {Open, SessionControl} from "./session.ts"
 import type {HarnessState} from "./state.ts"
 import {resetHarnessState} from "./state.ts"
 
@@ -10,6 +10,7 @@ import {resetHarnessState} from "./state.ts"
 // still loading cannot declare into one already running.
 interface Cycle {
     run: Run
+    session: Open
     stream: ReportStream
     startedAt: number
     held: boolean
@@ -37,7 +38,7 @@ export const createScheduler = (
     let running = false
 
     const open = (): Cycle => {
-        sessions.open()
+        const session = sessions.open()
         const stream = new ReportStream()
         const run: Run = {
             counters: {tests: 0, suites: 0, passed: 0, failed: 0, cancelled: 0, skipped: 0, todo: 0},
@@ -46,7 +47,7 @@ export const createScheduler = (
             assert,
             closed: false,
         }
-        return {run, stream, startedAt: performance.now(), held: true, walk: null, closing: false, failure: undefined}
+        return {run, session, stream, startedAt: performance.now(), held: true, walk: null, closing: false, failure: undefined}
     }
 
     // A walk that ends picks up what was declared while it wound down.
@@ -64,8 +65,23 @@ export const createScheduler = (
             })
     }
 
-    // Waits for the tests, reports, closes the session with the verdict, and
-    // resets; a failure on the way still tells the session the run failed.
+    // Runs what is left, ends the root and reports the summary. The verdict
+    // is what the run came to, and a failure on the way is thrown.
+    const conclude = async (current: Cycle): Promise<TAL.SessionResult> => {
+        while (current.walk != null) await current.walk
+        if (current.failure != null) throw current.failure.error
+        // Hooks declared since the last walk, or with no test at all.
+        await harness.root.walk(current.run)
+        // The root's teardown, then the summary: the root has no result
+        // of its own, so the summary is what stands for it.
+        await harness.root.end()
+        const summary = summaryOf(current)
+        await current.run.emit("test:summary", summary)
+        return {success: summary.success}
+    }
+
+    // The outcome settles the services, a failure included. The CLI hears
+    // the verdict once the cleanups are through, and the harness is reset.
     const end: TAL.SessionAPI["end"] = async () => {
         if (running) throw new Error("end() is already running")
         running = true
@@ -74,51 +90,20 @@ export const createScheduler = (
         current.held = false
         schedule()
         current.closing = true
-
-        let result: TAL.TestSummary | undefined
-        let failed = false
-        let failure: unknown
+        const {services, report, reporter, output} = current.session
+        current.stream.attach(reporter, output)
+        // The stream closes either way, so the reporter writes all it was given.
         try {
-            sessions.attach(current.stream)
-            while (current.walk != null) await current.walk
-            if (current.failure != null) throw current.failure.error
-            // Hooks declared since the last walk, or with no test at all.
-            await harness.root.walk(current.run)
-            // The root's teardown, then the summary: the root has no result
-            // of its own, so the summary is what stands for it.
-            await harness.root.end()
-            result = summaryOf(current)
-            await current.run.emit("test:summary", result)
+            services.resolve(await conclude(current).finally(() => current.stream.close()))
         } catch (error) {
-            failed = true
-            failure = error
+            services.reject(error)
         }
-
-        try {
-            await current.stream.close()
-        } catch (error) {
-            if (!failed) {
-                failed = true
-                failure = error
-            }
-        }
-
-        try {
-            await sessions.close(!failed && result!.success)
-        } catch (error) {
-            if (!failed) {
-                failed = true
-                failure = error
-            }
-        } finally {
-            // A partially executed registry is unsafe to retry.
-            resetHarnessState(harness)
-            cycle = null
-            running = false
-        }
-
-        if (failed) throw failure
-        return {success: result!.success}
+        await services.finished.then(report, () => report({success: false}))
+        // A partially executed registry is unsafe to retry.
+        resetHarnessState(harness)
+        cycle = null
+        running = false
+        return await services.finished
     }
 
     return {schedule, end}
