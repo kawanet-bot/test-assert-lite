@@ -122,8 +122,8 @@ export const serve = async ({handler, quiet, services, ...options}: ServeOptions
     })
 
     services.onCleanup(async () => {
-        server.close()
-        await sleep(1)
+        await new Promise<void>(resolve => server.close(() => resolve()))
+        await sleep(0)
         server.closeAllConnections()
     })
 
