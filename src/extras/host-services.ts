@@ -55,8 +55,8 @@ export const createHostServices = ({stdout, stderr}: Partial<HostServices> = {})
     })
 
     services.onCleanup = (fn) => {
-        if (cleaning) fn = () => Promise.resolve().then(fn).catch(showError)
-        cleanups = cleanups.finally(() => fn())
+        const run = cleaning ? () => Promise.resolve().then(fn).catch(showError) : fn
+        cleanups = cleanups.finally(run)
     }
 
     // The first resolve or reject owns the result and starts cleanup.

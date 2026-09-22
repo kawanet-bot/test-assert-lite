@@ -33,6 +33,22 @@ describe(TITLE, () => {
         assert.deepEqual(calls, [1, 2, 3])
     })
 
+    // A cleanup added once cleanup has begun runs after the rest, and a
+    // failure among them is written out rather than left unhandled.
+    it("runs a cleanup added after cleanup began, and reports its failure", async () => {
+        const said: string[] = []
+        const services = createHostServices({stderr: {write: chunk => void said.push(chunk)}})
+        const calls: string[] = []
+        services.resolve(0)
+        await services.finished
+        services.onCleanup(() => void calls.push("late"))
+        services.onCleanup(() => Promise.reject(new Error("late fails")))
+        services.onCleanup(() => void calls.push("after"))
+        await new Promise(resolve => setTimeout(resolve, 10))
+        assert.deepEqual(calls, ["late", "after"])
+        assert.deepEqual(said, ["Error: late fails\n"])
+    })
+
     it("takes the first resolution after cleanup", async () => {
         const services = createHostServices()
         const calls: string[] = []
