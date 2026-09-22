@@ -16,6 +16,7 @@ const nullWriter: TAL.Writer = {write: (() => undefined)}
 const prefix = "/@tal/run/000000000/"
 const otherPrefix = "/@tal/run/000000001/"
 const SUCCESS = JSON.stringify({success: true})
+const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms))
 
 const post = async (channel: Channel, endpoint: string, body: string, method = "POST", path: string = prefix): Promise<number | "next" | undefined> => {
     const url = `http://127.0.0.1${path}${endpoint}`
@@ -86,7 +87,7 @@ describe(TITLE, () => {
         createChannel({prefix, services})
         const outcome = await Promise.race([
             services.finished.then(() => "settled", () => "settled"),
-            new Promise(resolve => setTimeout(() => resolve("pending"), 100)),
+            sleep(100).then(() => "pending"),
         ])
         assert.equal(outcome, "pending")
     })

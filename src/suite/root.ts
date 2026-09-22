@@ -2,6 +2,8 @@ import type {HarnessState} from "../session/state.ts"
 import type {Run} from "./job.ts"
 import {Suite} from "./suite.ts"
 
+const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms))
+
 // What the top level declares into. The root has no body and no result of
 // its own, and runs on the scheduler's clock rather than in a parent's
 // turn: each walk takes the hooks and the children declared since the
@@ -91,7 +93,7 @@ export class Root extends Suite {
     // turn is given, since a body that was awaiting the last late subtest
     // resumes only then and may declare more.
     private async drain(): Promise<boolean> {
-        await new Promise(resolve => setTimeout(resolve, 0))
+        await sleep(0)
         if (this.hasPendingChildren) return true
         this.run.closed = true
         return false

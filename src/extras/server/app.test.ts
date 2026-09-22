@@ -374,8 +374,9 @@ describe(TITLE, () => {
         const endpoint = running.origin + other.page.replace(/run\.html$/, "end")
         try {
             assert.equal(await post(endpoint, "BROKEN"), 400)
-            assert.equal(await post(endpoint, "null"), 204)
-            assert.equal((await services.ending)?.success, undefined)
+            assert.equal(await post(endpoint, "null"), 400)
+            assert.equal(await post(endpoint, "true"), 400)
+            assert.equal(await post(endpoint, "{}"), 400)
         } finally {
             await services.cleanup()
         }

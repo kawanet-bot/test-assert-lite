@@ -4,6 +4,8 @@
 // and the verdict at the end. What comes in goes to the streams given;
 // nothing changes in the protocol here without a change in the client.
 
+import type {TAL} from "test-assert-lite"
+import {messageOf} from "../../utils/stringify.ts"
 import type {HostServices} from "../host-services.ts"
 import type {ContextLike, Next} from "./middleware.ts"
 
@@ -22,6 +24,8 @@ export interface Channel {
 }
 
 type CommandName = "begin" | "stdout" | "stderr" | "end"
+
+const isTestResult = (v: unknown): v is TAL.SessionResult => ("boolean" === typeof (v as TAL.SessionResult)?.success)
 
 /**
  * Creates the endpoints that receive the page's reports and result.
@@ -47,9 +51,11 @@ export const createChannel = ({prefix, services, timeout}: ChannelOptions): Chan
     const commands: Record<CommandName, (body: string) => undefined | number> = {
         begin: (body) => {
             try {
-                services.begin(!body ? undefined : JSON.parse(body))
+                const payload = body && JSON.parse(body) as unknown
+                services.begin(payload)
                 begun = true
             } catch (e) {
+                services.stderr.write(messageOf(e))
                 return 400
             }
         },
@@ -57,9 +63,12 @@ export const createChannel = ({prefix, services, timeout}: ChannelOptions): Chan
         stderr: (body) => void services.stderr.write(body),
         end: (body) => {
             try {
-                services.end(!body ? undefined : JSON.parse(body))
+                const payload = body && JSON.parse(body) as TAL.SessionResult
+                if (!isTestResult(payload)) return 400
+                services.end(payload)
                 ended = true
             } catch (e) {
+                services.stderr.write(messageOf(e))
                 return 400
             }
         },

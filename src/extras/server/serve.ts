@@ -74,6 +74,8 @@ const quote = (v: string | number | null | undefined) => {
     return `"${v}"`
 }
 
+const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms))
+
 // 127.0.0.1 rather than localhost on both ends: a browser may resolve
 // localhost to ::1 while this listens on IPv4 only. Port 0 picks a free one.
 // A wildcard address listens on every interface but names none, so the
@@ -119,8 +121,9 @@ export const serve = async ({handler, quiet, services, ...options}: ServeOptions
         })
     })
 
-    services.cleanups.add(() => {
+    services.cleanups.add(async () => {
         server.close()
+        await sleep(1)
         server.closeAllConnections()
     })
 

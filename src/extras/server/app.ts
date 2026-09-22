@@ -140,7 +140,8 @@ export const createApp = (options: AppOptions): App => {
     const handler = compose([
         channel.handler,
         ...M(watcher?.handler),
-        scoped(compose([...M(watcher?.inject), head, title, atRun, atEval])),
+        scoped(compose([...M(watcher?.inject), head, title, atRun])),
+        atEval,
         ...served.own.map(dir => serveStatic(dir)),
         // A .ts among the files given goes out as JavaScript; the root
         // mount is served as it is.
