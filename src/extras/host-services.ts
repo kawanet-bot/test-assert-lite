@@ -14,16 +14,16 @@ export interface HostServices {
     beginning: Promise<unknown>
 
     /** Reports the page's session result. */
-    end: (result: TAL.SessionResult) => void
+    end: (result?: TAL.SessionResult) => void
     /** The first session result reported at end. */
-    ending: Promise<TAL.SessionResult>
+    ending: Promise<TAL.SessionResult | undefined>
 
     /** Finishes successfully after cleanup. */
-    resolve: (exitCode: number) => void
+    resolve: (result?: TAL.SessionResult) => void
     /** Fails with the error after cleanup. */
     reject: (error: unknown) => void
     /** The first resolve or reject, settled after cleanup. */
-    finished: Promise<number>
+    finished: Promise<TAL.SessionResult | undefined>
 
     /** Runs the registered cleanup functions. */
     cleanup: () => Promise<void>

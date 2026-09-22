@@ -8,25 +8,15 @@
 import {stringify} from "../utils/stringify.ts"
 import {VERSION} from "../utils/version.ts"
 import {runInNode} from "./drivers/node.ts"
-import {runInPlaywright} from "./drivers/playwright.ts"
-import {runInWebDriver} from "./drivers/webdriver.ts"
-import {createHostServices} from "./host-services.ts"
+import {runWebMode} from "./drivers/web-mode.ts"
 import type {ModeOptions} from "./mode-options.ts"
 import {readOptions, USAGE} from "./options.ts"
-import {createApp} from "./server/app.ts"
-import {serve} from "./server/serve.ts"
 import {UsageError} from "./usage-error.ts"
 
 export interface CLIOptions {
     /** The arguments as the executable gets them: process.argv.slice(2). */
     args: string[]
 }
-
-// How long a browser run, --playwright or --webdriver, may stay silent.
-// Before begin, the browser most likely could not reach the server. After
-// begin, a quiet page still reports every ten seconds, so this long means
-// the browser or its tab is gone. A hung test keeps reporting, so it waits.
-const SILENCE_MS = 30_000
 
 const runCLI = async (options: ModeOptions): Promise<number> => {
     const {mode} = options
@@ -48,62 +38,10 @@ const runCLI = async (options: ModeOptions): Promise<number> => {
             eval: options.eval,
         })
         return result?.success ? 0 : 1
+    } else {
+        const result = await runWebMode(options)
+        return result?.success ? 0 : 1
     }
-
-    const services = createHostServices()
-
-    try {
-        // The application is the middleware. Reports go to stdout.
-        // Server logs go to stderr.
-        const app = createApp({
-            scripts: options.scripts,
-            imports,
-            mount: options.mount,
-            session,
-            eval: options.eval,
-            watch: mode === "serve",
-            services,
-            timeout: (mode !== "serve" ? SILENCE_MS : undefined),
-        })
-
-        // A server that cannot listen, its port taken say, is an error to show;
-        // the application, with its watch, must not keep the process up for it.
-        const server = await serve({
-            handler: app.handler,
-            host: options.host,
-            port: options.port,
-            origin: options.origin,
-            quiet: session.quiet,
-            services,
-        })
-
-        const url = `${server.origin}${app.page}`
-
-        if (mode === "serve") {
-            // Only the URL goes to stdout, so it can be piped. The server keeps
-            // the process alive until an interrupt, which resolves this.
-            const entryURL = options.session.files?.length || options.eval != null ? url : `${server.origin}/`
-            process.stdout.write(`${entryURL}\n`)
-            process.stderr.write("Serving; press Ctrl-C to stop.\n")
-            process.once("SIGINT", () => services.resolve(0))
-            return await services.finished
-        }
-
-        services.ending.then(result => services.resolve(result?.success ? 0 : 1))
-
-        if (mode === "webdriver") {
-            const {custom, endpoint} = options
-            await runInWebDriver({url, services, custom, endpoint})
-        } else if (mode === "playwright") {
-            const {custom, engine} = options
-            await runInPlaywright({url, services, custom, engine})
-        } else {
-            throw new Error(`Invalid mode: ${mode}`)
-        }
-    } catch (error: unknown) {
-        services.reject(error as Error)
-    }
-    return await services.finished
 }
 
 /**
