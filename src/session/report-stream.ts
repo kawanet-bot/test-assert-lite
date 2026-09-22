@@ -3,6 +3,7 @@
 // promise settles, so end() stays in step by awaiting emit alone.
 
 import type {TAL} from "test-assert-lite"
+import type {RunServices} from "../utils/run-services.ts"
 
 type TestEvent = TAL.TestEvent
 type ReporterFn = TAL.ReporterFn
@@ -16,11 +17,11 @@ interface QueueItem {
 
 export interface ReportStream {
     emit: (event: TestEvent) => Promise<void>
-    // Ends the reporter's input and waits for it to write the rest.
-    close: () => Promise<void>
 }
 
-export const createReportStream = (reporter: ReporterFn, output: OutputFn): ReportStream => {
+// The stream closes with the run, as one of its cleanups: the reporter's
+// input ends and its last lines are written.
+export const createReportStream = (reporter: ReporterFn, output: OutputFn, services: RunServices): ReportStream => {
     const pending: QueueItem[] = []
     let active: QueueItem | null = null
     let wake: (() => void) | null = null
@@ -113,7 +114,7 @@ export const createReportStream = (reporter: ReporterFn, output: OutputFn): Repo
 
     // A failure that reached an emit() is the run's already. One that met
     // nobody, after the last event, is close()'s to throw.
-    const close: ReportStream["close"] = async () => {
+    const close = async (): Promise<void> => {
         closed = true
         wakeUp()
         try {
@@ -123,5 +124,6 @@ export const createReportStream = (reporter: ReporterFn, output: OutputFn): Repo
         }
     }
 
-    return {emit, close}
+    services.onCleanup(close)
+    return {emit}
 }

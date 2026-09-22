@@ -49,7 +49,6 @@ export const createSessions = (harness: HarnessState): SessionControl => {
         const reporter = chooseReporter(harness, options)
         // The report goes where the console goes unless told otherwise.
         const output = options.output ?? ((text: string) => stdout.write(text))
-        const stream = createReportStream(reporter, output)
         // Saved before anything is taken over, so nothing here loops back.
         const found = options.console ?? globalThis.console
         const saved = saveConsole(found)
@@ -60,6 +59,8 @@ export const createSessions = (harness: HarnessState): SessionControl => {
                 : hasProcess() ? {}
                     : consoleWriters(found, saved),
         )
+        // Made first, so its close comes ahead of the writers' disconnect among the cleanups.
+        const stream = createReportStream(reporter, output, services)
         const open: Open = {services, stream, report: channel == null ? async () => undefined : channel.end, auto}
         // The next session() is taken once this one is through.
         services.onCleanup(() => {
@@ -67,8 +68,6 @@ export const createSessions = (harness: HarnessState): SessionControl => {
         })
         if (options.uncaught != null) services.onCleanup(takeUncaught(harness, options.uncaught))
         if (options.console != null) services.onCleanup(takeConsole(found, saved, services.stdout, services.stderr))
-        // The reporter writes its last lines before the writers disconnect.
-        services.onCleanup(stream.close)
         stdout.connect(services.stdout)
         stderr.connect(services.stderr)
         services.onCleanup(() => {
