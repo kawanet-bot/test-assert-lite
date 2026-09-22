@@ -27,6 +27,8 @@ export const createReportStream = (reporter: ReporterFn, output: OutputFn): Repo
     let closed = false
     let failed = false
     let failure: unknown
+    // Whether an emit() has rejected with the failure: close() then keeps quiet about it.
+    let delivered = false
 
     const rejected = (error: unknown): Promise<void> => {
         const promise = Promise.reject(error)
@@ -44,6 +46,7 @@ export const createReportStream = (reporter: ReporterFn, output: OutputFn): Repo
         if (failed) return
         failed = true
         failure = error
+        delivered = active != null || pending.length > 0
         active?.reject(error)
         active = null
         for (const item of pending.splice(0)) item.reject(error)
@@ -92,7 +95,10 @@ export const createReportStream = (reporter: ReporterFn, output: OutputFn): Repo
 
     const emit: ReportStream["emit"] = (event) => {
         if (closed) return rejected(new Error("Reporter is closed"))
-        if (failed) return rejected(failure)
+        if (failed) {
+            delivered = true
+            return rejected(failure)
+        }
 
         const promise = new Promise<void>((resolve, reject) => {
             pending.push({event, resolve, reject})
@@ -105,10 +111,16 @@ export const createReportStream = (reporter: ReporterFn, output: OutputFn): Repo
         return promise
     }
 
+    // A failure that reached an emit() is the run's already. One that met
+    // nobody, after the last event, is close()'s to throw.
     const close: ReportStream["close"] = async () => {
         closed = true
         wakeUp()
-        await loop
+        try {
+            await loop
+        } catch (error) {
+            if (!delivered) throw error
+        }
     }
 
     return {emit, close}
