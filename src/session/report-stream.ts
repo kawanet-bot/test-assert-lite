@@ -1,6 +1,6 @@
 // Connects write() to an async generator reporter. A request for the next
 // event means the previous one has been written, and that is when write()'s
-// promise settles, so end() stays in step by awaiting emit alone.
+// promise settles, so end() stays in step by awaiting write() alone.
 
 import type {TAL} from "test-assert-lite"
 import type {RunServices} from "../utils/run-services.ts"
