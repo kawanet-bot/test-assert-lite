@@ -59,7 +59,7 @@ export const TestSessionType = "application/vnd.test-session+json"
 // are served from there whatever the suite's location.
 const root = fileURLToPath(packageRoot())
 
-// JSON for a script tag: a "<" in a value, "</script>" say, is escaped so
+// JSON for a script tag: a "<" in a value such as "</script>" is escaped so
 // it cannot close the tag, and reads back as the same string.
 const safeJSON = (value: unknown): string => JSON.stringify(value, null, 4).replace(/</g, "\\u003c")
 
@@ -79,9 +79,9 @@ export const createApp = (options: AppOptions): App => {
     const runPath = `${prefix}run.html`
     const channel = createChannel({prefix, services, singleRun})
 
-    // Watching is a convenience of --serve, not what it is for: where the
-    // file system refuses, the inotify limit reached say, the page is
-    // served all the same, without the reload, and stderr says why once.
+    // Watching is a convenience of --serve, not what it is for. When the
+    // file system refuses, for example when the inotify limit is reached,
+    // the page is still served without reload. Stderr says why once.
     let watcher: Watcher | null = null
     if (options.watch) {
         try {

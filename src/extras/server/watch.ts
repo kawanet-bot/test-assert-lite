@@ -32,8 +32,9 @@ const WAIT_MS = 30_000
 
 // What goes into the page people open: it asks after the version it was
 // built with and reloads on an answer. A 204, the wait run out, means ask
-// again at once; anything else, the server gone say, a second later, then
-// two, then three, so a page left behind does not hammer.
+// again at once. After anything else, such as when the server is gone, the
+// next ask waits a second, then two, then three, so a page left behind does
+// not hammer.
 const asks = (after: number): string => `<script>
 (async (after) => {
     for (let wait = 1; ; wait++) {
@@ -65,8 +66,8 @@ export const createWatcher = (files: string[], wait = WAIT_MS): Watcher => {
         const dir = dirname(file)
         names.set(dir, (names.get(dir) ?? new Set()).add(basename(file)))
     }
-    // One at a time, so that a directory that cannot be watched, a missing
-    // one say, leaves none of the earlier ones open to keep the process up.
+    // One at a time, so an unwatchable directory such as a missing one leaves
+    // none of the earlier ones open to keep the process up.
     // An event without a name, which Node does not promise, counts as one.
     const watchers: FSWatcher[] = []
     try {
