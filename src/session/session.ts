@@ -7,7 +7,7 @@ import type {Run} from "../suite/job.ts"
 import {createConnectWriter, pureWriter} from "../utils/buf-writer.ts"
 import type {RunServices} from "../utils/run-services.ts"
 import {createRunServices} from "../utils/run-services.ts"
-import {client} from "./client.ts"
+import {createBridgeClient} from "./client.ts"
 import {consoleWriters, saveConsole, takeConsole} from "./console.ts"
 import type {ReportStream} from "./report-stream.ts"
 import {createReportStream} from "./report-stream.ts"
@@ -54,6 +54,8 @@ export interface Sessions {
 
 const hasProcess = (): boolean => "undefined" !== typeof process && process.stdout?.write != null
 
+const NOP = async () => undefined
+
 export const createSessions = (harness: HarnessState, assert: TAL.TestContextAssert): Sessions => {
     let cycle: Cycle | null = null
     const stdout = createConnectWriter()
@@ -67,9 +69,9 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
         const found = options.console ?? globalThis.console
         const saved = saveConsole(found)
         // The run's text goes to the CLI, to Node's streams, or to the console as found.
-        const channel = options.fetch == null ? null : client(options.fetch)
+        const bridge = options.fetch == null ? null : createBridgeClient(options.fetch)
         const services = createRunServices(
-            channel != null ? {stdout: channel.stdout, stderr: channel.stderr}
+            bridge != null ? {stdout: bridge.stdout, stderr: bridge.stderr}
                 : hasProcess() ? {}
                     : consoleWriters(found, saved),
         )
@@ -85,7 +87,7 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
             stdout.disconnect()
             stderr.disconnect()
         })
-        void channel?.begin()
+        void bridge?.begin()
         const run: Run = {
             counters: {tests: 0, suites: 0, passed: 0, failed: 0, cancelled: 0, skipped: 0, todo: 0},
             success: true,
@@ -93,7 +95,7 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
             assert,
             closed: false,
         }
-        const report = channel == null ? async () => undefined : channel.end
+        const report = bridge?.end ?? NOP
         return {services, stream, report, auto, run, startedAt: performance.now(), held: true, walk: null, closing: false, failure: undefined}
     }
 

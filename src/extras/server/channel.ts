@@ -25,7 +25,7 @@ export interface Channel {
     handler: (c: ContextLike, next: Next) => Promise<Response | void>
 }
 
-type CommandName = "begin" | "stdout" | "stderr" | "end"
+type ChannelName = "begin" | "stdout" | "stderr" | "end"
 
 const isTestResult = (v: unknown): v is TAL.SessionResult => ("boolean" === typeof (v as TAL.SessionResult)?.success)
 
@@ -57,7 +57,7 @@ export const createChannel = ({prefix, services, timeout, singleRun = true}: Cha
         }, timeout)
     }
 
-    const commands: Record<CommandName, (body: string) => undefined | number> = {
+    const channels: Record<ChannelName, (body: string) => undefined | number> = {
         begin: () => {
             begun = true
         },
@@ -76,16 +76,16 @@ export const createChannel = ({prefix, services, timeout, singleRun = true}: Cha
         },
     }
 
-    const commandNames = Object.keys(commands)
-    const isCommandName = (v: string): v is CommandName => commandNames.includes(v)
+    const channelNames = Object.keys(channels)
+    const isChannelName = (v: string): v is ChannelName => channelNames.includes(v)
 
     const handler = async (c: ContextLike, next: Next) => {
         if (!c.req.path.startsWith(prefix)) return next()
-        const command = c.req.path.slice(prefix.length)
-        const endpoint = isCommandName(command) && commands[command]
-        if (!endpoint) return next()
+        const channelName = c.req.path.slice(prefix.length)
+        const channelFn = isChannelName(channelName) && channels[channelName]
+        if (!channelFn) return next()
         if (c.req.method !== "POST") return c.body(null, 405, {allow: "POST"})
-        const status = endpoint(await c.req.text()) ?? 204
+        const status = channelFn(await c.req.text()) ?? 204
         if (timeout) heard()
         return c.body(null, status)
     }

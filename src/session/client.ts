@@ -8,7 +8,7 @@ import {createBufWriter} from "../utils/buf-writer.ts"
 
 type FetchLike = TAL.FetchLike
 
-export interface Client {
+export interface Bridge {
     /** Tells the CLI the page is up; it waits for this with a timeout. */
     begin: () => Promise<void>
 
@@ -21,6 +21,8 @@ export interface Client {
     /** The verdict as JSON, sent once the buffers have drained. */
     end: (result: TAL.SessionResult) => Promise<void>
 }
+
+type ChannelName = keyof Bridge
 
 // How long lines gather before a flush: a test's burst of output becomes
 // one request, while a person watching still sees it as it comes.
@@ -38,7 +40,7 @@ const TICK_MS = 1_000
  * and `end` beside the page. Sending never rejects: the page can do
  * nothing about a CLI that went away.
  */
-export const client = (fetch: FetchLike): Client => {
+export const createBridgeClient = (fetch: FetchLike): Bridge => {
     const stdoutBuf = createBufWriter()
     const stderrBuf = createBufWriter()
     let timer: ReturnType<typeof setTimeout> | null = null
@@ -48,7 +50,7 @@ export const client = (fetch: FetchLike): Client => {
     // Every request follows the one before, so each stream stays in order.
     let inflight: Promise<void> = Promise.resolve()
 
-    const post = (path: string, body: string): Promise<void> => {
+    const post = (path: ChannelName, body: string): Promise<void> => {
         inflight = inflight
             .then(() => fetch(path, {method: "POST", body}))
             .then(() => undefined, () => undefined)
