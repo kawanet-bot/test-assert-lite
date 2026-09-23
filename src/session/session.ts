@@ -16,9 +16,7 @@ import type {HarnessState} from "./state.ts"
 import {resetHarnessState} from "./state.ts"
 import {takeUncaught} from "./uncaught.ts"
 
-type SessionOptions = TAL.SessionOptions
 type SessionResult = TAL.SessionResult
-type Writer = TAL.Writer
 
 // One cycle of the harness: from session(), or the first declaration, to
 // the end() that reports it. The tests are held until end() lets them go,
@@ -28,7 +26,7 @@ interface Cycle {
     // What the run's events go through, on the way to the reporter.
     stream: ReportStream
     // Tells the CLI the verdict. Without a channel there is nothing to tell.
-    report: (result: SessionResult) => Promise<void>
+    close: (result: SessionResult) => Promise<void>
     // Opened by a declaration rather than by session(): the refusal differs.
     auto: boolean
     run: Run
@@ -45,8 +43,8 @@ interface Cycle {
 export interface Sessions {
     session: TAL.SessionAPI["session"]
     end: TAL.SessionAPI["end"]
-    stdout: Writer
-    stderr: Writer
+    stdout: TAL.SessionAPI["stdout"]
+    stderr: TAL.SessionAPI["stderr"]
     // Called on a declaration at the root: starts the walk, once end() has
     // let it, unless one is under way.
     schedule: () => void
@@ -61,7 +59,7 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
     const stdout = createConnectWriter()
     const stderr = createConnectWriter()
 
-    const open = (options: SessionOptions, auto: boolean): Cycle => {
+    const open = (options: TAL.SessionOptions, auto: boolean): Cycle => {
         const reporter = chooseReporter(harness, options)
         // The report goes where the console goes unless told otherwise.
         const output = options.output ?? ((text: string) => stdout.write(text))
@@ -95,8 +93,8 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
             assert,
             closed: false,
         }
-        const report = bridge?.end ?? NOP
-        return {services, stream, report, auto, run, startedAt: performance.now(), held: true, walk: null, closing: false, failure: undefined}
+        const close = bridge?.end ?? NOP
+        return {services, stream, close, auto, run, startedAt: performance.now(), held: true, walk: null, closing: false, failure: undefined}
     }
 
     const session: TAL.SessionAPI["session"] = (options = {}) => {
@@ -145,13 +143,13 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
         current.held = false
         schedule()
         current.closing = true
-        const {services, report} = current
+        const {services, close} = current
         try {
             services.resolve(await conclude(current))
         } catch (error) {
             services.reject(error)
         }
-        await services.finished.then(report, () => report({success: false}))
+        await services.finished.then(close, () => close({success: false}))
         // A partially executed registry is unsafe to retry.
         resetHarnessState(harness)
         cycle = null
