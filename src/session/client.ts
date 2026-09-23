@@ -50,6 +50,7 @@ export const createBridgeClient = (fetch: FetchLike): Bridge => {
     // Every request follows the one before, so each stream stays in order.
     let inflight: Promise<void> = Promise.resolve()
 
+    // Request failures are ignored. Later requests are still attempted.
     const post = (path: ChannelName, body: string): Promise<void> => {
         inflight = inflight
             .then(() => fetch(path, {method: "POST", body}))
