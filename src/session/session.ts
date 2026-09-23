@@ -24,7 +24,7 @@ type SessionResult = TAL.SessionResult
 interface Cycle {
     services: RunServices
     // What the run's events go through, on the way to the reporter.
-    stream: ReportStream
+    report: ReportStream
     // Tells the CLI the verdict. Without a channel there is nothing to tell.
     close: (result: SessionResult) => Promise<void>
     // Opened by a declaration rather than by session(): the refusal differs.
@@ -76,7 +76,7 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
         // Taken before the reporter starts, since it refuses what is not a window or a process.
         const releaseUncaught = options.uncaught == null ? null : takeUncaught(harness, options.uncaught)
         // Made first, so its close comes ahead of the writers' disconnect among the cleanups.
-        const stream = createReportStream({reporter, output, services})
+        const report = createReportStream({reporter, output, services})
         if (releaseUncaught != null) services.onCleanup(releaseUncaught)
         if (options.console != null) services.onCleanup(takeConsole(found, saved, services.stdout, services.stderr))
         stdout.connect(services.stdout)
@@ -86,15 +86,25 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
             stderr.disconnect()
         })
         void bridge?.begin()
+
+        // emit() is normally awaited, but TestContext.diagnostic() is
+        // deliberately synchronous. Mark every rejection handled here while
+        // preserving it for awaiters.
+        const emit: Run["emit"] = (type, data) => {
+            const promise = report.write({type, data} as TAL.TestEvent)
+            void promise.catch(() => undefined)
+            return promise
+        }
+
         const run: Run = {
             counters: {tests: 0, suites: 0, passed: 0, failed: 0, cancelled: 0, skipped: 0, todo: 0},
             success: true,
-            emit: (type, data) => stream.emit({type, data} as TAL.TestEvent),
+            emit,
             assert,
             closed: false,
         }
         const close = bridge?.end ?? NOP
-        return {services, stream, close, auto, run, startedAt: performance.now(), held: true, walk: null, closing: false, failure: undefined}
+        return {services, report, close, auto, run, startedAt: performance.now(), held: true, walk: null, closing: false, failure: undefined}
     }
 
     const session: TAL.SessionAPI["session"] = (options = {}) => {
