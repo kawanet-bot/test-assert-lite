@@ -25,7 +25,7 @@ interface Cycle {
     services: RunServices
     // What the run's events go through, on the way to the reporter.
     report: ReportStream
-    // Tells the CLI the verdict. Without a channel there is nothing to tell.
+    // Tells the CLI the verdict. Without a bridge there is nothing to tell.
     close: (result: SessionResult) => Promise<void>
     // Opened by a declaration rather than by session(): the refusal differs.
     auto: boolean
@@ -75,7 +75,7 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
         )
         // Taken before the reporter starts, since it refuses what is not a window or a process.
         const releaseUncaught = options.uncaught == null ? null : takeUncaught(harness, options.uncaught)
-        // Made first, so its close comes ahead of the writers' disconnect among the cleanups.
+        // Registered first, so the report closes before the writers disconnect.
         const report = createReportStream({reporter, output, services})
         if (releaseUncaught != null) services.onCleanup(releaseUncaught)
         if (options.console != null) services.onCleanup(takeConsole(found, saved, services.stdout, services.stderr))

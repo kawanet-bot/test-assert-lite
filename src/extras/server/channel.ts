@@ -1,8 +1,8 @@
 // The CLI's side of the channel to the page it drives: the run's own path,
 // which only this process and that page know, and the endpoints under it
-// the page reports to, as the page's session sends: begin, the two streams
+// the page reports to, as the page's bridge sends: begin, the two streams
 // and the verdict at the end. What comes in goes to the streams given;
-// nothing changes in the protocol here without a change in the client.
+// nothing changes in the protocol here without the same change in that bridge.
 
 import type {TAL} from "test-assert-lite"
 import type {RunServices} from "../../utils/run-services.ts"

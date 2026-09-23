@@ -1,4 +1,4 @@
-// Bridges write() to an async generator reporter. A request for the next
+// Connects write() to an async generator reporter. A request for the next
 // event means the previous one has been written, and that is when write()'s
 // promise settles, so end() stays in step by awaiting emit alone.
 

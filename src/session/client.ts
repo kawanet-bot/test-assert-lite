@@ -1,4 +1,4 @@
-// The page's side of the channel to the CLI: one POST per endpoint, by a
+// The page's bridge to the CLI: one POST per channel, by a
 // path relative to the page, with the fetch it is given. Text is buffered
 // per stream and sent in one request per flush, so a burst of a hundred
 // console lines is one round trip.
@@ -36,9 +36,9 @@ const QUIET_MS = 10_000
 const TICK_MS = 1_000
 
 /**
- * Reports to the CLI with the fetch given, at `begin`, `stdout`, `stderr`
- * and `end` beside the page. Sending never rejects: the page can do
- * nothing about a CLI that went away.
+ * Creates the page's bridge to the CLI through `begin`, `stdout`, `stderr`
+ * and `end`. Sending never rejects. The page can do nothing about a CLI
+ * that went away.
  */
 export const createBridgeClient = (fetch: FetchLike): Bridge => {
     const stdoutBuf = createBufWriter()
