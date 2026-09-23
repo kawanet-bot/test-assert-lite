@@ -1,6 +1,6 @@
-// Bridges emit() to an async generator reporter. A request for the next
-// event means the previous one has been written, and that is when emit()'s
-// promise settles, so end() stays in step by awaiting emit alone.
+// Connects write() to an async generator reporter. A request for the next
+// event means the previous one has been written, and that is when write()'s
+// promise settles, so end() stays in step by awaiting write() alone.
 
 import type {TAL} from "test-assert-lite"
 import type {RunServices} from "../utils/run-services.ts"
@@ -23,7 +23,7 @@ interface Failed {
 }
 
 export interface ReportStream {
-    emit: (event: TestEvent) => Promise<void>
+    write: (event: TestEvent) => Promise<void>
 }
 
 export interface ReportStreamOptions {
@@ -92,7 +92,7 @@ export const createReportStream = ({reporter, output, services}: ReportStreamOpt
     // unhandledRejection in the interval before the cleanups reach close().
     void loop.catch(() => undefined)
 
-    const take = async (event: TestEvent): Promise<void> => {
+    const write: ReportStream["write"] = async (event) => {
         if (failed != null) {
             failed.delivered = true
             throw failed.failure
@@ -102,15 +102,6 @@ export const createReportStream = ({reporter, output, services}: ReportStreamOpt
             pending.push({event, resolve, reject})
             wakeUp()
         })
-    }
-
-    // emit() is normally awaited, but TestContext.diagnostic() is
-    // deliberately synchronous. Mark every rejection handled here while
-    // preserving it for awaiters.
-    const emit: ReportStream["emit"] = (event) => {
-        const promise = take(event)
-        void promise.catch(() => undefined)
-        return promise
     }
 
     const close = async (): Promise<void> => {
@@ -124,5 +115,5 @@ export const createReportStream = ({reporter, output, services}: ReportStreamOpt
     }
 
     services.onCleanup(close)
-    return {emit}
+    return {write}
 }

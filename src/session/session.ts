@@ -7,7 +7,7 @@ import type {Run} from "../suite/job.ts"
 import {createConnectWriter, pureWriter} from "../utils/buf-writer.ts"
 import type {RunServices} from "../utils/run-services.ts"
 import {createRunServices} from "../utils/run-services.ts"
-import {client} from "./client.ts"
+import {createBridgeClient} from "./client.ts"
 import {consoleWriters, saveConsole, takeConsole} from "./console.ts"
 import type {ReportStream} from "./report-stream.ts"
 import {createReportStream} from "./report-stream.ts"
@@ -16,9 +16,7 @@ import type {HarnessState} from "./state.ts"
 import {resetHarnessState} from "./state.ts"
 import {takeUncaught} from "./uncaught.ts"
 
-type SessionOptions = TAL.SessionOptions
 type SessionResult = TAL.SessionResult
-type Writer = TAL.Writer
 
 // One cycle of the harness: from session(), or the first declaration, to
 // the end() that reports it. The tests are held until end() lets them go,
@@ -26,9 +24,9 @@ type Writer = TAL.Writer
 interface Cycle {
     services: RunServices
     // What the run's events go through, on the way to the reporter.
-    stream: ReportStream
-    // Tells the CLI the verdict. Without a channel there is nothing to tell.
-    report: (result: SessionResult) => Promise<void>
+    report: ReportStream
+    // Tells the CLI the verdict. Without a bridge there is nothing to tell.
+    close: (result: SessionResult) => Promise<void>
     // Opened by a declaration rather than by session(): the refusal differs.
     auto: boolean
     run: Run
@@ -45,8 +43,8 @@ interface Cycle {
 export interface Sessions {
     session: TAL.SessionAPI["session"]
     end: TAL.SessionAPI["end"]
-    stdout: Writer
-    stderr: Writer
+    stdout: TAL.SessionAPI["stdout"]
+    stderr: TAL.SessionAPI["stderr"]
     // Called on a declaration at the root: starts the walk, once end() has
     // let it, unless one is under way.
     schedule: () => void
@@ -54,12 +52,14 @@ export interface Sessions {
 
 const hasProcess = (): boolean => "undefined" !== typeof process && process.stdout?.write != null
 
+const NOP = async () => undefined
+
 export const createSessions = (harness: HarnessState, assert: TAL.TestContextAssert): Sessions => {
     let cycle: Cycle | null = null
     const stdout = createConnectWriter()
     const stderr = createConnectWriter()
 
-    const open = (options: SessionOptions, auto: boolean): Cycle => {
+    const open = (options: TAL.SessionOptions, auto: boolean): Cycle => {
         const reporter = chooseReporter(harness, options)
         // The report goes where the console goes unless told otherwise.
         const output = options.output ?? ((text: string) => stdout.write(text))
@@ -67,16 +67,16 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
         const found = options.console ?? globalThis.console
         const saved = saveConsole(found)
         // The run's text goes to the CLI, to Node's streams, or to the console as found.
-        const channel = options.fetch == null ? null : client(options.fetch)
+        const bridge = options.fetch == null ? null : createBridgeClient(options.fetch)
         const services = createRunServices(
-            channel != null ? {stdout: channel.stdout, stderr: channel.stderr}
+            bridge != null ? {stdout: bridge.stdout, stderr: bridge.stderr}
                 : hasProcess() ? {}
                     : consoleWriters(found, saved),
         )
         // Taken before the reporter starts, since it refuses what is not a window or a process.
         const releaseUncaught = options.uncaught == null ? null : takeUncaught(harness, options.uncaught)
-        // Made first, so its close comes ahead of the writers' disconnect among the cleanups.
-        const stream = createReportStream({reporter, output, services})
+        // Registered first, so the report closes before the writers disconnect.
+        const report = createReportStream({reporter, output, services})
         if (releaseUncaught != null) services.onCleanup(releaseUncaught)
         if (options.console != null) services.onCleanup(takeConsole(found, saved, services.stdout, services.stderr))
         stdout.connect(services.stdout)
@@ -85,16 +85,26 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
             stdout.disconnect()
             stderr.disconnect()
         })
-        void channel?.begin()
+        void bridge?.begin()
+
+        // emit() is normally awaited, but TestContext.diagnostic() is
+        // deliberately synchronous. Mark every rejection handled here while
+        // preserving it for awaiters.
+        const emit: Run["emit"] = (type, data) => {
+            const promise = report.write({type, data} as TAL.TestEvent)
+            void promise.catch(() => undefined)
+            return promise
+        }
+
         const run: Run = {
             counters: {tests: 0, suites: 0, passed: 0, failed: 0, cancelled: 0, skipped: 0, todo: 0},
             success: true,
-            emit: (type, data) => stream.emit({type, data} as TAL.TestEvent),
+            emit,
             assert,
             closed: false,
         }
-        const report = channel == null ? async () => undefined : channel.end
-        return {services, stream, report, auto, run, startedAt: performance.now(), held: true, walk: null, closing: false, failure: undefined}
+        const close = bridge?.end ?? NOP
+        return {services, report, close, auto, run, startedAt: performance.now(), held: true, walk: null, closing: false, failure: undefined}
     }
 
     const session: TAL.SessionAPI["session"] = (options = {}) => {
@@ -143,13 +153,13 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
         current.held = false
         schedule()
         current.closing = true
-        const {services, report} = current
+        const {services, close} = current
         try {
             services.resolve(await conclude(current))
         } catch (error) {
             services.reject(error)
         }
-        await services.finished.then(report, () => report({success: false}))
+        await services.finished.then(close, () => close({success: false}))
         // A partially executed registry is unsafe to retry.
         resetHarnessState(harness)
         cycle = null

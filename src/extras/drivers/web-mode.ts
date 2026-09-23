@@ -26,8 +26,8 @@ export const runWebMode = async (options: ModeOptions & WebModeOptions) => {
             singleRun: (mode !== "serve"),
         })
 
-        // A server that cannot listen, its port taken say, is an error to show;
-        // the application, with its watch, must not keep the process up for it.
+        // A server that cannot listen, for example because its port is taken,
+        // is an error to show. The application's watch must not keep it running.
         const server = await serve({
             handler: app.handler,
             host: options.host,

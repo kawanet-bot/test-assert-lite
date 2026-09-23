@@ -1,7 +1,7 @@
 // An upstream at a URL path for the browser test CLI's middleware chain:
 // what a request under the path asks for is fetched from there and its
-// answer handed back, so a page some other server makes, an app's own
-// dev server say, can carry the suites.
+// answer handed back, so a page made by another server, such as an app's
+// own dev server, can carry the suites.
 
 import type {MiddlewareHandler} from "./middleware.ts"
 

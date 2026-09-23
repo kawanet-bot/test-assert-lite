@@ -1,7 +1,8 @@
 // WebDriver adapter for the browser test CLI: the HTTP protocol that
-// safaridriver, chromedriver and geckodriver speak, so a browser Playwright
-// cannot launch, Safari on a Mac say, runs the suites too. Node's fetch()
-// is all it takes, so no optional dependency is kept out of tsc here.
+// safaridriver, chromedriver and geckodriver speak. It lets browsers that
+// Playwright cannot launch run the suites too. Safari on a Mac is one
+// example. Node's fetch() is all it takes, so no optional dependency is
+// kept out of tsc here.
 
 import type {RunServices} from "../../utils/run-services.ts"
 import type {WebDriverCustom} from "../mode-options.ts"

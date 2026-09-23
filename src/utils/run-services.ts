@@ -28,11 +28,13 @@ export interface RunServicesOptions {
 
 const nullWriter: TAL.Writer = {write: (() => undefined)}
 
+const hasProcess = (): boolean => "undefined" !== typeof process && process.stdout?.write != null
+
 /** Creates the services of one run, on either side of the channel. */
 export const createRunServices = (options: RunServicesOptions = {}): RunServices => {
     const services = {} as RunServices
 
-    const P: RunServicesOptions = "undefined" !== typeof process && process || {}
+    const P: RunServicesOptions = hasProcess() ? process : {}
     services.stdout = options.stdout ?? P.stdout ?? nullWriter
     services.stderr = options.stderr ?? P.stderr ?? nullWriter
 
@@ -49,6 +51,7 @@ export const createRunServices = (options: RunServicesOptions = {}): RunServices
         }
     })
 
+    // Cleanup failures remain rejected. Later cleanup functions still run.
     services.onCleanup = (fn) => {
         const run = cleaning ? () => Promise.resolve().then(fn).catch(showError) : fn
         cleanups = cleanups.finally(run)

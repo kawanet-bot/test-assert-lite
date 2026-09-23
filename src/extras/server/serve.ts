@@ -39,8 +39,8 @@ const AUTHORITY = /^(?:\[[0-9a-f:.]+\]|[^\[\]:/?#@\s]+)(?::\d+)?$/i
 // The Request a Node request stands for, its URL from the Host header as
 // the client sent it, the address listened on where there is none; the
 // body read in first, as what comes in is the page's few lines of text.
-// A target that is not a path, "*" say, or a Host that is no host, makes
-// no URL; a doubled slash or a bad escape goes on as it came, for the chain.
+// A target that is not a path, such as "*", or an invalid Host makes no URL.
+// A doubled slash or a bad escape goes on as it came, for the chain.
 const toRequest = async (req: IncomingMessage, bound: string): Promise<Request> => {
     const url = req.url ?? ""
     if (!url.startsWith("/")) throw new Error(`Not a path: ${url}`)

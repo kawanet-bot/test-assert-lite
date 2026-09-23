@@ -1,4 +1,4 @@
-// The page's side of the channel to the CLI: one POST per endpoint, by a
+// The page's bridge to the CLI: one POST per channel, by a
 // path relative to the page, with the fetch it is given. Text is buffered
 // per stream and sent in one request per flush, so a burst of a hundred
 // console lines is one round trip.
@@ -8,7 +8,7 @@ import {createBufWriter} from "../utils/buf-writer.ts"
 
 type FetchLike = TAL.FetchLike
 
-export interface Client {
+export interface Bridge {
     /** Tells the CLI the page is up; it waits for this with a timeout. */
     begin: () => Promise<void>
 
@@ -22,6 +22,8 @@ export interface Client {
     end: (result: TAL.SessionResult) => Promise<void>
 }
 
+type ChannelName = keyof Bridge
+
 // How long lines gather before a flush: a test's burst of output becomes
 // one request, while a person watching still sees it as it comes.
 const FLUSH_MS = 50
@@ -34,11 +36,11 @@ const QUIET_MS = 10_000
 const TICK_MS = 1_000
 
 /**
- * Reports to the CLI with the fetch given, at `begin`, `stdout`, `stderr`
- * and `end` beside the page. Sending never rejects: the page can do
- * nothing about a CLI that went away.
+ * Creates the page's bridge to the CLI through `begin`, `stdout`, `stderr`
+ * and `end`. Sending never rejects. The page can do nothing about a CLI
+ * that went away.
  */
-export const client = (fetch: FetchLike): Client => {
+export const createBridgeClient = (fetch: FetchLike): Bridge => {
     const stdoutBuf = createBufWriter()
     const stderrBuf = createBufWriter()
     let timer: ReturnType<typeof setTimeout> | null = null
@@ -48,7 +50,8 @@ export const client = (fetch: FetchLike): Client => {
     // Every request follows the one before, so each stream stays in order.
     let inflight: Promise<void> = Promise.resolve()
 
-    const post = (path: string, body: string): Promise<void> => {
+    // Request failures are ignored. Later requests are still attempted.
+    const post = (path: ChannelName, body: string): Promise<void> => {
         inflight = inflight
             .then(() => fetch(path, {method: "POST", body}))
             .then(() => undefined, () => undefined)

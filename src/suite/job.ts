@@ -4,6 +4,10 @@ import {cancelledByParent} from "../utils/tester-error.ts"
 
 type Counters = TAL.TestSummary["counts"]
 
+type TestEventType = TAL.TestEvent["type"]
+
+type TestEventData<T extends TestEventType> = Extract<TAL.TestEvent, {type: T}>["data"]
+
 // How a test or suite ended, as its parent sees it. A parent whose child
 // failed or was cancelled fails in turn, as it does in node:test.
 export type Outcome = "passed" | "failed" | "cancelled" | "skipped"
@@ -19,7 +23,7 @@ export interface Verdict {
 export interface Run {
     counters: Counters
     success: boolean
-    emit: (type: string, data: TAL.TestEvent["data"]) => Promise<void>
+    emit: <T extends TestEventType>(type: T, data: TestEventData<T>) => Promise<void>
     // t.assert uses the harness's assert, so once it takes options, what a
     // body sees stays consistent within one run.
     assert: TAL.TestContextAssert
