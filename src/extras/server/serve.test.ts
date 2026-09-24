@@ -78,13 +78,11 @@ const hasIPv6 = (): Promise<boolean> => new Promise(resolve => {
 describe(TITLE, () => {
     let dir: string
     let server: Server
-    let ipv6 = false
     const stderr = createBufWriter()
     const posted: string[] = []
     const sharedServices = createRunServices({stderr})
 
     before(async () => {
-        ipv6 = await hasIPv6()
         dir = await mkdtemp(join(tmpdir(), "tal-server-"))
         await mkdir(join(dir, "htdocs"))
         await mkdir(join(dir, "dist"))
@@ -344,6 +342,7 @@ describe(TITLE, () => {
     })
 
     it("names [::1] in brackets for the IPv6 wildcard ::", async t => {
+        const ipv6 = await hasIPv6()
         if (!ipv6) return t.skip("IPv6 is not available")
         const services = createRunServices()
         try {
