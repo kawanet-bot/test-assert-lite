@@ -22,6 +22,8 @@ const resultLine = (data: TAL.TestPass | TAL.TestFail, isPass: boolean, number: 
 
 // Plain "#" comment lines rather than a YAML block: valid TAP that any
 // consumer can skip, without this package taking on a YAML encoder.
+const heading = (parent: TAL.TestStart): string => `# ${escapeText(parent.name)}\n`
+
 const diagnostic = (error: Error): string =>
     errorText(error).split("\n").map((line) => `# ${line}`).join("\n") + "\n"
 
@@ -40,9 +42,12 @@ export const tap = (): ReporterFn => async function* (source: AsyncIterable<Test
         }
 
         // Forwarded as is, the run's counts and all: TAP has no standard summary
-        // syntax of its own, so there is no fixed shape here to duplicate.
+        // syntax of its own, so there is no fixed shape here to duplicate. One
+        // from a test still running is headed by the suites above it first.
         if (event.type === "test:diagnostic") {
-            yield `# ${escapeText(event.data.message)}\n`
+            const {nesting, message} = event.data
+            while (stack.length && stack[stack.length - 1]!.nesting < nesting) yield heading(stack.pop()!)
+            yield `# ${escapeText(message)}\n`
             continue
         }
 
@@ -64,10 +69,7 @@ export const tap = (): ReporterFn => async function* (source: AsyncIterable<Test
 
         const data = event.data
         if (stack.length && stack[0]?.name === data.name) stack.shift()
-        while (stack.length) {
-            const parent = stack.pop()!
-            yield `# ${escapeText(parent.name)}\n`
-        }
+        while (stack.length) yield heading(stack.pop()!)
 
         number++
         yield resultLine(data, isPass, number) + "\n"

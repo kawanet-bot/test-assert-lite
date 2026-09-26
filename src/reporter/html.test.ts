@@ -69,6 +69,21 @@ describe(TITLE, () => {
         assert.match(out, /✔ one/)
     })
 
+    it("heads a diagnostic from inside a suite with the suite, ahead of the result", async () => {
+        const out = await render(async emit => {
+            await emit("test:start", {name: "S", nesting: 0})
+            await emit("test:start", {name: "child", nesting: 1})
+            await emit("test:diagnostic", {message: "note", nesting: 1, level: "info"})
+            await emit("test:pass", {...pass("child"), nesting: 1})
+        })
+
+        const suite = out.indexOf("▶ S")
+        const note = out.indexOf("ℹ note")
+        const result = out.indexOf("✔ child")
+        assert.ok(suite >= 0 && suite < note && note < result)
+        assert.equal(out.includes("▶ child"), false)
+    })
+
     it("escapes text and failure details", async () => {
         const out = await render(async emit => {
             await emit("test:diagnostic", {message: `<&>"'`, nesting: 0, level: "warn"})

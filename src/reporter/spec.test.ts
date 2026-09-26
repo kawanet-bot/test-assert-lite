@@ -96,6 +96,18 @@ describe(TITLE, () => {
         assert.match(out, /▶ S\n {2}✔ child/)
     })
 
+    it("heads a diagnostic from inside a suite with the suite, ahead of the result", async () => {
+        const out = await render(async emit => {
+            await emit("test:start", {name: "S", nesting: 0})
+            await emit("test:start", {name: "child", nesting: 1})
+            await emit("test:diagnostic", {message: "note", nesting: 1, level: "info"})
+            await emit("test:pass", {...pass("child"), nesting: 1})
+        })
+
+        assert.match(out, /▶ S\n {2}ℹ note\n {2}✔ child/)
+        assert.equal(out.includes("▶ child"), false)
+    })
+
     it("renders a diagnostic with its level", async () => {
         const out = await render(emit => emit("test:diagnostic", {
             message: "hello", nesting: 0, level: "info",

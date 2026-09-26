@@ -19,6 +19,9 @@ const resultLine = (data: TAL.TestPass | TAL.TestFail, isPass: boolean, indented
     return $$`<div class="tal-r ${indents}"><span class="tal-${kind}">${symbol} ${data.name}</span> <span class="tal-info">(${ms}ms)</span>${note}</div>\n`
 }
 
+const heading = (parent: TAL.TestStart): string =>
+    $$`<div class="tal-r ${indentClass(parent.nesting)}"><span class="tal-suite">▶ ${parent.name}</span></div>\n`
+
 const formatFailures = (failed: TAL.TestFail[]): string => {
     if (!failed.length) return ""
     let out = $$`<div class="tal-r tal-fail">✖ failing tests:</div>\n`
@@ -41,9 +44,12 @@ export const html = (): ReporterFn => async function* (source: AsyncIterable<Tes
             continue
         }
 
+        // One from a test still running is headed by the suites above it first.
         if (event.type === "test:diagnostic") {
             const {level, nesting, message} = event.data
-            yield $$`<div class="tal-r ${indentClass(nesting)}"><span class="tal-${level}">ℹ ${message}</span></div>`
+            let out = ""
+            while (stack.length && stack[stack.length - 1]!.nesting < nesting) out += heading(stack.pop()!)
+            yield out + $$`<div class="tal-r ${indentClass(nesting)}"><span class="tal-${level}">ℹ ${message}</span></div>`
             continue
         }
 
@@ -70,12 +76,7 @@ export const html = (): ReporterFn => async function* (source: AsyncIterable<Tes
         const data = event.data
         let out = ""
         if (stack.length && stack[0]?.name === data.name) stack.shift()
-        while (stack.length) {
-            const parent = stack.pop()
-            if (parent) {
-                out += $$`<div class="tal-r ${indentClass(parent.nesting)}"><span class="tal-suite">▶ ${parent.name}</span></div>\n`
-            }
-        }
+        while (stack.length) out += heading(stack.pop()!)
         out += resultLine(data, isPass, true)
         if (isFail) {
             const failure = data as TAL.TestFail
