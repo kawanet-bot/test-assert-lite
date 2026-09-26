@@ -81,10 +81,10 @@ export class Tester extends Job {
                 // reports, after the starts above it so the suites are headed.
                 // The call is synchronous, as node's is. A reporter failure
                 // reaches the run through the next awaited event.
-                if (this.run.closed) return
-                void this.announce()
-                    .then(() => this.run.emit("test:diagnostic", {message, nesting: this.nesting, level: "info"}))
-                    .catch(() => undefined)
+                void this.announce().then(() => {
+                    if (this.run.closed) return
+                    return this.run.emit("test:diagnostic", {message, nesting: this.nesting, level: "info"})
+                }).catch(() => undefined)
             },
             test: (...args: Args<TestFn>) => this.subtest(args),
         }
