@@ -50,7 +50,9 @@ export class Job {
     protected onDone: (() => void) | undefined
 
     protected run!: Run
-    private announced = false
+    // The starts on their way out, or out. Shared, so a result that comes
+    // while a diagnostic is announcing waits for the same starts.
+    private announcing: Promise<void> | null = null
     protected started = false
     protected startedAt = 0
     protected endedAt = 0
@@ -186,9 +188,11 @@ export class Job {
 
     // Emits test:start for this job and the ancestors still pending, in
     // order. The reporter turns those into headings once a result arrives.
-    protected async announce(): Promise<void> {
-        if (this.announced) return
-        this.announced = true
+    protected announce(): Promise<void> {
+        return this.announcing ??= this.announceOnce()
+    }
+
+    private async announceOnce(): Promise<void> {
         if (this.parent != null) await this.parent.announce()
         if (this.nesting < 0) return
         await this.run.emit("test:start", {name: this.name, nesting: this.nesting})

@@ -95,6 +95,18 @@ describe(TITLE, () => {
         assert.ok(out.includes("# out\n# more\n# Error: \\# cause\nok 1 - one\n"))
     })
 
+    it("heads a diagnostic from inside a suite with the suite comment, ahead of the result", async () => {
+        const out = await render(async emit => {
+            await emit("test:start", {name: "S", nesting: 0})
+            await emit("test:start", {name: "child", nesting: 1})
+            await emit("test:diagnostic", {message: "note", nesting: 1, level: "info"})
+            await emit("test:pass", {...pass("child"), nesting: 1})
+        })
+
+        assert.match(out, /^# S\n# note\nok 1 - child$/m)
+        assert.equal(out.includes("# child"), false)
+    })
+
     it("turns test:start into a suite comment", async () => {
         const out = await render(async emit => {
             await emit("test:start", {name: "S", nesting: 0})

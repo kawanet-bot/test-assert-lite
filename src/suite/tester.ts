@@ -77,12 +77,14 @@ export class Tester extends Job {
                 this.todo = message ?? true
             },
             diagnostic: (message) => {
-                // node:test keeps diagnostics for the report; one arriving
-                // after the report has no place to go. The call is synchronous,
-                // as node's is. A reporter failure reaches the run through the
-                // next awaited event, so this one has nothing to add.
-                if (this.settled) return
-                void this.run.emit("test:diagnostic", {message, nesting: this.nesting, level: "info"}).catch(() => undefined)
+                // Goes out as it comes, a late one too, while the run still
+                // reports, after the starts above it so the suites are headed.
+                // The call is synchronous, as node's is. A reporter failure
+                // reaches the run through the next awaited event.
+                if (this.run.closed) return
+                void this.announce()
+                    .then(() => this.run.emit("test:diagnostic", {message, nesting: this.nesting, level: "info"}))
+                    .catch(() => undefined)
             },
             test: (...args: Args<TestFn>) => this.subtest(args),
         }

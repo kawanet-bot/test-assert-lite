@@ -23,6 +23,39 @@ describe(TITLE, () => {
         assert.equal((found?.data as {level: string}).level, "info")
     })
 
+    // The suite's start goes out with the note, so a reporter heads it.
+    it("t.diagnostic() inside a suite follows the starts above it and precedes the result", async () => {
+        const local = createTAL()
+        const events = capture(local)
+        local.test.describe("S", () => {
+            local.test.it("noisy", (t) => {
+                t.diagnostic("note")
+            })
+        })
+        await local.session.end()
+
+        const types = events.map(e => e.type === "test:diagnostic" ? `diagnostic:${e.data.message}` : e.type === "test:start" || e.type === "test:pass" ? `${e.type}:${e.data.name}` : e.type)
+        assert.deepEqual(types.slice(0, 4), ["test:start:S", "test:start:noisy", "diagnostic:note", "test:pass:noisy"])
+    })
+
+    // A note from a body that outlived its result still reaches the report.
+    it("t.diagnostic() after the test settled goes out while the run still reports", async () => {
+        const local = createTAL()
+        const events = capture(local)
+        local.test.it("early", (t) => {
+            setTimeout(() => t.diagnostic("late note"), 10)
+        })
+        local.test.it("slow", async () => {
+            await new Promise(resolve => setTimeout(resolve, 50))
+        })
+        await local.session.end()
+
+        const types = events.map(e => e.type === "test:diagnostic" ? `diagnostic:${e.data.message}` : e.type === "test:pass" ? `pass:${e.data.name}` : e.type)
+        const late = types.indexOf("diagnostic:late note")
+        assert.ok(late > types.indexOf("pass:early"))
+        assert.ok(late < types.indexOf("pass:slow"))
+    })
+
     it("t.assert is available on the context", async () => {
         const local = createTAL()
         local.session.session({output: () => undefined})

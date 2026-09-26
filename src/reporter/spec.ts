@@ -75,6 +75,7 @@ export const spec = (options?: TAL.SpecOptions): ReporterFn => {
         // still pending as headings. This is how node:test's spec builds it.
         const stack: TAL.TestStart[] = []
         const failed: TAL.TestFail[] = []
+        const heading = (parent: TAL.TestStart): string => paint(colors, COLOR.gray, `${indent(parent.nesting)}${SYMBOL.suite}${parent.name}`) + "\n"
 
         for await (const event of source) {
             if (event.type === "test:start") {
@@ -82,10 +83,15 @@ export const spec = (options?: TAL.SpecOptions): ReporterFn => {
                 continue
             }
 
+            // A diagnostic from a test still running comes ahead of its
+            // result, so the suites above it are headed first. The test's
+            // own start, at the same depth, waits for the result.
             if (event.type === "test:diagnostic") {
                 const {level, nesting, message} = event.data
                 const color = level === "error" ? COLOR.red : level === "warn" ? COLOR.yellow : COLOR.blue
-                yield paint(colors, color, `${indent(nesting)}${SYMBOL.info}${message}`) + "\n"
+                let out = ""
+                while (stack.length && stack[stack.length - 1]!.nesting < nesting) out += heading(stack.pop()!)
+                yield out + paint(colors, color, `${indent(nesting)}${SYMBOL.info}${message}`) + "\n"
                 continue
             }
 
@@ -119,10 +125,7 @@ export const spec = (options?: TAL.SpecOptions): ReporterFn => {
 
             // Drop this test's own start, then turn the remaining parents into headings
             if (stack.length && stack[0]?.name === data.name) stack.shift()
-            while (stack.length) {
-                const parent = stack.pop()!
-                out += paint(colors, COLOR.gray, `${indent(parent.nesting)}${SYMBOL.suite}${parent.name}`) + "\n"
-            }
+            while (stack.length) out += heading(stack.pop()!)
 
             out += resultLine(data, isPass, colors, true) + "\n"
             yield out
