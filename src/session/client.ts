@@ -47,7 +47,8 @@ export const defaultBridge = (defaults?: RunServicesOptions): TAL.BridgeAPI => {
 
 // The alive line while the page is quiet, for one run. Its disconnect
 // ends the line, then the bridge's own.
-export const heartbeatBridge = (client: TAL.BridgeAPI, heartbeat: number = HEARTBEAT_MS): TAL.BridgeAPI => {
+export const heartbeatBridge = (client: TAL.BridgeAPI, heartbeat?: number): TAL.BridgeAPI => {
+    heartbeat ??= HEARTBEAT_MS
     let last = 0
     const tack = () => (last = Date.now())
 
