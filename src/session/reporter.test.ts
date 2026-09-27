@@ -221,12 +221,14 @@ describe(TITLE, {timeout: 1000}, () => {
     })
 
     // A test declared first opens the default session; session() then has
-    // nothing to configure, and says so rather than take settings late.
-    it("session() after a declaration throws", () => {
+    // nothing to configure, and says so rather than take settings late. The
+    // session is ended here, or the process would end it on its way out.
+    it("session() after a declaration throws", async () => {
         const local = createTAL()
         local.test.it("first", () => undefined)
 
         assert.throws(() => local.session.session({output: () => undefined}), /before the first test is declared/)
+        await local.session.end()
     })
 
     it("session() twice throws until end() has closed the first", async () => {

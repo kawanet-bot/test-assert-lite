@@ -12,7 +12,7 @@ Run your `node:test` and `node:assert` test files in browsers, as they are.
 - One command per target: this Node.js process, headless Chromium, Firefox and WebKit, or Safari and others over WebDriver
 - `--import-map` works in Node too, which has no import maps of its own: one map file for Node and browsers
 - `--alias node:crypto=sha256-uint8array` puts your own implementation under a builtin's name, so one suite tests both
-- Only 30KB script, only 10KB gzipped, no dependencies
+- Under 32KB script, under 11KB gzipped, no dependencies
 
 ## SYNOPSIS
 

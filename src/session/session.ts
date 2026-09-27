@@ -4,6 +4,7 @@
 
 import type {TAL} from "test-assert-lite"
 import type {Run} from "../suite/job.ts"
+import {hasProcess} from "../utils/process.ts"
 import {createRunServices, type RunServices} from "../utils/run-services.ts"
 import {stringify} from "../utils/stringify.ts"
 import {defaultBridge, heartbeatBridge} from "./client.ts"
@@ -83,6 +84,26 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
             return new Promise<void>((resolve, reject) => {
                 client.send({type: "session:end", data}, (err) => (err ? reject(err) : resolve()))
             }).catch(showError).finally(() => client.disconnect())
+        }
+
+        // Node's own runner ends the run as the process would exit. Here too.
+        // An end() already under way, or done, leaves nothing for this to do.
+        const onExit = (): void => {
+            if (cycle == null || cycle.closing) return
+            end().then((result) => {
+                return result?.success ? 0 : 1
+            }, (error) => {
+                showError(error)
+                return 1
+            }).then(code => {
+                if (code) process.exitCode = code
+            })
+        }
+
+        // A suite run as a script under Node needs no end(): the loop draining is its end.
+        if (hasProcess()) {
+            process.once("beforeExit", onExit)
+            services.onCleanup(() => process.off("beforeExit", onExit))
         }
 
         return {services, report, close, auto, run, startedAt: performance.now(), held: true, walk: null, closing: false, failure: undefined}
