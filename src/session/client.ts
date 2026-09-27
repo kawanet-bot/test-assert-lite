@@ -62,6 +62,9 @@ export const heartbeatBridge = (client: TAL.BridgeAPI): TAL.BridgeAPI => {
     }
 
     let alive: ReturnType<typeof setInterval> | null = setInterval(tick, TICK_MS)
+    // Node's timer alone must not keep the process alive: a harness that
+    // never reaches end(), as under another runner, still has to exit.
+    alive.unref?.()
 
     return {
         stdout: onWrite(stdout, tack),
