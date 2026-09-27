@@ -21,8 +21,7 @@ const FLUSH_MS = 50
 // word within its own, longer bound as proof the page is alive, and a
 // person watching sees a long test is still going rather than hung. The
 // check runs each second, so the line lands on time rather than a beat late.
-const QUIET_MS = 10_000
-const TICK_MS = 1_000
+const HEARTBEAT_MS = 10_000
 
 const NOP = () => undefined
 
@@ -48,7 +47,7 @@ export const defaultBridge = (defaults?: RunServicesOptions): TAL.BridgeAPI => {
 
 // The alive line while the page is quiet, for one run. Its disconnect
 // ends the line, then the bridge's own.
-export const heartbeatBridge = (client: TAL.BridgeAPI, heartbeat: number = TICK_MS): TAL.BridgeAPI => {
+export const heartbeatBridge = (client: TAL.BridgeAPI, heartbeat: number = HEARTBEAT_MS): TAL.BridgeAPI => {
     let last = 0
     const tack = () => (last = Date.now())
 
@@ -56,12 +55,12 @@ export const heartbeatBridge = (client: TAL.BridgeAPI, heartbeat: number = TICK_
     let started = tack()
 
     const tick = (): void => {
-        if (Date.now() - last < QUIET_MS) return
-        stderr.write(`⏳ ${Math.round((Date.now() - started) / 1000)}s\n`)
-        tack()
+        if (Date.now() - last < heartbeat) return
+        last = Date.now()
+        stderr.write(`⏳ ${Math.round((last - started) / 1000)}s\n`)
     }
 
-    let alive: ReturnType<typeof setInterval> | null = setInterval(tick, heartbeat)
+    let alive: ReturnType<typeof setInterval> | null = setInterval(tick, heartbeat / 10)
     // Node's timer alone must not keep the process alive: a harness that
     // never reaches end(), as under another runner, still has to exit.
     alive.unref?.()
