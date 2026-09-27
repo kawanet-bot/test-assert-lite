@@ -190,4 +190,18 @@ describe(TITLE, {timeout: 1000}, () => {
         assert.deepEqual(logs.shift(), ["send", SUCCESS])
         assert.equal(logs.length, 0)
     })
+
+    it("writes a heartbeat to stderr at the interval given, while quiet", async () => {
+        const {session} = createTAL()
+        const {logs, bridge, output} = testStub(session)
+        session.session({bridge, output, heartbeat: 20})
+        await sleep(50)
+        await session.end()
+
+        assert.deepEqual(logs.shift(), ["send", BEGIN])
+        const [type, body] = logs.shift()!
+        assert.equal(type, "stderr")
+        assert.match(body!, /^⏳ \d+s\n/)
+        assert.deepEqual(logs.pop(), ["send", SUCCESS])
+    })
 })

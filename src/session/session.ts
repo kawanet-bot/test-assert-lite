@@ -57,6 +57,7 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
         const found = options.console ?? globalThis.console
         const saved = saveConsole(found)
         // The run's text goes to the CLI, to Node's streams, or to the console as found.
+        // A heartbeat of 0 turns the alive line off.
         const bridge = options.bridge ?? defaultBridge(consoleWriters(found, saved))
         const client = (heartbeat == null || heartbeat > 0) ? heartbeatBridge(bridge, heartbeat) : bridge
         const services = createRunServices(client)
