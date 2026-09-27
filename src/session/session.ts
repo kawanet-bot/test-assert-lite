@@ -82,7 +82,7 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
         const close: Cycle["close"] = (data) => {
             return new Promise<void>((resolve, reject) => {
                 client.send({type: "session:end", data}, (err) => (err ? reject(err) : resolve()))
-            }).catch(showError).finally(client.disconnect)
+            }).catch(showError).finally(() => client.disconnect())
         }
 
         return {services, report, close, auto, run, startedAt: performance.now(), held: true, walk: null, closing: false, failure: undefined}
