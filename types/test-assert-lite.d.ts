@@ -346,7 +346,7 @@ export declare namespace TAL {
         /** Sends a message via the IPC channel. */
         send: (message: SessionEvent, callback?: (error: Error | null) => void) => void
 
-        /** Closes the IPC channel. */
+        /** Called once the session has sent its result. A bridge over fetch has nothing to close. */
         disconnect(): void
     }
 

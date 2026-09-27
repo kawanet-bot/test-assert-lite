@@ -46,8 +46,8 @@ export const defaultBridge = (defaults?: RunServicesOptions): TAL.BridgeAPI => {
     }
 }
 
-// Drives the bridge for one run: the session's messages, and the alive
-// line while the page is quiet.
+// The alive line while the page is quiet, for one run. Its disconnect
+// ends the line, then the bridge's own.
 export const heartbeatBridge = (client: TAL.BridgeAPI): TAL.BridgeAPI => {
     let last = 0
     const tack = () => (last = Date.now())
@@ -70,6 +70,7 @@ export const heartbeatBridge = (client: TAL.BridgeAPI): TAL.BridgeAPI => {
         disconnect: () => {
             if (alive != null) clearInterval(alive)
             alive = null
+            client.disconnect()
         },
     }
 }
