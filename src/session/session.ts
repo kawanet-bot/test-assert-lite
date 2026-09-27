@@ -85,7 +85,27 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
             }).catch(showError).finally(() => client.disconnect())
         }
 
-        return {services, report, close, auto, run, startedAt: performance.now(), held: true, walk: null, closing: false, failure: undefined}
+        const current: Cycle = {services, report, close, auto, run, startedAt: performance.now(), held: true, walk: null, closing: false, failure: undefined}
+        endOnExit(current)
+        return current
+    }
+
+    // Node's own runner ends the run as the process would exit. Here too: a
+    // suite run as a script needs no end(), the loop draining is its end.
+    // An end() called first leaves nothing for this to do.
+    const endOnExit = (current: Cycle): void => {
+        if ("undefined" === typeof process || "function" !== typeof process.once) return
+        const onExit = (): void => {
+            if (cycle !== current || current.closing) return
+            end().then(result => {
+                if (!result.success) process.exitCode = 1
+            }, error => {
+                current.services.stderr.write(`${stringify(error)}\n`)
+                process.exitCode = 1
+            })
+        }
+        process.once("beforeExit", onExit)
+        current.services.onCleanup(() => process.off("beforeExit", onExit))
     }
 
     const session: TAL.SessionAPI["session"] = (options = {}) => {
