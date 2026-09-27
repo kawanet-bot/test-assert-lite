@@ -29,7 +29,7 @@ export const createTAL: typeof declared.createTAL = () => {
         }
     }
 
-    const connect: TAL.SessionAPI["connect"] = ({fetch}) => bridgeFromFetch(fetch)
+    const connect: TAL.SessionAPI["connect"] = (options) => bridgeFromFetch(options?.fetch ?? fetch)
 
     return {
         assert,

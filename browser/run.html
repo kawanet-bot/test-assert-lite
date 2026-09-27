@@ -13,7 +13,7 @@
     // The CLI puts its config into the head as JSON, ahead of this script.
     const json = document.querySelector(`script[type="application/vnd.test-session+json"]`)?.textContent
     const options = json && JSON.parse(json)?.session || {}
-    const bridge = connect({fetch})
+    const bridge = connect()
 
     // The page reports with its own fetch, to the run's URL it sits under:
     // it takes the window's errors outside the tests, and the console goes

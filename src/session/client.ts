@@ -7,20 +7,6 @@ import type {TAL} from "test-assert-lite"
 import {delayedBufWriter} from "../utils/buf-writer.ts"
 import {getStreams, type RunServicesOptions} from "../utils/run-services.ts"
 
-export interface BridgeClient {
-    /** Tells the CLI the page is up; it waits for this with a timeout. */
-    begin: () => Promise<void>
-
-    /** Text for the CLI's stdout, buffered. */
-    stdout: TAL.Writer
-
-    /** Text for the CLI's stderr, buffered. */
-    stderr: TAL.Writer
-
-    /** The verdict as JSON, sent once the buffers have drained. */
-    end: (result: TAL.SessionResult) => Promise<void>
-}
-
 interface BridgeIPC {
     stdout: (chunk: string) => Promise<unknown>
     stderr: (chunk: string) => Promise<unknown>
@@ -38,7 +24,7 @@ const FLUSH_MS = 50
 const QUIET_MS = 10_000
 const TICK_MS = 1_000
 
-const NOP = async () => undefined
+const NOP = () => undefined
 
 const onWrite = (writer: TAL.Writer, fn: () => void): TAL.Writer => {
     return {
@@ -50,25 +36,24 @@ const onWrite = (writer: TAL.Writer, fn: () => void): TAL.Writer => {
 }
 
 // What stands in for a bridge when the run has none.
-export const defaultClient = (defaults?: RunServicesOptions): BridgeClient => {
+export const defaultBridge = (defaults?: RunServicesOptions): TAL.BridgeAPI => {
     const {stdout, stderr} = getStreams(defaults)
     return {
-        begin: NOP,
         stdout,
         stderr,
-        end: NOP,
+        send: (_, callback = NOP) => callback(null),
+        disconnect: NOP,
     }
 }
 
-// Drives the bridge for one run: the session's messages, and the alive
-// line while the page is quiet.
-export const bridgeClient = (client: TAL.BridgeAPI): BridgeClient => {
-    let alive: ReturnType<typeof setInterval> | null = null
-    let started = 0
+// The alive line while the page is quiet, for one run. Its disconnect
+// ends the line, then the bridge's own.
+export const heartbeatBridge = (client: TAL.BridgeAPI): TAL.BridgeAPI => {
     let last = 0
-
     const tack = () => (last = Date.now())
+
     const {stdout, stderr} = client
+    let started = tack()
 
     const tick = (): void => {
         if (Date.now() - last < QUIET_MS) return
@@ -76,20 +61,17 @@ export const bridgeClient = (client: TAL.BridgeAPI): BridgeClient => {
         tack()
     }
 
+    let alive: ReturnType<typeof setInterval> | null = setInterval(tick, TICK_MS)
+
     return {
-        begin: () => new Promise((resolve, reject) => {
-            if (alive != null) clearInterval(alive)
-            started = last = Date.now()
-            alive = setInterval(tick, TICK_MS)
-            client.send({type: "session:begin"}, (err) => (err ? reject(err) : resolve()))
-        }),
         stdout: onWrite(stdout, tack),
         stderr: onWrite(stderr, tack),
-        end: (data) => new Promise((resolve, reject) => {
+        send: (message, callback) => client.send(message, callback),
+        disconnect: () => {
             if (alive != null) clearInterval(alive)
             alive = null
-            client.send({type: "session:end", data}, (err) => (err ? reject(err) : resolve()))
-        }),
+            client.disconnect()
+        },
     }
 }
 
@@ -117,6 +99,7 @@ const bufferedBridge = (client: TAL.BridgeAPI): TAL.BridgeAPI => {
             stderr.flush()
             client.send(message, callback)
         },
+        disconnect: () => client.disconnect(),
     }
 }
 
@@ -138,6 +121,7 @@ const inOrderBridge = (bridge: BridgeIPC): TAL.BridgeAPI => {
         stdout: {write: (chunk) => void chain(() => bridge.stdout(chunk)).catch(NOP)},
         stderr: {write: (chunk) => void chain(() => bridge.stderr(chunk)).catch(NOP)},
         send: (message, callback = NOP) => void chain(() => bridge.send(message)).then(() => callback(null), callback),
+        disconnect: NOP,
     }
 }
 

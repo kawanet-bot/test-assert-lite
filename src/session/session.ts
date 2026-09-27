@@ -5,7 +5,8 @@
 import type {TAL} from "test-assert-lite"
 import type {Run} from "../suite/job.ts"
 import {createRunServices, type RunServices} from "../utils/run-services.ts"
-import {bridgeClient, defaultClient} from "./client.ts"
+import {stringify} from "../utils/stringify.ts"
+import {defaultBridge, heartbeatBridge} from "./client.ts"
 import {consoleWriters, saveConsole, takeConsole} from "./console.ts"
 import type {ReportStream} from "./report-stream.ts"
 import {createReportStream} from "./report-stream.ts"
@@ -46,8 +47,6 @@ export interface Sessions {
     schedule: () => void
 }
 
-const NOP = () => undefined
-
 export const createSessions = (harness: HarnessState, assert: TAL.TestContextAssert): Sessions => {
     let cycle: Cycle | null = null
 
@@ -57,7 +56,7 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
         const found = options.console ?? globalThis.console
         const saved = saveConsole(found)
         // The run's text goes to the CLI, to Node's streams, or to the console as found.
-        const client = options.bridge ? bridgeClient(options.bridge) : defaultClient(consoleWriters(found, saved))
+        const client = options.bridge ? heartbeatBridge(options.bridge) : defaultBridge(consoleWriters(found, saved))
         const services = createRunServices(client)
         // The report goes where the console goes unless told otherwise.
         const output = options.output ?? ((text: string) => services.stdout.write(text))
@@ -76,8 +75,16 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
             closed: false,
         }
 
-        void client.begin().catch(NOP)
-        const close: Cycle["close"] = (result) => client.end(result).catch(NOP)
+        const showError = (err: Error | null) => void (err && services.stderr.write(`${stringify(err)}\n`))
+
+        client.send({type: "session:begin"}, showError)
+
+        const close: Cycle["close"] = (data) => {
+            return new Promise<void>((resolve, reject) => {
+                client.send({type: "session:end", data}, (err) => (err ? reject(err) : resolve()))
+            }).catch(showError).finally(() => client.disconnect())
+        }
+
         return {services, report, close, auto, run, startedAt: performance.now(), held: true, walk: null, closing: false, failure: undefined}
     }
 

@@ -323,12 +323,15 @@ export declare namespace TAL {
     interface SessionAPI {
         /** Opens a new session for the following tests. */
         session(options?: SessionOptions): void
+
         /** Imports a suite, by URL or absolute path, so its tests are declared. */
         load(file: string): Promise<void>
+
         /** Runs every registered test, and closes the session. */
         end(): Promise<SessionResult>
+
         /** Makes the bridge to the CLI over the fetch given, for session() to report with. */
-        connect: (options: {fetch: FetchLike}) => BridgeAPI
+        connect: (options?: {fetch?: FetchLike}) => BridgeAPI
     }
 
     // --- session bridge ---
@@ -339,8 +342,12 @@ export declare namespace TAL {
         /** The CLI's stdout and stderr, as the page writes them. */
         stdout: Writer
         stderr: Writer
-        /** Sends a message to the CLI, as a child process does to its parent. */
+
+        /** Sends a message via the IPC channel. */
         send: (message: SessionEvent, callback?: (error: Error | null) => void) => void
+
+        /** Called once the session has sent its result. A bridge over fetch has nothing to close. */
+        disconnect(): void
     }
 
     // What send() carries.

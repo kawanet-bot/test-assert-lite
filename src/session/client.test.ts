@@ -134,6 +134,29 @@ describe(TITLE, {timeout: 1000}, () => {
         assert.equal((await session.end()).success, true)
     })
 
+    it("calls the bridge's disconnect once, after the result", async () => {
+        const {session, test} = createTAL()
+        const sent: string[] = []
+        let disconnected = 0
+        const bridge: TAL.BridgeAPI = {
+            stdout: {write: () => undefined},
+            stderr: {write: () => undefined},
+            send: (message, callback) => {
+                sent.push(message.type)
+                callback?.(null)
+            },
+            disconnect: () => {
+                disconnected++
+            },
+        }
+        session.session({bridge, output: () => undefined})
+        test.it("one", () => undefined)
+        await session.end()
+
+        assert.deepEqual(sent, ["session:begin", "session:end"])
+        assert.equal(disconnected, 1)
+    })
+
     // A console of the test's own stands in for the page's.
     it("takes a console: log to stdout, error to stderr, a call a line, and gives it back at the end", async () => {
         const {session} = createTAL()
