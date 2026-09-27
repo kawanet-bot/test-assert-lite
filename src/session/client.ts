@@ -66,7 +66,7 @@ export const heartbeatBridge = (client: TAL.BridgeAPI): TAL.BridgeAPI => {
     return {
         stdout: onWrite(stdout, tack),
         stderr: onWrite(stderr, tack),
-        send: client.send,
+        send: (message, callback) => client.send(message, callback),
         disconnect: () => {
             if (alive != null) clearInterval(alive)
             alive = null
@@ -99,7 +99,7 @@ const bufferedBridge = (client: TAL.BridgeAPI): TAL.BridgeAPI => {
             stderr.flush()
             client.send(message, callback)
         },
-        disconnect: client.disconnect,
+        disconnect: () => client.disconnect(),
     }
 }
 
