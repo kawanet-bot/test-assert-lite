@@ -48,7 +48,7 @@ export const defaultBridge = (defaults?: RunServicesOptions): TAL.BridgeAPI => {
 
 // The alive line while the page is quiet, for one run. Its disconnect
 // ends the line, then the bridge's own.
-export const heartbeatBridge = (client: TAL.BridgeAPI): TAL.BridgeAPI => {
+export const heartbeatBridge = (client: TAL.BridgeAPI, heartbeat: number = TICK_MS): TAL.BridgeAPI => {
     let last = 0
     const tack = () => (last = Date.now())
 
@@ -61,7 +61,7 @@ export const heartbeatBridge = (client: TAL.BridgeAPI): TAL.BridgeAPI => {
         tack()
     }
 
-    let alive: ReturnType<typeof setInterval> | null = setInterval(tick, TICK_MS)
+    let alive: ReturnType<typeof setInterval> | null = setInterval(tick, heartbeat)
     // Node's timer alone must not keep the process alive: a harness that
     // never reaches end(), as under another runner, still has to exit.
     alive.unref?.()

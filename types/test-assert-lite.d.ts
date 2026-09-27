@@ -306,6 +306,8 @@ export declare namespace TAL {
         console?: ConsoleLike
         /** Reduces output while keeping failures visible. The summary event is unchanged. */
         quiet?: boolean
+        /** Interval in milliseconds to write a heartbeat to `stderr`. Default: 10 seconds. */
+        heartbeat?: number
     }
 
     // What end() resolves with: whether every test passed.
