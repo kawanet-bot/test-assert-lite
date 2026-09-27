@@ -195,9 +195,12 @@ describe(TITLE, {timeout: 1000}, () => {
         const {session} = createTAL()
         const {logs, bridge, output} = testStub(session)
         session.session({bridge, output, heartbeat: 20})
-        await sleep(50)
-        await session.end()
 
+        for (let i = 0; i < 10; i++) {
+            await sleep(20)
+            if (logs.length > 1) break
+        }
+        await session.end()
         assert.deepEqual(logs.shift(), ["send", BEGIN])
         const [type, body] = logs.shift()!
         assert.equal(type, "stderr")
