@@ -4,6 +4,7 @@
 
 import type {TAL} from "test-assert-lite"
 import type {Run} from "../suite/job.ts"
+import {hasProcess} from "../utils/process.ts"
 import {createRunServices, type RunServices} from "../utils/run-services.ts"
 import {stringify} from "../utils/stringify.ts"
 import {defaultBridge, heartbeatBridge} from "./client.ts"
@@ -86,7 +87,7 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
         }
 
         // A suite run as a script under Node needs no end(): the loop draining is its end.
-        if ("undefined" !== typeof process && "function" === typeof process.once) {
+        if (hasProcess()) {
             process.once("beforeExit", onExit)
             services.onCleanup(() => process.off("beforeExit", onExit))
         }

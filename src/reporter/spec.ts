@@ -1,4 +1,5 @@
 import type {TAL} from "test-assert-lite"
+import {hasProcess} from "../utils/process.ts"
 import {errorText, isSubtestsFailed} from "../utils/tester-error.ts"
 
 type TestEvent = TAL.TestEvent
@@ -25,7 +26,7 @@ const COLOR = {
 // Node enables colour only for a TTY, while honouring NO_COLOR and
 // NODE_DISABLE_COLORS. A browser has no terminal, so colour stays off there.
 const defaultColors = (): boolean => {
-    const node = "undefined" !== typeof process
+    const node = hasProcess()
         && (process as {env?: Record<string, string | undefined>, stdout?: {isTTY?: boolean}})
     const env = node && node.env
     return !!node && !!node.stdout?.isTTY && !!env && (!env.NO_COLOR && !env.NODE_DISABLE_COLORS)
