@@ -16,10 +16,10 @@ const nullWriter: TAL.Writer = {write: (() => undefined)}
 const prefix = "/@tal/run/000000000/"
 const otherPrefix = "/@tal/run/000000001/"
 
-const BEGIN: TAL.SessionEvent = {type: "session:begin", data: {id: "sessionAAA"}}
-const SUCCESS: TAL.SessionEvent = {type: "session:end", data: {id: "sessionAAA", success: true}}
-const OTHER_BEGIN: TAL.SessionEvent = {type: "session:begin", data: {id: "sessionBBB"}}
-const OTHER_FAILURE: TAL.SessionEvent = {type: "session:end", data: {id: "sessionBBB", success: false}}
+const BEGIN: TAL.SessionEvent = {type: "session:begin", session: "sessionAAA"}
+const SUCCESS: TAL.SessionEvent = {type: "session:end", session: "sessionAAA", data: {success: true}}
+const OTHER_BEGIN: TAL.SessionEvent = {type: "session:begin", session: "sessionBBB"}
+const OTHER_FAILURE: TAL.SessionEvent = {type: "session:end", session: "sessionBBB", data: {success: false}}
 const INVALID = {type: "INVALID"} as unknown as TAL.SessionEvent
 
 const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms))

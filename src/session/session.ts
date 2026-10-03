@@ -88,7 +88,7 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
 
         // A word out as the session opens. Nothing waits for it, so session() stays synchronous.
         const id = sessionId()
-        channel.send({type: "session:begin", data: {id}}, showError)
+        channel.send({type: "session:begin", session: id}, showError)
 
         // Node's own runner ends the run as the process would exit. Here too.
         // A run() already under way, or done, leaves nothing for this to do.
@@ -163,7 +163,7 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
         // too. The channel is let go of once it has taken the word.
         const result = await services.finished.then(result => result, (): SessionResult => ({success: false}))
         await new Promise<void>(resolve => {
-            channel.send({type: "session:end", data: {id, success: result.success}}, (err) => {
+            channel.send({type: "session:end", session: id, data: result}, (err) => {
                 if (err) services.stderr.write(`${stringify(err)}\n`)
                 resolve()
             })

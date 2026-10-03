@@ -29,11 +29,11 @@ const testStub = (proc: TAL.ProcessAPI, stubFetch?: FetchLike) => {
 
 const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms))
 
-// A send as logged, with the session's id left out: what was sent and the verdict.
+// A send as logged, with the session left out: what was sent and the verdict.
 const kind = (log: [string, string] | undefined): [string, string, boolean | undefined] | undefined => {
     if (log == null) return undefined
     const message = JSON.parse(log[1]) as TAL.SessionEvent
-    return [log[0], message.type, "success" in message.data ? message.data.success : undefined]
+    return [log[0], message.type, "data" in message ? message.data.success : undefined]
 }
 
 const BEGIN: [string, string, boolean | undefined] = ["send", "session:begin", undefined]

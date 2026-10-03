@@ -19,8 +19,8 @@ describe(TITLE, () => {
     it("takes every event and calls back, and has nothing to disconnect", () => {
         const seen: (Error | null)[] = []
         const channel = nodeChannel({stdout: createBufWriter(), stderr: createBufWriter()})
-        channel.send({type: "session:begin", data: {id: "sessionAAA"}}, error => seen.push(error))
-        channel.send({type: "session:end", data: {id: "sessionAAA", success: true}}, error => seen.push(error))
+        channel.send({type: "session:begin", session: "sessionAAA"}, error => seen.push(error))
+        channel.send({type: "session:end", session: "sessionAAA", data: {success: true}}, error => seen.push(error))
         assert.deepEqual(seen, [null, null])
         assert.equal(channel.disconnect(), undefined)
     })

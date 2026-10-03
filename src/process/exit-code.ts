@@ -7,7 +7,7 @@ import type {TAL} from "test-assert-lite"
 import type {ProcessLike} from "./node-channel.ts"
 
 type SessionEventType = TAL.SessionEvent["type"]
-type SessionEventData<T extends SessionEventType> = Extract<TAL.SessionEvent, {type: T}>["data"]
+type SessionEventData<T extends SessionEventType> = Extract<TAL.SessionEvent, {type: T}> extends {data: infer D} ? D : undefined
 type SessionEventMap = {[T in SessionEventType]: (data: SessionEventData<T>) => void}
 
 const NOP = () => undefined
@@ -22,7 +22,7 @@ export const withExitCode = (channel: TAL.Channel, proc: ProcessLike | null): TA
     }
 
     const receive = <T extends SessionEventType>(message: TAL.SessionEvent): void => {
-        eventMap[message.type as T](message.data as SessionEventData<T>)
+        eventMap[message.type as T](("data" in message ? message.data : undefined) as SessionEventData<T>)
     }
 
     return {
