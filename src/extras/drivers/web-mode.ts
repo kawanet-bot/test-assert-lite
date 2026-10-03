@@ -22,6 +22,7 @@ export const runWebMode = async (options: ModeOptions & WebModeOptions) => {
             mount: options.mount,
             session,
             eval: options.eval,
+            argv: options.argv,
             watch: (mode === "serve"),
             services,
             singleRun: (mode !== "serve"),

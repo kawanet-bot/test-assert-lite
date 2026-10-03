@@ -45,7 +45,7 @@ describe(TITLE, () => {
             const config = head.indexOf('<script type="application/vnd.test-session+json">')
             const json = head.slice(head.indexOf("{", config), head.indexOf("</script>", config))
             assert.equal(json.includes("</script>"), false)
-            assert.deepEqual(JSON.parse(json), {session: {reporter: "</script><b>", files: []}})
+            assert.deepEqual(JSON.parse(json), {process: {argv: ["test-assert"]}, session: {reporter: "</script><b>", files: []}})
         } finally {
             await services.cleanup()
         }
@@ -166,7 +166,7 @@ describe(TITLE, () => {
             const head = (await get(server.origin + inline.page)).body.split("</head>")[0] as string
             const config = head.indexOf('<script type="application/vnd.test-session+json">')
             const json = head.slice(head.indexOf("{", config), head.indexOf("</script>", config))
-            assert.deepEqual(JSON.parse(json), {session: {files: [path]}})
+            assert.deepEqual(JSON.parse(json), {process: {argv: ["test-assert"]}, session: {files: [path]}})
         } finally {
             await services.cleanup()
         }

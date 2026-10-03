@@ -63,7 +63,8 @@ test("test-assert-lite/process", () => {
     assert.equal(processEntry.stdout, sharedTAL.proc.stdout)
     assert.equal(processEntry.stderr, sharedTAL.proc.stderr)
     assert.equal(processEntry.connect, sharedTAL.proc.connect)
-    assert.deepEqual(named(processEntry), ["connect", "stderr", "stdout"])
+    assert.equal(processEntry.argv, sharedTAL.proc.argv)
+    assert.deepEqual(named(processEntry), ["argv", "connect", "stderr", "stdout"])
     assert.ok(!("default" in processEntry))
 })
 

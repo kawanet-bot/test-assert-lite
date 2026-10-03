@@ -335,12 +335,15 @@ export declare namespace TAL {
     // node:process offers of it, written to as a script would. One for the
     // realm, the same from every harness.
     interface ProcessAPI {
+        /** The arguments the host gave, as node's process.argv has them. Empty until the host fills it. */
+        argv: string[]
+
         /** The host's stdout and stderr, down the realm's channel. */
         stdout: Writer
         stderr: Writer
 
-        /** Makes the realm's channel to the host over the fetch given, for the sessions to come. */
-        connect: (options?: {fetch?: typeof fetch}) => Channel
+        /** Makes the realm's channel to the host over the fetch given, for the sessions to come, and takes the arguments. */
+        connect: (options?: {fetch?: typeof fetch, argv?: string[]}) => Channel
     }
 
     // --- session channel ---

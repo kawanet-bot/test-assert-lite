@@ -152,7 +152,7 @@ export const readOptions = (args: string[]): ModeOptions => {
     if (!playwright && (values["playwright-config"] != null)) {
         throw new UsageError("--playwright-config applies to --playwright only")
     }
-    // What node does: the arguments past the script are the script's. With
+    // The arguments past the script are the script's, as node has it. With
     // --test every one is a test file, as node --test reads them.
     const test = values.test
     const files = test ? positionals : (script == null ? positionals.slice(0, 1) : [])
