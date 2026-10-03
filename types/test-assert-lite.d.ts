@@ -273,10 +273,6 @@ export declare namespace TAL {
         off(event: string, listener: (...args: unknown[]) => void): unknown
     }
 
-    // What the bridge posts with, by a path relative to the page. The
-    // response is never read.
-    type FetchLike = (url: string, init: {method: "POST", body: string}) => Promise<unknown>
-
     // What a session takes over: the five methods a page's console has.
     interface ConsoleLike {
         debug(...args: unknown[]): void
@@ -333,7 +329,7 @@ export declare namespace TAL {
         end(): Promise<SessionResult>
 
         /** Makes the bridge to the CLI over the fetch given, for session() to report with. */
-        connect: (options?: {fetch?: FetchLike}) => BridgeAPI
+        connect: (options?: {fetch?: typeof fetch}) => BridgeAPI
     }
 
     // --- session bridge ---

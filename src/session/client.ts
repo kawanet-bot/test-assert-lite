@@ -108,8 +108,8 @@ const bufferedBridge = (client: TAL.BridgeAPI): TAL.BridgeAPI => {
 }
 
 // What connect() gives: the fetch, kept in order, then buffered.
-export const bridgeFromFetch = (fetch: TAL.FetchLike): TAL.BridgeAPI => {
-    return bufferedBridge(inOrderBridge(ipcFromFetch(fetch)))
+export const bridgeFromFetch = (f: typeof fetch): TAL.BridgeAPI => {
+    return bufferedBridge(inOrderBridge(ipcFromFetch(f)))
 }
 
 const inOrderBridge = (bridge: BridgeIPC): TAL.BridgeAPI => {
@@ -130,10 +130,10 @@ const inOrderBridge = (bridge: BridgeIPC): TAL.BridgeAPI => {
 }
 
 // One POST per channel, by a path relative to the page.
-const ipcFromFetch = (fetch: TAL.FetchLike): BridgeIPC => {
+const ipcFromFetch = (f: typeof fetch): BridgeIPC => {
     return {
-        stdout: chunk => fetch("stdout", {method: "POST", body: chunk}),
-        stderr: chunk => fetch("stderr", {method: "POST", body: chunk}),
-        send: message => fetch("send", {method: "POST", body: JSON.stringify(message)}),
+        stdout: chunk => f("stdout", {method: "POST", body: chunk}),
+        stderr: chunk => f("stderr", {method: "POST", body: chunk}),
+        send: message => f("send", {method: "POST", body: JSON.stringify(message)}),
     }
 }

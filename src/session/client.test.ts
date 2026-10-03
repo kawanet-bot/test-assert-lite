@@ -10,14 +10,17 @@ const TITLE = "session/client.test.ts"
 
 const NEWLINE = /(?<=\n)(?=\S)/
 
-const testStub = (session: TAL.SessionAPI, fetch?: TAL.FetchLike) => {
+type FetchLike = (url: string, init: {method: "POST", body: string}) => Promise<{ok: boolean}>
+
+const testStub = (session: TAL.SessionAPI, stubFetch?: FetchLike) => {
     const logs: [string, string][] = []
 
-    fetch ??= async (path, init) => {
+    stubFetch ??= async (path, init) => {
         logs.push([path, init.body])
+        return {ok: true}
     }
 
-    const bridge = session.connect({fetch})
+    const bridge = session.connect({fetch: stubFetch as typeof fetch})
 
     const output = () => undefined
 
