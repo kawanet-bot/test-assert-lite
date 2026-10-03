@@ -27,11 +27,15 @@ export const nodeBridge = (proc: ProcessLike, auto: boolean): TAL.BridgeAPI => {
         },
     }
 
+    const receive = <T extends SessionEventType>(message: TAL.SessionEvent): void => {
+        eventMap[message.type as T](message.data as SessionEventData<T>)
+    }
+
     return {
         stdout: proc.stdout,
         stderr: proc.stderr,
-        send: <T extends SessionEventType>(message: TAL.SessionEvent, callback = NOP) => {
-            eventMap[message.type as T](message.data as SessionEventData<T>)
+        send: (message, callback = NOP) => {
+            receive(message)
             callback(null)
         },
         disconnect: NOP,
