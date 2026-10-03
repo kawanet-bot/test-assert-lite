@@ -18,8 +18,9 @@ export type Mode = "node" | "browser"
 export const cwdURL = (): URL => pathToFileURL(`${process.cwd()}/`)
 
 // What the CLI maps before anything is given: this package's own names to
-// themselves, so a page's map has them; and node:test and node:assert to
-// the subpaths that stand in for them. A later item takes any of these over.
+// themselves, so a page's map has them; and node:test, node:assert and
+// node:process to the subpaths that stand in for them. A later item takes
+// any of these over.
 const DEFAULTS: [specifier: string, target: string][] = [
     ["test-assert-lite", "test-assert-lite"],
     ["test-assert-lite/test", "test-assert-lite/test"],
@@ -29,9 +30,11 @@ const DEFAULTS: [specifier: string, target: string][] = [
     ["test-assert-lite/reporter/spec", "test-assert-lite/reporter/spec"],
     ["test-assert-lite/reporter/tap", "test-assert-lite/reporter/tap"],
     ["test-assert-lite/session", "test-assert-lite/session"],
+    ["test-assert-lite/process", "test-assert-lite/process"],
     ["node:test", "test-assert-lite/test"],
     ["node:assert", "test-assert-lite/assert"],
     ["node:assert/strict", "test-assert-lite/assert/strict"],
+    ["node:process", "test-assert-lite/process"],
 ]
 
 // The bundled names, this package's own, are what the defaults point at:

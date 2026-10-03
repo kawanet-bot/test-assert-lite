@@ -28,9 +28,11 @@ const DEFAULTS = [
     "test-assert-lite/reporter/spec",
     "test-assert-lite/reporter/tap",
     "test-assert-lite/session",
+    "test-assert-lite/process",
     "node:test",
     "node:assert",
     "node:assert/strict",
+    "node:process",
 ] as const
 
 describe(TITLE, () => {

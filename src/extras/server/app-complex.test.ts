@@ -108,6 +108,7 @@ describe(TITLE, () => {
         assert.deepEqual(session, {files: [`${tests}my%20suite.mjs`, `${tests}second.mjs`]})
         const {imports} = JSON.parse(head.slice(head.indexOf("{", map), head.indexOf("</script>", map)))
         assert.equal(imports["node:test"], "/@tal/exports/test.js")
+        assert.equal(imports["node:process"], "/@tal/exports/process.js")
         assert.equal(imports["test-assert-lite"], "/@tal/dist/test-assert-lite.min.js")
         assert.equal(imports["mod"], `${lib}mod.mjs`)
         assert.equal(imports["dep"], `${tests}nested/dep.mjs`)

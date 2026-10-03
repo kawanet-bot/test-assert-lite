@@ -7,6 +7,7 @@ import {test} from "node:test"
 import {sharedTAL} from "test-assert-lite"
 import * as assertEntry from "test-assert-lite/assert"
 import * as strictEntry from "test-assert-lite/assert/strict"
+import * as processEntry from "test-assert-lite/process"
 import * as htmlEntry from "test-assert-lite/reporter/html"
 import * as specEntry from "test-assert-lite/reporter/spec"
 import * as tapEntry from "test-assert-lite/reporter/tap"
@@ -55,6 +56,15 @@ test("test-assert-lite/session", () => {
     assert.equal(sessionEntry.run, sharedTAL.session.run)
     assert.equal(sessionEntry.connect, sharedTAL.session.connect)
     assert.deepEqual(named(sessionEntry), ["connect", "load", "run", "session"])
+})
+
+test("test-assert-lite/process", () => {
+    const typed: typeof sharedTAL.proc.stdout = processEntry.stdout
+    void typed
+    assert.equal(processEntry.stdout, sharedTAL.proc.stdout)
+    assert.equal(processEntry.stderr, sharedTAL.proc.stderr)
+    assert.deepEqual(named(processEntry), ["stderr", "stdout"])
+    assert.ok(!("default" in processEntry))
 })
 
 test("test-assert-lite/reporter/html", () => {
