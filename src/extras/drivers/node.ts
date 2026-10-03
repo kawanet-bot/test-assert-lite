@@ -21,7 +21,7 @@ interface HookData {
 interface RunInNodeOptions {
     imports: NodeImports
     session: TestSession
-    /** A script to run in place of the files, as a virtual module at cwd/[eval]. */
+    /** A script to run in place of the files, as a virtual module at cwd/[eval1], the number counting up. */
     eval?: string
     /** What process.argv holds past the executable while the suites run. */
     argv: string[]
@@ -47,6 +47,8 @@ export const load = (url, context, next) => {
  * from this copy of it, so a suite outside any project, or beside another
  * copy, still lands on the instance run() reads.
  */
+let evals = 0
+
 export const runInNode = async (options: RunInNodeOptions): Promise<TAL.SessionResult> => {
     const {reporter, quiet, files} = options.session
 
@@ -54,9 +56,10 @@ export const runInNode = async (options: RunInNodeOptions): Promise<TAL.SessionR
     // Every item left for Node is a file: the reading of the options saw to it.
     const aliases = new Map([...options.imports.entries()].map(([specifier, item]) => [specifier, pathToFileURL(item.getPath() as string).href]))
     // The hook supplies the source before Node reads this otherwise absent
-    // file. Its location gives relative and package imports cwd as their base.
+    // file. Its location gives relative and package imports cwd as their base,
+    // and its number, as node counts its own, keeps each script a module.
     const cwd = pathToFileURL(resolve(".")).href.replace(/\/?$/, "/")
-    const virtual = options.eval == null ? undefined : {url: new URL("[eval]", cwd).href, source: options.eval}
+    const virtual = options.eval == null ? undefined : {url: new URL(`[eval${++evals}]`, cwd).href, source: options.eval}
     const evalURL = virtual?.url
     const data: HookData = {aliases, virtual}
     register(`data:text/javascript,${encodeURIComponent(HOOK)}`, {data})
