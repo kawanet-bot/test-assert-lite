@@ -28,7 +28,7 @@ export interface RunServicesOptions {
 
 const nullWriter: TAL.Writer = {write: (() => undefined)}
 
-/** The streams a run falls back on: ones that swallow what they get. */
+/** The streams a run falls back on. They swallow what they get. */
 export const getStreams = (streams: RunServicesOptions = {}): Required<RunServicesOptions> => {
     return {
         stdout: streams.stdout ?? nullWriter,

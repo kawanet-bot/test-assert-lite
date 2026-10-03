@@ -201,7 +201,7 @@ describe(TITLE, {timeout: 1000}, () => {
         assert.equal(await caught(local.session.run()), failure)
     })
 
-    // run() closes the session, settings and all: the next run opens one of
+    // run() closes the session, settings and all. The next run opens one of
     // its own, with the defaults unless session() is called again.
     it("a session ends with run(), and the next run opens another", async () => {
         const local = createTAL()

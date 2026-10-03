@@ -33,8 +33,8 @@ const onWrite = (writer: TAL.Writer, fn: () => void): TAL.Writer => {
     }
 }
 
-// What stands in for a bridge when the run has none: the streams given,
-// with nobody to send the verdict to.
+// What stands in for a bridge when the run has none. It writes to the
+// streams given and sends the verdict to nobody.
 export const defaultBridge = ({stdout, stderr}: Pick<TAL.BridgeAPI, "stdout" | "stderr">): TAL.BridgeAPI => ({
     stdout,
     stderr,

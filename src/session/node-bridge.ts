@@ -1,4 +1,4 @@
-// The bridge of a run under Node with no CLI to report to: the process
+// The bridge of a run under Node with no CLI to report to is the process
 // itself. Text goes to its streams. A failed verdict nobody in the process
 // reads becomes its exit code, as node --test leaves one. A caller that
 // opened the session and ran it has the result, and the exit code is theirs.

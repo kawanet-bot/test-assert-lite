@@ -44,7 +44,7 @@ interface Cycle {
 export interface Sessions {
     session: TAL.SessionAPI["session"]
     run: TAL.SessionAPI["run"]
-    // Called on a declaration at the root: starts the walk, once run() has
+    // Called on a declaration at the root. It starts the walk once run() has
     // let it, unless one is under way.
     schedule: () => void
 }
@@ -62,7 +62,7 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
         // the process under Node, or to the console as found. A heartbeat of 0
         // turns the alive line off.
         // A session nobody opened, or a run nobody called, has no reader for
-        // the verdict in the process: the bridge turns it into the exit code.
+        // the verdict in the process. The bridge turns it into the exit code.
         let unattended = auto
         const bridge = options.bridge ?? (hasProcess() ? nodeBridge(process, () => unattended) : defaultBridge(consoleWriters(found, saved)))
         const client = (heartbeat == null || heartbeat > 0) ? heartbeatBridge(bridge, heartbeat) : bridge
@@ -102,7 +102,7 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
             run().catch(showError)
         }
 
-        // A suite run as a script under Node needs no run(): the loop draining is its end.
+        // A suite run as a script under Node needs no run(). The loop draining is its end.
         if (hasProcess()) {
             process.once("beforeExit", onExit)
             services.onCleanup(() => process.off("beforeExit", onExit))

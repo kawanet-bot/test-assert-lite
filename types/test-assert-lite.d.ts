@@ -290,13 +290,13 @@ export declare namespace TAL {
         /** Reports the run to the CLI over this bridge. Nothing is sent without one. */
         bridge?: BridgeAPI
         /**
-         * Takes the errors outside the tests, until run(): the uncaught
+         * Takes the errors outside the tests until run(). The uncaught
          * exceptions and unhandled rejections of the window or the process
-         * given, each one failed test at the top level.
+         * given each become one failed test at the top level.
          */
         uncaught?: EventTargetLike | EventEmitterLike
         /**
-         * A console the session takes over until run(): debug, log and info
+         * A console the session takes over until run(). debug, log and info
          * go to `stdout`, warn and error to `stderr`, each call one line.
          */
         console?: ConsoleLike
@@ -306,7 +306,7 @@ export declare namespace TAL {
         heartbeat?: number
     }
 
-    // What run() resolves with: whether every test passed.
+    // What run() resolves with. It says whether every test passed.
     interface SessionResult {
         success: boolean
     }
