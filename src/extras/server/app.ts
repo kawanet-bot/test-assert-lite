@@ -34,7 +34,7 @@ export interface AppOptions {
     mount?: string
     /** What the command line hands the page, as JSON in its head; empty options unless given. Its files become the suites' served URLs. */
     session: TestSession
-    /** The arguments the page's scripts read, the test files among them by their served URLs. Empty unless given. */
+    /** The arguments the page's scripts read, the test files ahead by their served URLs. */
     argv?: string[]
     /** A script to run in place of the files, served under the run's own path as [eval].js. */
     eval?: string
@@ -110,10 +110,10 @@ export const createApp = (options: AppOptions): App => {
     const importmap = `<script type="importmap">\n${safeJSON({imports: imports.addresses(file => served.urlOf(file))})}\n</script>\n`
     // The script goes in as the one file, at its URL under the run's path.
     const evalPath = script == null ? null : `${prefix}[eval].js`
-    // The page is the runner the arguments name, as node is under Node.
-    const suites = new Set(files)
+    // The page is the runner the arguments name, as node is under Node. The
+    // test files lead the arguments, and only those slots are URLs.
     const configObj: TestSessionJSON = {
-        process: {argv: ["test-assert", ...argv.map(item => (suites.has(item) ? served.urlOf(item) : item))]},
+        process: {argv: ["test-assert", ...argv.map((item, i) => (i < files.length ? served.urlOf(item) : item))]},
         session: {...session, files: evalPath == null ? files.map(file => served.urlOf(file)) : [evalPath]},
     }
     const configTag = `<script type="${TestSessionType}">\n${safeJSON(configObj)}\n</script>\n`
