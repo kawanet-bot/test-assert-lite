@@ -49,9 +49,9 @@ export interface Sessions {
     schedule: () => void
 }
 
-// Nine base-36 characters, as the run's own path has. Unique among the
+// Nine base-36 characters, like the run's own path. Unique among the
 // sessions of one page is all it has to be.
-const sessionId = (): string => Math.random().toString(36).slice(2, 11).padEnd(9, "0")
+const sessionId = (): string => Math.floor(Math.random() * 36 ** 9).toString(36).padStart(9, "0")
 
 export const createSessions = (harness: HarnessState, assert: TAL.TestContextAssert): Sessions => {
     let cycle: Cycle | null = null
