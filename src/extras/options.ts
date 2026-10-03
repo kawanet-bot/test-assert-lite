@@ -74,8 +74,8 @@ export const mountOf = (value: string): string => {
 // line has the last word; what `mode` cannot take of the result is refused
 // here, one reason per specifier, before anything is served or hooked.
 export const importsOf = (mapFile: string | undefined, aliases: string[], mode: Mode): Imports => {
-    const imports = new Imports([...(mapFile == null ? [] : readImportMap(resolve(mapFile))), ...aliases.map(entry => new ImportAliasItem(entry, cwdURL()))])
-    const refusals = imports.refusals(mode)
+    const imports = new Imports([...(mapFile == null ? [] : readImportMap(resolve(mapFile))), ...aliases.map(entry => new ImportAliasItem(entry, cwdURL()))], mode)
+    const refusals = imports.refusals()
     if (refusals.length) throw new UsageError(refusals.join("\n"))
     return imports
 }

@@ -17,11 +17,11 @@ export type Mode = "node" | "browser"
 /** The working directory as a URL, what an --alias resolves a relative target against. */
 export const cwdURL = (): URL => pathToFileURL(`${process.cwd()}/`)
 
-// What the CLI maps before anything is given: this package's own names to
-// themselves, so a page's map has them; and node:test, node:assert and
-// node:process to the subpaths that stand in for them. A later item takes
+// What the CLI maps before anything is given, in both modes: this package's
+// own names to themselves, so a page's map has them; and node:test and
+// node:assert to the subpaths that stand in for them. A later item takes
 // any of these over.
-const DEFAULTS: [specifier: string, target: string][] = [
+const COMMON_IMPORTS: [specifier: string, target: string][] = [
     ["test-assert-lite", "test-assert-lite"],
     ["test-assert-lite/test", "test-assert-lite/test"],
     ["test-assert-lite/assert", "test-assert-lite/assert"],
@@ -34,13 +34,17 @@ const DEFAULTS: [specifier: string, target: string][] = [
     ["node:test", "test-assert-lite/test"],
     ["node:assert", "test-assert-lite/assert"],
     ["node:assert/strict", "test-assert-lite/assert/strict"],
+]
+
+// What a page is mapped as well. Node has these of its own.
+const BROWSER_IMPORTS: [specifier: string, target: string][] = [
     ["node:process", "test-assert-lite/process"],
 ]
 
 // The bundled names, this package's own, are what the defaults point at:
 // a target naming one is resolved from this copy of the package in both
 // modes, and no name is one without a row above that maps it.
-const BUNDLED = new Set(DEFAULTS.map(([, target]) => target))
+const BUNDLED = new Set([...COMMON_IMPORTS, ...BROWSER_IMPORTS].map(([, target]) => target))
 
 /** One specifier and its target, as given; the checks a mode adds are `refusal()`. */
 export abstract class ImportBase {
@@ -195,18 +199,21 @@ export class ImportBundledItem extends ImportBase {
     }
 }
 
-const defaults = (): ImportBundledItem[] => DEFAULTS.map(([specifier, target]) => new ImportBundledItem(specifier, target))
+const defaults = (mode: Mode): ImportBundledItem[] =>
+    [...COMMON_IMPORTS, ...(mode === "browser" ? BROWSER_IMPORTS : [])].map(([specifier, target]) => new ImportBundledItem(specifier, target))
 
 /**
- * The items in the order given, this package's defaults first, so
- * the last for a specifier wins. Files are every item's, losers included:
+ * The items in the order given, this package's defaults for the mode first,
+ * so the last for a specifier wins. Files are every item's, losers included:
  * a file named is watched and served whether or not it is what resolves.
  */
 export class Imports {
     readonly items: ImportBase[]
+    readonly mode: Mode
 
-    constructor(items: ImportBase[]) {
-        this.items = [...defaults(), ...items]
+    constructor(items: ImportBase[], mode: Mode) {
+        this.items = [...defaults(mode), ...items]
+        this.mode = mode
     }
 
     /** Every file a path item names, once each, for watching and serving. */
@@ -224,8 +231,8 @@ export class Imports {
         return Object.fromEntries([...this.entries()].map(([specifier, item]) => [specifier, item.getAddress(serve)]))
     }
 
-    /** Why `mode` cannot take the list: one reason per item that resolves and is refused. */
-    refusals(mode: Mode): string[] {
-        return [...this.entries().values()].map(item => item.refusal(mode)).filter((reason): reason is string => reason != null)
+    /** Why the mode cannot take the list: one reason per item that resolves and is refused. */
+    refusals(): string[] {
+        return [...this.entries().values()].map(item => item.refusal(this.mode)).filter((reason): reason is string => reason != null)
     }
 }

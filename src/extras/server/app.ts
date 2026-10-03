@@ -73,7 +73,7 @@ const random9 = (): string => randomInt(0, 36 ** 9).toString(36).padStart(9, "0"
  * Builds the browser application: its middleware and run page path.
  */
 export const createApp = (options: AppOptions): App => {
-    const {scripts = [], imports = new Imports([]), mount: mounted, session, eval: script, services, singleRun} = options
+    const {scripts = [], imports = new Imports([], "browser"), mount: mounted, session, eval: script, services, singleRun} = options
     const {files = []} = session
     const prefix = `/@tal/run/${random9()}/`
     const runPath = `${prefix}run.html`
