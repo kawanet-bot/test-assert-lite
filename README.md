@@ -135,6 +135,7 @@ test-assert --playwright chromium test/browser.test.mjs
 ### `--test`
 
 - Takes every argument as a test file, as `node --test` reads them: `test-assert --test test/*.test.mjs`.
+- A run with no tests is reported too, as `node --test` reports one. Without `--test` such a run says nothing, as a script under `node` does.
 - Without it, the first file is the test file and the rest is its argv. A flag meant for the script goes after `--`: `test-assert test/cli.test.mjs -- --verbose`.
 
 ### `--alias <specifier>=<file>`

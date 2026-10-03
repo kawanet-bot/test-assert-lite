@@ -69,7 +69,7 @@ const formatFailures = (failed: TAL.TestFail[], colors: boolean): string => {
 export const spec = (options?: TAL.SpecOptions): ReporterFn => {
     const colors = options?.colors ?? defaultColors()
     // Quiet saves failures for the final list and skips individual results.
-    const quiet = options?.quiet ?? false
+    const quiet = (options?.quiet ?? 0) > 0
 
     return async function* (source: AsyncIterable<TestEvent>): AsyncIterable<string> {
         // Stack up test:start and, once a result arrives, emit the parents

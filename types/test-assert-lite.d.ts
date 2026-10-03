@@ -248,8 +248,8 @@ export declare namespace TAL {
     interface SpecOptions {
         // Defaults on for a Node TTY unless NO_COLOR or NODE_DISABLE_COLORS is set; off otherwise.
         colors?: boolean
-        /** Reduces output while keeping failures visible. */
-        quiet?: boolean
+        /** How much less to say. 0 by default. 1 or more keeps failures alone. */
+        quiet?: number
     }
 
     // The reporters the package ships
@@ -300,8 +300,8 @@ export declare namespace TAL {
          * go to `stdout`, warn and error to `stderr`, each call one line.
          */
         console?: ConsoleLike
-        /** Reduces output while keeping failures visible. The summary event is unchanged. */
-        quiet?: boolean
+        /** How much less to say. 0 by default. 1 or more keeps failures alone. -1 reports a run with no tests too, as node --test does. The summary event is unchanged. */
+        quiet?: number
         /** Interval in milliseconds to write a heartbeat to `stderr`. Default: 10 seconds. */
         heartbeat?: number
     }

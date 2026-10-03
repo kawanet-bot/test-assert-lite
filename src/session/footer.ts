@@ -13,10 +13,18 @@ const info = (label: string, value: number | string): TestEvent => ({
 // from: node:test's summary in words, then what it never says, which
 // package ran the suites and where. A wrapper on the events, so the
 // runner writes none of them and a session can leave them off.
-export const withFooter = (reporter: ReporterFn): ReporterFn => source => reporter((async function* () {
+// Left off under quiet, and for a run with no tests unless a test runner
+// asked for it with -1, as node says nothing of a script and node --test
+// counts to zero.
+export const withFooter = (reporter: ReporterFn, quiet: number): ReporterFn => source => reporter((async function* () {
     for await (const event of source) {
         if (event.type === "test:summary") {
             const {counts, duration_ms} = event.data
+            const empty = counts.tests === 0 && counts.suites === 0
+            if (quiet > 0 || (quiet === 0 && empty)) {
+                yield event
+                continue
+            }
             yield info("tests", counts.tests)
             yield info("suites", counts.suites)
             yield info("pass", counts.passed)

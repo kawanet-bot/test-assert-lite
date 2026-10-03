@@ -191,7 +191,8 @@ export const readOptions = (args: string[]): ModeOptions => {
     const session: TestSession = {
         files: files.map(file => resolve(file)),
         reporter: values.reporter,
-        quiet: values.quiet,
+        // Ten for -q, so it stands over the rest. A test runner's run says one more than a script's.
+        quiet: (values.quiet ? 10 : 0) + (values.test ? -1 : 0),
     }
 
     if (!browsing) return {mode: "node", imports: refused(new NodeImports(items)), session, eval: script, argv}
