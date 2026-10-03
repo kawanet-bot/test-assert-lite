@@ -64,7 +64,7 @@ export const heartbeatBridge = (client: TAL.BridgeAPI, heartbeat?: number): TAL.
     // The check runs ten times per interval, so the line lands close to time.
     let alive: ReturnType<typeof setInterval> | null = setInterval(tick, heartbeat / 10)
     // Node's timer alone must not keep the process alive: a harness that
-    // never reaches end(), as under another runner, still has to exit.
+    // never reaches run(), as under another runner, still has to exit.
     alive.unref?.()
 
     return {

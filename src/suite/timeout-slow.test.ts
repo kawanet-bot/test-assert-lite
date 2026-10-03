@@ -20,7 +20,7 @@ describeSlow(TITLE, () => {
         local.test.it("slow", {timeout: slow(10)}, async () => {
             await new Promise(r => setTimeout(r, slow(200)))
         })
-        await local.session.end()
+        await local.session.run()
         const summary = summaryOf(events)
 
         assert.equal(summary.counts.cancelled, 1)
@@ -42,7 +42,7 @@ describeSlow(TITLE, () => {
                 await new Promise(r => setTimeout(r, slow(200)))
             })
         })
-        await local.session.end()
+        await local.session.run()
         const summary = summaryOf(events)
 
         assert.equal(summary.counts.cancelled, 1)
@@ -62,7 +62,7 @@ describeSlow(TITLE, () => {
             await new Promise(r => setTimeout(r, slow(50)))
         })
         local.test.it("next", () => undefined)
-        await local.session.end()
+        await local.session.run()
         const summary = summaryOf(events)
 
         const results = events
@@ -85,7 +85,7 @@ describeSlow(TITLE, () => {
             })
             await new Promise(r => setTimeout(r, slow(100)))
         })
-        await local.session.end()
+        await local.session.run()
         const summary = summaryOf(events)
 
         assert.deepEqual(names(events, "test:fail"), ["child", "parent"])
@@ -104,7 +104,7 @@ describeSlow(TITLE, () => {
             })
             await new Promise(r => setTimeout(r, slow(100)))
         })
-        await local.session.end()
+        await local.session.run()
         const summary = summaryOf(events)
 
         const child = ofType(events, "test:fail").find(e => e.data.name === "child")?.data
@@ -123,7 +123,7 @@ describeSlow(TITLE, () => {
             await new Promise(r => setTimeout(r, slow(40)))
             settled = true
         })
-        await local.session.end()
+        await local.session.run()
         const summary = summaryOf(events)
 
         assert.equal(settled, false)
@@ -141,7 +141,7 @@ describeSlow(TITLE, () => {
             t.diagnostic("late")
             void t.test("late", () => undefined)
         })
-        await local.session.end()
+        await local.session.run()
         const summary = summaryOf(events)
         assert.equal(settled, false)
         assert.deepEqual(summary.counts, {tests: 1, suites: 0, passed: 0, failed: 0, cancelled: 1, skipped: 0, todo: 0})
@@ -160,7 +160,7 @@ describeSlow(TITLE, () => {
             await new Promise(r => setTimeout(r, slow(40)))
             t.diagnostic("late")
         })
-        await local.session.end()
+        await local.session.run()
 
         const messages = ofType(events, "test:diagnostic").map(e => e.data.message)
         assert.ok(messages.includes("in time"))
@@ -185,7 +185,7 @@ describeSlow(TITLE, () => {
             })
             order.push("resumed")
         })
-        await local.session.end()
+        await local.session.run()
         assert.deepEqual(order, ["after"])
 
         await new Promise(r => setTimeout(r, slow(80)))
@@ -207,12 +207,12 @@ describeSlow(TITLE, () => {
                 caught = (e as Error).message
             }
         })
-        await local.session.end()
+        await local.session.run()
         await new Promise(r => setTimeout(r, slow(60)))
 
         assert.equal(caught, "it() cannot be called from inside a test body; use t.test() instead")
         const second = capture(local)
-        await local.session.end()
+        await local.session.run()
         assert.equal(summaryOf(second).counts.tests, 0)
     })
 
@@ -229,7 +229,7 @@ describeSlow(TITLE, () => {
             local.test.it("a", () => undefined)
             local.test.it("b", () => undefined)
         })
-        await local.session.end()
+        await local.session.run()
         const summary = summaryOf(events)
 
         assert.deepEqual(summary.counts, {tests: 3, suites: 1, passed: 2, failed: 0, cancelled: 1, skipped: 0, todo: 0})

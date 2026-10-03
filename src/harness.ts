@@ -13,7 +13,7 @@ import {createRegistrar} from "./suite/registrar.ts"
 export const createTAL: typeof declared.createTAL = () => {
     const state = createHarnessState()
     const {assert, tca} = createAssert()
-    const {session, schedule, end} = createSessions(state, tca)
+    const {session, schedule, run} = createSessions(state, tca)
     const registrar = createRegistrar(state, schedule)
     const reporter: TAL.Reporter = {spec, tap, html}
 
@@ -34,7 +34,7 @@ export const createTAL: typeof declared.createTAL = () => {
     return {
         assert,
         reporter,
-        session: {connect, end, load, session},
+        session: {connect, load, run, session},
         test: registrar,
     }
 }

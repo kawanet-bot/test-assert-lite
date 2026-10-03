@@ -33,7 +33,7 @@ describe(TITLE, () => {
             },
         })
         local.test.it("still runs", () => undefined)
-        assert.equal((await local.session.end()).success, false)
+        assert.equal((await local.session.run()).success, false)
         assert.match(text.join(""), /✖ import\("@kawanet\/invalid"\)/)
         assert.match(text.join(""), /✔ still runs/)
     })
@@ -46,7 +46,7 @@ describe(TITLE, () => {
                 lines.push(t)
             },
         })
-        assert.equal((await local.session.end()).success, false)
+        assert.equal((await local.session.run()).success, false)
         assert.match(lines.join(""), /unsupported reporter: \.\/nope\.mjs/)
     })
 
@@ -59,7 +59,7 @@ describe(TITLE, () => {
         local.test.it("fails", () => {
             throw new Error("boom")
         })
-        assert.equal((await local.session.end()).success, false)
+        assert.equal((await local.session.run()).success, false)
         const text = out.join("")
         assert.equal(text.includes("passes"), false)
         assert.equal(text.includes("ℹ tests "), false)
@@ -69,7 +69,7 @@ describe(TITLE, () => {
         const said: string[] = []
         green.session.session({quiet: true, output: t => {said.push(t)}})
         green.test.it("passes", () => undefined)
-        assert.equal((await green.session.end()).success, true)
+        assert.equal((await green.session.run()).success, true)
         assert.equal(said.join(""), "")
     })
 
@@ -80,7 +80,7 @@ describe(TITLE, () => {
         local.test.it("fails", () => {
             throw new Error("boom")
         })
-        assert.equal((await local.session.end()).success, false)
+        assert.equal((await local.session.run()).success, false)
         const text = out.join("")
         assert.equal(text.includes("# tests "), false)
         assert.equal(text.includes("# test-assert-lite "), false)
@@ -95,13 +95,13 @@ describe(TITLE, () => {
         const text: string[] = []
         local.session.session({reporter: "tap", output: t => {text.push(t)}})
         await local.session.load("data:text/javascript,export const loaded = 1")
-        assert.equal((await local.session.end()).success, true)
+        assert.equal((await local.session.run()).success, true)
 
         const other = createTAL()
         const lines: string[] = []
         other.session.session({reporter: "tap", output: t => {lines.push(t)}})
         await other.session.load("http://127.0.0.1:1/nope.mjs")
-        assert.equal((await other.session.end()).success, false)
+        assert.equal((await other.session.run()).success, false)
         assert.match(lines.join(""), /^not ok 1 - nope\.mjs$/m)
     })
 
@@ -114,7 +114,7 @@ describe(TITLE, () => {
             },
         })
         local.test.it("named", () => undefined)
-        await local.session.end()
+        await local.session.run()
         assert.equal(out[0], "TAP version 13\n")
     })
 
@@ -127,7 +127,7 @@ describe(TITLE, () => {
             },
         })
         local.test.it("imported", () => undefined)
-        assert.equal((await local.session.end()).success, true)
+        assert.equal((await local.session.run()).success, true)
         assert.equal(out[0], "TAP version 13\n")
         assert.match(out.join(""), /^ok 1 - imported$/m)
     })
@@ -141,7 +141,7 @@ describe(TITLE, () => {
         fire(on, "error", {target: {src: "http://127.0.0.1:1/@tal/files/012345678/missing.mjs"}})
         fire(on, "unhandledrejection", {reason: new Error("leaked")})
         local.test.it("declared", () => undefined)
-        await local.session.end()
+        await local.session.run()
         const summary = summaryOf(events)
 
         assert.deepEqual(names(events, "test:fail"), ["suite.mjs", "missing.mjs", "unhandled rejection"])
@@ -161,7 +161,7 @@ describe(TITLE, () => {
             fire(on, "unhandledrejection", {reason: new Error("meanwhile")})
             await new Promise(r => setTimeout(r, 0))
         })
-        await local.session.end()
+        await local.session.run()
         const summary = summaryOf(events)
 
         assert.deepEqual(names(events, "test:pass"), ["open"])
@@ -181,7 +181,7 @@ describe(TITLE, () => {
         on.emit("uncaughtException", thrown, "uncaughtException")
         on.emit("unhandledRejection", reason, Promise.resolve())
         local.test.it("declared", () => undefined)
-        await local.session.end()
+        await local.session.run()
         const summary = summaryOf(events)
 
         assert.deepEqual(names(events, "test:fail"), ["uncaught exception", "unhandled rejection"])
@@ -196,7 +196,7 @@ describe(TITLE, () => {
         assert.throws(() => local.session.session({uncaught: {} as TAL.EventTargetLike}), /uncaught/)
         const events = capture(local)
         local.test.it("still declares", () => undefined)
-        assert.equal((await local.session.end()).success, true)
+        assert.equal((await local.session.run()).success, true)
         assert.deepEqual(names(events, "test:pass"), ["still declares"])
     })
 
@@ -204,11 +204,11 @@ describe(TITLE, () => {
         const local = createTAL()
         const on = target()
         capture(local, {uncaught: on})
-        await local.session.end()
+        await local.session.run()
         fire(on, "unhandledrejection", {reason: new Error("after the end")})
         const again = capture(local)
         fire(on, "unhandledrejection", {reason: new Error("without uncaught")})
-        await local.session.end()
+        await local.session.run()
 
         assert.equal(summaryOf(again).counts.tests, 0)
     })

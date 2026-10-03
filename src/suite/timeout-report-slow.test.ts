@@ -54,7 +54,7 @@ describeSlow(TITLE, () => {
             await new Promise(r => setTimeout(r, slow(40)))
             throw new Error("boom")
         })
-        await local.session.end()
+        await local.session.run()
         const summary = summaryOf(events)
 
         assert.deepEqual(names(events, "test:fail"), ["grandchild", "child", "parent"])
@@ -87,7 +87,7 @@ describeSlow(TITLE, () => {
             })
             await new Promise(r => setTimeout(r, slow(200)))
         })
-        await local.session.end()
+        await local.session.run()
         const summary = summaryOf(events)
 
         assert.deepEqual(names(events, "test:start"), ["parent", "child", "g1", "g2"])
@@ -118,7 +118,7 @@ describeSlow(TITLE, () => {
             await new Promise(r => setTimeout(r, slow(20)))
             throw new Error("boom")
         })
-        await local.session.end()
+        await local.session.run()
         const summary = summaryOf(events)
 
         assert.deepEqual(names(events, "test:start"), ["parent", "child", "grandchild"])
@@ -146,7 +146,7 @@ describeSlow(TITLE, () => {
                 ran = true
             })
         })
-        await local.session.end()
+        await local.session.run()
         const summary = summaryOf(events)
 
         assert.equal(ran, true)
@@ -163,7 +163,7 @@ describeSlow(TITLE, () => {
             void t.test("quick skip", {skip: "why"}, () => undefined)
             await new Promise(r => setTimeout(r, slow(40)))
         })
-        await local.session.end()
+        await local.session.run()
         const summary = summaryOf(events)
 
         assert.deepEqual(summary.counts, {tests: 2, suites: 0, passed: 0, failed: 0, cancelled: 1, skipped: 1, todo: 0})
@@ -184,7 +184,7 @@ describeSlow(TITLE, () => {
             t.skip("too late")
             await new Promise(r => setTimeout(r, slow(100)))
         })
-        await local.session.end()
+        await local.session.run()
         const summary = summaryOf(events)
 
         assert.deepEqual(summary.counts, {tests: 2, suites: 0, passed: 0, failed: 0, cancelled: 2, skipped: 0, todo: 0})
@@ -206,7 +206,7 @@ describeSlow(TITLE, () => {
             })
             await new Promise(r => setTimeout(r, slow(100)))
         })
-        await local.session.end()
+        await local.session.run()
         const summary = summaryOf(events)
 
         assert.equal(ran, false)
@@ -230,7 +230,7 @@ describeSlow(TITLE, () => {
             })
             await new Promise(r => setTimeout(r, slow(100)))
         })
-        await local.session.end()
+        await local.session.run()
         const summary = summaryOf(events)
 
         assert.equal(ran, 0)

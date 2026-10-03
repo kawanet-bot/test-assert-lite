@@ -10,7 +10,7 @@
 <h1>{{title}}</h1>
 <div id="output"></div>
 <script type="module">
-    import {end, session} from "test-assert-lite/session"
+    import {run, session} from "test-assert-lite/session"
 
     session({
         reporter: "html",
@@ -20,7 +20,7 @@
     // --serve --alias index.js=path/to/index.js
     await import("index.js")
 
-    await end().catch(console.error)
+    await run().catch(console.error)
 </script>
 </body>
 </html>

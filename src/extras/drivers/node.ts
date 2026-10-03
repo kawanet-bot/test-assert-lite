@@ -6,7 +6,7 @@ import {register} from "node:module"
 import {resolve} from "node:path"
 import {pathToFileURL} from "node:url"
 import type {TAL} from "test-assert-lite"
-import {end, load, session} from "test-assert-lite/session"
+import {load, run, session} from "test-assert-lite/session"
 import type {Imports} from "../imports.ts"
 import type {TestSession} from "../mode-options.ts"
 
@@ -43,7 +43,7 @@ export const load = (url, context, next) => {
  * Loads the suites into this process, in the order given, and runs them.
  * The files the hook resolves to are decided here, this package's own
  * from this copy of it, so a suite outside any project, or beside another
- * copy, still lands on the instance end() reads.
+ * copy, still lands on the instance run() reads.
  */
 export const runInNode = async (options: RunInNodeOptions): Promise<TAL.SessionResult> => {
     const {reporter, quiet, files} = options.session
@@ -69,5 +69,5 @@ export const runInNode = async (options: RunInNodeOptions): Promise<TAL.SessionR
         await load(file)
     }
 
-    return end()
+    return run()
 }

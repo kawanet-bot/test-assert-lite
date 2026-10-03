@@ -1,5 +1,5 @@
 // The sessions of one harness, one cycle each: what the run reports with,
-// where its console goes, the walk of the tests declared, and the end()
+// where its console goes, the walk of the tests declared, and the run()
 // that reports the verdict and lets go of what was taken.
 
 import type {TAL} from "test-assert-lite"
@@ -19,7 +19,7 @@ import {takeUncaught} from "./uncaught.ts"
 type SessionResult = TAL.SessionResult
 
 // One cycle of the harness: from session(), or the first declaration, to
-// the end() that reports it. The tests are held until end() lets them go,
+// the run() that reports it. The tests are held until run() lets them go,
 // so a suite still loading cannot declare into one already running.
 interface Cycle {
     services: RunServices
@@ -34,16 +34,16 @@ interface Cycle {
     held: boolean
     // The walk under way, or null while idle between declarations.
     walk: Promise<void> | null
-    // end() is closing the cycle and drives the rest itself.
+    // run() is closing the cycle and drives the rest itself.
     closing: boolean
-    // What the walk failed with, kept for end() to reject with.
+    // What the walk failed with, kept for run() to reject with.
     failure: {error: unknown} | undefined
 }
 
 export interface Sessions {
     session: TAL.SessionAPI["session"]
-    end: TAL.SessionAPI["end"]
-    // Called on a declaration at the root: starts the walk, once end() has
+    run: TAL.SessionAPI["run"]
+    // Called on a declaration at the root: starts the walk, once run() has
     // let it, unless one is under way.
     schedule: () => void
 }
@@ -71,7 +71,7 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
         if (releaseUncaught != null) services.onCleanup(releaseUncaught)
         if (options.console) services.onCleanup(takeConsole(found, saved, services.stdout, services.stderr))
 
-        const run: Run = {
+        const state: Run = {
             counters: {tests: 0, suites: 0, passed: 0, failed: 0, cancelled: 0, skipped: 0, todo: 0},
             success: true,
             emit: (type, data) => report.write({type, data} as TAL.TestEvent),
@@ -90,10 +90,10 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
         }
 
         // Node's own runner ends the run as the process would exit. Here too.
-        // An end() already under way, or done, leaves nothing for this to do.
+        // An run() already under way, or done, leaves nothing for this to do.
         const onExit = (): void => {
             if (cycle == null || cycle.closing) return
-            end().then((result) => {
+            run().then((result) => {
                 return result?.success ? 0 : 1
             }, (error) => {
                 showError(error)
@@ -103,13 +103,13 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
             })
         }
 
-        // A suite run as a script under Node needs no end(): the loop draining is its end.
+        // A suite run as a script under Node needs no run(): the loop draining is its end.
         if (hasProcess()) {
             process.once("beforeExit", onExit)
             services.onCleanup(() => process.off("beforeExit", onExit))
         }
 
-        return {services, report, close, auto, run, startedAt: performance.now(), held: true, walk: null, closing: false, failure: undefined}
+        return {services, report, close, auto, run: state, startedAt: performance.now(), held: true, walk: null, closing: false, failure: undefined}
     }
 
     const session: TAL.SessionAPI["session"] = (options = {}) => {
@@ -151,8 +151,8 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
 
     // The outcome settles the services, a failure included. The CLI hears
     // the verdict once the cleanups are through, and the harness is reset.
-    const end: TAL.SessionAPI["end"] = async () => {
-        if (cycle?.closing) throw new Error("end() is already running")
+    const run: TAL.SessionAPI["run"] = async () => {
+        if (cycle?.closing) throw new Error("run() is already running")
         // An empty run still reports, and root hooks alone still run.
         const current = cycle ??= open({}, true)
         current.held = false
@@ -171,7 +171,7 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
         return await services.finished
     }
 
-    return {session, end, schedule}
+    return {session, run, schedule}
 }
 
 // What the run came to: the counts, the time and the verdict.

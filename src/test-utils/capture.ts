@@ -14,7 +14,7 @@ export const capture = (harness: TAL.TestHarness, options: Omit<TAL.SessionOptio
     return events
 }
 
-// The run's counts, from the summary event: what end() no longer returns.
+// The run's counts, from the summary event.
 export const summaryOf = (events: TAL.TestEvent[]): TAL.TestSummary => {
     const summary = events.find(e => e.type === "test:summary")
     if (summary?.type !== "test:summary") throw new Error("no test:summary event")

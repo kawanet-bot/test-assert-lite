@@ -160,7 +160,7 @@ describe(TITLE, () => {
                 throw new Error("after hook exploded")
             })
         })
-        const summary = await local.session.end()
+        const summary = await local.session.run()
 
         const out = lines.join("")
         assert.match(out, /^ok 1 - child passes$/m)
