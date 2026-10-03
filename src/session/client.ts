@@ -5,7 +5,6 @@
 
 import type {TAL} from "test-assert-lite"
 import {delayedBufWriter} from "../utils/buf-writer.ts"
-import {getStreams, type RunServicesOptions} from "../utils/run-services.ts"
 
 interface BridgeIPC {
     stdout: (chunk: string) => Promise<unknown>
@@ -34,16 +33,14 @@ const onWrite = (writer: TAL.Writer, fn: () => void): TAL.Writer => {
     }
 }
 
-// What stands in for a bridge when the run has none.
-export const defaultBridge = (defaults?: RunServicesOptions): TAL.BridgeAPI => {
-    const {stdout, stderr} = getStreams(defaults)
-    return {
-        stdout,
-        stderr,
-        send: (_, callback = NOP) => callback(null),
-        disconnect: NOP,
-    }
-}
+// What stands in for a bridge when the run has none: the streams given,
+// with nobody to send the verdict to.
+export const defaultBridge = ({stdout, stderr}: Pick<TAL.BridgeAPI, "stdout" | "stderr">): TAL.BridgeAPI => ({
+    stdout,
+    stderr,
+    send: (_, callback = NOP) => callback(null),
+    disconnect: NOP,
+})
 
 // The alive line while the page is quiet, for one run. Its disconnect
 // ends the line, then the bridge's own.
