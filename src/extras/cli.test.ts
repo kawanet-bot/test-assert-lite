@@ -8,6 +8,9 @@ import {CLI} from "./cli.ts"
 
 const TITLE = "extras/cli.test.ts"
 
+// node:test reports to its parent through this stdout too, as Buffers.
+// The tests keep the text and let the frames through.
+
 // What the CLI itself does between reading the arguments and running
 // them: options.test.ts covers the reading. A watch still open would keep
 // the process up; a closed one leaves the count a beat later.
@@ -39,7 +42,7 @@ describe(TITLE, () => {
         await writeFile(fine, `import {it} from "node:test"\nit("in the other suite", () => undefined)\n`)
         const chunks: string[] = []
         const write = process.stdout.write
-        process.stdout.write = ((text: string) => !!chunks.push(text)) as typeof write
+        process.stdout.write = ((chunk: string | Uint8Array) => (typeof chunk === "string" ? !!chunks.push(chunk) : write.call(process.stdout, chunk))) as typeof write
         try {
             assert.equal(await CLI({args: ["--test", "--reporter", "tap", broken, fine]}), 1)
         } finally {
@@ -57,7 +60,7 @@ describe(TITLE, () => {
         const chunks: string[] = []
         const write = process.stdout.write
         const cwd = process.cwd()
-        process.stdout.write = ((text: string) => !!chunks.push(text)) as typeof write
+        process.stdout.write = ((chunk: string | Uint8Array) => (typeof chunk === "string" ? !!chunks.push(chunk) : write.call(process.stdout, chunk))) as typeof write
         process.chdir(dir)
         try {
             const script = `import {it} from "node:test"\nimport {name} from "./helper.mjs"\nit(name, () => undefined)\n`
@@ -73,7 +76,7 @@ describe(TITLE, () => {
     it("leaves node:process to Node under the CLI, where a suite reads argv from it", async () => {
         const chunks: string[] = []
         const write = process.stdout.write
-        process.stdout.write = ((text: string) => !!chunks.push(text)) as typeof write
+        process.stdout.write = ((chunk: string | Uint8Array) => (typeof chunk === "string" ? !!chunks.push(chunk) : write.call(process.stdout, chunk))) as typeof write
         try {
             const script = `import {it} from "node:test"\nimport {argv} from "node:process"\nit(Array.isArray(argv) ? "argv is an array" : "argv is not", () => undefined)\n`
             assert.equal(await CLI({args: ["--reporter", "tap", "-e", script]}), 0)
@@ -88,7 +91,7 @@ describe(TITLE, () => {
         const chunks: string[] = []
         const write = process.stdout.write
         const argv = [...process.argv]
-        process.stdout.write = ((text: string) => !!chunks.push(text)) as typeof write
+        process.stdout.write = ((chunk: string | Uint8Array) => (typeof chunk === "string" ? !!chunks.push(chunk) : write.call(process.stdout, chunk))) as typeof write
         try {
             const script = `import {it} from "node:test"\nimport {argv} from "node:process"\nit(argv.slice(1).join(" "), () => undefined)\n`
             assert.equal(await CLI({args: ["--reporter", "tap", "-e", script, "--", "one", "--two"]}), 0)
@@ -97,6 +100,22 @@ describe(TITLE, () => {
             process.argv.splice(0, process.argv.length, ...argv)
         }
         assert.ok(chunks.join("").includes("ok 1 - one --two"))
+    })
+
+    it("says nothing of a script with no tests, and counts to zero for a test runner's", async () => {
+        const empty = join(dir, "empty.mjs")
+        await writeFile(empty, "")
+        const chunks: string[] = []
+        const write = process.stdout.write
+        process.stdout.write = ((chunk: string | Uint8Array) => (typeof chunk === "string" ? !!chunks.push(chunk) : write.call(process.stdout, chunk))) as typeof write
+        try {
+            assert.equal(await CLI({args: ["-e", ""]}), 0)
+            assert.equal(chunks.join("").includes("ℹ tests"), false)
+            assert.equal(await CLI({args: ["--test", empty]}), 0)
+            assert.ok(chunks.join("").includes("ℹ tests 0"))
+        } finally {
+            process.stdout.write = write
+        }
     })
 
     it("leaves no watch behind when the port asked for is taken", async () => {
