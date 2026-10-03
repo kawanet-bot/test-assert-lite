@@ -9,6 +9,7 @@ import {createRunServices, type RunServices} from "../utils/run-services.ts"
 import {stringify} from "../utils/stringify.ts"
 import {defaultBridge, heartbeatBridge} from "./client.ts"
 import {consoleWriters, saveConsole, takeConsole} from "./console.ts"
+import {nodeBridge} from "./node-bridge.ts"
 import type {ReportStream} from "./report-stream.ts"
 import {createReportStream} from "./report-stream.ts"
 import {chooseReporter} from "./reporters.ts"
@@ -57,9 +58,13 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
         // Saved before anything is taken over, so nothing here loops back.
         const found = options.console ?? globalThis.console
         const saved = saveConsole(found)
-        // The run's text goes to the CLI, to Node's streams, or to the console as found.
-        // A heartbeat of 0 turns the alive line off.
-        const bridge = options.bridge ?? defaultBridge(consoleWriters(found, saved))
+        // The run's text and verdict go to the CLI over the bridge given, to
+        // the process under Node, or to the console as found. A heartbeat of 0
+        // turns the alive line off.
+        // A session nobody opened, or a run nobody called, has no reader for
+        // the verdict in the process: the bridge turns it into the exit code.
+        let unattended = auto
+        const bridge = options.bridge ?? (hasProcess() ? nodeBridge(process, () => unattended) : defaultBridge(consoleWriters(found, saved)))
         const client = (heartbeat == null || heartbeat > 0) ? heartbeatBridge(bridge, heartbeat) : bridge
         const services = createRunServices(client)
         // The report goes where the console goes unless told otherwise.
@@ -90,17 +95,11 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
         }
 
         // Node's own runner ends the run as the process would exit. Here too.
-        // An run() already under way, or done, leaves nothing for this to do.
+        // A run() already under way, or done, leaves nothing for this to do.
         const onExit = (): void => {
             if (cycle == null || cycle.closing) return
-            run().then((result) => {
-                return result?.success ? 0 : 1
-            }, (error) => {
-                showError(error)
-                return 1
-            }).then(code => {
-                if (code) process.exitCode = code
-            })
+            unattended = true
+            run().catch(showError)
         }
 
         // A suite run as a script under Node needs no run(): the loop draining is its end.
