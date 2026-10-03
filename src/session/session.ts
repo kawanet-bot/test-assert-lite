@@ -4,6 +4,7 @@
 
 import type {TAL} from "test-assert-lite"
 import type {Run} from "../suite/job.ts"
+import type {ConnectWriter} from "../utils/buf-writer.ts"
 import {hasProcess} from "../utils/process.ts"
 import {createRunServices, type RunServices} from "../utils/run-services.ts"
 import {stringify} from "../utils/stringify.ts"
@@ -47,7 +48,13 @@ export interface Sessions {
     schedule: () => void
 }
 
-export const createSessions = (harness: HarnessState, assert: TAL.TestContextAssert): Sessions => {
+/** What a script writes to as the host's streams, led to the session's channel while one is open. */
+export interface ProcessWriters {
+    stdout: ConnectWriter
+    stderr: ConnectWriter
+}
+
+export const createSessions = (harness: HarnessState, assert: TAL.TestContextAssert, proc: ProcessWriters): Sessions => {
     let cycle: Cycle | null = null
 
     const open = (options: TAL.SessionOptions, implicitSession: boolean): Cycle => {
@@ -61,6 +68,9 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
         // turns the alive line off.
         const given = options.channel ?? (hasProcess() ? nodeChannel(process, implicitSession) : consoleChannel(consoleWriters(found, saved)))
         const channel = (heartbeat == null || heartbeat > 0) ? withHeartbeat(given, heartbeat) : given
+        // A script's writes reach the host from here on, what came before first.
+        proc.stdout.connect(channel.stdout)
+        proc.stderr.connect(channel.stderr)
         const services = createRunServices(channel)
         // The report goes where the console goes unless told otherwise.
         const output = options.output ?? ((text: string) => services.stdout.write(text))
@@ -162,6 +172,8 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
                 resolve()
             })
         })
+        proc.stdout.disconnect()
+        proc.stderr.disconnect()
         channel.disconnect()
         // A partially executed registry is unsafe to retry.
         resetHarnessState(harness)

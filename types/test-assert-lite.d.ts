@@ -332,6 +332,16 @@ export declare namespace TAL {
         connect: (options?: {fetch?: typeof fetch}) => Channel
     }
 
+    // --- process ---
+
+    // The host as a script sees it, `test-assert-lite/process`: what
+    // node:process offers of it, written to as a script would.
+    interface ProcessAPI {
+        /** The host's stdout and stderr. Held until a session is open, then written through. */
+        stdout: Writer
+        stderr: Writer
+    }
+
     // --- session channel ---
 
     // The session's end of the line to its host, shaped after a child
@@ -360,6 +370,7 @@ export declare namespace TAL {
     // assertions, the reporters and the session that reports them.
     interface TestHarness {
         assert: Assert
+        proc: ProcessAPI
         reporter: Reporter
         session: SessionAPI
         test: RegistrarAPI
