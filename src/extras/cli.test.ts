@@ -1,5 +1,5 @@
 import {strict as assert} from "node:assert"
-import {mkdtemp, rm, writeFile} from "node:fs/promises"
+import {mkdir, mkdtemp, rm, writeFile} from "node:fs/promises"
 import {createServer} from "node:net"
 import {tmpdir} from "node:os"
 import {join} from "node:path"
@@ -41,7 +41,7 @@ describe(TITLE, () => {
         const write = process.stdout.write
         process.stdout.write = ((text: string) => !!chunks.push(text)) as typeof write
         try {
-            assert.equal(await CLI({args: ["--reporter", "tap", broken, fine]}), 1)
+            assert.equal(await CLI({args: ["--test", "--reporter", "tap", broken, fine]}), 1)
         } finally {
             process.stdout.write = write
         }
@@ -82,6 +82,27 @@ describe(TITLE, () => {
         }
         // node:test's own frames share this stdout, so the line is looked for, not the shape.
         assert.ok(chunks.join("").includes("ok 1 - argv is an array"))
+    })
+
+    // Each -e in one process needs a cwd of its own, since its module is cached by URL.
+    it("gives the suites the arguments past the file as process.argv, as node does", async () => {
+        const own = join(dir, "argv")
+        await mkdir(own)
+        const chunks: string[] = []
+        const write = process.stdout.write
+        const argv = [...process.argv]
+        const cwd = process.cwd()
+        process.stdout.write = ((text: string) => !!chunks.push(text)) as typeof write
+        process.chdir(own)
+        try {
+            const script = `import {it} from "node:test"\nimport {argv} from "node:process"\nit(argv.slice(1).join(" "), () => undefined)\n`
+            assert.equal(await CLI({args: ["--reporter", "tap", "-e", script, "--", "one", "--two"]}), 0)
+        } finally {
+            process.chdir(cwd)
+            process.stdout.write = write
+            process.argv.splice(0, process.argv.length, ...argv)
+        }
+        assert.ok(chunks.join("").includes("ok 1 - one --two"))
     })
 
     it("leaves no watch behind when the port asked for is taken", async () => {

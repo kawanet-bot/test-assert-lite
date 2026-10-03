@@ -31,6 +31,8 @@ interface TestModeOptions {
     session: TestSession
     /** A script given on the command line, run in place of test files. */
     eval?: string
+    /** The arguments as a script reads them past argv[0]: the test files, absolute, and what follows them. */
+    argv: string[]
 }
 
 export interface NodeModeOptions extends TestModeOptions {

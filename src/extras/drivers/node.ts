@@ -23,6 +23,8 @@ interface RunInNodeOptions {
     session: TestSession
     /** A script to run in place of the files, as a virtual module at cwd/[eval]. */
     eval?: string
+    /** What process.argv holds past the executable while the suites run. */
+    argv: string[]
 }
 
 // Written as source because a hook reaches the loader as a module of its
@@ -58,6 +60,10 @@ export const runInNode = async (options: RunInNodeOptions): Promise<TAL.SessionR
     const evalURL = virtual?.url
     const data: HookData = {aliases, virtual}
     register(`data:text/javascript,${encodeURIComponent(HOOK)}`, {data})
+
+    // The suites see the arguments as node would give a script: the file,
+    // then what followed it, with this CLI's own options gone.
+    process.argv.splice(1, process.argv.length - 1, ...options.argv)
 
     session({reporter, quiet, uncaught: process})
 

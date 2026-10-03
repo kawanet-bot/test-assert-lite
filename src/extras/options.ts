@@ -12,9 +12,10 @@ import {isEngineName} from "./mode-options.ts"
 import {createFiles} from "./server/files.ts"
 import {UsageError} from "./usage-error.ts"
 
-export const USAGE = `Usage: test-assert [options] [file...]
+export const USAGE = `Usage: test-assert [options] [file [arg...]]
   -v, --version               print this package's version
   -e, --eval <script>         run the script in place of test files
+  --test                      every argument is a test file (default: the first alone, the rest the script's argv)
   --alias <specifier>=<file>  what a specifier resolves to: a file, a URL for the page, or this package's own name (repeatable)
   --import-map <file>         JSON import map: a relative address is a file beside it, / and http(s):// go to the page as they are
   --reporter <name>           how the run is reported: spec, tap or html (default: spec)
@@ -111,6 +112,7 @@ const parse = (args: string[]) => {
                 "webdriver-config": {type: "string"},
                 endpoint: {type: "string"},
                 eval: {type: "string", short: "e"},
+                test: {type: "boolean", default: false},
                 help: {type: "boolean", short: "h", default: false},
                 version: {type: "boolean", short: "v", default: false},
             },
@@ -127,7 +129,7 @@ const parse = (args: string[]) => {
  * throws UsageError with the reason when there is one to give.
  */
 export const readOptions = (args: string[]): ModeOptions => {
-    const {values, positionals: files} = parse(args)
+    const {values, positionals} = parse(args)
     if (values.help) return {mode: "help"}
     if (values.version) return {mode: "version"}
 
@@ -150,6 +152,11 @@ export const readOptions = (args: string[]): ModeOptions => {
     if (!playwright && (values["playwright-config"] != null)) {
         throw new UsageError("--playwright-config applies to --playwright only")
     }
+    // What node does: the arguments past the script are the script's. With
+    // --test every one is a test file, as node --test reads them.
+    const test = values.test
+    const files = test ? positionals : (script == null ? positionals.slice(0, 1) : [])
+    const argv = positionals.map((item, i) => (i < files.length ? resolve(item) : item))
     if (script != null && files.length) {
         throw new UsageError("-e takes the place of the test files")
     }
@@ -173,7 +180,7 @@ export const readOptions = (args: string[]): ModeOptions => {
         quiet: values.quiet,
     }
 
-    if (!browsing) return {mode: "node", imports: refused(new NodeImports(items)), session, eval: script}
+    if (!browsing) return {mode: "node", imports: refused(new NodeImports(items)), session, eval: script, argv}
 
     const imports = refused(new Imports(items))
 
@@ -190,6 +197,7 @@ export const readOptions = (args: string[]): ModeOptions => {
     const shared: WebModeOptions = {
         session,
         eval: script,
+        argv,
         scripts,
         imports,
         mount: values.mount == null ? undefined : mountOf(values.mount),
