@@ -1,4 +1,4 @@
-// Writers that hold text: what the session and the client buffer with,
+// Writers that hold text: what the session and its channel buffer with,
 // and what a test reads back.
 
 import type {TAL} from "test-assert-lite"

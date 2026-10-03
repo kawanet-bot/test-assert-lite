@@ -56,7 +56,7 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
         // Saved before anything is taken over, so nothing here loops back.
         const found = options.console ?? globalThis.console
         const saved = saveConsole(found)
-        // The run's text and verdict go to the CLI over the bridge given, to
+        // The run's text and verdict go to the host over the channel given, to
         // the process under Node, or to the console as found. A heartbeat of 0
         // turns the alive line off.
         const given = options.channel ?? (hasProcess() ? nodeChannel(process, implicitSession) : consoleChannel(consoleWriters(found, saved)))
@@ -138,7 +138,7 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
         return {success: summary.success}
     }
 
-    // The outcome settles the services, a failure included. The CLI hears
+    // The outcome settles the services, a failure included. The host hears
     // the verdict once the cleanups are through, and the harness is reset.
     const run: TAL.SessionAPI["run"] = async () => {
         if (cycle?.closing) throw new Error("run() is already running")

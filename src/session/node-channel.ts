@@ -1,6 +1,6 @@
-// The bridge of a run under Node with no CLI to report to is the process
-// itself. Text goes to its streams. The events the session sends are
-// received here, as a page's are by the CLI. A failed verdict of a session
+// The channel of a run under Node with no host beyond itself is the
+// process. Text goes to its streams. The events the session sends are
+// received here, as a page's are by its host. A failed verdict of a session
 // nobody opened becomes the exit code, as node --test leaves one.
 
 import type {TAL} from "test-assert-lite"

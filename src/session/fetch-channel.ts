@@ -1,7 +1,7 @@
-// The page's bridge to the CLI, over the fetch it is given. Text is
+// The session's channel to its host, over the fetch it is given. Text is
 // buffered per stream and sent in one request per flush, so a burst of a
 // hundred lines is one round trip. A change of stream, or a message,
-// flushes first, so the CLI gets everything in the order it was written.
+// flushes first, so the host gets everything in the order it was written.
 
 import type {TAL} from "test-assert-lite"
 import {delayedBufWriter} from "../utils/buf-writer.ts"
@@ -17,8 +17,8 @@ interface ChannelIPC {
 const FLUSH_MS = 50
 
 // A quiet run says so on stderr, every ten seconds unless the session
-// sets its own interval. The CLI takes any word within its own, longer
-// bound as proof the page is alive, and a person watching sees a long
+// sets its own interval. The host takes any word within its own, longer
+// bound as proof the session is alive, and a person watching sees a long
 // test is still going rather than hung.
 const HEARTBEAT_MS = 10_000
 
@@ -33,7 +33,7 @@ const onWrite = (writer: TAL.Writer, fn: () => void): TAL.Writer => {
     }
 }
 
-// What stands in for a bridge when the run has none. It writes to the
+// What stands in for a channel when the run has no host. It writes to the
 // streams given and sends the verdict to nobody.
 export const consoleChannel = ({stdout, stderr}: Pick<TAL.Channel, "stdout" | "stderr">): TAL.Channel => ({
     stdout,
@@ -42,8 +42,8 @@ export const consoleChannel = ({stdout, stderr}: Pick<TAL.Channel, "stdout" | "s
     disconnect: NOP,
 })
 
-// The alive line while the page is quiet, for one run. Its disconnect
-// ends the line, then the bridge's own.
+// The alive line while the session is quiet, for one run. Its disconnect
+// ends the line, then the channel's own.
 export const withHeartbeat = (channel: TAL.Channel, heartbeat?: number): TAL.Channel => {
     heartbeat ??= HEARTBEAT_MS
     let last = 0
