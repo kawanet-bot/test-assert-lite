@@ -10,35 +10,35 @@ describe(TITLE, () => {
     it("writes to the process's streams", () => {
         const stdout = createBufWriter()
         const stderr = createBufWriter()
-        const bridge = nodeBridge({stdout, stderr})
+        const bridge = nodeBridge({stdout, stderr}, true)
         bridge.stdout.write("out\n")
         bridge.stderr.write("err\n")
         assert.equal(stdout.read(), "out\n")
         assert.equal(stderr.read(), "err\n")
     })
 
-    it("leaves the exit code alone on success, and sets 1 on a failed verdict", () => {
+    it("takes every event and calls back, and a failed verdict of an auto session sets the exit code", () => {
         const passed: ProcessLike = {stdout: createBufWriter(), stderr: createBufWriter()}
         const seen: (Error | null)[] = []
-        const bridge = nodeBridge(passed)
+        const bridge = nodeBridge(passed, true)
         bridge.send({type: "session:begin"}, error => seen.push(error))
         bridge.send({type: "session:end", data: {success: true}}, error => seen.push(error))
         assert.equal(passed.exitCode, undefined)
         assert.deepEqual(seen, [null, null])
 
         const failed: ProcessLike = {stdout: createBufWriter(), stderr: createBufWriter()}
-        nodeBridge(failed).send({type: "session:end", data: {success: false}})
+        nodeBridge(failed, true).send({type: "session:end", data: {success: false}})
         assert.equal(failed.exitCode, 1)
     })
 
-    it("leaves the exit code to a caller who reads the verdict", () => {
-        const attended: ProcessLike = {stdout: createBufWriter(), stderr: createBufWriter()}
-        nodeBridge(attended, () => false).send({type: "session:end", data: {success: false}})
-        assert.equal(attended.exitCode, undefined)
+    it("leaves the exit code to the caller who opened the session", () => {
+        const opened: ProcessLike = {stdout: createBufWriter(), stderr: createBufWriter()}
+        nodeBridge(opened, false).send({type: "session:end", data: {success: false}})
+        assert.equal(opened.exitCode, undefined)
     })
 
     it("has nothing to disconnect", () => {
-        const bridge = nodeBridge({stdout: createBufWriter(), stderr: createBufWriter()})
+        const bridge = nodeBridge({stdout: createBufWriter(), stderr: createBufWriter()}, true)
         assert.equal(bridge.disconnect(), undefined)
     })
 })

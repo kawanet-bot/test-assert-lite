@@ -325,7 +325,7 @@ The minified build is an ES module: an import map leads the package's name to it
     import {run, session} from "test-assert-lite/session"
 
     // The report goes to console.log by default; render it as HTML in the page instead.
-    // session() comes before the first test is declared.
+    // session() comes before the first test is declared, and run() closes it.
     session({
         reporter: "html",
         output: html => document.getElementById("output").insertAdjacentHTML("beforeend", html),
