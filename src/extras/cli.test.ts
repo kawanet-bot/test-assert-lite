@@ -12,9 +12,9 @@ const TITLE = "extras/cli.test.ts"
 // The CLI reports down the realm's channel, so a test reads its stdout
 // there and leaves process.stdout, which node:test reports through, alone.
 const connectStdout = (): string[] => {
-    const out: string[] = []
-    connect({fetch: (async (path: string, init: {body: string}) => (void (path === "stdout" && out.push(init.body)), {ok: true})) as unknown as typeof fetch})
-    return out
+    const chunks: string[] = []
+    connect({fetch: (async (path: string, init: {body: string}) => (void (path === "stdout" && chunks.push(init.body)), {ok: true})) as unknown as typeof fetch})
+    return chunks
 }
 
 // What the CLI itself does between reading the arguments and running
@@ -46,9 +46,9 @@ describe(TITLE, () => {
         const fine = join(dir, "fine.mjs")
         await writeFile(broken, `import {it} from "node:test"\nit("declared before the throw", () => undefined)\nthrow new Error("at the top level")\n`)
         await writeFile(fine, `import {it} from "node:test"\nit("in the other suite", () => undefined)\n`)
-        const out = connectStdout()
+        const chunks = connectStdout()
         assert.equal(await CLI({args: ["--test", "--reporter", "tap", broken, fine]}), 1)
-        const lines = out.join("").split("\n")
+        const lines = chunks.join("").split("\n")
         const results = lines.filter(line => /^(not )?ok /.test(line))
         assert.deepEqual(results, ["ok 1 - declared before the throw", `not ok 2 - broken.mjs`, "ok 3 - in the other suite"])
         assert.ok(lines.includes("# Error: at the top level"), lines.join("\n"))
@@ -57,7 +57,7 @@ describe(TITLE, () => {
     it("runs the script -e gives in place of the files, its tests through the same hook", async () => {
         const helper = join(dir, "helper.mjs")
         await writeFile(helper, `export const name = "inline"\n`)
-        const out = connectStdout()
+        const chunks = connectStdout()
         const cwd = process.cwd()
         process.chdir(dir)
         try {
@@ -66,19 +66,19 @@ describe(TITLE, () => {
         } finally {
             process.chdir(cwd)
         }
-        const lines = out.join("").split("\n")
+        const lines = chunks.join("").split("\n")
         assert.deepEqual(lines.filter(line => /^(not )?ok /.test(line)), ["ok 1 - inline"])
     })
 
     it("leaves node:process to Node under the CLI, where a suite reads argv from it", async () => {
-        const out = connectStdout()
+        const chunks = connectStdout()
         const script = `import {it} from "node:test"\nimport {argv} from "node:process"\nit(Array.isArray(argv) ? "argv is an array" : "argv is not", () => undefined)\n`
         assert.equal(await CLI({args: ["--reporter", "tap", "-e", script]}), 0)
-        assert.ok(out.join("").includes("ok 1 - argv is an array"))
+        assert.ok(chunks.join("").includes("ok 1 - argv is an array"))
     })
 
     it("gives the suites the arguments past the file as process.argv, as node does", async () => {
-        const out = connectStdout()
+        const chunks = connectStdout()
         const argv = [...process.argv]
         try {
             const script = `import {it} from "node:test"\nimport {argv} from "node:process"\nit(argv.slice(1).join(" "), () => undefined)\n`
@@ -86,17 +86,17 @@ describe(TITLE, () => {
         } finally {
             process.argv.splice(0, process.argv.length, ...argv)
         }
-        assert.ok(out.join("").includes("ok 1 - one --two"))
+        assert.ok(chunks.join("").includes("ok 1 - one --two"))
     })
 
     it("says nothing of a script with no tests, and counts to zero for a test runner's", async () => {
         const empty = join(dir, "empty.mjs")
         await writeFile(empty, "")
-        const out = connectStdout()
+        const chunks = connectStdout()
         assert.equal(await CLI({args: ["-e", ""]}), 0)
-        assert.equal(out.join("").includes("ℹ tests"), false)
+        assert.equal(chunks.join("").includes("ℹ tests"), false)
         assert.equal(await CLI({args: ["--test", empty]}), 0)
-        assert.ok(out.join("").includes("ℹ tests 0"))
+        assert.ok(chunks.join("").includes("ℹ tests 0"))
     })
 
     it("leaves no watch behind when the port asked for is taken", async () => {
