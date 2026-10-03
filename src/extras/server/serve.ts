@@ -1,29 +1,27 @@
 // Loopback server behind the browser test CLI: runs a middleware chain
 // over node:http, as @hono/node-server runs a Hono app. It knows nothing
 // about Playwright, the suites or the files: a Node request becomes a
-// web-standard Request, the chain's Response goes back out, and every
-// response gets a line in the log.
+// web-standard Request and the chain's Response goes back out. What the
+// chain throws is a 500 with the error on stderr, what it leaves is a 404.
 
 import type {IncomingMessage} from "node:http"
 import {createServer} from "node:http"
 import type {RunServices} from "../../utils/run-services.ts"
 import {messageOf} from "../../utils/stringify.ts"
-import type {Context, MiddlewareHandler} from "./middleware.ts"
-import {createContext} from "./middleware.ts"
+import type {Context, ErrorHandler, MiddlewareHandler} from "./middleware.ts"
+import {compose, createContext} from "./middleware.ts"
 
 export interface ServeOptions {
     /** The run's streams, outcome and cleanup, shared by every part. */
     services: RunServices
-    /** The chain every request goes to, a Response returned or set on the context; unanswered is a 404. */
-    handler: MiddlewareHandler
+    /** The chain every request goes to, one middleware or several in order. Unanswered is a 404. */
+    handler: MiddlewareHandler | MiddlewareHandler[]
     /** Address to listen on; 127.0.0.1 by default. */
     host?: string
     /** Port to listen on; a free one by default. */
     port?: number
     /** What a browser reaches the server as, scheme://host[:port], when not the address listened on. */
     origin?: string
-    /** Limits access logs to unsuccessful responses. */
-    quiet?: boolean
 }
 
 export interface Server {
@@ -61,41 +59,40 @@ interface Answer {
     body: Buffer
 }
 
-// The access log line: method, URL, status, body length and the time to
-// respond, as morgan's tiny format has them, a "-" for anything missing.
-const tiny = (req: IncomingMessage, status: number, length: number, ms: number): string =>
-    [req.method, req.url, status, length, null, ms.toFixed(3), "ms"].map(quote).join(" ")
-
-const quote = (v: string | number | null | undefined) => {
-    if (v == null || v === "") return "-"
-    v = String(v)
-    if (!/["\s]/.test(v)) return v
-    v = v.replace(/"/g, "").replace(/\s+/g, " ")
-    return `"${v}"`
-}
-
 const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms))
 
 // 127.0.0.1 rather than localhost on both ends: a browser may resolve
 // localhost to ::1 while this listens on IPv4 only. Port 0 picks a free one.
 // A wildcard address listens on every interface but names none, so the
 // loopback of its family stands in; an IPv6 literal needs brackets.
-export const serve = async ({handler, quiet, services, ...options}: ServeOptions): Promise<Server> => {
+export const serve = async ({handler, services, ...options}: ServeOptions): Promise<Server> => {
     // An empty --host= is the default too, not the unspecified address.
     const host = options.host || "127.0.0.1"
     const named = host === "0.0.0.0" ? "127.0.0.1" : host === "::" ? "[::1]" : host.includes(":") ? `[${host}]` : host
     let bound = ""
 
+    const showError = (error: unknown): void => {
+        services.stderr.write(`${error instanceof Error && error.stack || messageOf(error)}\n`)
+    }
+
+    // The chain answers every request it gets, as Hono's does: an Error
+    // thrown is a 500, with the error on stderr, and what no middleware
+    // answered is a 404. A middleware outside, such as the logger, sees both.
+    const onError: ErrorHandler = (error, c) => {
+        showError(error)
+        return c.body(null, 500)
+    }
+    const chain = compose(Array.isArray(handler) ? handler : [handler], onError, c => c.notFound())
+
     // The answer as bytes, read in here: a Response body can fail on the
-    // way in as the chain can throw, and either is a 500 with the error in
-    // the log ahead of its line. A target that is not even a URL is a 400.
-    // The client draws an answer for its own request either way.
+    // way in, and that is a 500 with the error on stderr, past the chain.
+    // A target that is not even a URL is a 400. The client draws an answer
+    // for its own request either way.
     const respond = async (req: IncomingMessage): Promise<Answer> => {
         let c: Context | null = null
         try {
             c = createContext(await toRequest(req, bound))
-            const res = await handler(c, async () => undefined)
-            if (res != null && !c.finalized) c.res = res
+            await chain(c, async () => undefined)
             const response = c.finalized ? c.res : await c.notFound()
             // A record holds one value per name; Set-Cookie may come several times.
             const headers: Record<string, string | string[]> = Object.fromEntries(response.headers)
@@ -103,21 +100,15 @@ export const serve = async ({handler, quiet, services, ...options}: ServeOptions
             if (cookies.length) headers["set-cookie"] = cookies
             return {status: response.status, headers, body: Buffer.from(await response.arrayBuffer())}
         } catch (error) {
-            const log = error instanceof Error && error.stack || messageOf(error)
-            services.stderr.write(`${log}\n`)
+            showError(error)
             return {status: (c == null ? 400 : 500), headers: {}, body: Buffer.alloc(0)}
         }
     }
 
     const server = createServer((req, res) => {
-        const started = performance.now()
         void respond(req).then(({status, headers, body}) => {
             res.writeHead(status, {...headers, "content-length": String(body.length)})
             res.end(body)
-            if (!quiet || status >= 400) {
-                const log = tiny(req, status, body.length, performance.now() - started)
-                services.stderr.write(`${log}\n`)
-            }
         })
     })
 

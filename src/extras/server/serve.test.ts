@@ -7,6 +7,7 @@ import {join} from "node:path"
 import {after, before, describe, it} from "node:test"
 import {createBufWriter} from "../../utils/buf-writer.ts"
 import {createRunServices} from "../../utils/run-services.ts"
+import {logger} from "./logger.ts"
 import {compose} from "./middleware.ts"
 import type {Server} from "./serve.ts"
 import {serve} from "./serve.ts"
@@ -112,7 +113,7 @@ describe(TITLE, () => {
         await writeFile(join(dir, "elsewhere", "suite.mjs"), "export const suite = 1")
         await writeFile(join(dir, "secret.json"), "{}")
         server = await serve({
-            handler: compose([
+            handler: [logger({stderr}), compose([
                 async (c, next) => {
                     if (c.req.method !== "POST" || c.req.path !== "/@tal/run/1/stdout") return next()
                     posted.push(await c.req.text())
@@ -126,7 +127,7 @@ describe(TITLE, () => {
                 serveStatic({path: "/dist/", root: join(dir, "dist")}),
                 serveStatic({path: "/@tal/tests/0/my suite.mjs", root: join(dir, "elsewhere", "suite.mjs")}),
                 serveStatic({path: "/", root: join(dir, "htdocs")}),
-            ]),
+            ])],
             services: sharedServices,
         })
     })
@@ -283,12 +284,13 @@ describe(TITLE, () => {
         assert.match(lines.shift()!, /^GET \/boom 500 0 - /)
     })
 
+    // The body is read past the chain, so the log has what the chain answered.
     it("answers 500 when the Response's body fails to be read, rather than hanging", async () => {
         stderr.read()
         assert.equal((await get(server.origin, "/broken")).status, 500)
         const lines = stderr.read().split(NEWLINE)
+        assert.match(lines.shift()!, /^GET \/broken 200 - - /)
         assert.match(lines.shift()!, /^Error: broken body\n/)
-        assert.match(lines.shift()!, /^GET \/broken 500 0 - /)
     })
 
     it("answers 400 to a target that is not a path, or a Host that is no host", async () => {
@@ -356,41 +358,23 @@ describe(TITLE, () => {
         }
     })
 
-    // Quiet keeps unsuccessful responses and their errors in the log.
-    it("logs the 4xx and 5xx lines alone under quiet, the errors with them", async () => {
-        const stderr = createBufWriter()
-        const services = createRunServices({stderr})
-        const quiet = await serve({
-            handler: compose([
-                async (c, next) => (c.req.path === "/boom" ? Promise.reject(new Error("boom")) : next()),
-                serveStatic({path: "/", root: join(dir, "htdocs")}),
-            ]),
-            quiet: true,
-            services,
+    it("takes several middleware in order, the first outside", async () => {
+        const marks: string[] = []
+        const ordered = await serve({
+            handler: [
+                async (_, next) => {
+                    marks.push("outer")
+                    await next()
+                    marks.push("outer:after")
+                },
+                async c => {
+                    marks.push("inner")
+                    return c.body("inner")
+                },
+            ],
+            services: sharedServices,
         })
-        try {
-            assert.equal((await get(quiet.origin, "/page.html")).status, 200)
-            assert.equal((await get(quiet.origin, "/missing.html")).status, 404)
-            assert.equal((await get(quiet.origin, "/boom")).status, 500)
-        } finally {
-            await services.cleanup()
-        }
-        const lines = stderr.read().split(NEWLINE)
-        assert.match(lines.shift()!, /^GET \/missing\.html 404 0 - /)
-        assert.match(lines.shift()!, /^Error: boom\n/)
-        assert.match(lines.shift()!, /^GET \/boom 500 0 - /)
-        assert.equal(lines.length, 0)
-    })
-
-    it("logs one line per response, in morgan's tiny format", async () => {
-        stderr.read()
-        await get(server.origin, "/dist/lib.mjs")
-        await get(server.origin, "/missing.html")
-        await get(server.origin, "/dist/notes.txt")
-        const lines = stderr.read().split(NEWLINE)
-        assert.match(lines.shift()!, /^GET \/dist\/lib.mjs 200 20 - \d+\.\d+ ms/)
-        assert.match(lines.shift()!, /^GET \/missing.html 404 0 - \d+\.\d+ ms/)
-        assert.match(lines.shift()!, /^GET \/dist\/notes.txt 403 0 - \d+\.\d+ ms/)
-        assert.equal(lines.length, 0)
+        assert.equal((await get(ordered.origin, "/")).body, "inner")
+        assert.deepEqual(marks, ["outer", "inner", "outer:after"])
     })
 })

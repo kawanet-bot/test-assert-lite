@@ -110,7 +110,7 @@ describe(TITLE, () => {
         const services = createRunServices({stdout, stderr: bufStderr})
         const files = [join(dir, "tests", "my suite.mjs")]
         const mapped = createApp({session: {files}, mount: join(dir, "mapped"), services})
-        const running = await serve({handler: mapped.handler, services, quiet: true})
+        const running = await serve({handler: mapped.handler, services})
         try {
             const index = (await get(running.origin + "/")).body
             assert.equal(index.split("importmap").length - 1, 1)
