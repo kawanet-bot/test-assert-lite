@@ -288,7 +288,7 @@ export declare namespace TAL {
         /** Where the formatted text goes, the run's stdout unless given. */
         output?: OutputFn
         /** Reports the run to the CLI over this bridge. Nothing is sent without one. */
-        bridge?: BridgeAPI
+        channel?: Channel
         /**
          * Takes the errors outside the tests until run(). The uncaught
          * exceptions and unhandled rejections of the window or the process
@@ -329,14 +329,14 @@ export declare namespace TAL {
         run(): Promise<SessionResult>
 
         /** Makes the bridge to the CLI over the fetch given, for session() to report with. */
-        connect: (options?: {fetch?: typeof fetch}) => BridgeAPI
+        connect: (options?: {fetch?: typeof fetch}) => Channel
     }
 
-    // --- session bridge ---
+    // --- session channel ---
 
     // The page's side of a CLI run, shaped after a child process: its
     // streams, and a channel for messages.
-    interface BridgeAPI {
+    interface Channel {
         /** The CLI's stdout and stderr, as the page writes them. */
         stdout: Writer
         stderr: Writer
@@ -353,8 +353,6 @@ export declare namespace TAL {
         | {type: "session:begin", data?: undefined}
         | {type: "session:end", data: SessionResult}
 
-    // The paths under the run's URL that the bridge posts to.
-    type BridgeChannel = "stdout" | "stderr" | "send"
 
     // --- harness ---
 

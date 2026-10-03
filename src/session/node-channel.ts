@@ -5,7 +5,7 @@
 
 import type {TAL} from "test-assert-lite"
 
-/** The parts of a Node process the bridge speaks to. */
+/** The parts of a Node process the channel speaks to. */
 export interface ProcessLike {
     stdout: TAL.Writer
     stderr: TAL.Writer
@@ -19,7 +19,7 @@ type SessionEventMap = {[T in SessionEventType]: (data: SessionEventData<T>) => 
 const NOP = () => undefined
 
 /** `implicitSession` says a declaration opened the session, so nobody holds its result. */
-export const nodeBridge = (proc: ProcessLike, implicitSession: boolean): TAL.BridgeAPI => {
+export const nodeChannel = (proc: ProcessLike, implicitSession: boolean): TAL.Channel => {
     const eventMap: SessionEventMap = {
         "session:begin": NOP,
         "session:end": (result) => {

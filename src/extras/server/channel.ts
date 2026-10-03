@@ -25,6 +25,9 @@ export interface Channel {
     handler: (c: ContextLike, next: Next) => Promise<Response | void>
 }
 
+// The members of the channel that carry something, each a path under the run's URL.
+type ChannelName = Exclude<keyof TAL.Channel, "disconnect">
+
 type SessionEventType = TAL.SessionEvent["type"]
 
 type SessionEventData<T extends SessionEventType> = Extract<TAL.SessionEvent, {type: T}>["data"]
@@ -76,7 +79,7 @@ export const createChannel = ({prefix, services, timeout, singleRun = true}: Cha
     const eventTypes = Object.keys(eventMap)
     const isSessionEvent = (v: unknown): v is TAL.SessionEvent => eventTypes.includes((v as TAL.SessionEvent)?.type)
 
-    const channels: Record<TAL.BridgeChannel, (body: string) => undefined | number> = {
+    const channels: Record<ChannelName, (body: string) => undefined | number> = {
         stdout: (body) => void services.stdout.write(body),
         stderr: (body) => void services.stderr.write(body),
         send: <T extends SessionEventType>(body: string) => {
@@ -94,7 +97,7 @@ export const createChannel = ({prefix, services, timeout, singleRun = true}: Cha
     }
 
     const channelNames = Object.keys(channels)
-    const isChannelName = (v: string): v is TAL.BridgeChannel => channelNames.includes(v)
+    const isChannelName = (v: string): v is ChannelName => channelNames.includes(v)
 
     const handler = async (c: ContextLike, next: Next) => {
         if (!c.req.path.startsWith(prefix)) return next()
