@@ -8,12 +8,17 @@ import {channelOverFetch} from "./session/fetch-channel.ts"
 import {createSessions} from "./session/session.ts"
 import {createHarnessState} from "./session/state.ts"
 import {createRegistrar} from "./suite/registrar.ts"
+import {createConnectWriter, pureWriter} from "./utils/buf-writer.ts"
 
 // Binds everything the package exposes to one tree.
 export const createTAL: typeof declared.createTAL = () => {
     const state = createHarnessState()
     const {assert, tca} = createAssert()
-    const {session, schedule, run} = createSessions(state, tca)
+    // The host's streams as a script sees them: one pair for the harness's
+    // life, led to each session's channel in turn.
+    const stdout = createConnectWriter()
+    const stderr = createConnectWriter()
+    const {session, schedule, run} = createSessions(state, tca, {stdout, stderr})
     const registrar = createRegistrar(state, schedule)
     const reporter: TAL.Reporter = {spec, tap, html}
 
@@ -33,6 +38,7 @@ export const createTAL: typeof declared.createTAL = () => {
 
     return {
         assert,
+        proc: {stdout: pureWriter(stdout), stderr: pureWriter(stderr)},
         reporter,
         session: {connect, load, run, session},
         test: registrar,

@@ -5,7 +5,7 @@ import {join, resolve} from "node:path"
 import {after, before, describe, it} from "node:test"
 import {pathToFileURL} from "node:url"
 import type {ImportBase} from "./imports.ts"
-import {ImportAliasItem, ImportMapItem, Imports, importMapItems, readImportMap} from "./imports.ts"
+import {ImportAliasItem, ImportMapItem, Imports, NodeImports, importMapItems, readImportMap} from "./imports.ts"
 import {createFiles} from "./server/files.ts"
 
 const TITLE = "extras/imports.test.ts"
@@ -19,7 +19,7 @@ const mapped = (specifier: string, address: unknown): ImportMapItem => new Impor
 const serveFor = (...items: ImportBase[]): ((file: string) => string) => createFiles(new Imports(items).paths()).urlOf
 const unhash = (address: string | undefined): string => address?.replace(/\/[0-9a-f]{9}\//, "/xxxxxxxxx/") || ""
 
-const DEFAULTS = [
+const COMMON_IMPORTS = [
     "test-assert-lite",
     "test-assert-lite/test",
     "test-assert-lite/assert",
@@ -28,9 +28,14 @@ const DEFAULTS = [
     "test-assert-lite/reporter/spec",
     "test-assert-lite/reporter/tap",
     "test-assert-lite/session",
+    "test-assert-lite/process",
     "node:test",
     "node:assert",
     "node:assert/strict",
+] as const
+
+const BROWSER_IMPORTS = [
+    "node:process",
 ] as const
 
 describe(TITLE, () => {
@@ -153,9 +158,15 @@ describe(TITLE, () => {
     describe("the list", () => {
         it("starts with this package's defaults, which a later item takes over", () => {
             const list = new Imports([alias("node:test=./my-test.mjs")])
-            assert.deepEqual([...list.entries().keys()], DEFAULTS)
+            assert.deepEqual([...list.entries().keys()], [...COMMON_IMPORTS, ...BROWSER_IMPORTS])
             assert.equal(list.entries().get("node:test")?.target, "./my-test.mjs")
             assert.equal(new Imports([]).entries().get("node:test")?.getAddress(serveFor()), "/@tal/exports/test.js")
+        })
+
+        it("maps node:process for a page only, where Node has its own", () => {
+            assert.deepEqual([...new NodeImports([]).entries().keys()], COMMON_IMPORTS)
+            assert.equal(new NodeImports([]).entries().get("node:process"), undefined)
+            assert.equal(new Imports([]).entries().get("node:process")?.getAddress(serveFor()), "/@tal/exports/process.js")
         })
 
         it("names every path item's file once, losers included, and resolves each specifier to its last item", () => {
@@ -167,7 +178,7 @@ describe(TITLE, () => {
             ])
             assert.deepEqual(list.paths(), [resolve("one.mjs"), resolve("maps", "two.js")])
             assert.equal(list.entries().get("a")?.target, "./two.js")
-            assert.equal(list.entries().size, DEFAULTS.length + 3)
+            assert.equal(list.entries().size, COMMON_IMPORTS.length + BROWSER_IMPORTS.length + 3)
         })
 
         it("gives a page this package's names and each specifier's address", () => {
@@ -180,9 +191,9 @@ describe(TITLE, () => {
         })
 
         it("refuses for a mode what the resolving item cannot be there, not what a later item took over", () => {
-            assert.deepEqual(new Imports([mapped("r", "/r.js"), alias("u=https://x/y.js")]).refusals("browser"), [])
-            assert.equal(new Imports([mapped("r", "/r.js"), alias("u=https://x/y.js")]).refusals("node").length, 2)
-            assert.deepEqual(new Imports([mapped("r", "/r.js"), alias("r=./local.mjs")]).refusals("node"), [])
+            assert.deepEqual(new Imports([mapped("r", "/r.js"), alias("u=https://x/y.js")]).refusals(), [])
+            assert.equal(new NodeImports([mapped("r", "/r.js"), alias("u=https://x/y.js")]).refusals().length, 2)
+            assert.deepEqual(new NodeImports([mapped("r", "/r.js"), alias("r=./local.mjs")]).refusals(), [])
         })
     })
 })

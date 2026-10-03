@@ -70,6 +70,20 @@ describe(TITLE, () => {
         assert.deepEqual(lines.filter(line => /^(not )?ok /.test(line)), ["ok 1 - inline"])
     })
 
+    it("leaves node:process to Node under the CLI, where a suite reads argv from it", async () => {
+        const chunks: string[] = []
+        const write = process.stdout.write
+        process.stdout.write = ((text: string) => !!chunks.push(text)) as typeof write
+        try {
+            const script = `import {it} from "node:test"\nimport {argv} from "node:process"\nit(Array.isArray(argv) ? "argv is an array" : "argv is not", () => undefined)\n`
+            assert.equal(await CLI({args: ["--reporter", "tap", "-e", script]}), 0)
+        } finally {
+            process.stdout.write = write
+        }
+        // node:test's own frames share this stdout, so the line is looked for, not the shape.
+        assert.ok(chunks.join("").includes("ok 1 - argv is an array"))
+    })
+
     it("leaves no watch behind when the port asked for is taken", async () => {
         const taken = createServer()
         await new Promise<void>(listening => taken.listen(0, "127.0.0.1", listening))

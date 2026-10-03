@@ -14,7 +14,7 @@ interface DelayedWriter extends TAL.Writer {
 
 // Holds the text until a writer is connected, then passes it through as it
 // comes. Disconnected, it holds again.
-interface ConnectWriter extends TAL.Writer {
+export interface ConnectWriter extends TAL.Writer {
     connect: (writer: TAL.Writer) => void
     disconnect: () => void
 }

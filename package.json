@@ -55,6 +55,11 @@
       "module-sync": "./exports/test.js",
       "import": "./exports/test.js"
     },
+    "./process": {
+      "types": "./exports/process.d.ts",
+      "module-sync": "./exports/process.js",
+      "import": "./exports/process.js"
+    },
     "./assert": {
       "types": "./exports/assert.d.ts",
       "module-sync": "./exports/assert.js",
