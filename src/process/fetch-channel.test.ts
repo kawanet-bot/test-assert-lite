@@ -12,7 +12,7 @@ const NEWLINE = /(?<=\n)(?=\S)/
 
 type FetchLike = (url: string, init: {method: "POST", body: string}) => Promise<{ok: boolean}>
 
-const testStub = (session: TAL.SessionAPI, stubFetch?: FetchLike) => {
+const testStub = (proc: TAL.ProcessAPI, stubFetch?: FetchLike) => {
     const logs: [string, string][] = []
 
     stubFetch ??= async (path, init) => {
@@ -20,7 +20,7 @@ const testStub = (session: TAL.SessionAPI, stubFetch?: FetchLike) => {
         return {ok: true}
     }
 
-    const channel = session.connect({fetch: stubFetch as typeof fetch})
+    const channel = proc.connect({fetch: stubFetch as typeof fetch})
 
     const output = () => undefined
 
@@ -35,8 +35,8 @@ const FAILURE = JSON.stringify({type: "session:end", data: {success: false}})
 
 describe(TITLE, {timeout: 1000}, () => {
     it("posts begin first, then the streams, then end, in order", async () => {
-        const {session} = createTAL()
-        const {logs, channel, output} = testStub(session)
+        const {session, proc} = createTAL()
+        const {logs, channel, output} = testStub(proc)
         session.session({channel, output})
         channel.stdout.write("one\n")
         channel.stderr.write("warned\n")
@@ -52,8 +52,8 @@ describe(TITLE, {timeout: 1000}, () => {
     })
 
     it("gathers a burst of lines into one request per stream", async () => {
-        const {session} = createTAL()
-        const {logs, channel, output} = testStub(session)
+        const {session, proc} = createTAL()
+        const {logs, channel, output} = testStub(proc)
         session.session({channel, output})
         for (let i = 0; i < 100; i++) channel.stdout.write(`line ${i}\n`)
         await session.run()
@@ -70,8 +70,8 @@ describe(TITLE, {timeout: 1000}, () => {
     })
 
     it("flushes on its own while the run goes on", async () => {
-        const {session} = createTAL()
-        const {logs, channel, output} = testStub(session)
+        const {session, proc} = createTAL()
+        const {logs, channel, output} = testStub(proc)
         session.session({channel, output})
         channel.stdout.write("early\n")
         await sleep(200)
@@ -87,8 +87,8 @@ describe(TITLE, {timeout: 1000}, () => {
     })
 
     it("sends the run's verdict: false once a test failed", async () => {
-        const {session, test} = createTAL()
-        const {logs, channel, output} = testStub(session)
+        const {session, test, proc} = createTAL()
+        const {logs, channel, output} = testStub(proc)
         session.session({channel, output})
         test.it("fails", () => {
             throw new Error("no")
@@ -98,8 +98,8 @@ describe(TITLE, {timeout: 1000}, () => {
     })
 
     it("sends text as given", async () => {
-        const {session} = createTAL()
-        const {logs, channel, output} = testStub(session)
+        const {session, proc} = createTAL()
+        const {logs, channel, output} = testStub(proc)
         session.session({channel, output})
         channel.stderr.write("as ")
         channel.stderr.write("given\n")
@@ -112,8 +112,8 @@ describe(TITLE, {timeout: 1000}, () => {
     })
 
     it("text written before session() goes out once the session is open", async () => {
-        const {session} = createTAL()
-        const {logs, channel, output} = testStub(session)
+        const {session, proc} = createTAL()
+        const {logs, channel, output} = testStub(proc)
         channel.stdout.write("early\n")
         channel.stderr.write("warned\n")
         session.session({channel, output})
@@ -127,8 +127,8 @@ describe(TITLE, {timeout: 1000}, () => {
     })
 
     it("does not reject when the fetch does", async () => {
-        const {session} = createTAL()
-        const {channel, output} = testStub(session, async () => {
+        const {session, proc} = createTAL()
+        const {channel, output} = testStub(proc, async () => {
             throw new TypeError("fetch failed")
         })
         session.session({channel, output})
@@ -139,7 +139,7 @@ describe(TITLE, {timeout: 1000}, () => {
 
     it("takes what a script writes to proc, from any harness, once connected", async () => {
         const {session, proc} = createTAL()
-        const {logs, output} = testStub(session)
+        const {logs, output} = testStub(proc)
         proc.stdout.write("script out\n")
         createTAL().proc.stderr.write("script err\n")
         session.session({output})
@@ -177,8 +177,8 @@ describe(TITLE, {timeout: 1000}, () => {
 
     // A console of the test's own stands in for the page's.
     it("takes a console: log to stdout, error to stderr, a call a line, and gives it back at the end", async () => {
-        const {session} = createTAL()
-        const {logs, channel, output} = testStub(session)
+        const {session, proc} = createTAL()
+        const {logs, channel, output} = testStub(proc)
         const fake = {
             debug: (..._: unknown[]) => undefined,
             log: (..._: unknown[]) => undefined,
@@ -210,8 +210,8 @@ describe(TITLE, {timeout: 1000}, () => {
     })
 
     it("writes a heartbeat to stderr at the interval given, while quiet", async () => {
-        const {session} = createTAL()
-        const {logs, channel, output} = testStub(session)
+        const {session, proc} = createTAL()
+        const {logs, channel, output} = testStub(proc)
         session.session({channel, output, heartbeat: 20})
 
         for (let i = 0; i < 10; i++) {

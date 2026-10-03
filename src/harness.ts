@@ -1,7 +1,7 @@
 import type * as declared from "test-assert-lite"
 import type {TAL} from "test-assert-lite"
 import {createAssert} from "./assert/assert.ts"
-import {connect, proc} from "./process/proc.ts"
+import {proc} from "./process/proc.ts"
 import {html} from "./reporter/html.ts"
 import {spec} from "./reporter/spec.ts"
 import {tap} from "./reporter/tap.ts"
@@ -33,7 +33,7 @@ export const createTAL: typeof declared.createTAL = () => {
         assert,
         proc,
         reporter,
-        session: {connect, load, run, session},
+        session: {load, run, session},
         test: registrar,
     }
 }

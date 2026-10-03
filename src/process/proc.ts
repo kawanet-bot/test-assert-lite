@@ -12,8 +12,7 @@ import {nodeChannel} from "./node-channel.ts"
 
 let channel: TAL.Channel = hasProcess() ? nodeChannel(process) : consoleChannel(consoleWriters(globalThis.console, saveConsole(globalThis.console)))
 
-/** Makes the channel to the host over the fetch given, for the sessions to come. */
-export const connect = (options?: {fetch?: typeof fetch}): TAL.Channel => (channel = channelOverFetch(options?.fetch ?? fetch))
+const connect: TAL.ProcessAPI["connect"] = (options) => (channel = channelOverFetch(options?.fetch ?? fetch))
 
 /** The realm's channel for one session. The verdict leaves the exit code when nobody opened the session to read it. */
 export const sessionChannel = (implicitSession: boolean): TAL.Channel => withExitCode(channel, hasProcess() && implicitSession ? process : null)
@@ -21,4 +20,5 @@ export const sessionChannel = (implicitSession: boolean): TAL.Channel => withExi
 export const proc: TAL.ProcessAPI = {
     stdout: {write: chunk => channel.stdout.write(chunk)},
     stderr: {write: chunk => channel.stderr.write(chunk)},
+    connect,
 }

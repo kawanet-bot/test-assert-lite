@@ -317,7 +317,7 @@ export declare namespace TAL {
     }
 
     // The session's own entry, `test-assert-lite/session`: opening it,
-    // loading the suites into it, running it, and reaching its host.
+    // loading the suites into it, and running it.
     interface SessionAPI {
         /** Opens a new session for the following tests. */
         session(options?: SessionOptions): void
@@ -327,9 +327,6 @@ export declare namespace TAL {
 
         /** Runs every registered test, and closes the session. */
         run(): Promise<SessionResult>
-
-        /** Makes the channel to the host over the fetch given, for session() to report with. */
-        connect: (options?: {fetch?: typeof fetch}) => Channel
     }
 
     // --- process ---
@@ -341,6 +338,9 @@ export declare namespace TAL {
         /** The host's stdout and stderr, down the realm's channel. */
         stdout: Writer
         stderr: Writer
+
+        /** Makes the realm's channel to the host over the fetch given, for the sessions to come. */
+        connect: (options?: {fetch?: typeof fetch}) => Channel
     }
 
     // --- session channel ---

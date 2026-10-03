@@ -3,3 +3,4 @@ import type {TAL} from "test-assert-lite"
 
 export declare const stdout: TAL.ProcessAPI["stdout"]
 export declare const stderr: TAL.ProcessAPI["stderr"]
+export declare const connect: TAL.ProcessAPI["connect"]
