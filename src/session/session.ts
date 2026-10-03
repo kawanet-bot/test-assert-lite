@@ -26,8 +26,8 @@ interface Cycle {
     services: RunServices
     // What the run's events go through, on the way to the reporter.
     report: ReportStream
-    // Tells the CLI the verdict. Without a bridge there is nothing to tell.
-    close: (result: SessionResult) => Promise<void>
+    // Where the run's text and verdict go, let go of once the verdict is out.
+    client: TAL.BridgeAPI
     run: Run
     startedAt: number
     held: boolean
@@ -81,13 +81,8 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
 
         const showError = (err: Error | null) => void (err && services.stderr.write(`${stringify(err)}\n`))
 
+        // A word out as the session opens. Nothing waits for it, so session() stays synchronous.
         client.send({type: "session:begin"}, showError)
-
-        const close: Cycle["close"] = (data) => {
-            return new Promise<void>((resolve, reject) => {
-                client.send({type: "session:end", data}, (err) => (err ? reject(err) : resolve()))
-            }).catch(showError).finally(() => client.disconnect())
-        }
 
         // Node's own runner ends the run as the process would exit. Here too.
         // A run() already under way, or done, leaves nothing for this to do.
@@ -103,7 +98,7 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
             services.onCleanup(() => process.off("beforeExit", onExit))
         }
 
-        return {services, report, close, run: state, startedAt: performance.now(), held: true, walk: null, closing: false, failure: undefined}
+        return {services, report, client, run: state, startedAt: performance.now(), held: true, walk: null, closing: false, failure: undefined}
     }
 
     const session: TAL.SessionAPI["session"] = (options = {}) => {
@@ -152,13 +147,22 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
         current.held = false
         schedule()
         current.closing = true
-        const {services, close} = current
+        const {services, client} = current
         try {
             services.resolve(await conclude(current))
         } catch (error) {
             services.reject(error)
         }
-        await services.finished.then(close, () => close({success: false}))
+        // The verdict goes out once the cleanups are through, a failure as one
+        // too. The client is let go of once it has taken the word.
+        const result = await services.finished.then(result => result, (): SessionResult => ({success: false}))
+        await new Promise<void>(resolve => {
+            client.send({type: "session:end", data: result}, (err) => {
+                if (err) services.stderr.write(`${stringify(err)}\n`)
+                resolve()
+            })
+        })
+        client.disconnect()
         // A partially executed registry is unsafe to retry.
         resetHarnessState(harness)
         cycle = null
