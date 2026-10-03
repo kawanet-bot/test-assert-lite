@@ -108,5 +108,63 @@ describe(TITLE, () => {
                 await next()
             }])(context(), async () => undefined), /next\(\) called multiple times/)
         })
+
+        it("answers an Error thrown with onError, where the middleware outside sees it", async () => {
+            const seen: number[] = []
+            const errors: string[] = []
+            const c = context()
+            await compose([
+                async (c, next) => {
+                    await next()
+                    seen.push(c.res.status)
+                },
+                async () => {
+                    throw new Error("boom")
+                },
+            ], (err, c) => {
+                errors.push(err.message)
+                return c.body(null, 500)
+            })(c, async () => undefined)
+            assert.equal(c.res.status, 500)
+            assert.deepEqual(seen, [500])
+            assert.deepEqual(errors, ["boom"])
+        })
+
+        it("lets onError's answer stand over one already given", async () => {
+            const c = context()
+            await compose([
+                async c => {
+                    c.res = c.body("half")
+                    throw new Error("after")
+                },
+            ], (_, c) => c.body(null, 500))(c, async () => undefined)
+            assert.equal(c.res.status, 500)
+        })
+
+        it("answers what the chain leaves with onNotFound, where the middleware outside sees it", async () => {
+            const seen: number[] = []
+            const c = context()
+            await compose([
+                async (c, next) => {
+                    await next()
+                    seen.push(c.res.status)
+                },
+                async (_, next) => next(),
+            ], undefined, c => c.body(null, 404))(c, async () => undefined)
+            assert.equal(c.res.status, 404)
+            assert.deepEqual(seen, [404])
+            const answered = context()
+            await compose([async c => c.body("mine")], undefined, c => c.body(null, 404))(answered, async () => undefined)
+            assert.equal(answered.res.status, 200)
+        })
+
+        it("lets a throw through without onError, and one that is not an Error with it", async () => {
+            await assert.rejects(compose([async () => {
+                throw new Error("boom")
+            }])(context(), async () => undefined), /boom/)
+            await assert.rejects(compose([async () => {
+                throw "text"
+            }], (_, c) => c.body(null, 500))(context(), async () => undefined), /^text$/)
+        })
     })
 })

@@ -81,5 +81,7 @@ export const serveStatic = ({path: at, root}: ServeStaticOptions): MiddlewareHan
     if (c.req.method !== "GET" && c.req.method !== "HEAD") return c.body(null, 405, {allow: "GET, HEAD"})
     const type = TYPES[extname(located.path)]
     if (type == null) return c.body(null, 403)
-    return c.body(await readFile(real), 200, {"content-type": withCharset(type)})
+    // The length goes in here, where the bytes are, for a reader inside the chain.
+    const bytes = await readFile(real)
+    return c.body(bytes, 200, {"content-type": withCharset(type), "content-length": String(bytes.byteLength)})
 }

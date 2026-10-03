@@ -19,6 +19,15 @@ describe(TITLE, () => {
         assert.equal(out, "<title>a &#60;b&#62; &#38; &#39;c&#39;</title><h1>a &#60;b&#62; &#38; &#39;c&#39;</h1><p title=\"{{title}}\">{{title}}x</p>")
     })
 
+    it("drops the Content-Length of the page it rewrote", async () => {
+        const page = "<title>{{title}}</title>"
+        const answer: MiddlewareHandler = async c => c.body(page, 200, {"content-type": "text/html", "content-length": String(page.length)})
+        const c = createContext(new Request("http://127.0.0.1/page.html"))
+        await compose([withTitle("named"), answer])(c, async () => undefined)
+        assert.equal(await c.res.text(), "<title>named</title>")
+        assert.equal(c.res.headers.get("content-length"), null)
+    })
+
     it("leaves anything but a 200 text/html answer as it came", async () => {
         assert.equal(await through("x", "<b>{{title}}</b>", "text/plain"), "<b>{{title}}</b>")
         assert.equal(await through("x", "<b>{{title}}</b>", "text/html", 404), "<b>{{title}}</b>")

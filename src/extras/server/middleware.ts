@@ -10,6 +10,12 @@ export type Next = () => Promise<void>
 /** Answers with a Response, or leaves it to the rest of the chain with next(). */
 export type MiddlewareHandler = (c: Context, next: Next) => Promise<Response | void>
 
+/** Answers for an Error a handler threw, as Hono's app.onError() does. */
+export type ErrorHandler = (err: Error, c: Context) => Response | Promise<Response>
+
+/** Answers for a request the chain left unanswered, as Hono's app.notFound() does. */
+export type NotFoundHandler = (c: Context) => Response | Promise<Response>
+
 /** The request as the middleware sees it: the parts of Hono's HonoRequest. */
 export interface HonyRequest {
     /** The web-standard Request. */
@@ -104,15 +110,31 @@ export const createContext = (request: Request): Context => {
 /**
  * Chains middleware into one: each runs in turn until one answers, and the
  * chain's own next() follows the last. Calling next() twice is an error.
+ * With onError and onNotFound, an Error thrown and a request left unanswered
+ * become Responses inside the chain, where a middleware outside sees them.
  */
-export const compose = (handlers: MiddlewareHandler[]): MiddlewareHandler => (c, next) => {
+export const compose = (handlers: MiddlewareHandler[], onError?: ErrorHandler, onNotFound?: NotFoundHandler): MiddlewareHandler => (c, next) => {
     let index = -1
     const dispatch = async (i: number): Promise<void> => {
         if (i <= index) throw new Error("next() called multiple times")
         index = i
         const handler = handlers[i]
-        const res = await (handler != null ? handler(c, () => dispatch(i + 1)) : next())
-        if (res != null && !c.finalized) c.res = res
+        let res: Response | void = undefined
+        let isError = false
+        if (handler != null) {
+            try {
+                res = await handler(c, () => dispatch(i + 1))
+            } catch (error) {
+                if (onError == null || !(error instanceof Error)) throw error
+                res = await onError(error, c)
+                isError = true
+            }
+        } else {
+            await next()
+            if (!c.finalized && onNotFound != null) res = await onNotFound(c)
+        }
+        // An error's answer stands even over one already given, as in Hono.
+        if (res != null && (!c.finalized || isError)) c.res = res
     }
     return dispatch(0)
 }

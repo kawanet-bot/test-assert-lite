@@ -59,6 +59,15 @@ describe(TITLE, () => {
         assert.equal((await through({end: "<end>"}, "<head><script>1</script></head>", "text/html")).body, "<head><script>1</script><end></head>")
     })
 
+    it("drops the Content-Length of the page it rewrote", async () => {
+        const page = "<html><head></head></html>"
+        const answer: MiddlewareHandler = async c => c.body(page, 200, {"content-type": "text/html", "content-length": String(page.length)})
+        const c = createContext(new Request("http://127.0.0.1/page.html"))
+        await compose([withHead("<meta name=x>"), answer])(c, async () => undefined)
+        assert.equal(await c.res.text(), "<html><head><meta name=x></head></html>")
+        assert.equal(c.res.headers.get("content-length"), null)
+    })
+
     it("leaves a page without a </head> as it came", async () => {
         assert.equal((await through("<meta>", "<p>bare</p>", "text/html")).body, "<p>bare</p>")
     })

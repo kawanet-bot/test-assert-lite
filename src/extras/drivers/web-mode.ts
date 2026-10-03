@@ -1,6 +1,7 @@
 import {createRunServices} from "../../utils/run-services.ts"
 import type {ModeOptions, WebModeOptions} from "../mode-options.ts"
 import {createApp} from "../server/app.ts"
+import {logger} from "../server/logger.ts"
 import {serve} from "../server/serve.ts"
 import {runInPlaywright} from "./playwright.ts"
 import {runInWebDriver} from "./webdriver.ts"
@@ -29,11 +30,10 @@ export const runWebMode = async (options: ModeOptions & WebModeOptions) => {
         // A server that cannot listen, for example because its port is taken,
         // is an error to show. The application's watch must not keep it running.
         const server = await serve({
-            handler: app.handler,
+            handler: [logger({stderr: services.stderr, quiet: session.quiet}), app.handler],
             host: options.host,
             port: options.port,
             origin: options.origin,
-            quiet: session.quiet,
             services,
         })
 

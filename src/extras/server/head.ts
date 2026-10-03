@@ -47,5 +47,8 @@ export const withHead = (markup: Markup | ((html: string, path: string) => Marku
     const script = ahead && close >= 0 ? html.slice(0, close).search(FIRST_SCRIPT) : -1
     const at = script < 0 ? close : script
     const out = close < 0 ? html : html.slice(0, at) + ahead + html.slice(at, close) + end + html.slice(close)
-    c.res = new Response(out, {status, headers})
+    // The length is the old body's, not this one's.
+    const rewritten = new Headers(headers)
+    rewritten.delete("content-length")
+    c.res = new Response(out, {status, headers: rewritten})
 }
