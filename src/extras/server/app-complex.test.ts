@@ -65,6 +65,7 @@ describe(TITLE, () => {
         const files = [join(dir, "tests", "my suite.mjs"), join(dir, "tests", "second.mjs")]
         app = createApp({
             session: {files},
+            argv: ["tests/my suite.mjs", "tests/second.mjs", "--two"],
             scripts: [join(dir, "tests", "setup.js"), join(dir, "tests", "set+up#2.js")],
             imports: new Imports([
                 new ImportAliasItem(`mod=${join(dir, "lib", "mod.mjs")}`, cwd),
@@ -103,8 +104,9 @@ describe(TITLE, () => {
         const second = at(`<script src="${tests}set%2Bup%232.js"></script>`)
         assert.ok(map < config && config < script && script < second)
         assert.equal(head.includes('<script type="module" src='), false)
-        const {session} = JSON.parse(head.slice(head.indexOf("{", config), head.indexOf("</script>", config)))
+        const {process, session} = JSON.parse(head.slice(head.indexOf("{", config), head.indexOf("</script>", config)))
         assert.deepEqual(session, {files: [`${tests}my%20suite.mjs`, `${tests}second.mjs`]})
+        assert.deepEqual(process, {argv: ["test-assert", "tests/my suite.mjs", "tests/second.mjs", "--two"]})
         const {imports} = JSON.parse(head.slice(head.indexOf("{", map), head.indexOf("</script>", map)))
         assert.equal(imports["node:test"], "/@tal/exports/test.js")
         assert.equal(imports["node:process"], "/@tal/exports/process.js")

@@ -144,6 +144,16 @@ describe(TITLE, {timeout: 1000}, () => {
         assert.equal((await session.run()).success, true)
     })
 
+    it("takes the arguments on connect(), into the array a script already holds", () => {
+        const {proc} = createTAL()
+        const held = proc.argv
+        proc.connect({fetch: (async () => ({ok: true})) as unknown as typeof fetch, argv: ["test-assert", "/suite.mjs", "one"]})
+        assert.deepEqual(held, ["test-assert", "/suite.mjs", "one"])
+        assert.equal(createTAL().proc.argv, held)
+        proc.connect({fetch: (async () => ({ok: true})) as unknown as typeof fetch})
+        assert.deepEqual(held, ["test-assert", "/suite.mjs", "one"])
+    })
+
     it("takes what a script writes to proc, from any harness, once connected", async () => {
         const {session, proc} = createTAL()
         const {logs, output} = testStub(proc)

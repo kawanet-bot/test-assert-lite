@@ -35,6 +35,7 @@ const runCLI = async (options: ModeOptions): Promise<number> => {
             imports: options.imports,
             session: options.session,
             eval: options.eval,
+            argv: options.argv,
         })
         return result?.success ? 0 : 1
     } else {

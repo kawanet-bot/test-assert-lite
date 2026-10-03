@@ -34,6 +34,8 @@ export interface AppOptions {
     mount?: string
     /** What the command line hands the page, as JSON in its head; empty options unless given. Its files become the suites' served URLs. */
     session: TestSession
+    /** The arguments the page's scripts read, as given. */
+    argv?: string[]
     /** A script to run in place of the files, served under the run's own path as [eval].js. */
     eval?: string
     /** Reloads the page people open when a suite, a script or an imported file changes; off where it cannot watch. */
@@ -50,6 +52,7 @@ export interface App {
 }
 
 interface TestSessionJSON {
+    process: {argv: string[]}
     session: TestSession
 }
 
@@ -73,7 +76,7 @@ const random9 = (): string => randomInt(0, 36 ** 9).toString(36).padStart(9, "0"
  * Builds the browser application: its middleware and run page path.
  */
 export const createApp = (options: AppOptions): App => {
-    const {scripts = [], imports = new Imports([]), mount: mounted, session, eval: script, services, singleRun} = options
+    const {scripts = [], imports = new Imports([]), mount: mounted, session, eval: script, services, singleRun, argv = []} = options
     const {files = []} = session
     const prefix = `/@tal/run/${random9()}/`
     const runPath = `${prefix}run.html`
@@ -107,7 +110,11 @@ export const createApp = (options: AppOptions): App => {
     const importmap = `<script type="importmap">\n${safeJSON({imports: imports.addresses(file => served.urlOf(file))})}\n</script>\n`
     // The script goes in as the one file, at its URL under the run's path.
     const evalPath = script == null ? null : `${prefix}[eval].js`
-    const configObj: TestSessionJSON = {session: {...session, files: evalPath == null ? files.map(file => served.urlOf(file)) : [evalPath]}}
+    // The page is the runner the arguments name, as node is under Node.
+    const configObj: TestSessionJSON = {
+        process: {argv: ["test-assert", ...argv]},
+        session: {...session, files: evalPath == null ? files.map(file => served.urlOf(file)) : [evalPath]},
+    }
     const configTag = `<script type="${TestSessionType}">\n${safeJSON(configObj)}\n</script>\n`
     const tags = scriptUrls.map(url => `<script src="${url}"></script>\n`).join("")
     // A page with an import map of its own goes out as it is: a second map

@@ -73,17 +73,44 @@ describe(TITLE, () => {
             assert.deepEqual(readOptions(["-v", "-h"]), {mode: "help"})
         })
 
-        it("reads Node mode as the default, the files resolved in order", () => {
-            const options = readOptions(["a.test.ts", "b.test.ts"])
+        it("reads Node mode as the default, the files resolved in order under --test", () => {
+            const options = readOptions(["--test", "a.test.ts", "b.test.ts"])
             assert.equal(options.mode, "node")
             if (options.mode !== "node") return
             assert.deepEqual(options.session.files, [resolve("a.test.ts"), resolve("b.test.ts")])
+            assert.deepEqual(options.argv, ["a.test.ts", "b.test.ts"])
             assert.deepEqual(options.imports.paths(), [])
+        })
+
+        it("reads the first argument as the test file without --test, and the rest as the script's argv", () => {
+            const options = readOptions(["-q", "a.test.ts", "b.test.ts", "x"])
+            assert.equal(options.mode, "node")
+            if (options.mode !== "node") return
+            assert.deepEqual(options.session.files, [resolve("a.test.ts")])
+            assert.deepEqual(options.argv, ["a.test.ts", "b.test.ts", "x"])
+            assert.equal(options.session.quiet, true)
+        })
+
+        it("leaves what follows -- to the script, and gives a script its arguments, a page too", () => {
+            const dashed = readOptions(["a.test.ts", "--", "--quiet"])
+            if (dashed.mode !== "node") return assert.fail(dashed.mode)
+            assert.deepEqual(dashed.argv, ["a.test.ts", "--quiet"])
+            assert.equal(dashed.session.quiet, undefined)
+            const script = readOptions(["-e", "console.log(1)", "x", "y"])
+            if (script.mode !== "node") return assert.fail(script.mode)
+            assert.deepEqual(script.argv, ["x", "y"])
+            assert.deepEqual(script.session.files, [])
+            const served = readOptions(["--serve", "a.test.ts", "x"])
+            if (served.mode !== "serve") return assert.fail(served.mode)
+            assert.deepEqual(served.argv, ["a.test.ts", "x"])
+            const empty = readOptions(["--serve"])
+            if (empty.mode !== "serve") return assert.fail(empty.mode)
+            assert.deepEqual(empty.argv, [])
         })
 
         it("refuses Node mode without a file, and a CommonJS suite in every mode", () => {
             assert.throws(() => readOptions([]))
-            assert.throws(() => readOptions(["a.test.ts", "b.cjs", "c.cts"]), /CommonJS test files are not supported: b\.cjs, c\.cts$/)
+            assert.throws(() => readOptions(["--test", "a.test.ts", "b.cjs", "c.cts"]), /CommonJS test files are not supported: b\.cjs, c\.cts$/)
             assert.throws(() => readOptions(["--playwright", "chromium", "b.cjs"]), /CommonJS test files are not supported: b\.cjs$/)
             assert.throws(() => readOptions(["--playwright", "chromium", "c.cts"]), /CommonJS test files are not supported: c\.cts$/)
         })
@@ -106,7 +133,7 @@ describe(TITLE, () => {
             assert.equal(readOptions(["--serve", "-e", "console.log(1)"]).mode, "serve")
             const files = readOptions(["a.test.ts"])
             assert.equal(files.mode === "node" && files.eval, undefined)
-            assert.throws(() => readOptions(["-e", "console.log(1)", "a.test.ts"]), /-e takes the place of the test files$/)
+            assert.throws(() => readOptions(["--test", "-e", "console.log(1)", "a.test.ts"]), /-e takes the place of the test files$/)
             assert.throws(() => readOptions(["-e"]), /argument missing/)
         })
 
@@ -213,19 +240,19 @@ describe(TITLE, () => {
         })
 
         it("reads several suites in a browser mode from one directory, in order, and refuses them from two", () => {
-            const options = readOptions(["--playwright", "chromium", "test/b.mjs", "./test/a.mjs", "test/b.mjs", "test/sub/c.mjs"])
+            const options = readOptions(["--test", "--playwright", "chromium", "test/b.mjs", "./test/a.mjs", "test/b.mjs", "test/sub/c.mjs"])
             assert.equal(options.mode, "playwright")
             if (options.mode !== "playwright") return
             assert.deepEqual(options.session.files, [resolve("test/b.mjs"), resolve("test/a.mjs"), resolve("test/b.mjs"), resolve("test/sub/c.mjs")])
-            assert.throws(() => readOptions(["--playwright", "chromium", "test/a.mjs", "other/b.mjs"]), /from one directory$/)
-            assert.throws(() => readOptions(["--webdriver", "x/a.mjs", "test/b.mjs"]), /from one directory$/)
-            assert.throws(() => readOptions(["--serve", "test/a/x.mjs", "test/b/y.mjs"]), /from one directory$/)
+            assert.throws(() => readOptions(["--test", "--playwright", "chromium", "test/a.mjs", "other/b.mjs"]), /from one directory$/)
+            assert.throws(() => readOptions(["--test", "--webdriver", "x/a.mjs", "test/b.mjs"]), /from one directory$/)
+            assert.throws(() => readOptions(["--test", "--serve", "test/a/x.mjs", "test/b/y.mjs"]), /from one directory$/)
         })
 
         it("counts a suite's directory under a script's or an alias's as that one", () => {
-            const options = readOptions(["--playwright", "chromium", "--alias", "lib=test/lib.mjs", "test/a/x.mjs", "test/b/y.mjs"])
+            const options = readOptions(["--test", "--playwright", "chromium", "--alias", "lib=test/lib.mjs", "test/a/x.mjs", "test/b/y.mjs"])
             assert.equal(options.mode, "playwright")
-            assert.equal(readOptions(["--playwright", "chromium", "--script", "test/setup.js", "test/a/x.mjs", "test/b/y.mjs"]).mode, "playwright")
+            assert.equal(readOptions(["--test", "--playwright", "chromium", "--script", "test/setup.js", "test/a/x.mjs", "test/b/y.mjs"]).mode, "playwright")
         })
 
         it("reads --serve with --mount, without a suite", () => {
