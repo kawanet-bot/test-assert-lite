@@ -23,6 +23,6 @@ export const logger = ({stderr, quiet}: LoggerOptions): MiddlewareHandler => asy
     if (quiet && status < 400) return
     const {method, url} = c.req
     const path = url.slice(url.indexOf("/", 8))
-    const length = c.res.body == null ? 0 : c.res.headers.get("content-length") ?? "-"
+    const length = c.res.headers.get("content-length") ?? (c.res.body == null ? "0" : "-")
     stderr.write(`${method} ${path} ${status} ${length} - ${(performance.now() - started).toFixed(3)} ms\n`)
 }
