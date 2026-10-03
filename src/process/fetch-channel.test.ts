@@ -137,6 +137,21 @@ describe(TITLE, {timeout: 1000}, () => {
         assert.equal((await session.run()).success, true)
     })
 
+    it("takes what a script writes to proc, from any harness, once connected", async () => {
+        const {session, proc} = createTAL()
+        const {logs, output} = testStub(session)
+        proc.stdout.write("script out\n")
+        createTAL().proc.stderr.write("script err\n")
+        session.session({output})
+        await session.run()
+
+        assert.deepEqual(logs.shift(), ["stdout", "script out\n"])
+        assert.deepEqual(logs.shift(), ["stderr", "script err\n"])
+        assert.deepEqual(logs.shift(), ["send", BEGIN])
+        assert.deepEqual(logs.shift(), ["send", SUCCESS])
+        assert.equal(logs.length, 0)
+    })
+
     it("calls the channel's disconnect once, after the result", async () => {
         const {session, test} = createTAL()
         const sent: string[] = []

@@ -1,9 +1,7 @@
 import {strict as assert} from "node:assert"
 import {describe, it} from "node:test"
-import type {TAL} from "test-assert-lite"
 import {createTAL} from "./index.ts"
 import {capture, names, summaryOf} from "./test-utils/capture.ts"
-import {createBufWriter} from "./utils/buf-writer.ts"
 
 const TITLE = "harness.test.ts"
 
@@ -20,27 +18,6 @@ describe(TITLE, () => {
         assert.equal(typeof local.reporter, "object")
         assert.equal(typeof local.assert, "function")
         assert.equal(typeof local.assert.strict, "function")
-    })
-
-    it("proc writes to the session's channel, and holds what comes outside a session", async () => {
-        const local = createTAL()
-        const stdout = createBufWriter()
-        const stderr = createBufWriter()
-        const channel: TAL.Channel = {stdout, stderr, send: (_, callback) => callback?.(null), disconnect: () => undefined}
-        local.proc.stdout.write("before\n")
-        assert.equal(stdout.read(), "")
-        local.session.session({channel, output: () => undefined})
-        assert.equal(stdout.read(), "before\n")
-        local.proc.stdout.write("during\n")
-        local.proc.stderr.write("warned\n")
-        assert.equal(stdout.read(), "during\n")
-        assert.equal(stderr.read(), "warned\n")
-        await local.session.run()
-        local.proc.stdout.write("after\n")
-        assert.equal(stdout.read(), "")
-        local.session.session({channel, output: () => undefined})
-        assert.equal(stdout.read(), "after\n")
-        await local.session.run()
     })
 
     it("describe aliases suite and it aliases test", () => {

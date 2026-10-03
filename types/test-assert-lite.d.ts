@@ -335,9 +335,10 @@ export declare namespace TAL {
     // --- process ---
 
     // The host as a script sees it, `test-assert-lite/process`: what
-    // node:process offers of it, written to as a script would.
+    // node:process offers of it, written to as a script would. One for the
+    // realm, the same from every harness.
     interface ProcessAPI {
-        /** The host's stdout and stderr. Held until a session is open, then written through. */
+        /** The host's stdout and stderr, down the realm's channel. */
         stdout: Writer
         stderr: Writer
     }
