@@ -32,6 +32,7 @@ type SessionEventType = TAL.SessionEvent["type"]
 type SessionEventData<T extends SessionEventType> = Extract<TAL.SessionEvent, {type: T}>["data"]
 
 const isTestResult = (v: unknown): v is TAL.SessionResult => ("boolean" === typeof (v as TAL.SessionResult)?.success)
+const isSessionId = (v: unknown): v is {id: string} => ("string" === typeof (v as {id?: unknown})?.id)
 
 // How long a browser run, --playwright or --webdriver, may stay silent.
 // Before begin, the browser most likely could not reach the server. After
@@ -46,6 +47,9 @@ const SILENCE_MS = 30_000
 export const createChannel = ({prefix, services, timeout, singleRun = true}: ChannelOptions): Channel => {
     let begun = false
     let ended = false
+    // The session heard from first is the run's. Any other on the channel
+    // is a harness the page made, and its verdict is its own.
+    let first: string | null = null
     let timer: ReturnType<typeof setTimeout> | null = null
     if (singleRun) timeout ??= SILENCE_MS
 
@@ -65,11 +69,14 @@ export const createChannel = ({prefix, services, timeout, singleRun = true}: Cha
 
     const eventMap: SessionEventMap = {
         "session:begin": (data) => {
-            if (data != null) return 400
+            if (!isSessionId(data)) return 400
             begun = true
+            first ??= data.id
         },
         "session:end": (data) => {
-            if (!isTestResult(data)) return 400
+            if (!isTestResult(data) || !isSessionId(data)) return 400
+            first ??= data.id
+            if (data.id !== first) return
             if (singleRun) services.resolve(data)
             ended = true
         },

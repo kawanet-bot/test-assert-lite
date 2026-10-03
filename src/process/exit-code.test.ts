@@ -28,8 +28,8 @@ describe(TITLE, () => {
         const channel = withExitCode(inner, null)
         channel.stdout.write("out\n")
         channel.stderr.write("err\n")
-        channel.send({type: "session:begin"}, error => seen.push(error))
-        channel.send({type: "session:end", data: {success: false}}, error => seen.push(error))
+        channel.send({type: "session:begin", data: {id: "sessionAAA"}}, error => seen.push(error))
+        channel.send({type: "session:end", data: {id: "sessionAAA", success: false}}, error => seen.push(error))
         channel.disconnect()
         assert.equal(stdout.read(), "out\n")
         assert.equal(stderr.read(), "err\n")
@@ -41,10 +41,10 @@ describe(TITLE, () => {
     it("leaves the exit code on the process given, for a failed verdict alone", () => {
         const inner: TAL.Channel = {stdout: createBufWriter(), stderr: createBufWriter(), send: (_, callback) => callback?.(null), disconnect: () => undefined}
         const passed: ProcessLike = {stdout: createBufWriter(), stderr: createBufWriter()}
-        withExitCode(inner, passed).send({type: "session:end", data: {success: true}})
+        withExitCode(inner, passed).send({type: "session:end", data: {id: "sessionAAA", success: true}})
         assert.equal(passed.exitCode, undefined)
         const failed: ProcessLike = {stdout: createBufWriter(), stderr: createBufWriter()}
-        withExitCode(inner, failed).send({type: "session:end", data: {success: false}})
+        withExitCode(inner, failed).send({type: "session:end", data: {id: "sessionAAA", success: false}})
         assert.equal(failed.exitCode, 1)
     })
 })

@@ -28,6 +28,8 @@ interface Cycle {
     report: ReportStream
     // Where the run's text and verdict go, let go of once the verdict is out.
     channel: TAL.Channel
+    // Names the session to the host, among others on the same channel.
+    id: string
     run: Run
     startedAt: number
     held: boolean
@@ -46,6 +48,10 @@ export interface Sessions {
     // let it, unless one is under way.
     schedule: () => void
 }
+
+// Nine base-36 characters, as the run's own path has. Unique among the
+// sessions of one page is all it has to be.
+const sessionId = (): string => Math.random().toString(36).slice(2, 11).padEnd(9, "0")
 
 export const createSessions = (harness: HarnessState, assert: TAL.TestContextAssert): Sessions => {
     let cycle: Cycle | null = null
@@ -81,7 +87,8 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
         const showError = (err: Error | null) => void (err && services.stderr.write(`${stringify(err)}\n`))
 
         // A word out as the session opens. Nothing waits for it, so session() stays synchronous.
-        channel.send({type: "session:begin"}, showError)
+        const id = sessionId()
+        channel.send({type: "session:begin", data: {id}}, showError)
 
         // Node's own runner ends the run as the process would exit. Here too.
         // A run() already under way, or done, leaves nothing for this to do.
@@ -97,7 +104,7 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
             services.onCleanup(() => process.off("beforeExit", onExit))
         }
 
-        return {services, report, channel, run: state, startedAt: performance.now(), held: true, walk: null, closing: false, failure: undefined}
+        return {services, report, channel, id, run: state, startedAt: performance.now(), held: true, walk: null, closing: false, failure: undefined}
     }
 
     const session: TAL.SessionAPI["session"] = (options = {}) => {
@@ -146,7 +153,7 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
         current.held = false
         schedule()
         current.closing = true
-        const {services, channel} = current
+        const {services, channel, id} = current
         try {
             services.resolve(await conclude(current))
         } catch (error) {
@@ -156,7 +163,7 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
         // too. The channel is let go of once it has taken the word.
         const result = await services.finished.then(result => result, (): SessionResult => ({success: false}))
         await new Promise<void>(resolve => {
-            channel.send({type: "session:end", data: result}, (err) => {
+            channel.send({type: "session:end", data: {id, success: result.success}}, (err) => {
                 if (err) services.stderr.write(`${stringify(err)}\n`)
                 resolve()
             })

@@ -29,9 +29,16 @@ const testStub = (proc: TAL.ProcessAPI, stubFetch?: FetchLike) => {
 
 const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms))
 
-const BEGIN = JSON.stringify({type: "session:begin"})
-const SUCCESS = JSON.stringify({type: "session:end", data: {success: true}})
-const FAILURE = JSON.stringify({type: "session:end", data: {success: false}})
+// A send as logged, with the session's id left out: what was sent and the verdict.
+const kind = (log: [string, string] | undefined): [string, string, boolean | undefined] | undefined => {
+    if (log == null) return undefined
+    const message = JSON.parse(log[1]) as TAL.SessionEvent
+    return [log[0], message.type, "success" in message.data ? message.data.success : undefined]
+}
+
+const BEGIN: [string, string, boolean | undefined] = ["send", "session:begin", undefined]
+const SUCCESS: [string, string, boolean | undefined] = ["send", "session:end", true]
+const FAILURE: [string, string, boolean | undefined] = ["send", "session:end", false]
 
 describe(TITLE, {timeout: 1000}, () => {
     it("posts begin first, then the streams, then end, in order", async () => {
@@ -43,11 +50,11 @@ describe(TITLE, {timeout: 1000}, () => {
         channel.stdout.write("two\n")
         await session.run()
 
-        assert.deepEqual(logs.shift(), ["send", BEGIN])
+        assert.deepEqual(kind(logs.shift()), BEGIN)
         assert.deepEqual(logs.shift(), ["stdout", "one\n"])
         assert.deepEqual(logs.shift(), ["stderr", "warned\n"])
         assert.deepEqual(logs.shift(), ["stdout", "two\n"])
-        assert.deepEqual(logs.shift(), ["send", SUCCESS])
+        assert.deepEqual(kind(logs.shift()), SUCCESS)
         assert.equal(logs.length, 0)
     })
 
@@ -58,14 +65,14 @@ describe(TITLE, {timeout: 1000}, () => {
         for (let i = 0; i < 100; i++) channel.stdout.write(`line ${i}\n`)
         await session.run()
 
-        assert.deepEqual(logs.shift(), ["send", BEGIN])
+        assert.deepEqual(kind(logs.shift()), BEGIN)
         const [type, body] = logs.shift()!
         assert.equal(type, "stdout")
         const lines = body.split(NEWLINE) ?? []
         assert.equal(lines.length, 100)
         assert.equal(lines.at(0), "line 0\n")
         assert.equal(lines.at(-1), "line 99\n")
-        assert.deepEqual(logs.shift(), ["send", SUCCESS])
+        assert.deepEqual(kind(logs.shift()), SUCCESS)
         assert.equal(logs.length, 0)
     })
 
@@ -75,14 +82,14 @@ describe(TITLE, {timeout: 1000}, () => {
         session.session({channel, output})
         channel.stdout.write("early\n")
         await sleep(200)
-        assert.deepEqual(logs.shift(), ["send", BEGIN])
+        assert.deepEqual(kind(logs.shift()), BEGIN)
         assert.deepEqual(logs.shift(), ["stdout", "early\n"])
         assert.equal(logs.length, 0)
 
         channel.stdout.write("late\n")
         await session.run()
         assert.deepEqual(logs.shift(), ["stdout", "late\n"])
-        assert.deepEqual(logs.shift(), ["send", SUCCESS])
+        assert.deepEqual(kind(logs.shift()), SUCCESS)
         assert.equal(logs.length, 0)
     })
 
@@ -94,7 +101,7 @@ describe(TITLE, {timeout: 1000}, () => {
             throw new Error("no")
         })
         await session.run()
-        assert.deepEqual(logs.at(-1), ["send", FAILURE])
+        assert.deepEqual(kind(logs.at(-1)), FAILURE)
     })
 
     it("sends text as given", async () => {
@@ -105,9 +112,9 @@ describe(TITLE, {timeout: 1000}, () => {
         channel.stderr.write("given\n")
         await session.run()
 
-        assert.deepEqual(logs.shift(), ["send", BEGIN])
+        assert.deepEqual(kind(logs.shift()), BEGIN)
         assert.deepEqual(logs.shift(), ["stderr", "as given\n"]) // combined
-        assert.deepEqual(logs.shift(), ["send", SUCCESS])
+        assert.deepEqual(kind(logs.shift()), SUCCESS)
         assert.equal(logs.length, 0)
     })
 
@@ -121,8 +128,8 @@ describe(TITLE, {timeout: 1000}, () => {
 
         assert.deepEqual(logs.shift(), ["stdout", "early\n"])
         assert.deepEqual(logs.shift(), ["stderr", "warned\n"])
-        assert.deepEqual(logs.shift(), ["send", BEGIN])
-        assert.deepEqual(logs.shift(), ["send", SUCCESS])
+        assert.deepEqual(kind(logs.shift()), BEGIN)
+        assert.deepEqual(kind(logs.shift()), SUCCESS)
         assert.equal(logs.length, 0)
     })
 
@@ -147,8 +154,8 @@ describe(TITLE, {timeout: 1000}, () => {
 
         assert.deepEqual(logs.shift(), ["stdout", "script out\n"])
         assert.deepEqual(logs.shift(), ["stderr", "script err\n"])
-        assert.deepEqual(logs.shift(), ["send", BEGIN])
-        assert.deepEqual(logs.shift(), ["send", SUCCESS])
+        assert.deepEqual(kind(logs.shift()), BEGIN)
+        assert.deepEqual(kind(logs.shift()), SUCCESS)
         assert.equal(logs.length, 0)
     })
 
@@ -198,14 +205,14 @@ describe(TITLE, {timeout: 1000}, () => {
         assert.equal(fake.log, log)
         assert.equal(fake.warn, warn)
 
-        assert.deepEqual(logs.shift(), ["send", BEGIN])
+        assert.deepEqual(kind(logs.shift()), BEGIN)
         assert.deepEqual(logs.shift(), ["stdout", "a 1 b\ninfo\ndebug\n"])
         const [type, body] = logs.shift()!
         assert.equal(type, "stderr")
         const lines = body?.split(NEWLINE)
         assert.equal(lines.shift(), "warned\n")
         assert.match(lines.shift()!, /^TypeError: typed/)
-        assert.deepEqual(logs.shift(), ["send", SUCCESS])
+        assert.deepEqual(kind(logs.shift()), SUCCESS)
         assert.equal(logs.length, 0)
     })
 
@@ -219,10 +226,10 @@ describe(TITLE, {timeout: 1000}, () => {
             if (logs.length > 1) break
         }
         await session.run()
-        assert.deepEqual(logs.shift(), ["send", BEGIN])
+        assert.deepEqual(kind(logs.shift()), BEGIN)
         const [type, body] = logs.shift()!
         assert.equal(type, "stderr")
         assert.match(body!, /^⏳ \d+s\n/)
-        assert.deepEqual(logs.pop(), ["send", SUCCESS])
+        assert.deepEqual(kind(logs.pop()), SUCCESS)
     })
 })

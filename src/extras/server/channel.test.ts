@@ -16,9 +16,10 @@ const nullWriter: TAL.Writer = {write: (() => undefined)}
 const prefix = "/@tal/run/000000000/"
 const otherPrefix = "/@tal/run/000000001/"
 
-const BEGIN: TAL.SessionEvent = {type: "session:begin"}
-const SUCCESS: TAL.SessionEvent = {type: "session:end", data: {success: true}}
-// const FAILURE: TAL.SessionEvent = {type: "session:end", data: {success: false}}
+const BEGIN: TAL.SessionEvent = {type: "session:begin", data: {id: "sessionAAA"}}
+const SUCCESS: TAL.SessionEvent = {type: "session:end", data: {id: "sessionAAA", success: true}}
+const OTHER_BEGIN: TAL.SessionEvent = {type: "session:begin", data: {id: "sessionBBB"}}
+const OTHER_FAILURE: TAL.SessionEvent = {type: "session:end", data: {id: "sessionBBB", success: false}}
 const INVALID = {type: "INVALID"} as unknown as TAL.SessionEvent
 
 const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms))
@@ -46,6 +47,19 @@ describe(TITLE, {timeout: 1000}, () => {
         assert.equal(await send(run, "send", SUCCESS), 204)
         assert.equal(stdout.read(), "one\n")
         assert.equal(stderr.read(), "warned\n")
+        assert.equal((await services.finished)?.success, true)
+        await services.cleanup()
+    })
+
+    it("takes the verdict from the session heard from first, and lets another's by", async () => {
+        const services = createRunServices({stdout: nullWriter, stderr: nullWriter})
+        const run = createChannel({prefix, services})
+        assert.equal(await send(run, "send", BEGIN), 204)
+        assert.equal(await send(run, "send", OTHER_BEGIN), 204)
+        assert.equal(await send(run, "send", OTHER_FAILURE), 204)
+        const early = await Promise.race([services.finished.then(() => "settled", () => "settled"), sleep(20).then(() => "pending")])
+        assert.equal(early, "pending")
+        assert.equal(await send(run, "send", SUCCESS), 204)
         assert.equal((await services.finished)?.success, true)
         await services.cleanup()
     })

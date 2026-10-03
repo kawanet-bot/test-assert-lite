@@ -205,8 +205,8 @@ describe(TITLE, () => {
             assert.ok(page.includes("})(0)\n</script>"))
 
             const endpoint = running.origin + watching.page.replace(/run\.html$/, "send")
-            assert.equal(await send(endpoint, {type: "session:begin"}), 204)
-            assert.equal(await send(endpoint, {type: "session:end", data: {success: true}}), 204)
+            assert.equal(await send(endpoint, {type: "session:begin", data: {id: "sessionAAA"}}), 204)
+            assert.equal(await send(endpoint, {type: "session:end", data: {id: "sessionAAA", success: true}}), 204)
 
             const pending = get(running.origin + "/@tal/watch?after=0")
             await writeFile(file, "export const watching = 2")

@@ -360,9 +360,11 @@ export declare namespace TAL {
     }
 
     // What send() carries.
+    // The id names the session, so a host with several on one channel
+    // knows whose word it is.
     type SessionEvent =
-        | {type: "session:begin", data?: undefined}
-        | {type: "session:end", data: SessionResult}
+        | {type: "session:begin", data: {id: string}}
+        | {type: "session:end", data: SessionResult & {id: string}}
 
 
     // --- harness ---

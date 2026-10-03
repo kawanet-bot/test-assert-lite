@@ -19,9 +19,8 @@ import {serve} from "./serve.ts"
 
 const TITLE = "extras/server/app-complex.test.ts"
 
-const BEGIN: TAL.SessionEvent = {type: "session:begin"}
-const SUCCESS: TAL.SessionEvent = {type: "session:end", data: {success: true}}
-// const FAILURE: TAL.SessionEvent = {type: "session:end", data: {success: false}}
+const BEGIN: TAL.SessionEvent = {type: "session:begin", data: {id: "sessionAAA"}}
+const SUCCESS: TAL.SessionEvent = {type: "session:end", data: {id: "sessionAAA", success: true}}
 
 const get = async (url: string): Promise<{status: number, type: string, body: string}> => {
     const res = await fetch(url)
