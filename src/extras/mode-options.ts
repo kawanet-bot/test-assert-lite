@@ -23,8 +23,8 @@ export interface TestSession {
     reporter?: string
     /** The test files to import, in order: paths under Node, served URLs in a page. */
     files: string[]
-    /** Reduces output. The default reporter shows failures only. */
-    quiet?: boolean
+    /** How much less to say, as the session takes it. */
+    quiet?: number
 }
 
 interface TestModeOptions {

@@ -197,7 +197,7 @@ describe(TITLE, () => {
 
     // Quiet keeps diagnostics and reports failures at the end.
     it("quiet writes the failing list alone, after the run's summary", async () => {
-        const quiet = (send: (emit: Emit) => Promise<void>): Promise<string> => formatEvents(sharedTAL.reporter.spec({colors: false, quiet: true}), send)
+        const quiet = (send: (emit: Emit) => Promise<void>): Promise<string> => formatEvents(sharedTAL.reporter.spec({colors: false, quiet: 10}), send)
         const summary = {counts: {tests: 3, suites: 1, passed: 2, failed: 1, cancelled: 0, skipped: 0, todo: 0}, duration_ms: 1, success: false}
         const subtestsFailed = Object.assign(new Error("1 subtest failed"), {code: "ERR_TEST_FAILURE", failureType: "subtestsFailed"})
         const out = await quiet(async emit => {

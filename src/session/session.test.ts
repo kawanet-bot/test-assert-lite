@@ -54,7 +54,7 @@ describe(TITLE, () => {
     it("quiet has the default reporter list the failures alone, and a passing run prints nothing", async () => {
         const local = createTAL()
         const out: string[] = []
-        local.session.session({quiet: true, output: t => {out.push(t)}})
+        local.session.session({quiet: 10, output: t => {out.push(t)}})
         local.test.it("passes", () => undefined)
         local.test.it("fails", () => {
             throw new Error("boom")
@@ -67,7 +67,7 @@ describe(TITLE, () => {
 
         const green = createTAL()
         const said: string[] = []
-        green.session.session({quiet: true, output: t => {said.push(t)}})
+        green.session.session({quiet: 10, output: t => {said.push(t)}})
         green.test.it("passes", () => undefined)
         assert.equal((await green.session.run()).success, true)
         assert.equal(said.join(""), "")
@@ -76,7 +76,7 @@ describe(TITLE, () => {
     it("quiet leaves the counts, the version and the user agent off a named reporter; the plan stays", async () => {
         const local = createTAL()
         const out: string[] = []
-        local.session.session({reporter: "tap", quiet: true, output: t => {out.push(t)}})
+        local.session.session({reporter: "tap", quiet: 10, output: t => {out.push(t)}})
         local.test.it("fails", () => {
             throw new Error("boom")
         })
@@ -86,6 +86,27 @@ describe(TITLE, () => {
         assert.equal(text.includes("# test-assert-lite "), false)
         assert.match(text, /^not ok 1 - fails$/m)
         assert.match(text, /^1\.\.1$/m)
+    })
+
+    it("a run with no tests says nothing, unless quiet is -1 as a test runner's is", async () => {
+        const script = createTAL()
+        const out: string[] = []
+        script.session.session({output: t => {out.push(t)}})
+        assert.equal((await script.session.run()).success, true)
+        assert.equal(out.join(""), "")
+
+        const runner = createTAL()
+        const said: string[] = []
+        runner.session.session({quiet: -1, output: t => {said.push(t)}})
+        assert.equal((await runner.session.run()).success, true)
+        assert.ok(said.join("").includes("ℹ tests 0"))
+
+        const suite = createTAL()
+        const told: string[] = []
+        suite.session.session({output: t => {told.push(t)}})
+        suite.test.describe("empty", () => undefined)
+        assert.equal((await suite.session.run()).success, true)
+        assert.ok(told.join("").includes("ℹ suites 1"))
     })
 
     // load() takes a URL a page and Node both import: a data: module that

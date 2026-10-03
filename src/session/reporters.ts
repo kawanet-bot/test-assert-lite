@@ -1,5 +1,5 @@
 // What a session reports with: the reporter named or given, spec unless
-// one is, the footer on top unless quiet, and a module name imported when
+// one is, the footer on top, and a module name imported when
 // the run starts reporting.
 
 import type {TAL} from "test-assert-lite"
@@ -45,8 +45,8 @@ const reporterOf = (harness: HarnessState, v: ReporterFn | string | undefined): 
     return lazyReporter(harness, v)
 }
 
-// The footer is the session's to leave off, for a script that is no suite.
 export const chooseReporter = (harness: HarnessState, options: SessionOptions): ReporterFn => {
-    const named = reporterOf(harness, options.reporter) ?? spec({quiet: options.quiet})
-    return options.quiet ? named : withFooter(named)
+    const quiet = options.quiet ?? 0
+    const named = reporterOf(harness, options.reporter) ?? spec({quiet})
+    return withFooter(named, quiet)
 }

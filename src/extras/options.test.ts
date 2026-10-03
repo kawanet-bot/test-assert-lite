@@ -97,14 +97,14 @@ describe(TITLE, () => {
             if (options.mode !== "node") return
             assert.deepEqual(options.session.files, [resolve("a.test.ts")])
             assert.deepEqual(options.argv, ["a.test.ts", "b.test.ts", "x"])
-            assert.equal(options.session.quiet, true)
+            assert.equal(options.session.quiet, 10)
         })
 
         it("leaves what follows -- to the script, and gives a script its arguments, a page too", () => {
             const dashed = readOptions(["a.test.ts", "--", "--quiet"])
             if (dashed.mode !== "node") return assert.fail(dashed.mode)
             assert.deepEqual(dashed.argv, ["a.test.ts", "--quiet"])
-            assert.equal(dashed.session.quiet, undefined)
+            assert.equal(dashed.session.quiet, 0)
             const script = readOptions(["-e", "console.log(1)", "x", "y"])
             if (script.mode !== "node") return assert.fail(script.mode)
             assert.deepEqual(script.argv, ["x", "y"])
@@ -184,11 +184,13 @@ describe(TITLE, () => {
             assert.equal(named(["a.test.ts"]), undefined)
         })
 
-        it("reads -q and --quiet as quiet, and leaves it unset otherwise", () => {
-            const quiet = (args: string[]): boolean | undefined => (readOptions(args) as {session: TestSession}).session.quiet
-            assert.equal(quiet(["-q", "a.test.ts"]), true)
-            assert.equal(quiet(["--quiet", "--serve"]), true)
-            assert.equal(quiet(["a.test.ts"]), undefined)
+        it("reads -q and --quiet as ten, --test as one less, and nothing as zero", () => {
+            const quiet = (args: string[]): number | undefined => (readOptions(args) as {session: TestSession}).session.quiet
+            assert.equal(quiet(["-q", "a.test.ts"]), 10)
+            assert.equal(quiet(["--quiet", "--serve"]), 10)
+            assert.equal(quiet(["a.test.ts"]), 0)
+            assert.equal(quiet(["--test", "a.test.ts"]), -1)
+            assert.equal(quiet(["--test", "-q", "a.test.ts"]), 9)
         })
 
         it("reads --alias in Node mode too", () => {
