@@ -101,7 +101,7 @@ See [test-assert-lite.d.ts](https://github.com/kawanet/test-assert-lite/blob/mai
 
 ```sh
 # Run suites in the local Node.js with the library instead of node:test
-test-assert test/*.test.mjs
+test-assert --test test/*.test.mjs
 
 # Serve suites at http://127.0.0.1:3000/ for your browser
 test-assert --serve --port 3000 test/browser.test.mjs
@@ -113,8 +113,8 @@ test-assert --webdriver test/browser.test.mjs
 test-assert --playwright chromium test/browser.test.mjs
 ```
 
-- Name files directly; the shell expands globs. CommonJS test files are not supported. `-e <script>` runs a script in their place.
-- A test file may `import {stdout, stderr} from "node:process"` and write to them. In a browser they reach the CLI's own, as they do under Node. Only these two names are offered there.
+- The first file is the test file, and what follows it is the script's argv, as `node file args` has it. `--test` takes every argument as a test file. Name files directly; the shell expands globs. CommonJS test files are not supported. `-e <script>` runs a script in their place.
+- A test file may `import {argv, stdout, stderr} from "node:process"`. In a browser the streams reach the CLI's own, as they do under Node, and `argv` holds the arguments with the test file by its URL. Only these three names are offered there.
 - TypeScript test files run as they are, in a browser too, through `stripTypeScriptTypes` of Node.js 22.18 or later.
 - `--webdriver` runs the test files in the browser a WebDriver server drives, from one directory.
 - `--playwright <browser>` does the same through Playwright.
@@ -130,6 +130,12 @@ test-assert --playwright chromium test/browser.test.mjs
 
 - Runs the script in place of test files, in Node or in the browser: `test-assert --playwright chromium -e "console.log(navigator.userAgent)"`.
 - The script is a module: it imports `node:test` as a test file does, and a script that throws is one failed test.
+- The arguments after it are the script's, from `argv[1]`, as `node -e` gives them.
+
+### `--test`
+
+- Takes every argument as a test file, as `node --test` reads them: `test-assert --test test/*.test.mjs`.
+- Without it, the first file is the test file and the rest is its argv. A flag meant for the script goes after `--`: `test-assert test/cli.test.mjs -- --verbose`.
 
 ### `--alias <specifier>=<file>`
 
