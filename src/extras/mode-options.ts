@@ -31,7 +31,7 @@ interface TestModeOptions {
     session: TestSession
     /** A script given on the command line, run in place of test files. */
     eval?: string
-    /** The arguments as a script reads them past argv[0]: the test files, absolute, and what follows them. */
+    /** The arguments as given, test files included, for a script to read past argv[0]. */
     argv: string[]
 }
 

@@ -78,7 +78,7 @@ describe(TITLE, () => {
             assert.equal(options.mode, "node")
             if (options.mode !== "node") return
             assert.deepEqual(options.session.files, [resolve("a.test.ts"), resolve("b.test.ts")])
-            assert.deepEqual(options.argv, [resolve("a.test.ts"), resolve("b.test.ts")])
+            assert.deepEqual(options.argv, ["a.test.ts", "b.test.ts"])
             assert.deepEqual(options.imports.paths(), [])
         })
 
@@ -87,14 +87,14 @@ describe(TITLE, () => {
             assert.equal(options.mode, "node")
             if (options.mode !== "node") return
             assert.deepEqual(options.session.files, [resolve("a.test.ts")])
-            assert.deepEqual(options.argv, [resolve("a.test.ts"), "b.test.ts", "x"])
+            assert.deepEqual(options.argv, ["a.test.ts", "b.test.ts", "x"])
             assert.equal(options.session.quiet, true)
         })
 
         it("leaves what follows -- to the script, and gives a script its arguments, a page too", () => {
             const dashed = readOptions(["a.test.ts", "--", "--quiet"])
             if (dashed.mode !== "node") return assert.fail(dashed.mode)
-            assert.deepEqual(dashed.argv, [resolve("a.test.ts"), "--quiet"])
+            assert.deepEqual(dashed.argv, ["a.test.ts", "--quiet"])
             assert.equal(dashed.session.quiet, undefined)
             const script = readOptions(["-e", "console.log(1)", "x", "y"])
             if (script.mode !== "node") return assert.fail(script.mode)
@@ -102,7 +102,7 @@ describe(TITLE, () => {
             assert.deepEqual(script.session.files, [])
             const served = readOptions(["--serve", "a.test.ts", "x"])
             if (served.mode !== "serve") return assert.fail(served.mode)
-            assert.deepEqual(served.argv, [resolve("a.test.ts"), "x"])
+            assert.deepEqual(served.argv, ["a.test.ts", "x"])
             const empty = readOptions(["--serve"])
             if (empty.mode !== "serve") return assert.fail(empty.mode)
             assert.deepEqual(empty.argv, [])

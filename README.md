@@ -114,7 +114,7 @@ test-assert --playwright chromium test/browser.test.mjs
 ```
 
 - The first file is the test file, and what follows it is the script's argv, as `node file args` has it. `--test` takes every argument as a test file. Name files directly; the shell expands globs. CommonJS test files are not supported. `-e <script>` runs a script in their place.
-- A test file may `import {argv, stdout, stderr} from "node:process"`. In a browser the streams reach the CLI's own, as they do under Node, and `argv` holds the arguments with the test file by its URL. Only these three names are offered there.
+- A test file may `import {argv, stdout, stderr} from "node:process"`. In a browser the streams reach the CLI's own, as they do under Node, and `argv` holds the arguments as given. Only these three names are offered there.
 - TypeScript test files run as they are, in a browser too, through `stripTypeScriptTypes` of Node.js 22.18 or later.
 - `--webdriver` runs the test files in the browser a WebDriver server drives, from one directory.
 - `--playwright <browser>` does the same through Playwright.

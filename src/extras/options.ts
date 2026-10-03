@@ -156,7 +156,7 @@ export const readOptions = (args: string[]): ModeOptions => {
     // --test every one is a test file, as node --test reads them.
     const test = values.test
     const files = test ? positionals : (script == null ? positionals.slice(0, 1) : [])
-    const argv = positionals.map((item, i) => (i < files.length ? resolve(item) : item))
+    const argv = positionals
     if (script != null && files.length) {
         throw new UsageError("-e takes the place of the test files")
     }
