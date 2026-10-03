@@ -3,14 +3,14 @@
 // that reports the verdict and lets go of what was taken.
 
 import type {TAL} from "test-assert-lite"
+import {consoleChannel, withHeartbeat} from "../process/fetch-channel.ts"
+import {nodeChannel} from "../process/node-channel.ts"
 import type {Run} from "../suite/job.ts"
 import type {ConnectWriter} from "../utils/buf-writer.ts"
 import {hasProcess} from "../utils/process.ts"
 import {createRunServices, type RunServices} from "../utils/run-services.ts"
 import {stringify} from "../utils/stringify.ts"
 import {consoleWriters, saveConsole, takeConsole} from "./console.ts"
-import {consoleChannel, withHeartbeat} from "./fetch-channel.ts"
-import {nodeChannel} from "./node-channel.ts"
 import type {ReportStream} from "./report-stream.ts"
 import {createReportStream} from "./report-stream.ts"
 import {chooseReporter} from "./reporters.ts"

@@ -6,7 +6,7 @@ import {describe, it} from "node:test"
 import type {TAL} from "test-assert-lite"
 import {createTAL} from "../index.ts"
 
-const TITLE = "session/fetch-channel.test.ts"
+const TITLE = "process/fetch-channel.test.ts"
 
 const NEWLINE = /(?<=\n)(?=\S)/
 

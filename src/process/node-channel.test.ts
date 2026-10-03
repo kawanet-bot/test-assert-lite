@@ -4,7 +4,7 @@ import {createBufWriter} from "../utils/buf-writer.ts"
 import type {ProcessLike} from "./node-channel.ts"
 import {nodeChannel} from "./node-channel.ts"
 
-const TITLE = "session/node-channel.test.ts"
+const TITLE = "process/node-channel.test.ts"
 
 describe(TITLE, () => {
     it("writes to the process's streams", () => {
