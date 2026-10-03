@@ -16,5 +16,8 @@ export const withTitle = (name: string): MiddlewareHandler => async (c, next) =>
     const {status, headers} = c.res
     if (status !== 200 || !headers.get("content-type")?.startsWith("text/html")) return
     const html = await c.res.text()
-    c.res = new Response(html.replaceAll(">{{title}}<", `>${escape(name)}<`), {status, headers})
+    // The length is the old body's, not this one's.
+    const rewritten = new Headers(headers)
+    rewritten.delete("content-length")
+    c.res = new Response(html.replaceAll(">{{title}}<", `>${escape(name)}<`), {status, headers: rewritten})
 }

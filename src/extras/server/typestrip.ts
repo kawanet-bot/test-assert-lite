@@ -30,5 +30,7 @@ export const withStrippedTypes = (): MiddlewareHandler => async (c, next) => {
     }
     const out = new Headers(headers)
     out.set("content-type", "text/javascript; charset=utf-8")
+    // The length is the old body's, not this one's.
+    out.delete("content-length")
     c.res = new Response(js, {status, headers: out})
 }

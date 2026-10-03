@@ -30,6 +30,16 @@ describe(TITLE, () => {
         assert.ok(!out.body.includes(":"))
     })
 
+    it("drops the Content-Length of the file it rewrote", async t => {
+        if (!process.features.typescript) return t.skip()
+        const source = "export const n: number = 1\n"
+        const answer: MiddlewareHandler = async c => c.body(source, 200, {"content-type": "text/typescript", "content-length": String(source.length)})
+        const c = createContext(new Request("http://127.0.0.1/mod.ts"))
+        await compose([withStrippedTypes(), answer])(c, async () => undefined)
+        assert.equal(c.res.status, 200)
+        assert.equal(c.res.headers.get("content-length"), null)
+    })
+
     it("answers 422 where stripping fails on the file", async t => {
         if (!process.features.typescript) return t.skip()
         assert.equal((await through("enum E {A}\n", "text/typescript; charset=utf-8")).status, 422)
