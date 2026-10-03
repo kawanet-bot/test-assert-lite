@@ -8,7 +8,7 @@ import {after, before, describe, it} from "node:test"
 import {createBufWriter} from "../../utils/buf-writer.ts"
 import {createRunServices} from "../../utils/run-services.ts"
 import {logger} from "./logger.ts"
-import {compose} from "./middleware.ts"
+import {compose, createContext} from "./middleware.ts"
 import type {Server} from "./serve.ts"
 import {serve} from "./serve.ts"
 import {serveStatic} from "./static.ts"
@@ -356,6 +356,15 @@ describe(TITLE, () => {
         } finally {
             await services.cleanup()
         }
+    })
+
+    it("serves a file with its Content-Length in the chain, where the log reads it", async () => {
+        const c = createContext(new Request("http://127.0.0.1/dist/lib.mjs"))
+        await compose([serveStatic({path: "/dist/", root: join(dir, "dist")})])(c, async () => undefined)
+        assert.equal(c.res.headers.get("content-length"), "20")
+        stderr.read()
+        await get(server.origin, "/dist/lib.mjs")
+        assert.match(stderr.read(), /^GET \/dist\/lib\.mjs 200 20 - /)
     })
 
     it("takes several middleware in order, the first outside", async () => {
