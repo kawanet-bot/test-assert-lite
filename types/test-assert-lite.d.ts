@@ -287,8 +287,8 @@ export declare namespace TAL {
         reporter?: ReporterFn | string
         /** Where the formatted text goes, the run's stdout unless given. */
         output?: OutputFn
-        /** Reports the run to the CLI over this bridge. Nothing is sent without one. */
-        bridge?: BridgeAPI
+        /** Reports the run to its host over this channel. Nothing is sent without one. */
+        channel?: Channel
         /**
          * Takes the errors outside the tests until run(). The uncaught
          * exceptions and unhandled rejections of the window or the process
@@ -317,7 +317,7 @@ export declare namespace TAL {
     }
 
     // The session's own entry, `test-assert-lite/session`: opening it,
-    // loading the suites into it, ending it, and reaching the CLI.
+    // loading the suites into it, running it, and reaching its host.
     interface SessionAPI {
         /** Opens a new session for the following tests. */
         session(options?: SessionOptions): void
@@ -328,23 +328,23 @@ export declare namespace TAL {
         /** Runs every registered test, and closes the session. */
         run(): Promise<SessionResult>
 
-        /** Makes the bridge to the CLI over the fetch given, for session() to report with. */
-        connect: (options?: {fetch?: typeof fetch}) => BridgeAPI
+        /** Makes the channel to the host over the fetch given, for session() to report with. */
+        connect: (options?: {fetch?: typeof fetch}) => Channel
     }
 
-    // --- session bridge ---
+    // --- session channel ---
 
-    // The page's side of a CLI run, shaped after a child process: its
-    // streams, and a channel for messages.
-    interface BridgeAPI {
-        /** The CLI's stdout and stderr, as the page writes them. */
+    // The session's end of the line to its host, shaped after a child
+    // process: its streams, and a way to send messages.
+    interface Channel {
+        /** The host's stdout and stderr, as the session writes them. */
         stdout: Writer
         stderr: Writer
 
-        /** Sends a message via the IPC channel. */
+        /** Sends a message to the host. */
         send: (message: SessionEvent, callback?: (error: Error | null) => void) => void
 
-        /** Called once the session has sent its result. A bridge over fetch has nothing to close. */
+        /** Called once the session has sent its result. A channel over fetch has nothing to close. */
         disconnect(): void
     }
 
@@ -353,8 +353,6 @@ export declare namespace TAL {
         | {type: "session:begin", data?: undefined}
         | {type: "session:end", data: SessionResult}
 
-    // The paths under the run's URL that the bridge posts to.
-    type BridgeChannel = "stdout" | "stderr" | "send"
 
     // --- harness ---
 

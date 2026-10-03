@@ -4,7 +4,7 @@ import {createAssert} from "./assert/assert.ts"
 import {html} from "./reporter/html.ts"
 import {spec} from "./reporter/spec.ts"
 import {tap} from "./reporter/tap.ts"
-import {bridgeFromFetch} from "./session/client.ts"
+import {channelOverFetch} from "./session/fetch-channel.ts"
 import {createSessions} from "./session/session.ts"
 import {createHarnessState} from "./session/state.ts"
 import {createRegistrar} from "./suite/registrar.ts"
@@ -29,7 +29,7 @@ export const createTAL: typeof declared.createTAL = () => {
         }
     }
 
-    const connect: TAL.SessionAPI["connect"] = (options) => bridgeFromFetch(options?.fetch ?? fetch)
+    const connect: TAL.SessionAPI["connect"] = (options) => channelOverFetch(options?.fetch ?? fetch)
 
     return {
         assert,

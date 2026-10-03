@@ -1,12 +1,12 @@
-// The page's bridge to the CLI, over the fetch it is given. Text is
+// The session's channel to its host, over the fetch it is given. Text is
 // buffered per stream and sent in one request per flush, so a burst of a
 // hundred lines is one round trip. A change of stream, or a message,
-// flushes first, so the CLI gets everything in the order it was written.
+// flushes first, so the host gets everything in the order it was written.
 
 import type {TAL} from "test-assert-lite"
 import {delayedBufWriter} from "../utils/buf-writer.ts"
 
-interface BridgeIPC {
+interface ChannelIPC {
     stdout: (chunk: string) => Promise<unknown>
     stderr: (chunk: string) => Promise<unknown>
     send: (message: TAL.SessionEvent) => Promise<unknown>
@@ -17,8 +17,8 @@ interface BridgeIPC {
 const FLUSH_MS = 50
 
 // A quiet run says so on stderr, every ten seconds unless the session
-// sets its own interval. The CLI takes any word within its own, longer
-// bound as proof the page is alive, and a person watching sees a long
+// sets its own interval. The host takes any word within its own, longer
+// bound as proof the session is alive, and a person watching sees a long
 // test is still going rather than hung.
 const HEARTBEAT_MS = 10_000
 
@@ -33,23 +33,23 @@ const onWrite = (writer: TAL.Writer, fn: () => void): TAL.Writer => {
     }
 }
 
-// What stands in for a bridge when the run has none. It writes to the
+// What stands in for a channel when the run has no host. It writes to the
 // streams given and sends the verdict to nobody.
-export const defaultBridge = ({stdout, stderr}: Pick<TAL.BridgeAPI, "stdout" | "stderr">): TAL.BridgeAPI => ({
+export const consoleChannel = ({stdout, stderr}: Pick<TAL.Channel, "stdout" | "stderr">): TAL.Channel => ({
     stdout,
     stderr,
     send: (_, callback = NOP) => callback(null),
     disconnect: NOP,
 })
 
-// The alive line while the page is quiet, for one run. Its disconnect
-// ends the line, then the bridge's own.
-export const heartbeatBridge = (client: TAL.BridgeAPI, heartbeat?: number): TAL.BridgeAPI => {
+// The alive line while the session is quiet, for one run. Its disconnect
+// ends the line, then the channel's own.
+export const withHeartbeat = (channel: TAL.Channel, heartbeat?: number): TAL.Channel => {
     heartbeat ??= HEARTBEAT_MS
     let last = 0
     const tack = () => (last = Date.now())
 
-    const {stdout, stderr} = client
+    const {stdout, stderr} = channel
     let started = tack()
 
     const tick = (): void => {
@@ -67,20 +67,20 @@ export const heartbeatBridge = (client: TAL.BridgeAPI, heartbeat?: number): TAL.
     return {
         stdout: onWrite(stdout, tack),
         stderr: onWrite(stderr, tack),
-        send: (message, callback) => client.send(message, callback),
+        send: (message, callback) => channel.send(message, callback),
         disconnect: () => {
             if (alive != null) clearInterval(alive)
             alive = null
-            client.disconnect()
+            channel.disconnect()
         },
     }
 }
 
 // Gathers each stream for a flush. The other stream and send() flush it
 // first, so nothing overtakes what was written before it.
-const bufferedBridge = (client: TAL.BridgeAPI): TAL.BridgeAPI => {
-    const stdout = delayedBufWriter(client.stdout, FLUSH_MS)
-    const stderr = delayedBufWriter(client.stderr, FLUSH_MS)
+const buffered = (channel: TAL.Channel): TAL.Channel => {
+    const stdout = delayedBufWriter(channel.stdout, FLUSH_MS)
+    const stderr = delayedBufWriter(channel.stderr, FLUSH_MS)
 
     return {
         stdout: {
@@ -98,18 +98,18 @@ const bufferedBridge = (client: TAL.BridgeAPI): TAL.BridgeAPI => {
         send: (message, callback) => {
             stdout.flush()
             stderr.flush()
-            client.send(message, callback)
+            channel.send(message, callback)
         },
-        disconnect: () => client.disconnect(),
+        disconnect: () => channel.disconnect(),
     }
 }
 
 // What connect() gives: the fetch, kept in order, then buffered.
-export const bridgeFromFetch = (f: typeof fetch): TAL.BridgeAPI => {
-    return bufferedBridge(inOrderBridge(ipcFromFetch(f)))
+export const channelOverFetch = (f: typeof fetch): TAL.Channel => {
+    return buffered(inOrder(ipcFromFetch(f)))
 }
 
-const inOrderBridge = (bridge: BridgeIPC): TAL.BridgeAPI => {
+const inOrder = (ipc: ChannelIPC): TAL.Channel => {
     // Every request follows the one before, so each stream stays in order.
     let inflight: Promise<unknown> = Promise.resolve()
 
@@ -119,15 +119,15 @@ const inOrderBridge = (bridge: BridgeIPC): TAL.BridgeAPI => {
     }
 
     return {
-        stdout: {write: (chunk) => void chain(() => bridge.stdout(chunk)).catch(NOP)},
-        stderr: {write: (chunk) => void chain(() => bridge.stderr(chunk)).catch(NOP)},
-        send: (message, callback = NOP) => void chain(() => bridge.send(message)).then(() => callback(null), callback),
+        stdout: {write: (chunk) => void chain(() => ipc.stdout(chunk)).catch(NOP)},
+        stderr: {write: (chunk) => void chain(() => ipc.stderr(chunk)).catch(NOP)},
+        send: (message, callback = NOP) => void chain(() => ipc.send(message)).then(() => callback(null), callback),
         disconnect: NOP,
     }
 }
 
 // One POST per channel, by a path relative to the page.
-const ipcFromFetch = (f: typeof fetch): BridgeIPC => {
+const ipcFromFetch = (f: typeof fetch): ChannelIPC => {
     return {
         stdout: chunk => f("stdout", {method: "POST", body: chunk}),
         stderr: chunk => f("stderr", {method: "POST", body: chunk}),

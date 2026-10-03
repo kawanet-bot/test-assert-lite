@@ -1,8 +1,7 @@
-// The CLI's side of the channel to the page it drives: the run's own path,
-// which only this process and that page know, and the endpoints under it
-// the page reports to, as the page's bridge sends: begin, the two streams
-// and the verdict at the end. What comes in goes to the streams given;
-// nothing changes in the protocol here without the same change in that bridge.
+// The host's end of the channel to the page it drives: the run's own path,
+// which only this process and that page know, and under it the endpoints
+// the session's channel posts to. What comes in goes to the streams given.
+// The protocol changes here and in that channel together.
 
 import type {TAL} from "test-assert-lite"
 import type {RunServices} from "../../utils/run-services.ts"
@@ -24,6 +23,9 @@ export interface Channel {
     /** Takes the page's reports, each a POST under the path, and answers 204; 405 to any other method. */
     handler: (c: ContextLike, next: Next) => Promise<Response | void>
 }
+
+// The members of the channel that carry something, each a path under the run's URL.
+type ChannelName = Exclude<keyof TAL.Channel, "disconnect">
 
 type SessionEventType = TAL.SessionEvent["type"]
 
@@ -76,7 +78,7 @@ export const createChannel = ({prefix, services, timeout, singleRun = true}: Cha
     const eventTypes = Object.keys(eventMap)
     const isSessionEvent = (v: unknown): v is TAL.SessionEvent => eventTypes.includes((v as TAL.SessionEvent)?.type)
 
-    const channels: Record<TAL.BridgeChannel, (body: string) => undefined | number> = {
+    const channels: Record<ChannelName, (body: string) => undefined | number> = {
         stdout: (body) => void services.stdout.write(body),
         stderr: (body) => void services.stderr.write(body),
         send: <T extends SessionEventType>(body: string) => {
@@ -94,7 +96,7 @@ export const createChannel = ({prefix, services, timeout, singleRun = true}: Cha
     }
 
     const channelNames = Object.keys(channels)
-    const isChannelName = (v: string): v is TAL.BridgeChannel => channelNames.includes(v)
+    const isChannelName = (v: string): v is ChannelName => channelNames.includes(v)
 
     const handler = async (c: ContextLike, next: Next) => {
         if (!c.req.path.startsWith(prefix)) return next()

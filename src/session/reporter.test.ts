@@ -82,9 +82,9 @@ describe(TITLE, {timeout: 1000}, () => {
             posts.push(path)
             return {ok: true}
         })
-        const bridge = local.session.connect({fetch: stubFetch as typeof fetch})
+        const channel = local.session.connect({fetch: stubFetch as typeof fetch})
         local.session.session({
-            bridge,
+            channel,
             output: () => undefined,
             reporter: async function* (source) {
                 for await (const _event of source) throw failure
