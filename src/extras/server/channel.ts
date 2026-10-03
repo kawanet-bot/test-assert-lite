@@ -29,9 +29,10 @@ type ChannelName = Exclude<keyof TAL.Channel, "disconnect">
 
 type SessionEventType = TAL.SessionEvent["type"]
 
-type SessionEventData<T extends SessionEventType> = Extract<TAL.SessionEvent, {type: T}>["data"]
+type SessionEventData<T extends SessionEventType> = Extract<TAL.SessionEvent, {type: T}> extends {data: infer D} ? D : undefined
 
 const isTestResult = (v: unknown): v is TAL.SessionResult => ("boolean" === typeof (v as TAL.SessionResult)?.success)
+const hasSessionId = (v: unknown): v is {session: string} => ("string" === typeof (v as {session?: unknown})?.session)
 
 // How long a browser run, --playwright or --webdriver, may stay silent.
 // Before begin, the browser most likely could not reach the server. After
@@ -46,6 +47,9 @@ const SILENCE_MS = 30_000
 export const createChannel = ({prefix, services, timeout, singleRun = true}: ChannelOptions): Channel => {
     let begun = false
     let ended = false
+    // The session heard from first is the run's. Any other on the channel
+    // is a harness the page made, and its verdict is its own.
+    let first: string | null = null
     let timer: ReturnType<typeof setTimeout> | null = null
     if (singleRun) timeout ??= SILENCE_MS
 
@@ -61,15 +65,15 @@ export const createChannel = ({prefix, services, timeout, singleRun = true}: Cha
         }, timeout)
     }
 
-    type SessionEventMap = {[T in SessionEventType]: (body: SessionEventData<T>) => undefined | number}
+    type SessionEventMap = {[T in SessionEventType]: (body: SessionEventData<T>, session: string) => undefined | number}
 
     const eventMap: SessionEventMap = {
-        "session:begin": (data) => {
-            if (data != null) return 400
+        "session:begin": () => {
             begun = true
         },
-        "session:end": (data) => {
+        "session:end": (data, session) => {
             if (!isTestResult(data)) return 400
+            if (session !== first) return
             if (singleRun) services.resolve(data)
             ended = true
         },
@@ -84,10 +88,11 @@ export const createChannel = ({prefix, services, timeout, singleRun = true}: Cha
         send: <T extends SessionEventType>(body: string) => {
             try {
                 const message = body ? JSON.parse(body) as TAL.SessionEvent : undefined
-                if (!isSessionEvent(message)) return 400
+                if (!isSessionEvent(message) || !hasSessionId(message)) return 400
+                first ??= message.session
                 const fn = eventMap[message.type as T]
                 if (!fn) return
-                return fn(message.data as SessionEventData<T>)
+                return fn(("data" in message ? message.data : undefined) as SessionEventData<T>, message.session)
             } catch (e) {
                 services.stderr.write(`${stringify(e)}\n`)
                 return 400

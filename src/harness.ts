@@ -1,24 +1,19 @@
 import type * as declared from "test-assert-lite"
 import type {TAL} from "test-assert-lite"
 import {createAssert} from "./assert/assert.ts"
+import {proc} from "./process/proc.ts"
 import {html} from "./reporter/html.ts"
 import {spec} from "./reporter/spec.ts"
 import {tap} from "./reporter/tap.ts"
-import {channelOverFetch} from "./session/fetch-channel.ts"
 import {createSessions} from "./session/session.ts"
 import {createHarnessState} from "./session/state.ts"
 import {createRegistrar} from "./suite/registrar.ts"
-import {createConnectWriter, pureWriter} from "./utils/buf-writer.ts"
 
 // Binds everything the package exposes to one tree.
 export const createTAL: typeof declared.createTAL = () => {
     const state = createHarnessState()
     const {assert, tca} = createAssert()
-    // The host's streams as a script sees them: one pair for the harness's
-    // life, led to each session's channel in turn.
-    const stdout = createConnectWriter()
-    const stderr = createConnectWriter()
-    const {session, schedule, run} = createSessions(state, tca, {stdout, stderr})
+    const {session, schedule, run} = createSessions(state, tca)
     const registrar = createRegistrar(state, schedule)
     const reporter: TAL.Reporter = {spec, tap, html}
 
@@ -34,13 +29,11 @@ export const createTAL: typeof declared.createTAL = () => {
         }
     }
 
-    const connect: TAL.SessionAPI["connect"] = (options) => channelOverFetch(options?.fetch ?? fetch)
-
     return {
         assert,
-        proc: {stdout: pureWriter(stdout), stderr: pureWriter(stderr)},
+        proc,
         reporter,
-        session: {connect, load, run, session},
+        session: {load, run, session},
         test: registrar,
     }
 }

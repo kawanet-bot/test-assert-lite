@@ -317,7 +317,7 @@ export declare namespace TAL {
     }
 
     // The session's own entry, `test-assert-lite/session`: opening it,
-    // loading the suites into it, running it, and reaching its host.
+    // loading the suites into it, and running it.
     interface SessionAPI {
         /** Opens a new session for the following tests. */
         session(options?: SessionOptions): void
@@ -327,19 +327,20 @@ export declare namespace TAL {
 
         /** Runs every registered test, and closes the session. */
         run(): Promise<SessionResult>
-
-        /** Makes the channel to the host over the fetch given, for session() to report with. */
-        connect: (options?: {fetch?: typeof fetch}) => Channel
     }
 
     // --- process ---
 
     // The host as a script sees it, `test-assert-lite/process`: what
-    // node:process offers of it, written to as a script would.
+    // node:process offers of it, written to as a script would. One for the
+    // realm, the same from every harness.
     interface ProcessAPI {
-        /** The host's stdout and stderr. Held until a session is open, then written through. */
+        /** The host's stdout and stderr, down the realm's channel. */
         stdout: Writer
         stderr: Writer
+
+        /** Makes the realm's channel to the host over the fetch given, for the sessions to come. */
+        connect: (options?: {fetch?: typeof fetch}) => Channel
     }
 
     // --- session channel ---
@@ -358,10 +359,11 @@ export declare namespace TAL {
         disconnect(): void
     }
 
-    // What send() carries.
+    // What send() carries. The session names the sender, so a host with
+    // several on one channel knows whose word it is.
     type SessionEvent =
-        | {type: "session:begin", data?: undefined}
-        | {type: "session:end", data: SessionResult}
+        | {type: "session:begin", session: string}
+        | {type: "session:end", session: string, data: SessionResult}
 
 
     // --- harness ---

@@ -54,8 +54,7 @@ test("test-assert-lite/session", () => {
     assert.equal(sessionEntry.session, sharedTAL.session.session)
     assert.equal(sessionEntry.load, sharedTAL.session.load)
     assert.equal(sessionEntry.run, sharedTAL.session.run)
-    assert.equal(sessionEntry.connect, sharedTAL.session.connect)
-    assert.deepEqual(named(sessionEntry), ["connect", "load", "run", "session"])
+    assert.deepEqual(named(sessionEntry), ["load", "run", "session"])
 })
 
 test("test-assert-lite/process", () => {
@@ -63,7 +62,8 @@ test("test-assert-lite/process", () => {
     void typed
     assert.equal(processEntry.stdout, sharedTAL.proc.stdout)
     assert.equal(processEntry.stderr, sharedTAL.proc.stderr)
-    assert.deepEqual(named(processEntry), ["stderr", "stdout"])
+    assert.equal(processEntry.connect, sharedTAL.proc.connect)
+    assert.deepEqual(named(processEntry), ["connect", "stderr", "stdout"])
     assert.ok(!("default" in processEntry))
 })
 

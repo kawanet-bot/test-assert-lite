@@ -3,14 +3,13 @@
 // that reports the verdict and lets go of what was taken.
 
 import type {TAL} from "test-assert-lite"
+import {withHeartbeat} from "../process/fetch-channel.ts"
+import {sessionChannel} from "../process/proc.ts"
 import type {Run} from "../suite/job.ts"
-import type {ConnectWriter} from "../utils/buf-writer.ts"
 import {hasProcess} from "../utils/process.ts"
 import {createRunServices, type RunServices} from "../utils/run-services.ts"
 import {stringify} from "../utils/stringify.ts"
-import {consoleWriters, saveConsole, takeConsole} from "./console.ts"
-import {consoleChannel, withHeartbeat} from "./fetch-channel.ts"
-import {nodeChannel} from "./node-channel.ts"
+import {saveConsole, takeConsole} from "./console.ts"
 import type {ReportStream} from "./report-stream.ts"
 import {createReportStream} from "./report-stream.ts"
 import {chooseReporter} from "./reporters.ts"
@@ -29,6 +28,8 @@ interface Cycle {
     report: ReportStream
     // Where the run's text and verdict go, let go of once the verdict is out.
     channel: TAL.Channel
+    // Names the session to the host, among others on the same channel.
+    id: string
     run: Run
     startedAt: number
     held: boolean
@@ -48,13 +49,11 @@ export interface Sessions {
     schedule: () => void
 }
 
-/** What a script writes to as the host's streams, led to the session's channel while one is open. */
-export interface ProcessWriters {
-    stdout: ConnectWriter
-    stderr: ConnectWriter
-}
+// Nine base-36 characters, like the run's own path. Unique among the
+// sessions of one page is all it has to be.
+const sessionId = (): string => Math.floor(Math.random() * 36 ** 9).toString(36).padStart(9, "0")
 
-export const createSessions = (harness: HarnessState, assert: TAL.TestContextAssert, proc: ProcessWriters): Sessions => {
+export const createSessions = (harness: HarnessState, assert: TAL.TestContextAssert): Sessions => {
     let cycle: Cycle | null = null
 
     const open = (options: TAL.SessionOptions, implicitSession: boolean): Cycle => {
@@ -63,14 +62,10 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
         // Saved before anything is taken over, so nothing here loops back.
         const found = options.console ?? globalThis.console
         const saved = saveConsole(found)
-        // The run's text and verdict go to the host over the channel given, to
-        // the process under Node, or to the console as found. A heartbeat of 0
-        // turns the alive line off.
-        const given = options.channel ?? (hasProcess() ? nodeChannel(process, implicitSession) : consoleChannel(consoleWriters(found, saved)))
+        // The run's text and verdict go to the host over the channel given, or
+        // over the realm's. A heartbeat of 0 turns the alive line off.
+        const given = options.channel ?? sessionChannel(implicitSession)
         const channel = (heartbeat == null || heartbeat > 0) ? withHeartbeat(given, heartbeat) : given
-        // A script's writes reach the host from here on, what came before first.
-        proc.stdout.connect(channel.stdout)
-        proc.stderr.connect(channel.stderr)
         const services = createRunServices(channel)
         // The report goes where the console goes unless told otherwise.
         const output = options.output ?? ((text: string) => services.stdout.write(text))
@@ -92,7 +87,8 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
         const showError = (err: Error | null) => void (err && services.stderr.write(`${stringify(err)}\n`))
 
         // A word out as the session opens. Nothing waits for it, so session() stays synchronous.
-        channel.send({type: "session:begin"}, showError)
+        const id = sessionId()
+        channel.send({type: "session:begin", session: id}, showError)
 
         // Node's own runner ends the run as the process would exit. Here too.
         // A run() already under way, or done, leaves nothing for this to do.
@@ -108,7 +104,7 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
             services.onCleanup(() => process.off("beforeExit", onExit))
         }
 
-        return {services, report, channel, run: state, startedAt: performance.now(), held: true, walk: null, closing: false, failure: undefined}
+        return {services, report, channel, id, run: state, startedAt: performance.now(), held: true, walk: null, closing: false, failure: undefined}
     }
 
     const session: TAL.SessionAPI["session"] = (options = {}) => {
@@ -157,7 +153,7 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
         current.held = false
         schedule()
         current.closing = true
-        const {services, channel} = current
+        const {services, channel, id} = current
         try {
             services.resolve(await conclude(current))
         } catch (error) {
@@ -167,13 +163,11 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
         // too. The channel is let go of once it has taken the word.
         const result = await services.finished.then(result => result, (): SessionResult => ({success: false}))
         await new Promise<void>(resolve => {
-            channel.send({type: "session:end", data: result}, (err) => {
+            channel.send({type: "session:end", session: id, data: result}, (err) => {
                 if (err) services.stderr.write(`${stringify(err)}\n`)
                 resolve()
             })
         })
-        proc.stdout.disconnect()
-        proc.stderr.disconnect()
         channel.disconnect()
         // A partially executed registry is unsafe to retry.
         resetHarnessState(harness)

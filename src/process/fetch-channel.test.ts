@@ -6,13 +6,13 @@ import {describe, it} from "node:test"
 import type {TAL} from "test-assert-lite"
 import {createTAL} from "../index.ts"
 
-const TITLE = "session/fetch-channel.test.ts"
+const TITLE = "process/fetch-channel.test.ts"
 
 const NEWLINE = /(?<=\n)(?=\S)/
 
 type FetchLike = (url: string, init: {method: "POST", body: string}) => Promise<{ok: boolean}>
 
-const testStub = (session: TAL.SessionAPI, stubFetch?: FetchLike) => {
+const testStub = (proc: TAL.ProcessAPI, stubFetch?: FetchLike) => {
     const logs: [string, string][] = []
 
     stubFetch ??= async (path, init) => {
@@ -20,7 +20,7 @@ const testStub = (session: TAL.SessionAPI, stubFetch?: FetchLike) => {
         return {ok: true}
     }
 
-    const channel = session.connect({fetch: stubFetch as typeof fetch})
+    const channel = proc.connect({fetch: stubFetch as typeof fetch})
 
     const output = () => undefined
 
@@ -29,91 +29,98 @@ const testStub = (session: TAL.SessionAPI, stubFetch?: FetchLike) => {
 
 const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms))
 
-const BEGIN = JSON.stringify({type: "session:begin"})
-const SUCCESS = JSON.stringify({type: "session:end", data: {success: true}})
-const FAILURE = JSON.stringify({type: "session:end", data: {success: false}})
+// A send as logged, with the session left out: what was sent and the verdict.
+const kind = (log: [string, string] | undefined): [string, string, boolean | undefined] | undefined => {
+    if (log == null) return undefined
+    const message = JSON.parse(log[1]) as TAL.SessionEvent
+    return [log[0], message.type, "data" in message ? message.data.success : undefined]
+}
+
+const BEGIN: [string, string, boolean | undefined] = ["send", "session:begin", undefined]
+const SUCCESS: [string, string, boolean | undefined] = ["send", "session:end", true]
+const FAILURE: [string, string, boolean | undefined] = ["send", "session:end", false]
 
 describe(TITLE, {timeout: 1000}, () => {
     it("posts begin first, then the streams, then end, in order", async () => {
-        const {session} = createTAL()
-        const {logs, channel, output} = testStub(session)
+        const {session, proc} = createTAL()
+        const {logs, channel, output} = testStub(proc)
         session.session({channel, output})
         channel.stdout.write("one\n")
         channel.stderr.write("warned\n")
         channel.stdout.write("two\n")
         await session.run()
 
-        assert.deepEqual(logs.shift(), ["send", BEGIN])
+        assert.deepEqual(kind(logs.shift()), BEGIN)
         assert.deepEqual(logs.shift(), ["stdout", "one\n"])
         assert.deepEqual(logs.shift(), ["stderr", "warned\n"])
         assert.deepEqual(logs.shift(), ["stdout", "two\n"])
-        assert.deepEqual(logs.shift(), ["send", SUCCESS])
+        assert.deepEqual(kind(logs.shift()), SUCCESS)
         assert.equal(logs.length, 0)
     })
 
     it("gathers a burst of lines into one request per stream", async () => {
-        const {session} = createTAL()
-        const {logs, channel, output} = testStub(session)
+        const {session, proc} = createTAL()
+        const {logs, channel, output} = testStub(proc)
         session.session({channel, output})
         for (let i = 0; i < 100; i++) channel.stdout.write(`line ${i}\n`)
         await session.run()
 
-        assert.deepEqual(logs.shift(), ["send", BEGIN])
+        assert.deepEqual(kind(logs.shift()), BEGIN)
         const [type, body] = logs.shift()!
         assert.equal(type, "stdout")
         const lines = body.split(NEWLINE) ?? []
         assert.equal(lines.length, 100)
         assert.equal(lines.at(0), "line 0\n")
         assert.equal(lines.at(-1), "line 99\n")
-        assert.deepEqual(logs.shift(), ["send", SUCCESS])
+        assert.deepEqual(kind(logs.shift()), SUCCESS)
         assert.equal(logs.length, 0)
     })
 
     it("flushes on its own while the run goes on", async () => {
-        const {session} = createTAL()
-        const {logs, channel, output} = testStub(session)
+        const {session, proc} = createTAL()
+        const {logs, channel, output} = testStub(proc)
         session.session({channel, output})
         channel.stdout.write("early\n")
         await sleep(200)
-        assert.deepEqual(logs.shift(), ["send", BEGIN])
+        assert.deepEqual(kind(logs.shift()), BEGIN)
         assert.deepEqual(logs.shift(), ["stdout", "early\n"])
         assert.equal(logs.length, 0)
 
         channel.stdout.write("late\n")
         await session.run()
         assert.deepEqual(logs.shift(), ["stdout", "late\n"])
-        assert.deepEqual(logs.shift(), ["send", SUCCESS])
+        assert.deepEqual(kind(logs.shift()), SUCCESS)
         assert.equal(logs.length, 0)
     })
 
     it("sends the run's verdict: false once a test failed", async () => {
-        const {session, test} = createTAL()
-        const {logs, channel, output} = testStub(session)
+        const {session, test, proc} = createTAL()
+        const {logs, channel, output} = testStub(proc)
         session.session({channel, output})
         test.it("fails", () => {
             throw new Error("no")
         })
         await session.run()
-        assert.deepEqual(logs.at(-1), ["send", FAILURE])
+        assert.deepEqual(kind(logs.at(-1)), FAILURE)
     })
 
     it("sends text as given", async () => {
-        const {session} = createTAL()
-        const {logs, channel, output} = testStub(session)
+        const {session, proc} = createTAL()
+        const {logs, channel, output} = testStub(proc)
         session.session({channel, output})
         channel.stderr.write("as ")
         channel.stderr.write("given\n")
         await session.run()
 
-        assert.deepEqual(logs.shift(), ["send", BEGIN])
+        assert.deepEqual(kind(logs.shift()), BEGIN)
         assert.deepEqual(logs.shift(), ["stderr", "as given\n"]) // combined
-        assert.deepEqual(logs.shift(), ["send", SUCCESS])
+        assert.deepEqual(kind(logs.shift()), SUCCESS)
         assert.equal(logs.length, 0)
     })
 
     it("text written before session() goes out once the session is open", async () => {
-        const {session} = createTAL()
-        const {logs, channel, output} = testStub(session)
+        const {session, proc} = createTAL()
+        const {logs, channel, output} = testStub(proc)
         channel.stdout.write("early\n")
         channel.stderr.write("warned\n")
         session.session({channel, output})
@@ -121,20 +128,35 @@ describe(TITLE, {timeout: 1000}, () => {
 
         assert.deepEqual(logs.shift(), ["stdout", "early\n"])
         assert.deepEqual(logs.shift(), ["stderr", "warned\n"])
-        assert.deepEqual(logs.shift(), ["send", BEGIN])
-        assert.deepEqual(logs.shift(), ["send", SUCCESS])
+        assert.deepEqual(kind(logs.shift()), BEGIN)
+        assert.deepEqual(kind(logs.shift()), SUCCESS)
         assert.equal(logs.length, 0)
     })
 
     it("does not reject when the fetch does", async () => {
-        const {session} = createTAL()
-        const {channel, output} = testStub(session, async () => {
+        const {session, proc} = createTAL()
+        const {channel, output} = testStub(proc, async () => {
             throw new TypeError("fetch failed")
         })
         session.session({channel, output})
         channel.stdout.write("lost\n")
         channel.stderr.write("still lost\n")
         assert.equal((await session.run()).success, true)
+    })
+
+    it("takes what a script writes to proc, from any harness, once connected", async () => {
+        const {session, proc} = createTAL()
+        const {logs, output} = testStub(proc)
+        proc.stdout.write("script out\n")
+        createTAL().proc.stderr.write("script err\n")
+        session.session({output})
+        await session.run()
+
+        assert.deepEqual(logs.shift(), ["stdout", "script out\n"])
+        assert.deepEqual(logs.shift(), ["stderr", "script err\n"])
+        assert.deepEqual(kind(logs.shift()), BEGIN)
+        assert.deepEqual(kind(logs.shift()), SUCCESS)
+        assert.equal(logs.length, 0)
     })
 
     it("calls the channel's disconnect once, after the result", async () => {
@@ -162,8 +184,8 @@ describe(TITLE, {timeout: 1000}, () => {
 
     // A console of the test's own stands in for the page's.
     it("takes a console: log to stdout, error to stderr, a call a line, and gives it back at the end", async () => {
-        const {session} = createTAL()
-        const {logs, channel, output} = testStub(session)
+        const {session, proc} = createTAL()
+        const {logs, channel, output} = testStub(proc)
         const fake = {
             debug: (..._: unknown[]) => undefined,
             log: (..._: unknown[]) => undefined,
@@ -183,20 +205,20 @@ describe(TITLE, {timeout: 1000}, () => {
         assert.equal(fake.log, log)
         assert.equal(fake.warn, warn)
 
-        assert.deepEqual(logs.shift(), ["send", BEGIN])
+        assert.deepEqual(kind(logs.shift()), BEGIN)
         assert.deepEqual(logs.shift(), ["stdout", "a 1 b\ninfo\ndebug\n"])
         const [type, body] = logs.shift()!
         assert.equal(type, "stderr")
         const lines = body?.split(NEWLINE)
         assert.equal(lines.shift(), "warned\n")
         assert.match(lines.shift()!, /^TypeError: typed/)
-        assert.deepEqual(logs.shift(), ["send", SUCCESS])
+        assert.deepEqual(kind(logs.shift()), SUCCESS)
         assert.equal(logs.length, 0)
     })
 
     it("writes a heartbeat to stderr at the interval given, while quiet", async () => {
-        const {session} = createTAL()
-        const {logs, channel, output} = testStub(session)
+        const {session, proc} = createTAL()
+        const {logs, channel, output} = testStub(proc)
         session.session({channel, output, heartbeat: 20})
 
         for (let i = 0; i < 10; i++) {
@@ -204,10 +226,10 @@ describe(TITLE, {timeout: 1000}, () => {
             if (logs.length > 1) break
         }
         await session.run()
-        assert.deepEqual(logs.shift(), ["send", BEGIN])
+        assert.deepEqual(kind(logs.shift()), BEGIN)
         const [type, body] = logs.shift()!
         assert.equal(type, "stderr")
         assert.match(body!, /^⏳ \d+s\n/)
-        assert.deepEqual(logs.pop(), ["send", SUCCESS])
+        assert.deepEqual(kind(logs.pop()), SUCCESS)
     })
 })

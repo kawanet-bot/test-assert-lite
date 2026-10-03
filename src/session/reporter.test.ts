@@ -82,7 +82,7 @@ describe(TITLE, {timeout: 1000}, () => {
             posts.push(path)
             return {ok: true}
         })
-        const channel = local.session.connect({fetch: stubFetch as typeof fetch})
+        const channel = local.proc.connect({fetch: stubFetch as typeof fetch})
         local.session.session({
             channel,
             output: () => undefined,
