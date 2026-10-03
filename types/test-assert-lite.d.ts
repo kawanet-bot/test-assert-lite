@@ -290,13 +290,13 @@ export declare namespace TAL {
         /** Reports the run to the CLI over this bridge. Nothing is sent without one. */
         bridge?: BridgeAPI
         /**
-         * Takes the errors outside the tests, until end(): the uncaught
+         * Takes the errors outside the tests until run(). The uncaught
          * exceptions and unhandled rejections of the window or the process
-         * given, each one failed test at the top level.
+         * given each become one failed test at the top level.
          */
         uncaught?: EventTargetLike | EventEmitterLike
         /**
-         * A console the session takes over until end(): debug, log and info
+         * A console the session takes over until run(). debug, log and info
          * go to `stdout`, warn and error to `stderr`, each call one line.
          */
         console?: ConsoleLike
@@ -306,7 +306,7 @@ export declare namespace TAL {
         heartbeat?: number
     }
 
-    // What end() resolves with: whether every test passed.
+    // What run() resolves with. It says whether every test passed.
     interface SessionResult {
         success: boolean
     }
@@ -326,7 +326,7 @@ export declare namespace TAL {
         load(file: string): Promise<void>
 
         /** Runs every registered test, and closes the session. */
-        end(): Promise<SessionResult>
+        run(): Promise<SessionResult>
 
         /** Makes the bridge to the CLI over the fetch given, for session() to report with. */
         connect: (options?: {fetch?: typeof fetch}) => BridgeAPI

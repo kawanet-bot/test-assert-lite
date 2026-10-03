@@ -41,7 +41,7 @@ describe(TITLE, {timeout: 1000}, () => {
         bridge.stdout.write("one\n")
         bridge.stderr.write("warned\n")
         bridge.stdout.write("two\n")
-        await session.end()
+        await session.run()
 
         assert.deepEqual(logs.shift(), ["send", BEGIN])
         assert.deepEqual(logs.shift(), ["stdout", "one\n"])
@@ -56,7 +56,7 @@ describe(TITLE, {timeout: 1000}, () => {
         const {logs, bridge, output} = testStub(session)
         session.session({bridge, output})
         for (let i = 0; i < 100; i++) bridge.stdout.write(`line ${i}\n`)
-        await session.end()
+        await session.run()
 
         assert.deepEqual(logs.shift(), ["send", BEGIN])
         const [type, body] = logs.shift()!
@@ -80,7 +80,7 @@ describe(TITLE, {timeout: 1000}, () => {
         assert.equal(logs.length, 0)
 
         bridge.stdout.write("late\n")
-        await session.end()
+        await session.run()
         assert.deepEqual(logs.shift(), ["stdout", "late\n"])
         assert.deepEqual(logs.shift(), ["send", SUCCESS])
         assert.equal(logs.length, 0)
@@ -93,7 +93,7 @@ describe(TITLE, {timeout: 1000}, () => {
         test.it("fails", () => {
             throw new Error("no")
         })
-        await session.end()
+        await session.run()
         assert.deepEqual(logs.at(-1), ["send", FAILURE])
     })
 
@@ -103,7 +103,7 @@ describe(TITLE, {timeout: 1000}, () => {
         session.session({bridge, output})
         bridge.stderr.write("as ")
         bridge.stderr.write("given\n")
-        await session.end()
+        await session.run()
 
         assert.deepEqual(logs.shift(), ["send", BEGIN])
         assert.deepEqual(logs.shift(), ["stderr", "as given\n"]) // combined
@@ -117,7 +117,7 @@ describe(TITLE, {timeout: 1000}, () => {
         bridge.stdout.write("early\n")
         bridge.stderr.write("warned\n")
         session.session({bridge, output})
-        await session.end()
+        await session.run()
 
         assert.deepEqual(logs.shift(), ["stdout", "early\n"])
         assert.deepEqual(logs.shift(), ["stderr", "warned\n"])
@@ -134,7 +134,7 @@ describe(TITLE, {timeout: 1000}, () => {
         session.session({bridge, output})
         bridge.stdout.write("lost\n")
         bridge.stderr.write("still lost\n")
-        assert.equal((await session.end()).success, true)
+        assert.equal((await session.run()).success, true)
     })
 
     it("calls the bridge's disconnect once, after the result", async () => {
@@ -154,7 +154,7 @@ describe(TITLE, {timeout: 1000}, () => {
         }
         session.session({bridge, output: () => undefined})
         test.it("one", () => undefined)
-        await session.end()
+        await session.run()
 
         assert.deepEqual(sent, ["session:begin", "session:end"])
         assert.equal(disconnected, 1)
@@ -179,7 +179,7 @@ describe(TITLE, {timeout: 1000}, () => {
         fake.debug("debug")
         fake.warn("warned")
         fake.error(new TypeError("typed"))
-        await session.end()
+        await session.run()
         assert.equal(fake.log, log)
         assert.equal(fake.warn, warn)
 
@@ -203,7 +203,7 @@ describe(TITLE, {timeout: 1000}, () => {
             await sleep(20)
             if (logs.length > 1) break
         }
-        await session.end()
+        await session.run()
         assert.deepEqual(logs.shift(), ["send", BEGIN])
         const [type, body] = logs.shift()!
         assert.equal(type, "stderr")

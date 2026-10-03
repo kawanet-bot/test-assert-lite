@@ -16,7 +16,7 @@ describe(TITLE, () => {
         local.test.it("noisy", (t) => {
             t.diagnostic("hello")
         })
-        await local.session.end()
+        await local.session.run()
 
         const found = events.find(e => e.type === "test:diagnostic" && e.data.message === "hello")
         assert.ok(found)
@@ -32,7 +32,7 @@ describe(TITLE, () => {
                 t.diagnostic("note")
             })
         })
-        await local.session.end()
+        await local.session.run()
 
         const types = events.map(e => e.type === "test:diagnostic" ? `diagnostic:${e.data.message}` : e.type === "test:start" || e.type === "test:pass" ? `${e.type}:${e.data.name}` : e.type)
         assert.deepEqual(types.slice(0, 4), ["test:start:S", "test:start:noisy", "diagnostic:note", "test:pass:noisy"])
@@ -48,7 +48,7 @@ describe(TITLE, () => {
         local.test.it("slow", async () => {
             await new Promise(resolve => setTimeout(resolve, 50))
         })
-        await local.session.end()
+        await local.session.run()
 
         const types = events.map(e => e.type === "test:diagnostic" ? `diagnostic:${e.data.message}` : e.type === "test:pass" ? `pass:${e.data.name}` : e.type)
         const late = types.indexOf("diagnostic:late note")
@@ -68,7 +68,7 @@ describe(TITLE, () => {
                 caught = e
             }
         })
-        await local.session.end()
+        await local.session.run()
 
         assert.ok(caught instanceof Error)
         assert.equal((caught as Error & {code?: string}).code, "ERR_ASSERTION")
@@ -95,7 +95,7 @@ describe(TITLE, () => {
             attempt("strictEqual", () => t.assert.strictEqual(1, "1"))
             attempt("deepStrictEqual", () => t.assert.deepStrictEqual({a: 1}, {a: "1"}))
         })
-        await local.session.end()
+        await local.session.run()
 
         assert.deepEqual(outcome, {equal: true, deepEqual: true, strictEqual: false, deepStrictEqual: false})
     })
@@ -107,7 +107,7 @@ describe(TITLE, () => {
         local.test.it("named", (t) => {
             seen = t.name
         })
-        await local.session.end()
+        await local.session.run()
 
         assert.equal(seen, "named")
     })

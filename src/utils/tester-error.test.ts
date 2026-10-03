@@ -31,7 +31,7 @@ const thrown = async (value: unknown): Promise<string> => {
     local.test.it("bad", () => {
         throw value
     })
-    await local.session.end()
+    await local.session.run()
     return lines.join("")
 }
 

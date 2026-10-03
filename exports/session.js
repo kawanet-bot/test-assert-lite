@@ -1,5 +1,6 @@
 // The session's own entry: opening it, loading the suites into it, and
-// ending it, from the shared harness. No default: node has no such module.
+// running it, from the shared harness. There is no default export. Node has
+// no module like this one.
 import {sharedTAL} from "test-assert-lite"
 
-export const {connect, end, load, session} = sharedTAL.session
+export const {connect, load, run, session} = sharedTAL.session

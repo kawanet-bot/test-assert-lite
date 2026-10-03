@@ -52,9 +52,9 @@ test("test-assert-lite/session", () => {
     void typed
     assert.equal(sessionEntry.session, sharedTAL.session.session)
     assert.equal(sessionEntry.load, sharedTAL.session.load)
-    assert.equal(sessionEntry.end, sharedTAL.session.end)
+    assert.equal(sessionEntry.run, sharedTAL.session.run)
     assert.equal(sessionEntry.connect, sharedTAL.session.connect)
-    assert.deepEqual(named(sessionEntry), ["connect", "end", "load", "session"])
+    assert.deepEqual(named(sessionEntry), ["connect", "load", "run", "session"])
 })
 
 test("test-assert-lite/reporter/html", () => {

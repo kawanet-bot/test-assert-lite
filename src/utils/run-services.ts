@@ -1,5 +1,4 @@
 import type {TAL} from "test-assert-lite"
-import {hasProcess} from "./process.ts"
 import {stringify} from "./stringify.ts"
 
 /** What one run offers its parts: where output goes, how it ends, what to undo. */
@@ -29,9 +28,8 @@ export interface RunServicesOptions {
 
 const nullWriter: TAL.Writer = {write: (() => undefined)}
 
-/** The streams a run falls back on. */
+/** The streams a run falls back on. They swallow what they get. */
 export const getStreams = (streams: RunServicesOptions = {}): Required<RunServicesOptions> => {
-    if (hasProcess()) streams = process
     return {
         stdout: streams.stdout ?? nullWriter,
         stderr: streams.stderr ?? nullWriter,

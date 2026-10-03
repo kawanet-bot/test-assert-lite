@@ -42,7 +42,7 @@ unpack:
 
 test: test-bundled test-bin test-cli
 
-# The bundle only registers tests and never calls end() itself, so it
+# The bundle only registers tests and never calls run() itself, so it
 # needs a runner -- $(PKG_ROOT)'s own CLI, matching whichever copy the
 # bundle's own self-reference resolves to. The slow suites, skipped in a
 # plain run, are wanted here: this is the packed copy on every Node line.

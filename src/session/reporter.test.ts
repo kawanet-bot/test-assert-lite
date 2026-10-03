@@ -19,7 +19,7 @@ const caught = async (promise: Promise<unknown>): Promise<unknown> => {
 
 describe(TITLE, {timeout: 1000}, () => {
 
-    it("rejects end() when the reporter throws", async () => {
+    it("rejects run() when the reporter throws", async () => {
         const local = createTAL()
         const failure = new Error("reporter failed")
         local.session.session({
@@ -29,7 +29,7 @@ describe(TITLE, {timeout: 1000}, () => {
         })
         local.test.it("one", () => undefined)
 
-        assert.equal(await caught(local.session.end()), failure)
+        assert.equal(await caught(local.session.run()), failure)
     })
 
     it("does not start the reporter when session() rejects", () => {
@@ -45,7 +45,7 @@ describe(TITLE, {timeout: 1000}, () => {
         assert.equal(started, 0)
     })
 
-    it("rejects end() when async reporter work rejects", async () => {
+    it("rejects run() when async reporter work rejects", async () => {
         const local = createTAL()
         const failure = new Error("async reporter failed")
         local.session.session({
@@ -55,10 +55,10 @@ describe(TITLE, {timeout: 1000}, () => {
         })
         local.test.it("one", () => undefined)
 
-        assert.equal(await caught(local.session.end()), failure)
+        assert.equal(await caught(local.session.run()), failure)
     })
 
-    it("rejects end() when the reporter throws after the last event", async () => {
+    it("rejects run() when the reporter throws after the last event", async () => {
         const local = createTAL()
         const failure = new Error("reporter failed at the end")
         local.session.session({
@@ -69,10 +69,10 @@ describe(TITLE, {timeout: 1000}, () => {
         })
         local.test.it("one", () => undefined)
 
-        assert.equal(await caught(local.session.end()), failure)
+        assert.equal(await caught(local.session.run()), failure)
     })
 
-    // The failure fails end() and the cleanups say nothing more. Under a
+    // The failure fails run() and the cleanups say nothing more. Under a
     // CLI, a line from a cleanup would reach it as stderr.
     it("reports a reporter failure once", async () => {
         const local = createTAL()
@@ -92,7 +92,7 @@ describe(TITLE, {timeout: 1000}, () => {
         })
         local.test.it("one", () => undefined)
 
-        assert.equal(await caught(local.session.end()), failure)
+        assert.equal(await caught(local.session.run()), failure)
         assert.deepEqual(posts, ["send", "send"])
     })
 
@@ -107,7 +107,7 @@ describe(TITLE, {timeout: 1000}, () => {
         let rejected = false
 
         try {
-            await local.session.end()
+            await local.session.run()
         } catch (error) {
             rejected = true
             assert.equal(error, undefined)
@@ -115,7 +115,7 @@ describe(TITLE, {timeout: 1000}, () => {
         assert.equal(rejected, true)
     })
 
-    it("rejects end() when sync or async output fails", async () => {
+    it("rejects run() when sync or async output fails", async () => {
         for (const asyncOutput of [false, true]) {
             const local = createTAL()
             const failure = new Error(asyncOutput ? "async output failed" : "output failed")
@@ -128,7 +128,7 @@ describe(TITLE, {timeout: 1000}, () => {
             })
             local.test.it("one", () => undefined)
 
-            assert.equal(await caught(local.session.end()), failure)
+            assert.equal(await caught(local.session.run()), failure)
         }
     })
 
@@ -142,7 +142,7 @@ describe(TITLE, {timeout: 1000}, () => {
         })
         local.test.it("one", () => undefined)
 
-        const error = await caught(local.session.end())
+        const error = await caught(local.session.run())
         assert.match(String(error), /reporter ended before its input/i)
     })
 
@@ -160,7 +160,7 @@ describe(TITLE, {timeout: 1000}, () => {
         })
         local.test.it("one", () => undefined)
 
-        const error = await caught(local.session.end())
+        const error = await caught(local.session.run())
         assert.match(String(error), /reporter ended before its input/i)
     })
 
@@ -177,7 +177,7 @@ describe(TITLE, {timeout: 1000}, () => {
         })
         local.test.it("one", () => undefined)
 
-        const summary = await local.session.end()
+        const summary = await local.session.run()
         assert.equal(summary.success, true)
     })
 
@@ -198,12 +198,12 @@ describe(TITLE, {timeout: 1000}, () => {
             t.diagnostic("from body")
         })
 
-        assert.equal(await caught(local.session.end()), failure)
+        assert.equal(await caught(local.session.run()), failure)
     })
 
-    // end() closes the session, settings and all: the next run opens one of
+    // run() closes the session, settings and all. The next run opens one of
     // its own, with the defaults unless session() is called again.
-    it("a session ends with end(), and the next run opens another", async () => {
+    it("a session ends with run(), and the next run opens another", async () => {
         const local = createTAL()
         const output: string[] = []
         const settings: NonNullable<Parameters<typeof local.session.session>[0]> = {
@@ -218,10 +218,10 @@ describe(TITLE, {timeout: 1000}, () => {
         }
         local.session.session(settings)
         local.test.it("first", () => undefined)
-        await local.session.end()
+        await local.session.run()
         local.session.session(settings)
         local.test.it("second", () => undefined)
-        await local.session.end()
+        await local.session.run()
 
         assert.equal(output.join(""), "first\nsecond\n")
     })
@@ -234,29 +234,29 @@ describe(TITLE, {timeout: 1000}, () => {
         local.test.it("first", () => undefined)
 
         assert.throws(() => local.session.session({output: () => undefined}), /before the first test is declared/)
-        await local.session.end()
+        await local.session.run()
     })
 
-    it("session() twice throws until end() has closed the first", async () => {
+    it("session() twice throws until run() has closed the first", async () => {
         const local = createTAL()
         local.session.session({output: () => undefined})
 
         assert.throws(() => local.session.session({output: () => undefined}), /already open/)
-        await local.session.end()
+        await local.session.run()
         local.session.session({output: () => undefined})
     })
 
-    // end() alone opens the default session and closes it again.
-    it("end() with nothing declared reports an empty run", async () => {
+    // run() alone opens the default session and closes it again.
+    it("run() with nothing declared reports an empty run", async () => {
         const local = createTAL()
         const events = capture(local)
-        const result = await local.session.end()
+        const result = await local.session.run()
 
         assert.equal(result.success, true)
         assert.equal(summaryOf(events).counts.tests, 0)
     })
 
-    it("a failed end() closes the session too, and the next run starts clean", async () => {
+    it("a failed run() closes the session too, and the next run starts clean", async () => {
         const local = createTAL()
         const failure = new Error("reporter failed")
         local.session.session({
@@ -265,11 +265,11 @@ describe(TITLE, {timeout: 1000}, () => {
             },
         })
         local.test.it("discarded", () => undefined)
-        assert.equal(await caught(local.session.end()), failure)
+        assert.equal(await caught(local.session.run()), failure)
 
         const events = capture(local)
         local.test.it("recovered", () => undefined)
-        const result = await local.session.end()
+        const result = await local.session.run()
 
         assert.equal(result.success, true)
         assert.deepEqual(names(events, "test:pass"), ["recovered"])

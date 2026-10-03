@@ -28,7 +28,7 @@ describe(TITLE, () => {
     })
 
     // Isolation is the whole point of the factory, so hold the line that a
-    // test registered on one harness never joins another harness's end().
+    // test registered on one harness never joins another harness's run().
     it("each harness keeps its own registry", async () => {
         const a = createTAL()
         const b = createTAL()
@@ -39,8 +39,8 @@ describe(TITLE, () => {
         b.test.it("only on b", () => undefined)
         b.test.it("also on b", () => undefined)
 
-        await b.session.end()
-        await a.session.end()
+        await b.session.run()
+        await a.session.run()
         assert.equal(summaryOf(seenB).counts.tests, 2)
         assert.equal(summaryOf(seenA).counts.tests, 1)
     })
@@ -62,21 +62,21 @@ describe(TITLE, () => {
             order.push("b-test")
         })
 
-        await b.session.end()
-        await a.session.end()
+        await b.session.run()
+        await a.session.run()
 
         assert.deepEqual(order, ["b-test", "a:before", "a-test"])
     })
 
-    it("end() resets only its own harness", async () => {
+    it("run() resets only its own harness", async () => {
         const local = createTAL()
         const first = capture(local)
         local.test.it("once", () => undefined)
-        await local.session.end()
+        await local.session.run()
         assert.equal(summaryOf(first).counts.tests, 1)
 
         const second = capture(local)
-        await local.session.end()
+        await local.session.run()
         assert.equal(summaryOf(second).counts.tests, 0)
     })
 
@@ -90,7 +90,7 @@ describe(TITLE, () => {
         assert.notEqual(a.session, b.session)
 
         b.test.it("only on b", () => undefined)
-        await b.session.end()
+        await b.session.run()
 
         assert.ok(names(seenByB, "test:pass").includes("only on b"))
         assert.equal(seenByA.length, 0)
@@ -107,7 +107,7 @@ describe(TITLE, () => {
         })
 
         local.test.it("visible", () => undefined)
-        await local.session.end()
+        await local.session.run()
 
         assert.ok(lines.join("").includes("visible"))
     })
@@ -133,7 +133,7 @@ describe(TITLE, () => {
             // assert.equal, and its strictEqual the strict one.
             same = t.assert.equal === local.assert.equal && t.assert.strictEqual === local.assert.strict.equal
         })
-        await local.session.end()
+        await local.session.run()
 
         assert.equal(same, true)
         assert.equal(names(seen, "test:pass").join(""), "check")
