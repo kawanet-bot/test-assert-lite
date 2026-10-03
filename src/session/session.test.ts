@@ -200,7 +200,7 @@ describe(TITLE, () => {
         assert.deepEqual(names(events, "test:pass"), ["still declares"])
     })
 
-    it("end() lets go of the events, and a session without uncaught takes none", async () => {
+    it("run() lets go of the events, and a session without uncaught takes none", async () => {
         const local = createTAL()
         const on = target()
         capture(local, {uncaught: on})

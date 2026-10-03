@@ -115,7 +115,7 @@ describeSlow(TITLE, () => {
     // node:test ends its run only when nothing keeps the process alive,
     // which a library cannot see. The timeout is the verdict, and the run
     // does not wait on the body: one that never settles cannot hold it open.
-    it("end() does not wait for a timed out body", async () => {
+    it("run() does not wait for a timed out body", async () => {
         const local = createTAL()
         const events = capture(local)
         let settled = false
