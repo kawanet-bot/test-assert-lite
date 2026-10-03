@@ -37,7 +37,7 @@ describe(TITLE, {timeout: 1000}, () => {
     it("posts begin first, then the streams, then end, in order", async () => {
         const {session} = createTAL()
         const {logs, channel, output} = testStub(session)
-        session.session({channel: channel, output})
+        session.session({channel, output})
         channel.stdout.write("one\n")
         channel.stderr.write("warned\n")
         channel.stdout.write("two\n")
@@ -54,7 +54,7 @@ describe(TITLE, {timeout: 1000}, () => {
     it("gathers a burst of lines into one request per stream", async () => {
         const {session} = createTAL()
         const {logs, channel, output} = testStub(session)
-        session.session({channel: channel, output})
+        session.session({channel, output})
         for (let i = 0; i < 100; i++) channel.stdout.write(`line ${i}\n`)
         await session.run()
 
@@ -72,7 +72,7 @@ describe(TITLE, {timeout: 1000}, () => {
     it("flushes on its own while the run goes on", async () => {
         const {session} = createTAL()
         const {logs, channel, output} = testStub(session)
-        session.session({channel: channel, output})
+        session.session({channel, output})
         channel.stdout.write("early\n")
         await sleep(200)
         assert.deepEqual(logs.shift(), ["send", BEGIN])
@@ -89,7 +89,7 @@ describe(TITLE, {timeout: 1000}, () => {
     it("sends the run's verdict: false once a test failed", async () => {
         const {session, test} = createTAL()
         const {logs, channel, output} = testStub(session)
-        session.session({channel: channel, output})
+        session.session({channel, output})
         test.it("fails", () => {
             throw new Error("no")
         })
@@ -100,7 +100,7 @@ describe(TITLE, {timeout: 1000}, () => {
     it("sends text as given", async () => {
         const {session} = createTAL()
         const {logs, channel, output} = testStub(session)
-        session.session({channel: channel, output})
+        session.session({channel, output})
         channel.stderr.write("as ")
         channel.stderr.write("given\n")
         await session.run()
@@ -116,7 +116,7 @@ describe(TITLE, {timeout: 1000}, () => {
         const {logs, channel, output} = testStub(session)
         channel.stdout.write("early\n")
         channel.stderr.write("warned\n")
-        session.session({channel: channel, output})
+        session.session({channel, output})
         await session.run()
 
         assert.deepEqual(logs.shift(), ["stdout", "early\n"])
@@ -131,7 +131,7 @@ describe(TITLE, {timeout: 1000}, () => {
         const {channel, output} = testStub(session, async () => {
             throw new TypeError("fetch failed")
         })
-        session.session({channel: channel, output})
+        session.session({channel, output})
         channel.stdout.write("lost\n")
         channel.stderr.write("still lost\n")
         assert.equal((await session.run()).success, true)
@@ -152,7 +152,7 @@ describe(TITLE, {timeout: 1000}, () => {
                 disconnected++
             },
         }
-        session.session({channel: channel, output: () => undefined})
+        session.session({channel, output: () => undefined})
         test.it("one", () => undefined)
         await session.run()
 
@@ -172,7 +172,7 @@ describe(TITLE, {timeout: 1000}, () => {
             error: (..._: unknown[]) => undefined,
         }
         const {log, warn} = fake
-        session.session({channel: channel, output, console: fake})
+        session.session({channel, output, console: fake})
         assert.notEqual(fake.log, log)
         fake.log("a", 1, "b")
         fake.info("info")
@@ -197,7 +197,7 @@ describe(TITLE, {timeout: 1000}, () => {
     it("writes a heartbeat to stderr at the interval given, while quiet", async () => {
         const {session} = createTAL()
         const {logs, channel, output} = testStub(session)
-        session.session({channel: channel, output, heartbeat: 20})
+        session.session({channel, output, heartbeat: 20})
 
         for (let i = 0; i < 10; i++) {
             await sleep(20)
