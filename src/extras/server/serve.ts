@@ -66,7 +66,7 @@ const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(r
 // A wildcard address listens on every interface but names none, so the
 // loopback of its family stands in; an IPv6 literal needs brackets.
 export const serve = async ({handler, services, ...options}: ServeOptions): Promise<Server> => {
-    // An empty --host= is the default too, not the unspecified address.
+    // An empty host, as --port :3000 gives, is the default too, not the unspecified address.
     const host = options.host || "127.0.0.1"
     const named = host === "0.0.0.0" ? "127.0.0.1" : host === "::" ? "[::1]" : host.includes(":") ? `[${host}]` : host
     let bound = ""

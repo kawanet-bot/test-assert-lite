@@ -9,14 +9,23 @@ const TITLE = "extras/options.test.ts"
 describe(TITLE, () => {
     describe("portOf", () => {
         it("takes a whole number a socket can have", () => {
-            assert.equal(portOf("0"), 0)
-            assert.equal(portOf("3000"), 3000)
-            assert.equal(portOf("65535"), 65535)
+            assert.deepEqual(portOf("0"), {port: 0})
+            assert.deepEqual(portOf("3000"), {port: 3000})
+            assert.deepEqual(portOf("65535"), {port: 65535})
+        })
+
+        it("takes an address ahead of the port, an IPv6 literal in brackets, and an empty one as none", () => {
+            assert.deepEqual(portOf("0.0.0.0:3000"), {host: "0.0.0.0", port: 3000})
+            assert.deepEqual(portOf("127.0.0.1:0"), {host: "127.0.0.1", port: 0})
+            assert.deepEqual(portOf("tal.example:8080"), {host: "tal.example", port: 8080})
+            assert.deepEqual(portOf("[::1]:3000"), {host: "::1", port: 3000})
+            assert.deepEqual(portOf("[::]:0"), {host: "::", port: 0})
+            assert.deepEqual(portOf(":3000"), {port: 3000})
         })
 
         it("refuses what is no port, with the value in the reason", () => {
-            for (const value of ["65536", "-1", "3000.5", "port", "0x50", "1e3", "", " 3000 "]) {
-                assert.throws(() => portOf(value), /--port takes a number from 0 to 65535: /)
+            for (const value of ["65536", "-1", "3000.5", "port", "0x50", "1e3", "", " 3000 ", "0.0.0.0:", "0.0.0.0:port", "[::1]3000", "::1:3000", "a:b:3000"]) {
+                assert.throws(() => portOf(value), /--port takes \[host:\]port, the port from 0 to 65535: /)
             }
         })
     })
@@ -144,13 +153,16 @@ describe(TITLE, () => {
             assert.equal(options.imports.paths().length, 0)
         })
 
-        it("reads --host as given, --port and --origin checked and normalized", () => {
-            const options = readOptions(["--serve", "--host", "0.0.0.0", "--port", "3000", "--origin", "https://tal.example:443/"])
+        it("reads --port as the address and port to listen on, and --origin checked and normalized", () => {
+            const options = readOptions(["--serve", "--port", "0.0.0.0:3000", "--origin", "https://tal.example:443/"])
             assert.equal(options.mode, "serve")
             if (options.mode !== "serve") return
             assert.equal(options.host, "0.0.0.0")
             assert.equal(options.port, 3000)
             assert.equal(options.origin, "https://tal.example")
+            const bare = readOptions(["--serve", "--port", "3000"])
+            assert.equal(bare.mode === "serve" ? bare.host : "", undefined)
+            assert.equal(bare.mode === "serve" ? bare.port : -1, 3000)
             assert.throws(() => readOptions(["--serve", "--port", "port"]), /--port takes/)
             assert.throws(() => readOptions(["--serve", "--origin", "tal.example"]), /--origin takes/)
         })
@@ -217,7 +229,7 @@ describe(TITLE, () => {
         })
 
         it("refuses the server's and the page's flags in Node mode", () => {
-            for (const flags of [["--host", "x"], ["--port", "3000"], ["--origin", "http://x"], ["--script", "s.js"], ["--mount", "site"]]) {
+            for (const flags of [["--port", "3000"], ["--port", "0.0.0.0:3000"], ["--origin", "http://x"], ["--script", "s.js"], ["--mount", "site"]]) {
                 assert.throws(() => readOptions([...flags, "a.test.ts"]), /apply to --playwright, --webdriver and --serve only$/)
             }
         })
