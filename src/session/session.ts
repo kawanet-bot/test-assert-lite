@@ -28,8 +28,6 @@ interface Cycle {
     report: ReportStream
     // Tells the CLI the verdict. Without a bridge there is nothing to tell.
     close: (result: SessionResult) => Promise<void>
-    // Opened by a declaration rather than by session(): the refusal differs.
-    auto: boolean
     run: Run
     startedAt: number
     held: boolean
@@ -52,7 +50,7 @@ export interface Sessions {
 export const createSessions = (harness: HarnessState, assert: TAL.TestContextAssert): Sessions => {
     let cycle: Cycle | null = null
 
-    const open = (options: TAL.SessionOptions, auto: boolean): Cycle => {
+    const open = (options: TAL.SessionOptions, implicitSession: boolean): Cycle => {
         const {heartbeat} = options
         const reporter = chooseReporter(harness, options)
         // Saved before anything is taken over, so nothing here loops back.
@@ -61,7 +59,7 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
         // The run's text and verdict go to the CLI over the bridge given, to
         // the process under Node, or to the console as found. A heartbeat of 0
         // turns the alive line off.
-        const bridge = options.bridge ?? (hasProcess() ? nodeBridge(process, auto) : defaultBridge(consoleWriters(found, saved)))
+        const bridge = options.bridge ?? (hasProcess() ? nodeBridge(process, implicitSession) : defaultBridge(consoleWriters(found, saved)))
         const client = (heartbeat == null || heartbeat > 0) ? heartbeatBridge(bridge, heartbeat) : bridge
         const services = createRunServices(client)
         // The report goes where the console goes unless told otherwise.
@@ -100,17 +98,17 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
 
         // A suite run as a script under Node needs no run(). The loop draining
         // is its end. A session opened by session() is run by whoever opened it.
-        if (hasProcess() && auto) {
+        if (hasProcess() && implicitSession) {
             process.once("beforeExit", onExit)
             services.onCleanup(() => process.off("beforeExit", onExit))
         }
 
-        return {services, report, close, auto, run: state, startedAt: performance.now(), held: true, walk: null, closing: false, failure: undefined}
+        return {services, report, close, run: state, startedAt: performance.now(), held: true, walk: null, closing: false, failure: undefined}
     }
 
     const session: TAL.SessionAPI["session"] = (options = {}) => {
         if (cycle != null) {
-            throw new Error(cycle.auto ? "session() must come before the first test is declared" : "session() is already open")
+            throw new Error("session() is already open. It comes before the first test is declared.")
         }
         cycle = open(options, false)
     }

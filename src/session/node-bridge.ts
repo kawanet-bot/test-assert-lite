@@ -18,12 +18,12 @@ type SessionEventMap = {[T in SessionEventType]: (data: SessionEventData<T>) => 
 
 const NOP = () => undefined
 
-/** `auto` says the session was opened by a declaration, so nobody holds its result. */
-export const nodeBridge = (proc: ProcessLike, auto: boolean): TAL.BridgeAPI => {
+/** `implicitSession` says a declaration opened the session, so nobody holds its result. */
+export const nodeBridge = (proc: ProcessLike, implicitSession: boolean): TAL.BridgeAPI => {
     const eventMap: SessionEventMap = {
         "session:begin": NOP,
         "session:end": (result) => {
-            if (auto && !result.success) proc.exitCode = 1
+            if (implicitSession && !result.success) proc.exitCode = 1
         },
     }
 
