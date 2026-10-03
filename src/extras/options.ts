@@ -21,9 +21,8 @@ export const USAGE = `Usage: test-assert [options] [file [arg...]]
   --reporter <name>           how the run is reported: spec, tap or html (default: spec)
   -q, --quiet                 show less output while keeping failures
   --serve                     serve for a browser and print the URL, with auto reload
-  --host <address>            address the server listens on (browser modes, default: 127.0.0.1)
-  --port <number>             port the server listens on (browser modes, default: a free one)
-  --origin <url>              what the browser reaches the server as, http(s)://host[:port] (browser modes, default: from --host)
+  --port <[host:]port>        port the server listens on, and the address ahead of it (browser modes, default: 127.0.0.1:0, a free port)
+  --origin <url>              what the browser reaches the server as, http(s)://host[:port] (browser modes, default: from --port)
   --script <file>             classic script to run first (browser modes, repeatable)
   --mount <dir|url>           what the root serves instead of htdocs: a directory, or an origin to proxy (browser modes)
   --webdriver                 run the suite through a WebDriver server: safaridriver, chromedriver
@@ -33,12 +32,28 @@ export const USAGE = `Usage: test-assert [options] [file [arg...]]
   --playwright-config <file>  JSON options for Playwright's launch, newPage and goto
 `
 
+/** What --port names: the port, and the address to listen on when one is given ahead of it. */
+export interface Listen {
+    host?: string
+    port: number
+}
+
 // A port is a whole number a socket can take, written in decimal: what
-// Number() would also read, 0x50 or 1e3 or nothing, is not one.
-export const portOf = (value: string): number => {
-    const port = Number(value)
-    if (!/^\d+$/.test(value) || port > 65535) throw new UsageError(`--port takes a number from 0 to 65535: ${value}`)
-    return port
+// Number() would also read, 0x50 or 1e3 or nothing, is not one. An address
+// goes ahead of it, as node's --inspect-port takes one, an IPv6 literal in
+// brackets. An empty address is the default.
+export const portOf = (value: string): Listen => {
+    const error = new UsageError(`--port takes [host:]port, the port from 0 to 65535: ${value}`)
+    // The port follows the last colon, or is all of it. The address ahead
+    // is an IPv6 literal in brackets, or anything with no colon in it.
+    const at = value.lastIndexOf(":")
+    const digits = at < 0 ? value : value.slice(at + 1)
+    const ahead = at < 0 ? "" : value.slice(0, at)
+    if (!/^\d+$/.test(digits) || Number(digits) > 65535) throw error
+    const bracketed = /^\[([0-9a-f:.]+)\]$/i.exec(ahead)
+    if (bracketed == null && /[[\]:]/.test(ahead)) throw error
+    const host = bracketed?.[1] ?? ahead
+    return host ? {host, port: Number(digits)} : {port: Number(digits)}
 }
 
 // An origin is a URL that is nothing but scheme, host and port, as a
@@ -97,7 +112,6 @@ const parse = (args: string[]) => {
             args,
             options: {
                 serve: {type: "boolean", default: false},
-                host: {type: "string"},
                 port: {type: "string"},
                 origin: {type: "string"},
                 alias: {type: "string", multiple: true, default: []},
@@ -143,8 +157,8 @@ export const readOptions = (args: string[]): ModeOptions => {
     if ((engine ? 1 : 0) + (webdriver ? 1 : 0) + (serve ? 1 : 0) > 1) {
         throw new UsageError("--playwright, --webdriver and --serve are exclusive")
     }
-    if (!browsing && (values.script.length || values.mount != null || values.host != null || values.port != null || values.origin != null)) {
-        throw new UsageError("--host, --port, --origin, --script and --mount apply to --playwright, --webdriver and --serve only")
+    if (!browsing && (values.script.length || values.mount != null || values.port != null || values.origin != null)) {
+        throw new UsageError("--port, --origin, --script and --mount apply to --playwright, --webdriver and --serve only")
     }
     if (!webdriver && (webdriverConfig != null || values.endpoint != null)) {
         throw new UsageError("--webdriver-config and --endpoint apply to --webdriver only")
@@ -194,6 +208,7 @@ export const readOptions = (args: string[]): ModeOptions => {
         throw new UsageError("--playwright, --webdriver and --serve take the test files from one directory")
     }
 
+    const listen = values.port == null ? undefined : portOf(values.port)
     const shared: WebModeOptions = {
         session,
         eval: script,
@@ -201,8 +216,8 @@ export const readOptions = (args: string[]): ModeOptions => {
         scripts,
         imports,
         mount: values.mount == null ? undefined : mountOf(values.mount),
-        host: values.host,
-        port: values.port == null ? undefined : portOf(values.port),
+        host: listen?.host,
+        port: listen?.port,
         origin: values.origin == null ? undefined : originOf(values.origin),
     }
     if (engine) {

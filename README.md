@@ -166,21 +166,17 @@ test-assert --playwright chromium test/browser.test.mjs
 - Without test files, `htdocs/index.html` imports `index.js`, so `--alias index.js=test/browser.test.mjs` runs that suite in it.
 - Auto reloads when a test file, a `--script` file or a locally mapped file changes.
 
-### `--host <address>`
+### `--port <[host:]port>`
 
-- Address the server listens on. Default: `127.0.0.1`.
-- For a browser on another machine, listen on an address that machine can reach: `--host 192.168.0.2`.
-- `--host 0.0.0.0` listens on every address. Add `--origin` then, so the printed URL and the runners use one the browser can reach.
-
-### `--port <number>`
-
-- Port the server listens on. Default: a free one.
-- `--port 3000` fixes it, for an SSH tunnel or a firewall rule that has to name the port.
+- Port the server listens on, and the address ahead of it. Default: `127.0.0.1:0`, a free port.
+- `--port 3000` fixes the port, for an SSH tunnel or a firewall rule that has to name it.
+- For a browser on another machine, listen on an address that machine can reach: `--port 192.168.0.2:3000`.
+- `--port 0.0.0.0:3000` listens on every address. Add `--origin` then, so the printed URL and the runners use one the browser can reach. An IPv6 literal goes in brackets: `--port [::]:3000`.
 
 ### `--origin <url>`
 
 - The URL the browser opens, `http(s)://host[:port]`. Default: the address the server listens on.
-- With `--host 0.0.0.0` the default is `http://127.0.0.1:<port>`, which only this machine can open. Give the reachable one: `--origin http://192.168.0.2:3000`.
+- With `--port 0.0.0.0:3000` the default is `http://127.0.0.1:3000`, which only this machine can open. Give the reachable one: `--origin http://192.168.0.2:3000`.
 - Through an SSH tunnel or a proxy, the browser opens a different URL than this server listens on. Pass that URL as `--origin`: the runners open it, and `--serve` prints it.
 
 ### `--script <file>`
