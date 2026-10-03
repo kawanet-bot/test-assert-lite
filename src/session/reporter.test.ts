@@ -6,6 +6,8 @@ import {capture, names, summaryOf} from "../test-utils/capture.ts"
 
 const TITLE = "session/reporter.test.ts"
 
+type FetchLike = (url: string, init: {method: "POST", body: string}) => Promise<{ok: boolean}>
+
 const caught = async (promise: Promise<unknown>): Promise<unknown> => {
     try {
         await promise
@@ -76,7 +78,11 @@ describe(TITLE, {timeout: 1000}, () => {
         const local = createTAL()
         const failure = new Error("reporter failed")
         const posts: string[] = []
-        const bridge = local.session.connect({fetch: async (path) => void posts.push(path)})
+        const stubFetch: FetchLike = (async (path) => {
+            posts.push(path)
+            return {ok: true}
+        })
+        const bridge = local.session.connect({fetch: stubFetch as typeof fetch})
         local.session.session({
             bridge,
             output: () => undefined,
