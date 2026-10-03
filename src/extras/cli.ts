@@ -30,11 +30,10 @@ const runCLI = async (options: ModeOptions): Promise<number> => {
         return 0
     }
 
-    const {session, imports} = options
     if (mode === "node") {
         const result = await runInNode({
-            imports,
-            session,
+            imports: options.imports,
+            session: options.session,
             eval: options.eval,
         })
         return result?.success ? 0 : 1

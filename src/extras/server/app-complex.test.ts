@@ -73,7 +73,7 @@ describe(TITLE, () => {
                 new ImportAliasItem("cdn=https://cdn.example/lib.js", cwd),
                 new ImportMapItem("mine", "/mine.js", pathToFileURL(join(dir, "map.json"))),
                 new ImportAliasItem(`mod=${join(dir, "lib", "mod.mjs")}`, cwd),
-            ], "browser"),
+            ]),
             services: sharedServices,
         })
         server = await serve({

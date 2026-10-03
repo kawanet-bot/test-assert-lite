@@ -199,21 +199,19 @@ export class ImportBundledItem extends ImportBase {
     }
 }
 
-const defaults = (mode: Mode): ImportBundledItem[] =>
-    [...COMMON_IMPORTS, ...(mode === "browser" ? BROWSER_IMPORTS : [])].map(([specifier, target]) => new ImportBundledItem(specifier, target))
+const bundled = (rows: [specifier: string, target: string][]): ImportBundledItem[] => rows.map(([specifier, target]) => new ImportBundledItem(specifier, target))
 
 /**
  * The items in the order given, this package's defaults for the mode first,
  * so the last for a specifier wins. Files are every item's, losers included:
  * a file named is watched and served whether or not it is what resolves.
  */
-export class Imports {
+abstract class ImportsBase {
     readonly items: ImportBase[]
-    readonly mode: Mode
+    abstract readonly mode: Mode
 
-    constructor(items: ImportBase[], mode: Mode) {
-        this.items = [...defaults(mode), ...items]
-        this.mode = mode
+    protected constructor(items: ImportBase[], defaults: [specifier: string, target: string][]) {
+        this.items = [...bundled(defaults), ...items]
     }
 
     /** Every file a path item names, once each, for watching and serving. */
@@ -234,5 +232,23 @@ export class Imports {
     /** Why the mode cannot take the list: one reason per item that resolves and is refused. */
     refusals(): string[] {
         return [...this.entries().values()].map(item => item.refusal(this.mode)).filter((reason): reason is string => reason != null)
+    }
+}
+
+/** A page's import map, with both lists of defaults ahead of the items given. */
+export class Imports extends ImportsBase {
+    readonly mode = "browser"
+
+    constructor(items: ImportBase[]) {
+        super(items, [...COMMON_IMPORTS, ...BROWSER_IMPORTS])
+    }
+}
+
+/** The list as the Node hook takes it, with the common defaults alone. Node has the rest of its own. */
+export class NodeImports extends ImportsBase {
+    readonly mode = "node"
+
+    constructor(items: ImportBase[]) {
+        super(items, COMMON_IMPORTS)
     }
 }

@@ -1,4 +1,4 @@
-import type {Imports} from "./imports.ts"
+import type {Imports, NodeImports} from "./imports.ts"
 
 const ENGINE_NAMES = ["chromium", "firefox", "webkit"] as const
 export type EngineName = typeof ENGINE_NAMES[number]
@@ -31,12 +31,16 @@ interface TestModeOptions {
     session: TestSession
     /** A script given on the command line, run in place of test files. */
     eval?: string
+}
 
+export interface NodeModeOptions extends TestModeOptions {
     /** From --import-map then --alias, a later item over an earlier one of the same specifier. */
-    imports: Imports
+    imports: NodeImports
 }
 
 export interface WebModeOptions extends TestModeOptions {
+    /** From --import-map then --alias, a later item over an earlier one of the same specifier. */
+    imports: Imports
     /** Classic scripts to run first, absolute, in order. */
     scripts: string[]
     /** What the root serves in place of htdocs: an absolute directory, or an http(s) URL ending in "/". */
@@ -49,7 +53,7 @@ export interface WebModeOptions extends TestModeOptions {
 export type ModeOptions =
     | {mode: "help"}
     | {mode: "version"}
-    | TestModeOptions & {mode: "node"}
+    | NodeModeOptions & {mode: "node"}
     | WebModeOptions & {mode: "serve"}
     | WebModeOptions & {mode: "playwright", engine: EngineName, custom?: BrowserCustom}
     | WebModeOptions & {mode: "webdriver", endpoint?: string, custom?: WebDriverCustom}

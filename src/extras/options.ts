@@ -6,8 +6,7 @@
 import {resolve} from "node:path"
 import {parseArgs} from "node:util"
 import {readJsonFile} from "../utils/read-json.ts"
-import type {Mode} from "./imports.ts"
-import {ImportAliasItem, Imports, cwdURL, readImportMap} from "./imports.ts"
+import {ImportAliasItem, type ImportBase, Imports, NodeImports, cwdURL, readImportMap} from "./imports.ts"
 import type {BrowserCustom, EngineName, ModeOptions, TestSession, WebDriverCustom, WebModeOptions} from "./mode-options.ts"
 import {isEngineName} from "./mode-options.ts"
 import {createFiles} from "./server/files.ts"
@@ -71,10 +70,13 @@ export const mountOf = (value: string): string => {
 }
 
 // The import map's items first and each --alias after, so the command
-// line has the last word; what `mode` cannot take of the result is refused
-// here, one reason per specifier, before anything is served or hooked.
-export const importsOf = (mapFile: string | undefined, aliases: string[], mode: Mode): Imports => {
-    const imports = new Imports([...(mapFile == null ? [] : readImportMap(resolve(mapFile))), ...aliases.map(entry => new ImportAliasItem(entry, cwdURL()))], mode)
+// line has the last word.
+const importItemsOf = (mapFile: string | undefined, aliases: string[]): ImportBase[] =>
+    [...(mapFile == null ? [] : readImportMap(resolve(mapFile))), ...aliases.map(entry => new ImportAliasItem(entry, cwdURL()))]
+
+// What the mode cannot take of the list is refused here, one reason per
+// specifier, before anything is served or hooked.
+const refused = <T extends Imports | NodeImports>(imports: T): T => {
     const refusals = imports.refusals()
     if (refusals.length) throw new UsageError(refusals.join("\n"))
     return imports
@@ -163,7 +165,7 @@ export const readOptions = (args: string[]): ModeOptions => {
         throw new UsageError(`CommonJS test files are not supported: ${commonjs.join(", ")}`)
     }
 
-    const imports = importsOf(values["import-map"], values.alias, browsing ? "browser" : "node")
+    const items = importItemsOf(values["import-map"], values.alias)
 
     const session: TestSession = {
         files: files.map(file => resolve(file)),
@@ -171,7 +173,9 @@ export const readOptions = (args: string[]): ModeOptions => {
         quiet: values.quiet,
     }
 
-    if (!browsing) return {mode: "node", imports, session, eval: script}
+    if (!browsing) return {mode: "node", imports: refused(new NodeImports(items)), session, eval: script}
+
+    const imports = refused(new Imports(items))
 
     const scripts = values.script.map(script => resolve(script))
 
