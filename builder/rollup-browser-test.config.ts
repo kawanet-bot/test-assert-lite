@@ -69,7 +69,7 @@ const rollupConfig: RollupOptions = {
             transforms: ["typescript"],
         }),
 
-        showFiles({deny: /\W(extras)\W/, gray: /\W(test)\W/}),
+        showFiles({deny: /\W(extras)\W/, gray: /\W(test)(?!-assert)\W/}),
     ],
 }
 

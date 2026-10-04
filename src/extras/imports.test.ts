@@ -47,8 +47,8 @@ describe(TITLE, () => {
                 assert.equal(item.refusal("node"), undefined)
                 assert.equal(item.refusal("browser"), undefined)
             }
-            // A path into this package's own dist/ is served where the package serves it, not under a digest.
-            const own = alias("e=dist/test-assert-lite.min.js")
+            // A path into the library's own dist/ is served where the package serves it, not under a digest.
+            const own = alias("e=packages/test-assert-lite/dist/test-assert-lite.min.js")
             assert.equal(own.getAddress(serveFor(own)), "/@tal/dist/test-assert-lite.min.js")
         })
 
@@ -63,7 +63,7 @@ describe(TITLE, () => {
             }
         })
 
-        it("takes this package's own names as bundled, resolved from this package", () => {
+        it("takes the library's subpaths as bundled, resolved from the library", () => {
             const item = alias("node:test=test-assert-lite/test")
             assert.ok(item.isBundled())
             assert.equal(item.isPath(), false)

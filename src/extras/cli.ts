@@ -6,12 +6,12 @@
 // expansion are left to the shell: only explicit file names are accepted.
 
 import {stringify} from "../utils/stringify.ts"
-import {VERSION} from "../utils/version.ts"
 import {runInNode} from "./drivers/node.ts"
 import {runWebMode} from "./drivers/web-mode.ts"
 import type {ModeOptions} from "./mode-options.ts"
 import {readOptions, USAGE} from "./options.ts"
 import {UsageError} from "./usage-error.ts"
+import {VERSION} from "./version.ts"
 
 export interface CLIOptions {
     /** The arguments as the executable gets them: process.argv.slice(2). */
@@ -26,7 +26,7 @@ const runCLI = async (options: ModeOptions): Promise<number> => {
     }
 
     if (mode === "version") {
-        process.stdout.write(`test-assert-lite ${VERSION}\n`)
+        process.stdout.write(`test-assert-cli ${VERSION}\n`)
         return 0
     }
 

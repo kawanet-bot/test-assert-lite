@@ -1,6 +1,5 @@
-// Entry point of the "test-assert-lite/extras" subpath: what the package
-// offers beyond the library itself, starting with the command line as a
-// function. Built to dist/test-assert-lite.extras.js.
+// Entry point of the test-assert-cli package: the command line as a
+// function, over the test-assert-lite library. Built to dist/test-assert-cli.js.
 
 export {CLI} from "./cli.ts"
 export type {CLIOptions} from "./cli.ts"

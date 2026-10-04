@@ -6,12 +6,12 @@ import {showFiles} from "./show-files.ts"
 const rollupConfig: RollupOptions = {
     input: "../src/extras/extras.ts",
 
-    // Every bare import stays external, the package's own name among
-    // them: from dist/ it resolves through the package's exports.
+    // Every bare import stays external, the library's name among them:
+    // it is a dependency of the CLI package, and resolves as one.
     external: [/^[^.\/]/],
 
     output: {
-        file: "../dist/test-assert-lite.extras.js",
+        file: "../packages/test-assert-cli/dist/test-assert-cli.js",
         format: "esm",
     },
 
@@ -24,7 +24,7 @@ const rollupConfig: RollupOptions = {
             transforms: ["typescript"],
         }),
 
-        showFiles({deny: /\W(test)\W/, gray: /\W(extras)\W/}),
+        showFiles({deny: /\W(test)(?!-assert)\W/, gray: /\W(extras)\W/}),
     ],
 }
 

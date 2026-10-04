@@ -106,7 +106,7 @@ describe(TITLE, () => {
         assert.equal(head.includes('<script type="module" src='), false)
         const {process, session} = JSON.parse(head.slice(head.indexOf("{", config), head.indexOf("</script>", config)))
         assert.deepEqual(session, {files: [`${tests}my%20suite.mjs`, `${tests}second.mjs`]})
-        assert.deepEqual(process, {argv: ["test-assert", "tests/my suite.mjs", "tests/second.mjs", "--two"]})
+        assert.deepEqual(process, {argv: ["tacli", "tests/my suite.mjs", "tests/second.mjs", "--two"]})
         const {imports} = JSON.parse(head.slice(head.indexOf("{", map), head.indexOf("</script>", map)))
         assert.equal(imports["node:test"], "/@tal/exports/test.js")
         assert.equal(imports["test-assert-lite"], "/@tal/dist/test-assert-lite.min.js")
