@@ -124,7 +124,7 @@ tacli --playwright chromium test/browser.test.mjs
 - ES module a specifier resolves to, `--alias lodash=node_modules/lodash-es/lodash.js` say. Repeatable, in every mode.
 - A `node:` builtin can be named, `--alias node:crypto=sha256.mjs` say, so the same suite runs on the same module in Node and in a browser.
 - The alias reaches every import of that name, a dependency's too, as an import map does.
-- The target may also be a URL for the page, `--alias cdn=https://cdn.example/x.js` say, in the browser modes; or one of test-assert-lite's names, `--alias my-test=test-assert-lite/test` say, in every mode.
+- The target may also be a URL for the page, `--alias cdn=https://cdn.example/x.js` say, in the browser modes; or a test-assert-lite subpath, `--alias my-test=test-assert-lite/test` say, in every mode.
 
 ### `--import-map <file>`
 

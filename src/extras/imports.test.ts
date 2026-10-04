@@ -63,7 +63,7 @@ describe(TITLE, () => {
             }
         })
 
-        it("takes the library's own names as bundled, resolved from the library", () => {
+        it("takes the library's subpaths as bundled, resolved from the library", () => {
             const item = alias("node:test=test-assert-lite/test")
             assert.ok(item.isBundled())
             assert.equal(item.isPath(), false)
