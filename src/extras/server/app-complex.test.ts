@@ -59,6 +59,8 @@ describe(TITLE, () => {
         await writeFile(join(dir, "lib", "mod.mjs"), "export const mod = 1")
         await writeFile(join(dir, "secret.json"), "{}")
         await writeFile(join(dir, "package.json"), '{"name": "fixture-pkg"}')
+        await mkdir(join(dir, "tests", "node_modules", "pkg"), {recursive: true})
+        await writeFile(join(dir, "tests", "node_modules", "pkg", "bar.js"), "export const bar = 1")
         const laid = createFiles([join(dir, "tests", "my suite.mjs"), join(dir, "lib", "mod.mjs")])
         tests = laid.dirOf(join(dir, "tests", "my suite.mjs")).path
         lib = laid.dirOf(join(dir, "lib", "mod.mjs")).path
@@ -71,6 +73,7 @@ describe(TITLE, () => {
                 new ImportAliasItem(`mod=${join(dir, "lib", "mod.mjs")}`, cwd),
                 new ImportAliasItem(`dep=${join(dir, "tests", "nested", "dep.mjs")}`, cwd),
                 new ImportAliasItem("cdn=https://cdn.example/lib.js", cwd),
+                new ImportAliasItem(`pkg=${join(dir, "tests", "node_modules", "pkg", "bar.js")}`, cwd),
                 new ImportMapItem("mine", "/mine.js", pathToFileURL(join(dir, "map.json"))),
                 new ImportAliasItem(`mod=${join(dir, "lib", "mod.mjs")}`, cwd),
             ]),
@@ -108,8 +111,10 @@ describe(TITLE, () => {
         assert.deepEqual(session, {files: [`${tests}my%20suite.mjs`, `${tests}second.mjs`]})
         assert.deepEqual(process, {argv: ["tacli", "tests/my suite.mjs", "tests/second.mjs", "--two"]})
         const {imports} = JSON.parse(head.slice(head.indexOf("{", map), head.indexOf("</script>", map)))
-        assert.equal(imports["node:test"], "/@tacli/exports/test.js")
-        assert.equal(imports["test-assert-lite"], "/@tacli/dist/test-assert-lite.min.js")
+        assert.match(imports["node:test"], /^\/@tacli\/files\/[0-9a-f]{9}\/test\.js$/)
+        assert.match(imports["test-assert-lite"], /^\/@tacli\/files\/[0-9a-f]{9}\/test-assert-lite\.min\.js$/)
+        assert.match(imports["pkg"], /^\/@tacli\/files\/[0-9a-f]{9}\/bar\.js$/)
+        assert.equal(imports["pkg"].startsWith(tests), false)
         assert.equal(imports["mod"], `${lib}mod.mjs`)
         assert.equal(imports["dep"], `${tests}nested/dep.mjs`)
         assert.equal(imports["cdn"], "https://cdn.example/lib.js")
@@ -141,6 +146,14 @@ describe(TITLE, () => {
         assert.equal((await get(url("/@tacli/files/000000000/mod.mjs"))).status, 404)
     })
 
+    it("serves a file under node_modules from its own directory, and not through the one above", async () => {
+        const head = (await get(url(app.page))).body
+        const map = head.indexOf('<script type="importmap">')
+        const {imports} = JSON.parse(head.slice(head.indexOf("{", map), head.indexOf("</script>", map)))
+        assert.equal((await get(url(imports["pkg"]))).body, "export const bar = 1")
+        assert.equal((await get(url(`${tests}node_modules/pkg/bar.js`))).status, 404)
+    })
+
     it("serves a .ts from a directory as JavaScript, the types stripped by this Node", async t => {
         if (!process.features.typescript) return t.skip()
         const res = await get(url(`${tests}typed.ts`))
@@ -156,9 +169,12 @@ describe(TITLE, () => {
     })
 
     it("serves the package's minified build, the bridges and the document root", async () => {
-        assert.match((await get(url("/@tacli/dist/test-assert-lite.min.js"))).body, /export\{/)
-        assert.equal((await get(url("/@tacli/exports/test.js"))).status, 200)
-        assert.equal((await get(url("/@tacli/exports/assert/strict.js"))).status, 200)
+        const head = (await get(url(app.page))).body
+        const map = head.indexOf('<script type="importmap">')
+        const {imports} = JSON.parse(head.slice(head.indexOf("{", map), head.indexOf("</script>", map)))
+        assert.match((await get(url(imports["test-assert-lite"]))).body, /export\{/)
+        assert.equal((await get(url(imports["node:test"]))).status, 200)
+        assert.equal((await get(url(imports["node:assert/strict"]))).status, 200)
         assert.equal((await get(url("/styles/test-assert-lite.css"))).type, "text/css; charset=utf-8")
         assert.equal((await get(url("/favicon.svg"))).status, 200)
         assert.equal((await get(url("/package.json"))).status, 404)

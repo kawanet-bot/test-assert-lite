@@ -1,7 +1,7 @@
-// The files the browser test application serves, by directory. The
-// library's dist/ and exports/ keep their layout. Every other directory is
-// named by a digest, so its URL is the same in every run with the path off
-// the page, and one under a served one is reached through it, as one file.
+// The files the browser test application serves, by directory, each named
+// by a digest, so its URL is the same in every run with the path off the
+// page. A directory under a served one is reached through it, as one file,
+// unless node_modules lies between: a package's files are its own mount.
 
 import {createHash} from "node:crypto"
 import {realpathSync} from "node:fs"
@@ -9,17 +9,17 @@ import {dirname, relative, resolve, sep} from "node:path"
 import {fileURLToPath} from "node:url"
 import {libraryRoot} from "../package-root.ts"
 
+/** Where every directory is served under, each by its digest. */
+export const FILES_PATH = "/@tacli/files/"
+
 export interface Dir {
-    /** The URL path, `/@tacli/<dir>/` for the library's own, `/@tacli/files/<name>/` otherwise. */
+    /** The URL path, `/@tacli/files/<name>/`. */
     path: string
     /** The directory, absolute and real. */
     root: string
 }
 
 export interface Files {
-    /** The library's own directories, dist/ and exports/, at the paths of their names. */
-    own: Dir[]
-
     /** The directories the files are served from, in path order, so one before those under it. */
     dirs: Dir[]
 
@@ -44,29 +44,27 @@ const realOf = (file: string): string => {
 // Nine hex digits of the directory's digest: the width of a run's id.
 const nameOf = (dir: string): string => createHash("sha256").update(dir).digest("hex").slice(0, 9)
 
-// The library's own directories, at the paths of their names. The
-// minified build stands in for the entry it is built from, so a page
+// The minified build stands in for the entry it is built from, so a page
 // gets the one that ships for it.
 const own = fileURLToPath(libraryRoot())
-const OWN: Dir[] = [
-    {path: "/@tacli/dist/", root: realOf(resolve(own, "dist"))},
-    {path: "/@tacli/exports/", root: realOf(resolve(own, "exports"))},
-]
 const STAND_IN = new Map([[realOf(resolve(own, "dist", "test-assert-lite.js")), realOf(resolve(own, "dist", "test-assert-lite.min.js"))]])
 
 /**
  * Lays out the directories the files are served from: every file's own,
- * except one inside another's, which is served through that one. The
- * order the files come in makes no difference to the layout.
+ * except one inside another's, which is served through that one, unless
+ * node_modules lies between. The order the files come in makes no
+ * difference to the layout.
  */
 export const createFiles = (files: string[]): Files => {
     const reals = new Map(files.map(file => [file, realOf(file)]))
     // Sorted, a directory comes before the ones under it, as a prefix does.
     const names = [...new Set([...reals.values()].map(real => dirname(real)))].sort()
     const dirs: Dir[] = []
-    const within = (dir: string): Dir | undefined => [...OWN, ...dirs].find(({root}) => dir === root || dir.startsWith(root + sep))
+    const inside = (root: string, dir: string): boolean =>
+        dir === root || (dir.startsWith(root + sep) && !relative(root, dir).split(sep).includes("node_modules"))
+    const within = (dir: string): Dir | undefined => dirs.find(({root}) => inside(root, dir))
     for (const dir of names) {
-        if (within(dir) == null) dirs.push({path: `/@tacli/files/${nameOf(dir)}/`, root: dir})
+        if (within(dir) == null) dirs.push({path: `${FILES_PATH}${nameOf(dir)}/`, root: dir})
     }
     const servedAs = (file: string): string => {
         const real = reals.get(file) ?? realOf(file)
@@ -81,5 +79,5 @@ export const createFiles = (files: string[]): Files => {
         const dir = dirOf(file)
         return dir.path + relative(dir.root, servedAs(file)).split(sep).map(encodeURIComponent).join("/")
     }
-    return {own: OWN, dirs, dirOf, urlOf}
+    return {dirs, dirOf, urlOf}
 }

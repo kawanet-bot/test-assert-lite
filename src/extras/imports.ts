@@ -216,9 +216,14 @@ abstract class ImportsBase {
         this.items = [...bundled(defaults), ...items]
     }
 
-    /** Every file a path item names, once each, for watching and serving. */
+    /** Every file a path item names, once each, for watching. */
     paths(): string[] {
         return [...new Set(this.items.filter(item => item.isPath()).map(item => item.getPath() as string))]
+    }
+
+    /** Every file an item names on disk, the library's own included, once each, for serving. */
+    files(): string[] {
+        return [...new Set(this.items.map(item => item.getPath()).filter((path): path is string => path != null))]
     }
 
     /** The item that resolves each specifier: the last one for it. */

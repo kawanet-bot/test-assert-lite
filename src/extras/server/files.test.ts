@@ -22,6 +22,11 @@ describe(TITLE, () => {
         await writeFile(join(dir, "src", "sub", "c.mjs"), "")
         await writeFile(join(dir, "lib", "mod.mjs"), "")
         await symlink(join(dir, "lib", "mod.mjs"), join(dir, "src", "link.mjs"))
+        await mkdir(join(dir, "src", "node_modules", "pkg", "sub"), {recursive: true})
+        await mkdir(join(dir, "src", "node_modules", "pkg", "node_modules", "dep"), {recursive: true})
+        await writeFile(join(dir, "src", "node_modules", "pkg", "bar.js"), "")
+        await writeFile(join(dir, "src", "node_modules", "pkg", "sub", "baz.js"), "")
+        await writeFile(join(dir, "src", "node_modules", "pkg", "node_modules", "dep", "d.js"), "")
     })
 
     after(async () => {
@@ -51,14 +56,24 @@ describe(TITLE, () => {
         assert.deepEqual(apart.dirs.map(({root}) => under(root)), ["lib", "src/sub"])
     })
 
-    it("serves the library's own dist/ and exports/ at the paths of their names, the minified build in place of the entry", () => {
-        const files = createFiles([join(dir, "src", "a.mjs")])
-        assert.deepEqual(files.own.map(({path}) => path), ["/@tacli/dist/", "/@tacli/exports/"])
-        assert.equal(files.dirs.length, 1)
-        assert.equal(files.urlOf(resolve("packages/test-assert-lite", "exports", "test.js")), "/@tacli/exports/test.js")
-        assert.equal(files.urlOf(resolve("packages/test-assert-lite", "exports", "assert", "strict.js")), "/@tacli/exports/assert/strict.js")
-        assert.equal(files.urlOf(resolve("packages/test-assert-lite", "dist", "test-assert-lite.min.js")), "/@tacli/dist/test-assert-lite.min.js")
-        assert.equal(files.urlOf(resolve("packages/test-assert-lite", "dist", "test-assert-lite.js")), "/@tacli/dist/test-assert-lite.min.js")
+    it("serves a directory under node_modules on its own, and one under that under it", () => {
+        const pkg = join(dir, "src", "node_modules", "pkg")
+        const laid = createFiles([join(dir, "src", "a.mjs"), join(pkg, "bar.js"), join(pkg, "sub", "baz.js"), join(pkg, "node_modules", "dep", "d.js")])
+        assert.deepEqual(laid.dirs.map(({root}) => under(root)), ["src", "src/node_modules/pkg", "src/node_modules/pkg/node_modules/dep"])
+        assert.equal(laid.urlOf(join(pkg, "bar.js")), `${laid.dirOf(join(pkg, "bar.js")).path}bar.js`)
+        assert.notEqual(laid.dirOf(join(pkg, "bar.js")).path, laid.dirOf(join(dir, "src", "a.mjs")).path)
+        assert.equal(laid.urlOf(join(pkg, "sub", "baz.js")), `${laid.dirOf(join(pkg, "bar.js")).path}sub/baz.js`)
+        assert.notEqual(laid.dirOf(join(pkg, "node_modules", "dep", "d.js")).path, laid.dirOf(join(pkg, "bar.js")).path)
+    })
+
+    it("serves the library's dist/ and exports/ as any directory, the minified build in place of the entry", () => {
+        const lib = resolve("packages/test-assert-lite")
+        const files = createFiles([join(lib, "dist", "test-assert-lite.js"), join(lib, "exports", "test.js"), join(lib, "exports", "assert", "strict.js")])
+        assert.equal(files.dirs.length, 2)
+        assert.equal(files.urlOf(join(lib, "exports", "test.js")), `${files.dirOf(join(lib, "exports", "test.js")).path}test.js`)
+        assert.equal(files.urlOf(join(lib, "exports", "assert", "strict.js")), `${files.dirOf(join(lib, "exports", "test.js")).path}assert/strict.js`)
+        assert.equal(files.urlOf(join(lib, "dist", "test-assert-lite.js")), `${files.dirOf(join(lib, "dist", "test-assert-lite.js")).path}test-assert-lite.min.js`)
+        assert.equal(files.urlOf(join(lib, "dist", "test-assert-lite.min.js")), files.urlOf(join(lib, "dist", "test-assert-lite.js")))
     })
 
     it("takes a symlink for its target, and a file that is not there as given", () => {
