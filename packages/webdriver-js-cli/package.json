@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "author": "Kawanet",
   "bin": {
-    "webdriver-js": "./bin/webdriver.js"
+    "webdriver-js": "bin/webdriver.js"
   },
   "bugs": {
     "url": "https://github.com/kawanet/test-assert-lite/issues"

@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "author": "Kawanet",
   "bin": {
-    "tacli": "./bin/tacli.js"
+    "tacli": "bin/tacli.js"
   },
   "bugs": {
     "url": "https://github.com/kawanet/test-assert-lite/issues"
@@ -51,9 +51,6 @@
     "type": "git",
     "url": "git+https://github.com/kawanet/test-assert-lite.git",
     "directory": "packages/test-assert-cli"
-  },
-  "scripts": {
-    "prepack": "make -C ../../builder is-buildable"
   },
   "type": "module",
   "types": "./types/test-assert-cli.d.ts"
