@@ -8,6 +8,7 @@ import {runInWebDriver} from "./webdriver.ts"
 
 export const runWebMode = async (options: ModeOptions & WebModeOptions) => {
     const {mode, session, imports} = options
+    const singleRun = (mode !== "serve")
     const services = createRunServices({
         stdout: process.stdout,
         stderr: process.stderr,
@@ -25,13 +26,16 @@ export const runWebMode = async (options: ModeOptions & WebModeOptions) => {
             argv: options.argv,
             watch: (mode === "serve"),
             services,
-            singleRun: (mode !== "serve"),
+            singleRun,
         })
 
         // A server that cannot listen, for example because its port is taken,
         // is an error to show. The application's watch must not keep it running.
         const server = await serve({
-            handler: [logger({stderr: services.stderr, quiet: (session.quiet ?? 0) > 0}), app.handler],
+            handler: [logger({
+                stderr: services.stderr,
+                quiet: singleRun || (session.quiet ?? 0) > 0,
+            }), app.handler],
             host: options.host,
             port: options.port,
             origin: options.origin,
