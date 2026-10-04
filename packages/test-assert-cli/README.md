@@ -40,16 +40,12 @@ describe("buildQuery() from an object", () => {
 })
 ```
 
-The same file runs with `node --test`, with `tacli`, and in a browser with the commands built on it:
+The same file runs with `node --test` and with `tacli` alike:
 
 ```sh
 node --test test/query.test.mjs
 
 tacli test/query.test.mjs
-
-webdriver-js test/query.test.mjs
-
-chromium-js test/query.test.mjs
 ```
 
 The `spec` result from `tacli`, version and user-agent lines omitted:
@@ -85,12 +81,6 @@ tacli --test test/*.test.mjs
 
 # Serve suites at http://127.0.0.1:3000/ for your browser
 tacli --serve --port 3000 test/browser.test.mjs
-
-# Run suites in Safari, Chrome, or another WebDriver browser for CI
-webdriver-js test/browser.test.mjs
-
-# Run suites in headless Chromium through Playwright for CI
-chromium-js test/browser.test.mjs
 ```
 
 - The first file is the test file, and what follows it is the script's argv, as `node file args` has it. `--test` takes every argument as a test file. Name files directly; the shell expands globs. CommonJS test files are not supported. `-e <script>` runs a script in their place.
@@ -106,7 +96,7 @@ chromium-js test/browser.test.mjs
 
 ### `-e`, `--eval <script>`
 
-- Runs the script in place of test files, in Node or in the browser: `chromium-js -e "console.log(navigator.userAgent)"`.
+- Runs the script in place of test files: `tacli -e "console.log(process.version)"`.
 - The script is a module: it imports `node:test` as a test file does, and a script that throws is one failed test.
 - The arguments after it are the script's, from `argv[1]`, as `node -e` gives them.
 
@@ -189,9 +179,6 @@ For `test/import-map.json` above:
 ```sh
 # Run with the import map in Node.js
 tacli --import-map test/import-map.json test/browser.test.mjs
-
-# Run with the same import map in Chromium
-chromium-js --import-map test/import-map.json test/browser.test.mjs
 ```
 
 - `node:test`, `node:assert` and `test-assert-lite` are mapped by default. No entry needed for them.
@@ -206,9 +193,8 @@ A library that replaces a Node.js builtin can run one suite against both:
 # Run the suite on Node's own crypto
 tacli test/sha256.test.mjs
 
-# Run the same suite on your implementation, in Node.js and in Chromium
+# Run the same suite on your implementation
 tacli --alias node:crypto=dist/sha256-uint8array.mjs test/sha256.test.mjs
-chromium-js --alias node:crypto=dist/sha256-uint8array.mjs test/sha256.test.mjs
 ```
 
 - The suite is written for the builtin: `import {createHash} from "node:crypto"`, and no line names the library.
@@ -241,15 +227,14 @@ export default {
 ```sh
 # Run the bundle in Node.js
 tacli htdocs/scripts/bundled-tests.mjs
-
-# Run the same bundle in Chromium
-chromium-js htdocs/scripts/bundled-tests.mjs
 ```
 
 ## SEE ALSO
 
 - https://www.npmjs.com/package/test-assert-cli
 - https://www.npmjs.com/package/test-assert-lite
+- https://www.npmjs.com/package/webdriver-js-cli
+- https://www.npmjs.com/package/playwright-js-cli
 - https://github.com/kawanet/test-assert-lite
 - https://nodejs.org/api/test.html
 - https://nodejs.org/api/assert.html

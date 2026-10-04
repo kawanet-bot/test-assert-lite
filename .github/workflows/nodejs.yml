@@ -29,8 +29,8 @@ jobs:
           # relative to the common ancestor of everything listed.
           path: |
             README.md
-            packages/playwright-js-cli/playwright/
-            packages/webdriver-js-cli/webdriver/
+            packages/playwright-js-cli/playwright-config/
+            packages/webdriver-js-cli/webdriver-config/
             builder/pack/
             builder/tests/
             sample/

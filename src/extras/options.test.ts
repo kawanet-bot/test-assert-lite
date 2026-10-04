@@ -196,7 +196,7 @@ describe(TITLE, () => {
         })
 
         it("reads the Playwright config file for the engine the executable fixed", () => {
-            const options = readOptions(["--playwright-config", "packages/playwright-js-cli/playwright/iphone15pro.json", "suite.mjs"], {playwright: engine})
+            const options = readOptions(["--playwright-config", "packages/playwright-js-cli/playwright-config/iphone15pro.json", "suite.mjs"], {playwright: engine})
             assert.equal(options.mode, "playwright")
             if (options.mode !== "playwright") return
             assert.equal(options.browserType, engine)
@@ -210,7 +210,7 @@ describe(TITLE, () => {
             if (options.mode !== "webdriver") return
             assert.equal(options.custom, undefined)
             assert.equal(options.endpoint, undefined)
-            const given = readOptions(["--webdriver-config", "packages/webdriver-js-cli/webdriver/chrome-attach.json", "--endpoint", "http://127.0.0.1:9515", "suite.mjs"], {webdriver: true})
+            const given = readOptions(["--webdriver-config", "packages/webdriver-js-cli/webdriver-config/chrome-attach.json", "--endpoint", "http://127.0.0.1:9515", "suite.mjs"], {webdriver: true})
             assert.equal(given.mode, "webdriver")
             if (given.mode !== "webdriver") return
             assert.equal(typeof given.custom?.capabilities, "object")
@@ -275,7 +275,7 @@ describe(TITLE, () => {
         })
 
         it("takes the mode the executable fixed, with that mode's flags, and refuses --serve", () => {
-            const launching = readOptions(["--playwright-config", "packages/playwright-js-cli/playwright/iphone15pro.json", "suite.mjs"], {playwright: engine})
+            const launching = readOptions(["--playwright-config", "packages/playwright-js-cli/playwright-config/iphone15pro.json", "suite.mjs"], {playwright: engine})
             assert.equal(launching.mode, "playwright")
             if (launching.mode !== "playwright") return
             assert.equal(launching.browserType, engine)
