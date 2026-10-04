@@ -5,7 +5,7 @@
 `tacli` runs your `node:test` and `node:assert` test files in browsers, as they are.
 
 - The test file stays as written, imports included: `tacli` maps `node:test` and `node:assert` to [test-assert-lite](https://www.npmjs.com/package/test-assert-lite)
-- One command per target: this Node.js process, headless Chromium, Firefox and WebKit, or Safari and others over WebDriver
+- One command per target, built on it: `tacli` for this Node.js process, [chromium-js, firefox-js and webkit-js](https://www.npmjs.com/package/playwright-js-cli) for the headless browsers, [webdriver-js](https://www.npmjs.com/package/webdriver-js-cli) for Safari and others over WebDriver
 - `--import-map` works in Node too, which has no import maps of its own: one map file for Node and browsers
 - `--alias node:crypto=sha256-uint8array` puts your own implementation under a builtin's name, so one suite tests both
 
@@ -40,16 +40,16 @@ describe("buildQuery() from an object", () => {
 })
 ```
 
-The same file runs with `node --test` or `tacli`:
+The same file runs with `node --test`, with `tacli`, and in a browser with the commands built on it:
 
 ```sh
 node --test test/query.test.mjs
 
 tacli test/query.test.mjs
 
-tacli --webdriver test/query.test.mjs
+webdriver-js test/query.test.mjs
 
-tacli --playwright chromium test/query.test.mjs
+chromium-js test/query.test.mjs
 ```
 
 The `spec` result from `tacli`, version and user-agent lines omitted:
@@ -87,18 +87,16 @@ tacli --test test/*.test.mjs
 tacli --serve --port 3000 test/browser.test.mjs
 
 # Run suites in Safari, Chrome, or another WebDriver browser for CI
-tacli --webdriver test/browser.test.mjs
+webdriver-js test/browser.test.mjs
 
 # Run suites in headless Chromium through Playwright for CI
-tacli --playwright chromium test/browser.test.mjs
+chromium-js test/browser.test.mjs
 ```
 
 - The first file is the test file, and what follows it is the script's argv, as `node file args` has it. `--test` takes every argument as a test file. Name files directly; the shell expands globs. CommonJS test files are not supported. `-e <script>` runs a script in their place.
 - A script may `import {argv, stdout, stderr} from "test-assert-lite/process"`, in a browser as under Node. The streams reach the CLI's own, and `argv` holds the arguments as given. A file that imports them from `node:process` runs in a browser with `--alias node:process=test-assert-lite/process`.
 - TypeScript test files run as they are, in a browser too, through `stripTypeScriptTypes` of Node.js 22.18 or later.
-- `--webdriver` runs the test files in the browser a WebDriver server drives, from one directory.
-- `--playwright <browser>` does the same through Playwright.
-- `--serve` serves for a browser, with auto reload. The three are exclusive.
+- `--serve` serves the page for a browser, with auto reload. The browser runs are commands of their own, built on `tacli` and taking its options: [webdriver-js](https://www.npmjs.com/package/webdriver-js-cli), and [chromium-js, firefox-js and webkit-js](https://www.npmjs.com/package/playwright-js-cli).
 - A run exits 0 when all tests pass and 1 otherwise. Reports go to stdout; server messages and access logs go to stderr.
 - Reports include a summary unless `-q`.
 
@@ -108,7 +106,7 @@ tacli --playwright chromium test/browser.test.mjs
 
 ### `-e`, `--eval <script>`
 
-- Runs the script in place of test files, in Node or in the browser: `tacli --playwright chromium -e "console.log(navigator.userAgent)"`.
+- Runs the script in place of test files, in Node or in the browser: `chromium-js -e "console.log(navigator.userAgent)"`.
 - The script is a module: it imports `node:test` as a test file does, and a script that throws is one failed test.
 - The arguments after it are the script's, from `argv[1]`, as `node -e` gives them.
 
@@ -171,29 +169,6 @@ tacli --playwright chromium test/browser.test.mjs
 - Its HTML pages get the import map and the scripts in their head, so a page the app makes imports the library, and a suite, by name.
 - A page with its own `<script type="importmap">` is served as it is: no import map, no script or suite tags. stderr says so.
 
-### `--webdriver`
-
-- Runs the suite in the browser a [WebDriver](https://w3c.github.io/webdriver/) server drives, `safaridriver -p 4444` or `chromedriver --port=4444` say.
-- No extra dependency: the WebDriver server launches the browser, so Safari on a Mac runs the suite too, over an SSH tunnel if need be.
-
-### `--webdriver-config <file>`
-
-- JSON sent as the body of `POST /session`: the capabilities the driver takes. Default: `{"capabilities": {}}`.
-- `browser/webdriver/` has a few to pass as they are or to copy and edit: `chrome-headless.json`, `firefox-headless.json`, `chrome-attach.json`.
-
-### `--endpoint <url>`
-
-- The WebDriver server. Default: `http://127.0.0.1:4444`.
-
-### `--playwright <browser>`
-
-- Runs the suite in a headless `chromium`, `firefox` or `webkit` through [Playwright](https://playwright.dev/).
-- Needs the `playwright` package and that browser: `npm install -D playwright && npx playwright install chromium`.
-
-### `--playwright-config <file>`
-
-- JSON options passed to Playwright's [launch](https://playwright.dev/docs/api/class-browsertype#browser-type-launch), [newPage](https://playwright.dev/docs/api/class-browser#browser-new-page) and [goto](https://playwright.dev/docs/api/class-page#page-goto) methods.
-
 ### Import Maps
 
 Map package names to browser-ready ESM files installed by npm:
@@ -216,7 +191,7 @@ For `test/import-map.json` above:
 tacli --import-map test/import-map.json test/browser.test.mjs
 
 # Run with the same import map in Chromium
-tacli --playwright chromium --import-map test/import-map.json test/browser.test.mjs
+chromium-js --import-map test/import-map.json test/browser.test.mjs
 ```
 
 - `node:test`, `node:assert` and `test-assert-lite` are mapped by default. No entry needed for them.
@@ -233,7 +208,7 @@ tacli test/sha256.test.mjs
 
 # Run the same suite on your implementation, in Node.js and in Chromium
 tacli --alias node:crypto=dist/sha256-uint8array.mjs test/sha256.test.mjs
-tacli --playwright chromium --alias node:crypto=dist/sha256-uint8array.mjs test/sha256.test.mjs
+chromium-js --alias node:crypto=dist/sha256-uint8array.mjs test/sha256.test.mjs
 ```
 
 - The suite is written for the builtin: `import {createHash} from "node:crypto"`, and no line names the library.
@@ -268,20 +243,7 @@ export default {
 tacli htdocs/scripts/bundled-tests.mjs
 
 # Run the same bundle in Chromium
-tacli --playwright chromium htdocs/scripts/bundled-tests.mjs
-```
-
-### Safari over WebDriver
-
-```sh
-# Enable Safari automation once
-safaridriver --enable
-
-# Start the WebDriver server
-safaridriver -p 4444 &
-
-# Run the same bundle in Safari
-tacli --webdriver htdocs/scripts/bundled-tests.mjs
+chromium-js htdocs/scripts/bundled-tests.mjs
 ```
 
 ## SEE ALSO

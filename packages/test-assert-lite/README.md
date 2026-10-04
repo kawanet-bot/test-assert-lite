@@ -8,7 +8,7 @@ Run your `node:test` and `node:assert` test files in browsers, as they are.
 - The test file stays as written, imports included: [tacli](https://www.npmjs.com/package/test-assert-cli) maps `node:test` and `node:assert` to this library
 - From `node:test`: `describe` / `it`, `test` with `t.test()` subtests, `before` / `after`, `skip` and `todo`
 - From `node:assert`: `assert` and `strict`, with `ok`, `equal`, `deepStrictEqual`, `throws`, `rejects`, `match` and the rest
-- One command per target with `tacli`: this Node.js process, headless Chromium, Firefox and WebKit, or Safari and others over WebDriver
+- One command per target: [tacli](https://www.npmjs.com/package/test-assert-cli) for this Node.js process, [chromium-js, firefox-js and webkit-js](https://www.npmjs.com/package/playwright-js-cli) for the headless browsers, [webdriver-js](https://www.npmjs.com/package/webdriver-js-cli) for Safari and others over WebDriver
 - Under 32KB script, under 11KB gzipped, no dependencies
 
 ## SYNOPSIS
@@ -38,12 +38,12 @@ describe("buildQuery() from an object", () => {
 })
 ```
 
-The same file runs with `node --test`, and in browsers with [tacli](https://www.npmjs.com/package/test-assert-cli):
+The same file runs with `node --test`, and in a browser with [chromium-js](https://www.npmjs.com/package/playwright-js-cli):
 
 ```sh
 node --test test/query.test.mjs
 
-tacli --playwright chromium test/query.test.mjs
+chromium-js test/query.test.mjs
 ```
 
 `test` with subtests:
