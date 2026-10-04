@@ -14,8 +14,8 @@ const cwd = pathToFileURL(`${process.cwd()}/`)
 const mapFile = pathToFileURL(resolve("maps", "x.json"))
 const alias = (entry: string): ImportAliasItem => new ImportAliasItem(entry, cwd)
 const mapped = (specifier: string, address: unknown): ImportMapItem => new ImportMapItem(specifier, address, mapFile)
-// The addresses are Files' to give, from the items' own files: this package's
-// at fixed paths, the rest under a directory digest, blanked out to compare.
+// The addresses are Files' to give, from the items' own files, each under
+// a directory digest, blanked out to compare.
 const serveFor = (...items: ImportBase[]): ((file: string) => string) => createFiles(new Imports(items).files()).urlOf
 const unhash = (address: string | undefined): string => address?.replace(/\/[0-9a-f]{9}\//, "/xxxxxxxxx/") || ""
 

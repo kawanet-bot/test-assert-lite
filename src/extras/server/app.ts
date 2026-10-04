@@ -152,7 +152,7 @@ export const createApp = (options: AppOptions): App => {
         scoped(compose([...M(watcher?.inject), head, title, atRun])),
         atEval,
         // A directory under node_modules is a mount of its own, so none above
-        // answers for it: a file has its one URL there, as it is one module.
+        // answers for it. A file has its one URL there, as it is one module.
         async (c, next) => (c.req.path.startsWith(FILES_PATH) && NODE_MODULES.test(c.req.path) ? c.notFound() : next()),
         // A .ts among the files given goes out as JavaScript; the root
         // mount is served as it is.

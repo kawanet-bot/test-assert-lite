@@ -1,7 +1,7 @@
 // The files the browser test application serves, by directory, each named
 // by a digest, so its URL is the same in every run with the path off the
 // page. A directory under a served one is reached through it, as one file,
-// unless node_modules lies between: a package's files are its own mount.
+// unless node_modules lies between. A package's files are its own mount.
 
 import {createHash} from "node:crypto"
 import {realpathSync} from "node:fs"
