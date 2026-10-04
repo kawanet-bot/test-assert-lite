@@ -36,9 +36,11 @@ const COMMON_IMPORTS: [specifier: string, target: string][] = [
     ["node:assert/strict", "test-assert-lite/assert/strict"],
 ]
 
-// What a page is mapped as well. Node has these of its own.
+// What a page is mapped as well, where Node has its own.
 const BROWSER_IMPORTS: [specifier: string, target: string][] = [
-    ["node:process", "test-assert-lite/process"],
+    // A script for a page imports the process by the subpath's name, and
+    // names this alias itself when it reads node:process.
+    // ["node:process", "test-assert-lite/process"],
 ]
 
 // The bundled names, this package's own, are what the defaults point at:
