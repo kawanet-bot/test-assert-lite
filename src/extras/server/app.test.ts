@@ -145,7 +145,9 @@ describe(TITLE, () => {
             assert.ok(index.body.includes("theirs"))
             assert.ok(index.body.includes('<script type="importmap">'))
             assert.equal((await get(running.origin + "/elsewhere")).status, 404)
-            assert.equal((await get(running.origin + "/@tacli/dist/test-assert-lite.min.js")).status, 200)
+            const map = index.body.indexOf('<script type="importmap">')
+            const {imports} = JSON.parse(index.body.slice(index.body.indexOf("{", map), index.body.indexOf("</script>", map)))
+            assert.equal((await get(running.origin + imports["test-assert-lite"])).status, 200)
             assert.equal((await get(running.origin + "/@tacli/nothing")).status, 404)
             assert.equal(asked.includes("/@tacli/nothing"), false)
         } finally {

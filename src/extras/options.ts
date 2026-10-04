@@ -211,7 +211,7 @@ export const readOptions = (args: string[], fixed: FixedMode = {}): ModeOptions 
     // The test files are served from one directory, so a module they share is
     // one URL and loads once, as under Node; from two, it would load once
     // per directory. One under another counts as served from the latter.
-    const served = createFiles([...(session.files), ...scripts, ...imports.paths()])
+    const served = createFiles([...(session.files), ...scripts, ...imports.files()])
     if (new Set(session.files.map(file => served.dirOf(file))).size > 1) {
         throw new UsageError("a browser run takes the test files from one directory")
     }

@@ -12,7 +12,7 @@ import {Imports} from "../imports.ts"
 import type {TestSession} from "../mode-options.ts"
 import {packageNameOf, packageRoot} from "../package-root.ts"
 import {createChannel} from "./channel.ts"
-import {createFiles} from "./files.ts"
+import {FILES_PATH, createFiles} from "./files.ts"
 import {hasImportMap, withHead} from "./head.ts"
 import type {MiddlewareHandler} from "./middleware.ts"
 import {compose, scoped} from "./middleware.ts"
@@ -58,6 +58,8 @@ interface TestSessionJSON {
 
 export const TestSessionType = "application/vnd.test-session+json"
 
+const NODE_MODULES = /\/node_modules\//
+
 // The package root holds the pages, htdocs/ and assets/; they
 // are served from there whatever the suite's location.
 const root = fileURLToPath(packageRoot())
@@ -97,7 +99,7 @@ export const createApp = (options: AppOptions): App => {
     // Every file given is served from its directory under /@tacli/files/, so
     // a sibling or a nested import resolves beside it while nothing above
     // stays reachable; the suites' directory is the same for all of them.
-    const served = createFiles([...files, ...scripts, ...imports.paths()])
+    const served = createFiles([...files, ...scripts, ...imports.files()])
 
     // The package's name in the map leads to the minified build, so the
     // library loads as the suites import it; only the scripts go in as tags.
@@ -149,7 +151,9 @@ export const createApp = (options: AppOptions): App => {
         ...M(watcher?.handler),
         scoped(compose([...M(watcher?.inject), head, title, atRun])),
         atEval,
-        ...served.own.map(dir => serveStatic(dir)),
+        // A directory under node_modules is a mount of its own, so none above
+        // answers for it. A file has its one URL there, as it is one module.
+        async (c, next) => (c.req.path.startsWith(FILES_PATH) && NODE_MODULES.test(c.req.path) ? c.notFound() : next()),
         // A .ts among the files given goes out as JavaScript; the root
         // mount is served as it is.
         scoped(compose([withStrippedTypes(), ...served.dirs.map(dir => serveStatic(dir))])),

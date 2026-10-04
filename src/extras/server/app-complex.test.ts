@@ -31,6 +31,9 @@ const post = async (url: string, body: string): Promise<number> => (await fetch(
 
 const send = async (url: string, message: TAL.SessionEvent): Promise<number> => post(url, JSON.stringify(message))
 
+// A served address with its digest blanked out, to compare.
+const unhash = (address: string | undefined): string => address?.replace(/\/[0-9a-f]{9}\//, "/xxxxxxxxx/") || ""
+
 const nullWriter: TAL.Writer = {write: (() => undefined)}
 
 describe(TITLE, () => {
@@ -59,6 +62,9 @@ describe(TITLE, () => {
         await writeFile(join(dir, "lib", "mod.mjs"), "export const mod = 1")
         await writeFile(join(dir, "secret.json"), "{}")
         await writeFile(join(dir, "package.json"), '{"name": "fixture-pkg"}')
+        await mkdir(join(dir, "tests", "node_modules", "pkg", "lib"), {recursive: true})
+        await writeFile(join(dir, "tests", "node_modules", "pkg", "index.js"), "export const value = 1")
+        await writeFile(join(dir, "tests", "node_modules", "pkg", "lib", "bar.js"), 'import {value} from "../index.js"\nexport const bar = value')
         const laid = createFiles([join(dir, "tests", "my suite.mjs"), join(dir, "lib", "mod.mjs")])
         tests = laid.dirOf(join(dir, "tests", "my suite.mjs")).path
         lib = laid.dirOf(join(dir, "lib", "mod.mjs")).path
@@ -71,6 +77,7 @@ describe(TITLE, () => {
                 new ImportAliasItem(`mod=${join(dir, "lib", "mod.mjs")}`, cwd),
                 new ImportAliasItem(`dep=${join(dir, "tests", "nested", "dep.mjs")}`, cwd),
                 new ImportAliasItem("cdn=https://cdn.example/lib.js", cwd),
+                new ImportAliasItem(`pkg=${join(dir, "tests", "node_modules", "pkg", "lib", "bar.js")}`, cwd),
                 new ImportMapItem("mine", "/mine.js", pathToFileURL(join(dir, "map.json"))),
                 new ImportAliasItem(`mod=${join(dir, "lib", "mod.mjs")}`, cwd),
             ]),
@@ -99,7 +106,7 @@ describe(TITLE, () => {
         }
         const map = at('<script type="importmap">')
         const config = at('<script type="application/vnd.test-session+json">')
-        assert.match(tests, /^\/@tacli\/files\/[0-9a-f]{9}\/$/)
+        assert.equal(unhash(tests), "/@tacli/files/xxxxxxxxx/")
         const script = at(`<script src="${tests}setup.js"></script>`)
         const second = at(`<script src="${tests}set%2Bup%232.js"></script>`)
         assert.ok(map < config && config < script && script < second)
@@ -108,8 +115,10 @@ describe(TITLE, () => {
         assert.deepEqual(session, {files: [`${tests}my%20suite.mjs`, `${tests}second.mjs`]})
         assert.deepEqual(process, {argv: ["tacli", "tests/my suite.mjs", "tests/second.mjs", "--two"]})
         const {imports} = JSON.parse(head.slice(head.indexOf("{", map), head.indexOf("</script>", map)))
-        assert.equal(imports["node:test"], "/@tacli/exports/test.js")
-        assert.equal(imports["test-assert-lite"], "/@tacli/dist/test-assert-lite.min.js")
+        assert.equal(unhash(imports["node:test"]), "/@tacli/files/xxxxxxxxx/test.js")
+        assert.equal(unhash(imports["test-assert-lite"]), "/@tacli/files/xxxxxxxxx/test-assert-lite.min.js")
+        assert.equal(unhash(imports["pkg"]), "/@tacli/files/xxxxxxxxx/lib/bar.js")
+        assert.equal(imports["pkg"].startsWith(tests), false)
         assert.equal(imports["mod"], `${lib}mod.mjs`)
         assert.equal(imports["dep"], `${tests}nested/dep.mjs`)
         assert.equal(imports["cdn"], "https://cdn.example/lib.js")
@@ -141,6 +150,16 @@ describe(TITLE, () => {
         assert.equal((await get(url("/@tacli/files/000000000/mod.mjs"))).status, 404)
     })
 
+    it("serves a file under node_modules from its package's directory, where a relative import reaches the rest, and not through the one above", async () => {
+        const head = (await get(url(app.page))).body
+        const map = head.indexOf('<script type="importmap">')
+        const {imports} = JSON.parse(head.slice(head.indexOf("{", map), head.indexOf("</script>", map)))
+        assert.equal((await get(url(imports["pkg"]))).status, 200)
+        assert.equal((await get(new URL("../index.js", url(imports["pkg"])).href)).body, "export const value = 1")
+        assert.equal((await get(url(`${tests}node_modules/pkg/lib/bar.js`))).status, 404)
+        assert.equal((await get(url(`${tests}node_modules/pkg/index.js`))).status, 404)
+    })
+
     it("serves a .ts from a directory as JavaScript, the types stripped by this Node", async t => {
         if (!process.features.typescript) return t.skip()
         const res = await get(url(`${tests}typed.ts`))
@@ -156,9 +175,12 @@ describe(TITLE, () => {
     })
 
     it("serves the package's minified build, the bridges and the document root", async () => {
-        assert.match((await get(url("/@tacli/dist/test-assert-lite.min.js"))).body, /export\{/)
-        assert.equal((await get(url("/@tacli/exports/test.js"))).status, 200)
-        assert.equal((await get(url("/@tacli/exports/assert/strict.js"))).status, 200)
+        const head = (await get(url(app.page))).body
+        const map = head.indexOf('<script type="importmap">')
+        const {imports} = JSON.parse(head.slice(head.indexOf("{", map), head.indexOf("</script>", map)))
+        assert.match((await get(url(imports["test-assert-lite"]))).body, /export\{/)
+        assert.equal((await get(url(imports["node:test"]))).status, 200)
+        assert.equal((await get(url(imports["node:assert/strict"]))).status, 200)
         assert.equal((await get(url("/styles/test-assert-lite.css"))).type, "text/css; charset=utf-8")
         assert.equal((await get(url("/favicon.svg"))).status, 200)
         assert.equal((await get(url("/package.json"))).status, 404)
