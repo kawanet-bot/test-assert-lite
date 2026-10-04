@@ -11,7 +11,10 @@ npm install -D webdriver-js-cli
 safaridriver --enable
 safaridriver -p 4444 &
 
-webdriver-js test/query.test.mjs
+webdriver-js -e 'console.log("#", navigator.userAgent)'
+# Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6 Safari/605.1.15
+
+webdriver-js --test test/query.test.mjs
 ```
 
 - No extra dependency: the WebDriver server launches the browser, so Safari on a Mac runs the suite too, over an SSH tunnel if need be.
@@ -34,8 +37,9 @@ webdriver-js htdocs/scripts/bundled-tests.mjs
 
 ## SEE ALSO
 
-- https://www.npmjs.com/package/webdriver-js-cli
-- https://www.npmjs.com/package/test-assert-cli
 - https://www.npmjs.com/package/test-assert-lite
+- https://www.npmjs.com/package/test-assert-cli
+- https://www.npmjs.com/package/webdriver-js-cli
+- https://www.npmjs.com/package/playwright-js-cli
 - https://github.com/kawanet/test-assert-lite
 - https://w3c.github.io/webdriver/

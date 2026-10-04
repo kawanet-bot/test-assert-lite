@@ -45,7 +45,7 @@ The same file runs with `node --test` and with `tacli` alike:
 ```sh
 node --test test/query.test.mjs
 
-tacli test/query.test.mjs
+tacli --test test/query.test.mjs
 ```
 
 The `spec` result from `tacli`, version and user-agent lines omitted:
@@ -226,15 +226,13 @@ export default {
 
 ```sh
 # Run the bundle in Node.js
-tacli htdocs/scripts/bundled-tests.mjs
+tacli --test htdocs/scripts/bundled-tests.mjs
 ```
 
 ## SEE ALSO
 
-- https://www.npmjs.com/package/test-assert-cli
 - https://www.npmjs.com/package/test-assert-lite
+- https://www.npmjs.com/package/test-assert-cli
 - https://www.npmjs.com/package/webdriver-js-cli
 - https://www.npmjs.com/package/playwright-js-cli
 - https://github.com/kawanet/test-assert-lite
-- https://nodejs.org/api/test.html
-- https://nodejs.org/api/assert.html
