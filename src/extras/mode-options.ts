@@ -1,8 +1,5 @@
 import type {Imports, NodeImports} from "./imports.ts"
 
-const ENGINE_NAMES = ["chromium", "firefox", "webkit"] as const
-export type EngineName = typeof ENGINE_NAMES[number]
-
 /** The request body of POST /session for WebDriver. */
 export interface WebDriverCustom {
     /** @see https://w3c.github.io/webdriver/#new-session */
@@ -24,7 +21,7 @@ export interface BrowserTypeLike {
     launch(options?: object): Promise<unknown>
 }
 
-/** A mode the executable fixes ahead of the arguments, so the flags that choose one are refused. */
+/** A mode the executable fixes ahead of the arguments. --serve is refused then, and the mode's own flags apply. */
 export interface FixedMode {
     /** The run goes through a WebDriver server. */
     webdriver?: boolean
@@ -71,7 +68,5 @@ export type ModeOptions =
     | {mode: "version"}
     | NodeModeOptions & {mode: "node"}
     | WebModeOptions & {mode: "serve"}
-    | WebModeOptions & {mode: "playwright", engine?: EngineName, browserType?: BrowserTypeLike, custom?: BrowserCustom}
+    | WebModeOptions & {mode: "playwright", browserType: BrowserTypeLike, custom?: BrowserCustom}
     | WebModeOptions & {mode: "webdriver", endpoint?: string, custom?: WebDriverCustom}
-
-export const isEngineName = (v: unknown): v is EngineName => ENGINE_NAMES.includes(v as EngineName)

@@ -6,9 +6,9 @@ export interface CLIOptions {
     args: string[]
     /** What the executable calls itself: the command for the usage, the package and its version for -v. Default: this package's. */
     program?: Program
-    /** Fixes the run on a WebDriver server, as --webdriver does. The flags that choose a mode are refused then. */
+    /** Fixes the run on a WebDriver server. --serve is refused then. */
     webdriver?: boolean
-    /** Fixes the run on this Playwright engine, imported by the caller. The flags that choose a mode are refused then. */
+    /** Fixes the run on this Playwright engine, imported by the caller. --serve is refused then. */
     playwright?: BrowserType
 }
 

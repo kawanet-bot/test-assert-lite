@@ -24,5 +24,6 @@ jobs:
         with:
           node-version: "24"
 
+      - run: npm install
       - run: make -C browser install
       - run: make -C browser test

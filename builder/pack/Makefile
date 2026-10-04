@@ -13,6 +13,7 @@ SHELL := bash
 PKG_ROOT ?= node_modules
 CLI_ROOT := $(PKG_ROOT)/test-assert-cli
 LIB_ROOT := $(PKG_ROOT)/test-assert-lite
+WEBDRIVER_ROOT := $(PKG_ROOT)/webdriver-js-cli
 
 # A target name in builder/, not a path from here.
 BUILDER_TEST_DST := ./tests/bundled.mjs
@@ -78,7 +79,8 @@ test-cli:
 	cd ../.. && ./$(CLI_ROOT)/bin/tacli.js --import-map sample/import-map.json sample/alias.js > /dev/null 2>&1
 
 # Each shortcut starts, names its own package and refuses a flag that would
-# choose another mode. Launching the browsers is the browser CI's part.
+# choose another mode. The presets a README names are in the package, so a
+# `files` glob that misses them fails here. The browsers are the browser CI's.
 test-shortcuts:
 	cd ../.. && ./node_modules/.bin/webdriver-js -v | grep "^webdriver-js-cli " > /dev/null
 	cd ../.. && ./node_modules/.bin/chromium-js -v | grep "^playwright-js-cli " > /dev/null
@@ -86,6 +88,9 @@ test-shortcuts:
 	cd ../.. && ./node_modules/.bin/webkit-js -v | grep "^playwright-js-cli " > /dev/null
 	cd ../.. && ! ./node_modules/.bin/webdriver-js --serve sample/pass.js > /dev/null 2>&1
 	cd ../.. && ! ./node_modules/.bin/chromium-js --webdriver sample/pass.js > /dev/null 2>&1
+	[ -f ../../$(WEBDRIVER_ROOT)/webdriver-config/chrome-headless.json ]
+	[ -f ../../$(WEBDRIVER_ROOT)/webdriver-config/firefox-headless.json ]
+	[ -f ../../$(WEBDRIVER_ROOT)/webdriver-config/chrome-attach.json ]
 
 # Publish gate: the same behavior checks, run against the checkout's own
 # staged artifacts in place -- no tarball install involved.

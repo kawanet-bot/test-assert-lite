@@ -16,9 +16,10 @@
     "node": ">=20.19.0"
   },
   "files": [
-    "bin/",
+    "bin/*.js",
     "LICENSE",
-    "README.md"
+    "README.md",
+    "webdriver-config/*.json"
   ],
   "homepage": "https://github.com/kawanet/test-assert-lite#readme",
   "keywords": [

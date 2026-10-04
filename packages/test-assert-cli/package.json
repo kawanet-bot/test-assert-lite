@@ -25,7 +25,6 @@
   "files": [
     "bin/tacli.js",
     "browser/run.html",
-    "browser/webdriver/",
     "dist/test-assert-cli.js",
     "htdocs/",
     "LICENSE",

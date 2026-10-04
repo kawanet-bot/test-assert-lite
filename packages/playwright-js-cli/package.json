@@ -22,7 +22,7 @@
     "test-assert-cli": "^0.1.0"
   },
   "files": [
-    "bin/",
+    "bin/*.js",
     "LICENSE",
     "README.md"
   ],
