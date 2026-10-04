@@ -16,18 +16,18 @@ const resultLine = (data: TAL.TestPass | TAL.TestFail, isPass: boolean, indented
     const note = directive(data)
     const indents = indented ? indentClass(indented && data.nesting) : ""
     const ms = data.details.duration_ms.toFixed(3)
-    return $$`<div class="tal-r ${indents}"><span class="tal-${kind}">${symbol} ${data.name}</span> <span class="tal-info">(${ms}ms)</span>${note}</div>\n`
+    return $$`<div class="tal-row ${indents}"><span class="tal-${kind}">${symbol} ${data.name}</span> <span class="tal-info">(${ms}ms)</span>${note}</div>\n`
 }
 
 const heading = (parent: TAL.TestStart): string =>
-    $$`<div class="tal-r ${indentClass(parent.nesting)}"><span class="tal-suite">▶ ${parent.name}</span></div>\n`
+    $$`<div class="tal-row ${indentClass(parent.nesting)}"><span class="tal-suite">▶ ${parent.name}</span></div>\n`
 
 const formatFailures = (failed: TAL.TestFail[]): string => {
     if (!failed.length) return ""
-    let out = $$`<div class="tal-r tal-fail">✖ failing tests:</div>\n`
+    let out = $$`<div class="tal-row tal-fail">✖ failing tests:</div>\n`
     for (const data of failed) {
         out += resultLine(data, false, false)
-        out += $$`<div class="tal-r tal-error"><pre>${errorText(data.details.error)}</pre></div>\n`
+        out += $$`<div class="tal-row tal-error"><pre>${errorText(data.details.error)}</pre></div>\n`
     }
     return out
 }
@@ -49,14 +49,14 @@ export const html = (): ReporterFn => async function* (source: AsyncIterable<Tes
             const {level, nesting, message} = event.data
             let out = ""
             while (stack.length && stack[stack.length - 1]!.nesting < nesting) out += heading(stack.pop()!)
-            yield out + $$`<div class="tal-r ${indentClass(nesting)}"><span class="tal-${level}">ℹ ${message}</span></div>`
+            yield out + $$`<div class="tal-row ${indentClass(nesting)}"><span class="tal-${level}">ℹ ${message}</span></div>`
             continue
         }
 
         // A test file's own output under node --test, as node's spec passes it.
         if (event.type === "test:stdout" || event.type === "test:stderr") {
             const stream = event.type.slice("test:".length)
-            yield $$`<div class="tal-r tal-${stream}"><pre>${event.data.message}</pre></div>\n`
+            yield $$`<div class="tal-row tal-${stream}"><pre>${event.data.message}</pre></div>\n`
             continue
         }
 
