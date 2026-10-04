@@ -114,7 +114,7 @@ test-assert --playwright chromium test/browser.test.mjs
 ```
 
 - The first file is the test file, and what follows it is the script's argv, as `node file args` has it. `--test` takes every argument as a test file. Name files directly; the shell expands globs. CommonJS test files are not supported. `-e <script>` runs a script in their place.
-- A test file may `import {argv, stdout, stderr} from "node:process"`. In a browser the streams reach the CLI's own, as they do under Node, and `argv` holds the arguments as given. Only these three names are offered there.
+- A script may `import {argv, stdout, stderr} from "test-assert-lite/process"`, in a browser as under Node. The streams reach the CLI's own, and `argv` holds the arguments as given. A file that imports them from `node:process` runs in a browser with `--alias node:process=test-assert-lite/process`.
 - TypeScript test files run as they are, in a browser too, through `stripTypeScriptTypes` of Node.js 22.18 or later.
 - `--webdriver` runs the test files in the browser a WebDriver server drives, from one directory.
 - `--playwright <browser>` does the same through Playwright.
@@ -272,7 +272,6 @@ export default {
     input: "test/*.test.mjs",
     external: [
         "node:assert",
-        "node:process",
         "node:test",
     ],
     output: {
@@ -349,7 +348,7 @@ The minified build is an ES module: an import map leads the package's name to it
 
 ### Bundled tests in a page
 
-Bundle the suites as one ES module with `node:test`, `node:assert` and `node:process` left external, and let an import map lead them, and the package's name the bridges import, to the CDN.
+Bundle the suites as one ES module with `node:test` and `node:assert` left external, and let an import map lead them, and the package's name the bridges import, to the CDN.
 
 ```js
 // rollup.config.mjs
@@ -357,7 +356,6 @@ export default {
     input: "test/*.test.mjs",
     external: [
         "node:assert",
-        "node:process",
         "node:test",
     ],
     output: {
@@ -376,7 +374,6 @@ export default {
         "node:test": "https://cdn.jsdelivr.net/npm/test-assert-lite/exports/test.js",
         "node:assert": "https://cdn.jsdelivr.net/npm/test-assert-lite/exports/assert.js",
         "node:assert/strict": "https://cdn.jsdelivr.net/npm/test-assert-lite/exports/assert/strict.js",
-        "node:process": "https://cdn.jsdelivr.net/npm/test-assert-lite/exports/process.js",
         "test-assert-lite/session": "https://cdn.jsdelivr.net/npm/test-assert-lite/exports/session.js"
     }
 }

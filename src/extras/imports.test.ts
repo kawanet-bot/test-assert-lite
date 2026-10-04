@@ -34,9 +34,7 @@ const COMMON_IMPORTS = [
     "node:assert/strict",
 ] as const
 
-const BROWSER_IMPORTS = [
-    "node:process",
-] as const
+const BROWSER_IMPORTS = [] as const
 
 describe(TITLE, () => {
     describe("an --alias item", () => {
@@ -163,10 +161,10 @@ describe(TITLE, () => {
             assert.equal(new Imports([]).entries().get("node:test")?.getAddress(serveFor()), "/@tal/exports/test.js")
         })
 
-        it("maps node:process for a page only, where Node has its own", () => {
+        it("keeps the common defaults for Node, and a page's own list ahead of the items", () => {
             assert.deepEqual([...new NodeImports([]).entries().keys()], COMMON_IMPORTS)
-            assert.equal(new NodeImports([]).entries().get("node:process"), undefined)
-            assert.equal(new Imports([]).entries().get("node:process")?.getAddress(serveFor()), "/@tal/exports/process.js")
+            assert.deepEqual([...new Imports([]).entries().keys()], [...COMMON_IMPORTS, ...BROWSER_IMPORTS])
+            assert.equal(new Imports([]).entries().get("test-assert-lite/process")?.getAddress(serveFor()), "/@tal/exports/process.js")
         })
 
         it("names every path item's file once, losers included, and resolves each specifier to its last item", () => {
