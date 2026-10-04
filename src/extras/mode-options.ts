@@ -18,6 +18,20 @@ export interface BrowserCustom {
     goto?: object
 }
 
+/** What launches one of Playwright's browsers: chromium, firefox or webkit as the playwright module exports them. */
+export interface BrowserTypeLike {
+    /** @see https://playwright.dev/docs/api/class-browsertype#browser-type-launch */
+    launch(options?: object): Promise<unknown>
+}
+
+/** A mode the executable fixes ahead of the arguments, so the flags that choose one are refused. */
+export interface FixedMode {
+    /** The run goes through a WebDriver server. */
+    webdriver?: boolean
+    /** The run goes through this Playwright engine, imported by the caller. */
+    playwright?: BrowserTypeLike
+}
+
 export interface TestSession {
     /** The reporter named on the command line; spec unless given. */
     reporter?: string
@@ -57,7 +71,7 @@ export type ModeOptions =
     | {mode: "version"}
     | NodeModeOptions & {mode: "node"}
     | WebModeOptions & {mode: "serve"}
-    | WebModeOptions & {mode: "playwright", engine: EngineName, custom?: BrowserCustom}
+    | WebModeOptions & {mode: "playwright", engine?: EngineName, browserType?: BrowserTypeLike, custom?: BrowserCustom}
     | WebModeOptions & {mode: "webdriver", endpoint?: string, custom?: WebDriverCustom}
 
 export const isEngineName = (v: unknown): v is EngineName => ENGINE_NAMES.includes(v as EngineName)

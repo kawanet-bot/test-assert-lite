@@ -8,25 +8,39 @@
 import {stringify} from "../utils/stringify.ts"
 import {runInNode} from "./drivers/node.ts"
 import {runWebMode} from "./drivers/web-mode.ts"
-import type {ModeOptions} from "./mode-options.ts"
-import {readOptions, USAGE} from "./options.ts"
+import type {BrowserTypeLike, FixedMode, ModeOptions} from "./mode-options.ts"
+import {readOptions, usageOf} from "./options.ts"
 import {UsageError} from "./usage-error.ts"
 import {VERSION} from "./version.ts"
 
 export interface CLIOptions {
     /** The arguments as the executable gets them: process.argv.slice(2). */
     args: string[]
+    /** What the executable calls itself: the command for the usage, the package and its version for -v. Default: this package's. */
+    program?: Program
+    /** Fixes the run on a WebDriver server, as --webdriver does. The flags that choose a mode are refused then. */
+    webdriver?: boolean
+    /** Fixes the run on this Playwright engine, imported by the caller. The flags that choose a mode are refused then. */
+    playwright?: BrowserTypeLike
 }
 
-const runCLI = async (options: ModeOptions): Promise<number> => {
+export interface Program {
+    command: string
+    name: string
+    version: string
+}
+
+const OWN: Program = {command: "tacli", name: "test-assert-cli", version: VERSION}
+
+const runCLI = async (options: ModeOptions, program: Program, fixed: FixedMode): Promise<number> => {
     const {mode} = options
     if (mode === "help") {
-        process.stdout.write(USAGE)
+        process.stdout.write(usageOf(program.command, fixed))
         return 0
     }
 
     if (mode === "version") {
-        process.stdout.write(`test-assert-cli ${VERSION}\n`)
+        process.stdout.write(`${program.name} ${program.version}\n`)
         return 0
     }
 
@@ -51,17 +65,18 @@ const runCLI = async (options: ModeOptions): Promise<number> => {
  * one call per process, as the command line is: Node mode installs a
  * resolve hook that stays, and a suite once loaded is not loaded again.
  */
-export const CLI = async ({args}: CLIOptions): Promise<number> => {
+export const CLI = async ({args, program = OWN, webdriver, playwright}: CLIOptions): Promise<number> => {
+    const fixed: FixedMode = {webdriver, playwright}
     let options: ReturnType<typeof readOptions>
 
     try {
-        options = readOptions(args)
+        options = readOptions(args, fixed)
     } catch (error) {
         if (!(error instanceof UsageError)) throw error
         if (error.message) process.stderr.write(`${stringify(error)}\n`)
-        process.stderr.write(USAGE)
+        process.stderr.write(usageOf(program.command, fixed))
         return 2 // EXIT_USAGE
     }
 
-    return await runCLI(options)
+    return await runCLI(options, program, fixed)
 }

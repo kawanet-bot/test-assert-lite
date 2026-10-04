@@ -7,30 +7,37 @@ import {resolve} from "node:path"
 import {parseArgs} from "node:util"
 import {readJsonFile} from "../utils/read-json.ts"
 import {ImportAliasItem, type ImportBase, Imports, NodeImports, cwdURL, readImportMap} from "./imports.ts"
-import type {BrowserCustom, EngineName, ModeOptions, TestSession, WebDriverCustom, WebModeOptions} from "./mode-options.ts"
+import type {BrowserCustom, EngineName, FixedMode, ModeOptions, TestSession, WebDriverCustom, WebModeOptions} from "./mode-options.ts"
 import {isEngineName} from "./mode-options.ts"
 import {createFiles} from "./server/files.ts"
 import {UsageError} from "./usage-error.ts"
 
-export const USAGE = `Usage: tacli [options] [file [arg...]]
-  -v, --version               print this package's version
-  -e, --eval <script>         run the script in place of test files
-  --test                      every argument is a test file (default: the first alone, the rest the script's argv)
-  --alias <specifier>=<file>  what a specifier resolves to: a file, a URL for the page, or a test-assert-lite subpath (repeatable)
-  --import-map <file>         JSON import map: a relative address is a file beside it, / and http(s):// go to the page as they are
-  --reporter <name>           how the run is reported: spec, tap or html (default: spec)
-  -q, --quiet                 show less output while keeping failures
-  --serve                     serve for a browser and print the URL, with auto reload
-  --port <[host:]port>        port the server listens on, and the address ahead of it (browser modes, default: 127.0.0.1:0, a free port)
-  --origin <url>              what the browser reaches the server as, http(s)://host[:port] (browser modes, default: from --port)
-  --script <file>             classic script to run first (browser modes, repeatable)
-  --mount <dir|url>           what the root serves instead of htdocs: a directory, or an origin to proxy (browser modes)
-  --webdriver                 run the suite through a WebDriver server: safaridriver, chromedriver
-  --webdriver-config <file>   JSON sent as the body of POST /session (default: no capabilities)
-  --endpoint <url>            the WebDriver server (default: http://127.0.0.1:4444)
-  --playwright <browser>      run the suite through Playwright: chromium, firefox or webkit
-  --playwright-config <file>  JSON options for Playwright's launch, newPage and goto
-`
+// The usage, for the command that asks. An executable that fixes a mode
+// shows the flags of that mode alone, and none that would choose another.
+export const usageOf = (command: string, fixed: FixedMode = {}): string => {
+    const free = !fixed.webdriver && fixed.playwright == null
+    const lines = [
+        `Usage: ${command} [options] [file [arg...]]`,
+        "  -v, --version               print this package's version",
+        "  -e, --eval <script>         run the script in place of test files",
+        "  --test                      every argument is a test file (default: the first alone, the rest the script's argv)",
+        "  --alias <specifier>=<file>  what a specifier resolves to: a file, a URL for the page, or a test-assert-lite subpath (repeatable)",
+        "  --import-map <file>         JSON import map: a relative address is a file beside it, / and http(s):// go to the page as they are",
+        "  --reporter <name>           how the run is reported: spec, tap or html (default: spec)",
+        "  -q, --quiet                 show less output while keeping failures",
+        free && "  --serve                     serve for a browser and print the URL, with auto reload",
+        "  --port <[host:]port>        port the server listens on, and the address ahead of it (browser modes, default: 127.0.0.1:0, a free port)",
+        "  --origin <url>              what the browser reaches the server as, http(s)://host[:port] (browser modes, default: from --port)",
+        "  --script <file>             classic script to run first (browser modes, repeatable)",
+        "  --mount <dir|url>           what the root serves instead of htdocs: a directory, or an origin to proxy (browser modes)",
+        free && "  --webdriver                 run the suite through a WebDriver server: safaridriver, chromedriver",
+        (free || fixed.webdriver) && "  --webdriver-config <file>   JSON sent as the body of POST /session (default: no capabilities)",
+        (free || fixed.webdriver) && "  --endpoint <url>            the WebDriver server (default: http://127.0.0.1:4444)",
+        free && "  --playwright <browser>      run the suite through Playwright: chromium, firefox or webkit",
+        (free || fixed.playwright != null) && "  --playwright-config <file>  JSON options for Playwright's launch, newPage and goto",
+    ]
+    return lines.filter(line => line).map(line => `${line}\n`).join("")
+}
 
 /** What --port names: the port, and the address to listen on when one is given ahead of it. */
 export interface Listen {
@@ -105,13 +112,32 @@ export const engineNameOf = (name: string): EngineName => {
 
 // parseArgs settles the flag forms (--x=v, -h, --) and rejects a flag this
 // CLI does not know rather than taking it for a file name. What it says
-// becomes the reason, ahead of the usage text, in node's own wording.
-const parse = (args: string[]) => {
+// becomes the reason, ahead of the usage text, in node's own wording. A
+// fixed mode refuses the flags that would choose one, in the same wording.
+const parse = (args: string[], fixed: FixedMode) => {
+    const free = !fixed.webdriver && fixed.playwright == null
+    const hidden = [
+        ...(free ? [] : ["serve", "webdriver", "playwright"] as const),
+        ...(free || fixed.webdriver ? [] : ["webdriver-config", "endpoint"] as const),
+        ...(free || fixed.playwright != null ? [] : ["playwright-config"] as const),
+    ]
+    const parsed = parseFlags(args)
+    const given = hidden.find(key => parsed.values[key] != null && parsed.values[key] !== false)
+    if (given != null) throw new UsageError(`Unknown option '--${given}'`)
+    return parsed
+}
+
+const parseFlags = (args: string[]) => {
     try {
         return parseArgs({
             args,
             options: {
                 serve: {type: "boolean", default: false},
+                webdriver: {type: "boolean", default: false},
+                playwright: {type: "string"},
+                "webdriver-config": {type: "string"},
+                endpoint: {type: "string"},
+                "playwright-config": {type: "string"},
                 port: {type: "string"},
                 origin: {type: "string"},
                 alias: {type: "string", multiple: true, default: []},
@@ -120,11 +146,6 @@ const parse = (args: string[]) => {
                 quiet: {type: "boolean", short: "q"},
                 script: {type: "string", multiple: true, default: []},
                 mount: {type: "string"},
-                playwright: {type: "string"},
-                "playwright-config": {type: "string"},
-                webdriver: {type: "boolean", default: false},
-                "webdriver-config": {type: "string"},
-                endpoint: {type: "string"},
                 eval: {type: "string", short: "e"},
                 test: {type: "boolean", default: false},
                 help: {type: "boolean", short: "h", default: false},
@@ -140,16 +161,19 @@ const parse = (args: string[]) => {
 /**
  * Reads the arguments as the executable gets them and returns what the
  * mode they name needs, every value checked and every path absolute, or
- * throws UsageError with the reason when there is one to give.
+ * throws UsageError with the reason. A mode the executable fixed is the
+ * mode, whatever the arguments say.
  */
-export const readOptions = (args: string[]): ModeOptions => {
-    const {values, positionals} = parse(args)
+export const readOptions = (args: string[], fixed: FixedMode = {}): ModeOptions => {
+    const {values, positionals} = parse(args, fixed)
     if (values.help) return {mode: "help"}
     if (values.version) return {mode: "version"}
 
-    const {playwright, webdriver, serve} = values
+    const {playwright, serve} = values
+    const webdriver = !!fixed.webdriver || values.webdriver
     const engine = playwright == null ? undefined : engineNameOf(playwright)
-    const browsing = engine != null || webdriver || serve
+    const launching = engine != null || fixed.playwright != null
+    const browsing = launching || webdriver || serve
     const webdriverConfig = values["webdriver-config"]
     const playwrightConfig = values["playwright-config"]
     const {eval: script} = values
@@ -163,7 +187,7 @@ export const readOptions = (args: string[]): ModeOptions => {
     if (!webdriver && (webdriverConfig != null || values.endpoint != null)) {
         throw new UsageError("--webdriver-config and --endpoint apply to --webdriver only")
     }
-    if (!playwright && (values["playwright-config"] != null)) {
+    if (!launching && (playwrightConfig != null)) {
         throw new UsageError("--playwright-config applies to --playwright only")
     }
     // The arguments past the script are the script's, as node has it. With
@@ -221,9 +245,9 @@ export const readOptions = (args: string[]): ModeOptions => {
         port: listen?.port,
         origin: values.origin == null ? undefined : originOf(values.origin),
     }
-    if (engine) {
+    if (launching) {
         const custom = !playwrightConfig ? undefined : readJsonFile<BrowserCustom>(playwrightConfig, msg => new UsageError(`--playwright-config: ${msg}`))
-        return {...shared, mode: "playwright", engine, custom}
+        return {...shared, mode: "playwright", engine, browserType: fixed.playwright, custom}
     }
 
     if (webdriver) {

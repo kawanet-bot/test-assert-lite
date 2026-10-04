@@ -4,6 +4,24 @@
 export interface CLIOptions {
     /** The arguments as the executable gets them: process.argv.slice(2). */
     args: string[]
+    /** What the executable calls itself: the command for the usage, the package and its version for -v. Default: this package's. */
+    program?: Program
+    /** Fixes the run on a WebDriver server, as --webdriver does. The flags that choose a mode are refused then. */
+    webdriver?: boolean
+    /** Fixes the run on this Playwright engine, imported by the caller. The flags that choose a mode are refused then. */
+    playwright?: BrowserType
+}
+
+export interface Program {
+    command: string
+    name: string
+    version: string
+}
+
+/** What launches one of Playwright's browsers: chromium, firefox or webkit as the playwright module exports them. */
+export interface BrowserType {
+    /** @see https://playwright.dev/docs/api/class-browsertype#browser-type-launch */
+    launch(options?: object): Promise<unknown>
 }
 
 /**

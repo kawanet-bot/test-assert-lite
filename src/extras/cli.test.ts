@@ -99,6 +99,11 @@ describe(TITLE, () => {
         assert.ok(chunks.join("").includes("ℹ tests 0"))
     })
 
+    it("refuses a flag that chooses a mode once the executable fixed one, as a usage error", async () => {
+        assert.equal(await CLI({args: ["--serve", suite], webdriver: true}), 2)
+        assert.equal(await CLI({args: ["--webdriver", suite], playwright: {launch: async () => ({})}}), 2)
+    })
+
     it("leaves no watch behind when the port asked for is taken", async () => {
         const taken = createServer()
         await new Promise<void>(listening => taken.listen(0, "127.0.0.1", listening))
