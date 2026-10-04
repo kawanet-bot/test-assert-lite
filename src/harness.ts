@@ -13,21 +13,9 @@ import {createRegistrar} from "./suite/registrar.ts"
 export const createTAL: typeof declared.createTAL = () => {
     const state = createHarnessState()
     const {assert, tca} = createAssert()
-    const {session, schedule, run} = createSessions(state, tca)
+    const {session, schedule, run, load} = createSessions(state, tca)
     const registrar = createRegistrar(state, schedule)
     const reporter: TAL.Reporter = {spec, tap, html}
-
-    // A suite that does not load is one failed test named after the file,
-    // as node --test files it; the run goes on to the next.
-    const load: TAL.SessionAPI["load"] = async file => {
-        try {
-            await import(file)
-        } catch (error) {
-            registrar.test(file.replace(/^[^?]*\//, ""), () => {
-                throw error
-            })
-        }
-    }
 
     return {
         assert,

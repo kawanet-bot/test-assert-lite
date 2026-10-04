@@ -322,7 +322,7 @@ export declare namespace TAL {
         /** Opens a new session for the following tests. */
         session(options?: SessionOptions): void
 
-        /** Imports a suite, by URL or absolute path, so its tests are declared. */
+        /** Imports a suite, by URL or absolute path, so its tests are declared. All loading comes before run(). */
         load(file: string): Promise<void>
 
         /** Runs every registered test, and closes the session. */

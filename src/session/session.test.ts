@@ -126,6 +126,15 @@ describe(TITLE, () => {
         assert.match(lines.join(""), /^not ok 1 - nope\.mjs$/m)
     })
 
+    it("load() rejects once run() has started", async () => {
+        const local = createTAL()
+        local.session.session({reporter: "tap", output: () => undefined})
+        local.test.it("declared", () => undefined)
+        const running = local.session.run()
+        await assert.rejects(local.session.load("data:text/javascript,export const late = 1"), /run\(\) has started/)
+        assert.equal((await running).success, true)
+    })
+
     it("takes a reporter by name", async () => {
         const local = createTAL()
         const out: string[] = []
