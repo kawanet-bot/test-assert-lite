@@ -7,13 +7,12 @@ import {resolve} from "node:path"
 import {parseArgs} from "node:util"
 import {readJsonFile} from "../utils/read-json.ts"
 import {ImportAliasItem, type ImportBase, Imports, NodeImports, cwdURL, readImportMap} from "./imports.ts"
-import type {BrowserCustom, EngineName, FixedMode, ModeOptions, TestSession, WebDriverCustom, WebModeOptions} from "./mode-options.ts"
-import {isEngineName} from "./mode-options.ts"
+import type {BrowserCustom, FixedMode, ModeOptions, TestSession, WebDriverCustom, WebModeOptions} from "./mode-options.ts"
 import {createFiles} from "./server/files.ts"
 import {UsageError} from "./usage-error.ts"
 
-// The usage, for the command that asks. An executable that fixes a mode
-// shows the flags of that mode alone, and none that would choose another.
+// The usage, for the command that asks. tacli has --serve as its browser
+// mode. An executable that fixed one shows that mode's flags in its place.
 export const usageOf = (command: string, fixed: FixedMode = {}): string => {
     const free = !fixed.webdriver && fixed.playwright == null
     const lines = [
@@ -30,11 +29,9 @@ export const usageOf = (command: string, fixed: FixedMode = {}): string => {
         "  --origin <url>              what the browser reaches the server as, http(s)://host[:port] (browser modes, default: from --port)",
         "  --script <file>             classic script to run first (browser modes, repeatable)",
         "  --mount <dir|url>           what the root serves instead of htdocs: a directory, or an origin to proxy (browser modes)",
-        free && "  --webdriver                 run the suite through a WebDriver server: safaridriver, chromedriver",
-        (free || fixed.webdriver) && "  --webdriver-config <file>   JSON sent as the body of POST /session (default: no capabilities)",
-        (free || fixed.webdriver) && "  --endpoint <url>            the WebDriver server (default: http://127.0.0.1:4444)",
-        free && "  --playwright <browser>      run the suite through Playwright: chromium, firefox or webkit",
-        (free || fixed.playwright != null) && "  --playwright-config <file>  JSON options for Playwright's launch, newPage and goto",
+        fixed.webdriver && "  --webdriver-config <file>   JSON sent as the body of POST /session (default: no capabilities)",
+        fixed.webdriver && "  --endpoint <url>            the WebDriver server (default: http://127.0.0.1:4444)",
+        fixed.playwright != null && "  --playwright-config <file>  JSON options for Playwright's launch, newPage and goto",
     ]
     return lines.filter(line => line).map(line => `${line}\n`).join("")
 }
@@ -105,21 +102,16 @@ const refused = <T extends Imports | NodeImports>(imports: T): T => {
     return imports
 }
 
-export const engineNameOf = (name: string): EngineName => {
-    if (!isEngineName(name)) throw new UsageError(`--playwright takes chromium, firefox or webkit: ${name}`)
-    return name
-}
-
 // parseArgs settles the flag forms (--x=v, -h, --) and rejects a flag this
 // CLI does not know rather than taking it for a file name. What it says
-// becomes the reason, ahead of the usage text, in node's own wording. A
-// fixed mode refuses the flags that would choose one, in the same wording.
+// becomes the reason, ahead of the usage text, in node's own wording. The
+// flags of a browser mode other than the one fixed are refused the same way.
 const parse = (args: string[], fixed: FixedMode) => {
     const free = !fixed.webdriver && fixed.playwright == null
     const hidden = [
-        ...(free ? [] : ["serve", "webdriver", "playwright"] as const),
-        ...(free || fixed.webdriver ? [] : ["webdriver-config", "endpoint"] as const),
-        ...(free || fixed.playwright != null ? [] : ["playwright-config"] as const),
+        ...(free ? [] : ["serve"] as const),
+        ...(fixed.webdriver ? [] : ["webdriver-config", "endpoint"] as const),
+        ...(fixed.playwright != null ? [] : ["playwright-config"] as const),
     ]
     const parsed = parseFlags(args)
     const given = hidden.find(key => parsed.values[key] != null && parsed.values[key] !== false)
@@ -133,8 +125,6 @@ const parseFlags = (args: string[]) => {
             args,
             options: {
                 serve: {type: "boolean", default: false},
-                webdriver: {type: "boolean", default: false},
-                playwright: {type: "string"},
                 "webdriver-config": {type: "string"},
                 endpoint: {type: "string"},
                 "playwright-config": {type: "string"},
@@ -169,26 +159,19 @@ export const readOptions = (args: string[], fixed: FixedMode = {}): ModeOptions 
     if (values.help) return {mode: "help"}
     if (values.version) return {mode: "version"}
 
-    const {playwright, serve} = values
-    const webdriver = !!fixed.webdriver || values.webdriver
-    const engine = playwright == null ? undefined : engineNameOf(playwright)
-    const launching = engine != null || fixed.playwright != null
-    const browsing = launching || webdriver || serve
+    const {serve} = values
+    const {webdriver = false, playwright: browserType} = fixed
+    const browsing = browserType != null || webdriver || serve
     const webdriverConfig = values["webdriver-config"]
     const playwrightConfig = values["playwright-config"]
     const {eval: script} = values
 
-    if ((launching ? 1 : 0) + (webdriver ? 1 : 0) + (serve ? 1 : 0) > 1) {
-        throw new UsageError("--playwright, --webdriver and --serve are exclusive")
+    // The two an executable can fix are the executable's to keep apart.
+    if (webdriver && browserType != null) {
+        throw new Error("webdriver and playwright are exclusive")
     }
     if (!browsing && (values.script.length || values.mount != null || values.port != null || values.origin != null)) {
-        throw new UsageError("--port, --origin, --script and --mount apply to --playwright, --webdriver and --serve only")
-    }
-    if (!webdriver && (webdriverConfig != null || values.endpoint != null)) {
-        throw new UsageError("--webdriver-config and --endpoint apply to --webdriver only")
-    }
-    if (!launching && (playwrightConfig != null)) {
-        throw new UsageError("--playwright-config applies to --playwright only")
+        throw new UsageError("--port, --origin, --script and --mount apply to --serve only")
     }
     // The arguments past the script are the script's, as node has it. With
     // --test every one is a test file, as node --test reads them.
@@ -230,7 +213,7 @@ export const readOptions = (args: string[], fixed: FixedMode = {}): ModeOptions 
     // per directory. One under another counts as served from the latter.
     const served = createFiles([...(session.files), ...scripts, ...imports.paths()])
     if (new Set(session.files.map(file => served.dirOf(file))).size > 1) {
-        throw new UsageError("--playwright, --webdriver and --serve take the test files from one directory")
+        throw new UsageError("a browser run takes the test files from one directory")
     }
 
     const listen = values.port == null ? undefined : portOf(values.port)
@@ -245,9 +228,9 @@ export const readOptions = (args: string[], fixed: FixedMode = {}): ModeOptions 
         port: listen?.port,
         origin: values.origin == null ? undefined : originOf(values.origin),
     }
-    if (launching) {
+    if (browserType != null) {
         const custom = !playwrightConfig ? undefined : readJsonFile<BrowserCustom>(playwrightConfig, msg => new UsageError(`--playwright-config: ${msg}`))
-        return {...shared, mode: "playwright", engine, browserType: fixed.playwright, custom}
+        return {...shared, mode: "playwright", browserType, custom}
     }
 
     if (webdriver) {

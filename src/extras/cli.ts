@@ -1,9 +1,7 @@
 // The command line as a function: options.ts reads the arguments, and
-// this runs what they ask for. By default the suites run in this Node
-// process; --playwright runs them in one of Playwright's headless
-// browsers, --webdriver in whatever browser a WebDriver server drives,
-// and --serve hands the same page to a person. Directory search and glob
-// expansion are left to the shell: only explicit file names are accepted.
+// this runs what they ask for, in this Node process or through --serve
+// for a person's browser. An executable built on this fixes one browser
+// mode. Only explicit file names are accepted, no globs.
 
 import {stringify} from "../utils/stringify.ts"
 import {runInNode} from "./drivers/node.ts"
@@ -18,9 +16,9 @@ export interface CLIOptions {
     args: string[]
     /** What the executable calls itself: the command for the usage, the package and its version for -v. Default: this package's. */
     program?: Program
-    /** Fixes the run on a WebDriver server, as --webdriver does. The flags that choose a mode are refused then. */
+    /** Fixes the run on a WebDriver server. --serve is refused then. */
     webdriver?: boolean
-    /** Fixes the run on this Playwright engine, imported by the caller. The flags that choose a mode are refused then. */
+    /** Fixes the run on this Playwright engine, imported by the caller. --serve is refused then. */
     playwright?: BrowserTypeLike
 }
 

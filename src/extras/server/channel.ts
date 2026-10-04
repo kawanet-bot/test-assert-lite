@@ -34,7 +34,7 @@ type SessionEventData<T extends SessionEventType> = Extract<TAL.SessionEvent, {t
 const isTestResult = (v: unknown): v is TAL.SessionResult => ("boolean" === typeof (v as TAL.SessionResult)?.success)
 const hasSessionId = (v: unknown): v is {session: string} => ("string" === typeof (v as {session?: unknown})?.session)
 
-// How long a browser run, --playwright or --webdriver, may stay silent.
+// How long a browser run, WebDriver or Playwright, may stay silent.
 // Before begin, the browser most likely could not reach the server. After
 // begin, a quiet page still reports every ten seconds, so this long means
 // the browser or its tab is gone. A hung test keeps reporting, so it waits.

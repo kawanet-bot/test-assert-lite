@@ -101,7 +101,7 @@ describe(TITLE, () => {
 
     it("refuses a flag that chooses a mode once the executable fixed one, as a usage error", async () => {
         assert.equal(await CLI({args: ["--serve", suite], webdriver: true}), 2)
-        assert.equal(await CLI({args: ["--webdriver", suite], playwright: {launch: async () => ({})}}), 2)
+        assert.equal(await CLI({args: ["--endpoint", "http://x", suite], playwright: {launch: async () => ({})}}), 2)
     })
 
     it("leaves no watch behind when the port asked for is taken", async () => {

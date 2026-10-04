@@ -29,8 +29,8 @@ jobs:
           # relative to the common ancestor of everything listed.
           path: |
             README.md
-            packages/test-assert-cli/browser/playwright/
-            packages/test-assert-cli/browser/webdriver/
+            packages/playwright-js-cli/playwright/
+            packages/webdriver-js-cli/webdriver/
             builder/pack/
             builder/tests/
             sample/

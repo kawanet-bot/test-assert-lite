@@ -15,9 +15,22 @@ webdriver-js test/query.test.mjs
 ```
 
 - No extra dependency: the WebDriver server launches the browser, so Safari on a Mac runs the suite too, over an SSH tunnel if need be.
-- `--webdriver-config <file>`: JSON sent as the body of `POST /session`, the capabilities the driver takes. Default: `{"capabilities": {}}`.
+- `--webdriver-config <file>`: JSON sent as the body of `POST /session`, the capabilities the driver takes. Default: `{"capabilities": {}}`. `webdriver/` in this package has a few to pass as they are or to copy and edit: `chrome-headless.json`, `firefox-headless.json`, `chrome-attach.json`.
 - `--endpoint <url>`: the WebDriver server. Default: `http://127.0.0.1:4444`.
 - Every other option of `tacli` applies as it is: `--alias`, `--import-map`, `--reporter`, `--port`, `--origin`, `--script`, `--mount` and the rest. See [test-assert-cli](https://www.npmjs.com/package/test-assert-cli).
+
+## Safari over WebDriver
+
+```sh
+# Enable Safari automation once
+safaridriver --enable
+
+# Start the WebDriver server
+safaridriver -p 4444 &
+
+# Run a bundle of the suites in Safari
+webdriver-js htdocs/scripts/bundled-tests.mjs
+```
 
 ## SEE ALSO
 

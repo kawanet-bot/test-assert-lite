@@ -125,7 +125,7 @@ export class ImportAliasItem extends ImportBase {
     }
 
     refusal(mode: Mode): string | undefined {
-        if (mode === "node" && this.isURL()) return `--alias: a URL applies to --playwright, --webdriver and --serve only: "${this.specifier}"`
+        if (mode === "node" && this.isURL()) return `--alias: a URL applies to the browser modes only: "${this.specifier}"`
         if (mode === "browser" && this.keyRefusal() != null) return `--alias: ${this.keyRefusal()}: "${this.specifier}"`
         return undefined
     }
@@ -158,7 +158,7 @@ export class ImportMapItem extends ImportBase {
     }
 
     refusal(mode: Mode): string | undefined {
-        if (mode === "node" && !this.isPath()) return `--import-map: an address starting with / or a scheme applies to --playwright, --webdriver and --serve only: "${this.specifier}"`
+        if (mode === "node" && !this.isPath()) return `--import-map: an address starting with / or a scheme applies to the browser modes only: "${this.specifier}"`
         return undefined
     }
 }

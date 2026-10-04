@@ -58,7 +58,7 @@ describe(TITLE, () => {
                 assert.ok(item.isURL())
                 assert.equal(item.getPath(), undefined)
                 assert.equal(item.getAddress(serveFor(item)), entry.slice(entry.indexOf("=") + 1))
-                assert.match(item.refusal("node") ?? "", /--alias: a URL applies to --playwright, --webdriver and --serve only: "/)
+                assert.match(item.refusal("node") ?? "", /--alias: a URL applies to the browser modes only: "/)
                 assert.equal(item.refusal("browser"), undefined)
             }
         })
@@ -106,7 +106,7 @@ describe(TITLE, () => {
                 assert.equal(item.isPath(), false)
                 assert.equal(item.getPath(), undefined)
                 assert.equal(item.getAddress(serveFor(item)), address)
-                assert.match(item.refusal("node") ?? "", /--import-map: an address starting with \/ or a scheme applies to --playwright, --webdriver and --serve only: "/)
+                assert.match(item.refusal("node") ?? "", /--import-map: an address starting with \/ or a scheme applies to the browser modes only: "/)
                 assert.equal(item.refusal("browser"), undefined)
             }
         })

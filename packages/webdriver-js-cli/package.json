@@ -18,7 +18,8 @@
   "files": [
     "bin/",
     "LICENSE",
-    "README.md"
+    "README.md",
+    "webdriver/"
   ],
   "homepage": "https://github.com/kawanet/test-assert-lite#readme",
   "keywords": [
