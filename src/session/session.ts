@@ -178,7 +178,9 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
 
     // A suite that does not load is one failed test named after the file,
     // as node --test files it. The run goes on to the next.
+    // The files all load before the run, as under node --test.
     const load: TAL.SessionAPI["load"] = async file => {
+        if (cycle?.closing) throw new Error("load() cannot be called once run() has started")
         try {
             await import(file)
         } catch (error) {
