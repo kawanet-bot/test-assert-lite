@@ -6,7 +6,9 @@
 
 import {CLI} from "test-assert-cli"
 
-CLI({args: process.argv.slice(2)})
+CLI({
+    args: process.argv.slice(2),
+})
     .catch(error => {
         console.error(error)
         return 1

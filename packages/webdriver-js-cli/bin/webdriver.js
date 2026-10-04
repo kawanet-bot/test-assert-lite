@@ -7,7 +7,11 @@
 import {CLI} from "test-assert-cli"
 import pkg from "../package.json" with {type: "json"}
 
-CLI({args: process.argv.slice(2), program: {command: "webdriver-js", name: pkg.name, version: pkg.version}, webdriver: true})
+CLI({
+    args: process.argv.slice(2),
+    program: {command: "webdriver-js", name: pkg.name, version: pkg.version},
+    webdriver: true,
+})
     .catch(error => {
         console.error(error)
         return 1
