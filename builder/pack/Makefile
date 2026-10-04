@@ -28,9 +28,11 @@ BUILDER_TEST_DST := ./tests/bundled.mjs
 all: pack
 
 pack: clean
-	cd ../.. && npm pack -w packages/test-assert-lite -w packages/test-assert-cli --pack-destination builder/pack
+	cd ../.. && npm pack -w packages/test-assert-lite -w packages/test-assert-cli -w packages/webdriver-js-cli -w packages/playwright-js-cli --pack-destination builder/pack
 	mv test-assert-lite-*.tgz lite.tgz
 	mv test-assert-cli-*.tgz cli.tgz
+	mv webdriver-js-cli-*.tgz webdriver.tgz
+	mv playwright-js-cli-*.tgz playwright.tgz
 
 bundled:
 	$(MAKE) -C .. $(BUILDER_TEST_DST)
@@ -41,9 +43,9 @@ bundled:
 # by version, and the library's tarball installed beside it satisfies that.
 unpack:
 	[ -e ../../package.json ] || cp package.json ../../
-	cd ../.. && npm install ./builder/pack/lite.tgz ./builder/pack/cli.tgz --no-audit --no-fund --no-save --engine-strict
+	cd ../.. && npm install ./builder/pack/lite.tgz ./builder/pack/cli.tgz ./builder/pack/webdriver.tgz ./builder/pack/playwright.tgz --no-audit --no-fund --no-save --engine-strict
 
-test: test-bundled test-bin test-cli
+test: test-bundled test-bin test-cli test-shortcuts
 
 # The bundle only registers tests and never calls run() itself, so it
 # needs a runner -- $(CLI_ROOT)'s own, matching whichever copy the
@@ -57,6 +59,10 @@ test-bundled:
 # Launching the file itself is test-cli's job.
 test-bin:
 	[ -x ../../node_modules/.bin/tacli ]
+	[ -x ../../node_modules/.bin/webdriver-js ]
+	[ -x ../../node_modules/.bin/chromium-js ]
+	[ -x ../../node_modules/.bin/firefox-js ]
+	[ -x ../../node_modules/.bin/webkit-js ]
 
 # The CLI end to end against the copies under test. The CLI's hook points
 # node:test at its library, so the symlink in sample/node_modules is not on
@@ -71,12 +77,22 @@ test-cli:
 	cd ../.. && ./$(CLI_ROOT)/bin/tacli.js --alias greet=sample/lib/greet.js sample/alias.js > /dev/null 2>&1
 	cd ../.. && ./$(CLI_ROOT)/bin/tacli.js --import-map sample/import-map.json sample/alias.js > /dev/null 2>&1
 
+# Each shortcut starts, names its own package and refuses a flag that would
+# choose another mode. Launching the browsers is the browser CI's part.
+test-shortcuts:
+	cd ../.. && ./node_modules/.bin/webdriver-js -v | grep "^webdriver-js-cli " > /dev/null
+	cd ../.. && ./node_modules/.bin/chromium-js -v | grep "^playwright-js-cli " > /dev/null
+	cd ../.. && ./node_modules/.bin/firefox-js -v | grep "^playwright-js-cli " > /dev/null
+	cd ../.. && ./node_modules/.bin/webkit-js -v | grep "^playwright-js-cli " > /dev/null
+	cd ../.. && ! ./node_modules/.bin/webdriver-js --serve sample/pass.js > /dev/null 2>&1
+	cd ../.. && ! ./node_modules/.bin/chromium-js --webdriver sample/pass.js > /dev/null 2>&1
+
 # Publish gate: the same behavior checks, run against the checkout's own
 # staged artifacts in place -- no tarball install involved.
 test-dist:
-	$(MAKE) test-bundled test-cli PKG_ROOT=packages
+	$(MAKE) test-bundled test-cli test-shortcuts PKG_ROOT=packages
 
 clean:
 	/bin/rm -f *.tgz
 
-.PHONY: all pack bundled unpack test test-bundled test-bin test-cli test-dist clean
+.PHONY: all pack bundled unpack test test-bundled test-bin test-cli test-shortcuts test-dist clean

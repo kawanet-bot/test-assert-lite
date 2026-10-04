@@ -32,7 +32,7 @@
   },
   "scripts": {
     "build": "make -C builder",
-    "fixpack": "fixpack && fixpack packages/test-assert-lite/package.json && fixpack packages/test-assert-cli/package.json",
+    "fixpack": "fixpack && fixpack packages/test-assert-lite/package.json && fixpack packages/test-assert-cli/package.json && fixpack packages/webdriver-js-cli/package.json && fixpack packages/playwright-js-cli/package.json",
     "git:pre-push": "make -C builder test-quick",
     "git:prepare-hooks": "[ -e .git ] && ./node_modules/.bin/simple-git-hooks",
     "prepare": "make -C builder is-not-buildable 2> /dev/null || make -C builder clean all test",
@@ -47,6 +47,8 @@
   "type": "module",
   "workspaces": [
     "packages/test-assert-lite",
-    "packages/test-assert-cli"
+    "packages/test-assert-cli",
+    "packages/webdriver-js-cli",
+    "packages/playwright-js-cli"
   ]
 }

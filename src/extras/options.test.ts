@@ -2,7 +2,7 @@ import {strict as assert} from "node:assert"
 import {resolve} from "node:path"
 import {describe, it} from "node:test"
 import type {TestSession} from "./mode-options.ts"
-import {engineNameOf, mountOf, originOf, portOf, readOptions} from "./options.ts"
+import {engineNameOf, mountOf, originOf, portOf, readOptions, usageOf} from "./options.ts"
 
 const TITLE = "extras/options.test.ts"
 
@@ -279,6 +279,39 @@ describe(TITLE, () => {
         it("refuses a flag it does not know, and a flag missing its value", () => {
             assert.throws(() => readOptions(["--watch", "suite.mjs"]), /--watch/)
             assert.throws(() => readOptions(["--serve", "--port"]), /--port/)
+        })
+
+        it("takes the mode the executable fixed, with that mode's flags, and refuses the flags that choose one", () => {
+            const engine = {launch: async () => ({})}
+            const launching = readOptions(["--playwright-config", "packages/test-assert-cli/browser/playwright/iphone15pro.json", "suite.mjs"], {playwright: engine})
+            assert.equal(launching.mode, "playwright")
+            if (launching.mode !== "playwright") return
+            assert.equal(launching.browserType, engine)
+            assert.equal(launching.engine, undefined)
+            assert.equal((launching.custom?.newPage as {isMobile: boolean})?.isMobile, true)
+            const driven = readOptions(["--endpoint", "http://127.0.0.1:9515", "suite.mjs"], {webdriver: true})
+            assert.equal(driven.mode, "webdriver")
+            if (driven.mode !== "webdriver") return
+            assert.equal(driven.endpoint, "http://127.0.0.1:9515")
+            assert.throws(() => readOptions(["--serve", "suite.mjs"], {webdriver: true}), /--serve/)
+            assert.throws(() => readOptions(["--playwright", "chromium", "suite.mjs"], {webdriver: true}), /--playwright/)
+            assert.throws(() => readOptions(["--playwright-config", "x.json", "suite.mjs"], {webdriver: true}), /--playwright-config/)
+            assert.throws(() => readOptions(["--webdriver", "suite.mjs"], {playwright: engine}), /--webdriver/)
+            assert.throws(() => readOptions(["--endpoint", "http://127.0.0.1:4444", "suite.mjs"], {playwright: engine}), /--endpoint/)
+            assert.throws(() => readOptions(["suite.mjs"], {webdriver: true, playwright: engine}), /exclusive/)
+        })
+
+        it("shows the usage for the command, with the fixed mode's flags alone", () => {
+            const engine = {launch: async () => ({})}
+            assert.ok(usageOf("tacli").startsWith("Usage: tacli "))
+            assert.ok(usageOf("tacli").includes("--playwright <browser>"))
+            assert.ok(usageOf("chromium-js", {playwright: engine}).startsWith("Usage: chromium-js "))
+            assert.ok(usageOf("chromium-js", {playwright: engine}).includes("--playwright-config"))
+            assert.ok(!usageOf("chromium-js", {playwright: engine}).includes("--playwright <browser>"))
+            assert.ok(!usageOf("chromium-js", {playwright: engine}).includes("--webdriver"))
+            assert.ok(!usageOf("chromium-js", {playwright: engine}).includes("--serve"))
+            assert.ok(usageOf("webdriver-js", {webdriver: true}).includes("--endpoint"))
+            assert.ok(!usageOf("webdriver-js", {webdriver: true}).includes("--playwright"))
         })
     })
 })

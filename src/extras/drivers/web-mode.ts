@@ -54,8 +54,8 @@ export const runWebMode = async (options: ModeOptions & WebModeOptions) => {
             const {custom, endpoint} = options
             await runInWebDriver({url, services, custom, endpoint})
         } else if (mode === "playwright") {
-            const {custom, engine} = options
-            await runInPlaywright({url, services, custom, engine})
+            const {custom, engine, browserType} = options
+            await runInPlaywright({url, services, custom, engine, browserType})
         } else {
             throw new Error(`Invalid mode: ${mode}`)
         }
