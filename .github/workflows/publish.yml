@@ -1,0 +1,93 @@
+name: Publish
+
+# One workflow for the four packages. A publish-<package>.yml names the
+# package and the tag that releases it, and calls this with the package.
+# The staged publish leaves the version invisible until a maintainer
+# approves it with 2FA.
+on:
+  workflow_call:
+    inputs:
+      package:
+        description: The package to publish, by its directory under packages/
+        required: true
+        type: string
+
+# Deny by default; each job opts in to the minimum it needs.
+permissions: { }
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      dist: ${{ steps.dist.outputs.has }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # merge-base below needs the history of main, not just the tag.
+          fetch-depth: 0
+          persist-credentials: false
+
+      # A tag created on a side branch must never reach npm.
+      - name: Verify tag is on main
+        run: git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      # The tag is <package>@<version>, with the version of that package.
+      - name: Verify tag matches package.json
+        run: |
+          version=$(npm pkg get version -w "packages/${{ inputs.package }}" | jq -r '.[]')
+          test "${{ inputs.package }}@$version" = "$GITHUB_REF_NAME"
+
+      - run: npm install --ignore-scripts
+      - run: npm run build
+      - run: npm test
+      - run: make -C builder/pack bundled
+      - run: make -C builder/pack test-dist
+
+      # The library and the CLI have a build to carry over. The executables
+      # fixed on a browser are their sources as they are.
+      - name: Check for built files
+        id: dist
+        run: |
+          if [ -d "packages/${{ inputs.package }}/dist" ]; then echo "has=true" >> "$GITHUB_OUTPUT"; else echo "has=false" >> "$GITHUB_OUTPUT"; fi
+
+      - if: steps.dist.outputs.has == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: packages/${{ inputs.package }}/dist/
+          retention-days: 1
+
+  stage:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: npm-stage
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      - if: needs.build.outputs.dist == 'true'
+        uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: packages/${{ inputs.package }}/dist/
+
+      # Nothing third party is installed in this job, so no foreign code runs
+      # while the OIDC token is reachable. This only queues the tarball: a
+      # maintainer releases it with 'npm stage approve'.
+      - run: npm stage publish --ignore-scripts -w "packages/${{ inputs.package }}"
