@@ -31,7 +31,7 @@ describe(TITLE, () => {
     it("serves each file from its directory, named by nine hex digits, the same in every layout", () => {
         const one = createFiles([join(dir, "src", "a.mjs")])
         assert.deepEqual(one.dirs.map(({root}) => under(root)), ["src"])
-        assert.match(one.dirs[0]?.path ?? "", /^\/@tal\/files\/[0-9a-f]{9}\/$/)
+        assert.match(one.dirs[0]?.path ?? "", /^\/@tacli\/files\/[0-9a-f]{9}\/$/)
         assert.equal(one.urlOf(join(dir, "src", "a.mjs")), `${one.dirs[0]?.path}a.mjs`)
         const again = createFiles([join(dir, "src", "my b.mjs"), join(dir, "lib", "mod.mjs")])
         assert.equal(again.dirs.length, 2)
@@ -53,12 +53,12 @@ describe(TITLE, () => {
 
     it("serves the library's own dist/ and exports/ at the paths of their names, the minified build in place of the entry", () => {
         const files = createFiles([join(dir, "src", "a.mjs")])
-        assert.deepEqual(files.own.map(({path}) => path), ["/@tal/dist/", "/@tal/exports/"])
+        assert.deepEqual(files.own.map(({path}) => path), ["/@tacli/dist/", "/@tacli/exports/"])
         assert.equal(files.dirs.length, 1)
-        assert.equal(files.urlOf(resolve("packages/test-assert-lite", "exports", "test.js")), "/@tal/exports/test.js")
-        assert.equal(files.urlOf(resolve("packages/test-assert-lite", "exports", "assert", "strict.js")), "/@tal/exports/assert/strict.js")
-        assert.equal(files.urlOf(resolve("packages/test-assert-lite", "dist", "test-assert-lite.min.js")), "/@tal/dist/test-assert-lite.min.js")
-        assert.equal(files.urlOf(resolve("packages/test-assert-lite", "dist", "test-assert-lite.js")), "/@tal/dist/test-assert-lite.min.js")
+        assert.equal(files.urlOf(resolve("packages/test-assert-lite", "exports", "test.js")), "/@tacli/exports/test.js")
+        assert.equal(files.urlOf(resolve("packages/test-assert-lite", "exports", "assert", "strict.js")), "/@tacli/exports/assert/strict.js")
+        assert.equal(files.urlOf(resolve("packages/test-assert-lite", "dist", "test-assert-lite.min.js")), "/@tacli/dist/test-assert-lite.min.js")
+        assert.equal(files.urlOf(resolve("packages/test-assert-lite", "dist", "test-assert-lite.js")), "/@tacli/dist/test-assert-lite.min.js")
     })
 
     it("takes a symlink for its target, and a file that is not there as given", () => {

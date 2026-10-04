@@ -43,13 +43,13 @@ describe(TITLE, () => {
                 const item = alias(entry)
                 assert.ok(item.isPath(), entry)
                 assert.equal(item.getPath(), file)
-                assert.equal(unhash(item.getAddress(serveFor(item))), `/@tal/files/xxxxxxxxx/${name}`)
+                assert.equal(unhash(item.getAddress(serveFor(item))), `/@tacli/files/xxxxxxxxx/${name}`)
                 assert.equal(item.refusal("node"), undefined)
                 assert.equal(item.refusal("browser"), undefined)
             }
             // A path into the library's own dist/ is served where the package serves it, not under a digest.
             const own = alias("e=packages/test-assert-lite/dist/test-assert-lite.min.js")
-            assert.equal(own.getAddress(serveFor(own)), "/@tal/dist/test-assert-lite.min.js")
+            assert.equal(own.getAddress(serveFor(own)), "/@tacli/dist/test-assert-lite.min.js")
         })
 
         it("takes a URL for a page, and refuses it under Node", () => {
@@ -68,9 +68,9 @@ describe(TITLE, () => {
             assert.ok(item.isBundled())
             assert.equal(item.isPath(), false)
             assert.match(item.getPath()!, /exports.test\.js$/)
-            assert.equal(item.getAddress(serveFor(item)), "/@tal/exports/test.js")
+            assert.equal(item.getAddress(serveFor(item)), "/@tacli/exports/test.js")
             assert.match(alias("x=test-assert-lite").getPath()!, /dist.test-assert-lite\.js$/)
-            assert.equal(alias("x=test-assert-lite").getAddress(serveFor()), "/@tal/dist/test-assert-lite.min.js")
+            assert.equal(alias("x=test-assert-lite").getAddress(serveFor()), "/@tacli/dist/test-assert-lite.min.js")
             assert.equal(item.refusal("node"), undefined)
             assert.equal(item.refusal("browser"), undefined)
         })
@@ -95,7 +95,7 @@ describe(TITLE, () => {
             assert.ok(item.isPath())
             assert.equal(item.getPath(), resolve("maps", "lib", "x.js"))
             assert.equal(mapped("up", "../y.js").getPath(), resolve("y.js"))
-            assert.equal(unhash(item.getAddress(serveFor(item))), "/@tal/files/xxxxxxxxx/x.js")
+            assert.equal(unhash(item.getAddress(serveFor(item))), "/@tacli/files/xxxxxxxxx/x.js")
             assert.equal(item.refusal("node"), undefined)
             assert.equal(item.refusal("browser"), undefined)
         })
@@ -158,13 +158,13 @@ describe(TITLE, () => {
             const list = new Imports([alias("node:test=./my-test.mjs")])
             assert.deepEqual([...list.entries().keys()], [...COMMON_IMPORTS, ...BROWSER_IMPORTS])
             assert.equal(list.entries().get("node:test")?.target, "./my-test.mjs")
-            assert.equal(new Imports([]).entries().get("node:test")?.getAddress(serveFor()), "/@tal/exports/test.js")
+            assert.equal(new Imports([]).entries().get("node:test")?.getAddress(serveFor()), "/@tacli/exports/test.js")
         })
 
         it("keeps the common defaults for Node, and a page's own list ahead of the items", () => {
             assert.deepEqual([...new NodeImports([]).entries().keys()], COMMON_IMPORTS)
             assert.deepEqual([...new Imports([]).entries().keys()], [...COMMON_IMPORTS, ...BROWSER_IMPORTS])
-            assert.equal(new Imports([]).entries().get("test-assert-lite/process")?.getAddress(serveFor()), "/@tal/exports/process.js")
+            assert.equal(new Imports([]).entries().get("test-assert-lite/process")?.getAddress(serveFor()), "/@tacli/exports/process.js")
         })
 
         it("names every path item's file once, losers included, and resolves each specifier to its last item", () => {
@@ -182,9 +182,9 @@ describe(TITLE, () => {
         it("gives a page this package's names and each specifier's address", () => {
             const items = [alias("a=./one.mjs"), mapped("r", "/r.js")]
             const addresses = new Imports(items).addresses(serveFor(...items))
-            assert.equal(addresses["test-assert-lite"], "/@tal/dist/test-assert-lite.min.js")
-            assert.equal(addresses["node:assert"], "/@tal/exports/assert.js")
-            assert.equal(unhash(addresses["a"]), "/@tal/files/xxxxxxxxx/one.mjs")
+            assert.equal(addresses["test-assert-lite"], "/@tacli/dist/test-assert-lite.min.js")
+            assert.equal(addresses["node:assert"], "/@tacli/exports/assert.js")
+            assert.equal(unhash(addresses["a"]), "/@tacli/files/xxxxxxxxx/one.mjs")
             assert.equal(addresses["r"], "/r.js")
         })
 

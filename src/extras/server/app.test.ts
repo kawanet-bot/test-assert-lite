@@ -61,8 +61,8 @@ describe(TITLE, () => {
             assert.match(bufStderr.read(), /^watch is off: ENOENT/)
             const index = await get(running.origin + "/")
             assert.equal(index.status, 200)
-            assert.equal(index.body.includes("/@tal/watch"), false)
-            assert.equal((await get(running.origin + "/@tal/watch?after=0")).status, 404)
+            assert.equal(index.body.includes("/@tacli/watch"), false)
+            assert.equal((await get(running.origin + "/@tacli/watch?after=0")).status, 404)
         } finally {
             await services.cleanup()
         }
@@ -96,8 +96,8 @@ describe(TITLE, () => {
         try {
             const index = (await get(running.origin + "/")).body
             assert.ok(index.includes('<script type="importmap">'))
-            assert.equal(index.includes('type="module" src="/@tal/files/'), false)
-            assert.equal((await get(running.origin + "/@tal/files/000000000/anything.mjs")).status, 404)
+            assert.equal(index.includes('type="module" src="/@tacli/files/'), false)
+            assert.equal((await get(running.origin + "/@tacli/files/000000000/anything.mjs")).status, 404)
         } finally {
             await services.cleanup()
         }
@@ -115,7 +115,7 @@ describe(TITLE, () => {
             const index = (await get(running.origin + "/")).body
             assert.equal(index.split("importmap").length - 1, 1)
             assert.ok(index.includes('"mine":"/mine.mjs"'))
-            assert.equal(index.includes("/@tal/"), false)
+            assert.equal(index.includes("/@tacli/"), false)
             assert.deepEqual(bufStderr.read(), "import map of its own, left as it is: /\n")
             const run = (await get(running.origin + mapped.page)).body
             assert.ok(run.includes('<script type="importmap">'))
@@ -145,9 +145,9 @@ describe(TITLE, () => {
             assert.ok(index.body.includes("theirs"))
             assert.ok(index.body.includes('<script type="importmap">'))
             assert.equal((await get(running.origin + "/elsewhere")).status, 404)
-            assert.equal((await get(running.origin + "/@tal/dist/test-assert-lite.min.js")).status, 200)
-            assert.equal((await get(running.origin + "/@tal/nothing")).status, 404)
-            assert.equal(asked.includes("/@tal/nothing"), false)
+            assert.equal((await get(running.origin + "/@tacli/dist/test-assert-lite.min.js")).status, 200)
+            assert.equal((await get(running.origin + "/@tacli/nothing")).status, 404)
+            assert.equal(asked.includes("/@tacli/nothing"), false)
         } finally {
             await services.cleanup()
         }
@@ -197,23 +197,23 @@ describe(TITLE, () => {
         const running = await serve({handler: watching.handler, services})
         try {
             const index = (await get(running.origin + "/")).body
-            assert.ok(index.includes("/@tal/watch?after="))
+            assert.ok(index.includes("/@tacli/watch?after="))
             assert.ok(index.includes("})(0)\n</script>"))
 
             const page = (await get(running.origin + watching.page)).body
-            assert.ok(page.includes("/@tal/watch?after="))
+            assert.ok(page.includes("/@tacli/watch?after="))
             assert.ok(page.includes("})(0)\n</script>"))
 
             const endpoint = running.origin + watching.page.replace(/run\.html$/, "send")
             assert.equal(await send(endpoint, {type: "session:begin", session: "sessionAAA"}), 204)
             assert.equal(await send(endpoint, {type: "session:end", session: "sessionAAA", data: {success: true}}), 204)
 
-            const pending = get(running.origin + "/@tal/watch?after=0")
+            const pending = get(running.origin + "/@tacli/watch?after=0")
             await writeFile(file, "export const watching = 2")
 
             assert.equal((await pending).status, 200)
             const after = (await get(running.origin + "/")).body
-            assert.ok(after.includes("/@tal/watch?after="))
+            assert.ok(after.includes("/@tacli/watch?after="))
             assert.ok(after.includes("})(1)\n</script>"))
         } finally {
             await services.cleanup()

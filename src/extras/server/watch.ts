@@ -1,5 +1,5 @@
 // What --watch adds to --serve: the files the page is made of are
-// watched, and a page asks at /@tal/watch whether they changed since it
+// watched, and a page asks at /@tacli/watch whether they changed since it
 // was built, the answer held back until they do. One version number
 // counts the changes, so a change between the page's build and its first
 // ask is not lost, and a wait that runs out is a 204 to ask again on.
@@ -11,7 +11,7 @@ import {withHead} from "./head.ts"
 import type {MiddlewareHandler} from "./middleware.ts"
 
 export interface Watcher {
-    /** Answers GET /@tal/watch?after=<version>: 200 once past that version, 204 when the wait runs out. */
+    /** Answers GET /@tacli/watch?after=<version>: 200 once past that version, 204 when the wait runs out. */
     handler: MiddlewareHandler
     /** Puts the ask into the head of the pages the chain after it serves. */
     inject: MiddlewareHandler
@@ -38,7 +38,7 @@ const WAIT_MS = 30_000
 const asks = (after: number): string => `<script>
 (async (after) => {
     for (let wait = 1; ; wait++) {
-        const res = await fetch("/@tal/watch?after=" + after).catch(() => null)
+        const res = await fetch("/@tacli/watch?after=" + after).catch(() => null)
         if (res?.status === 200) return location.reload()
         if (res?.status === 204) wait = 0
         await new Promise(next => setTimeout(next, wait * 1000))
@@ -104,7 +104,7 @@ export const createWatcher = (files: string[], wait = WAIT_MS): Watcher => {
 
     return {
         handler: async (c, next) => {
-            if (c.req.path !== "/@tal/watch") return next()
+            if (c.req.path !== "/@tacli/watch") return next()
             if (c.req.method !== "GET") return c.body(null, 405, {allow: "GET"})
             const after = Number(new URL(c.req.url).searchParams.get("after") ?? "0")
             return (await changed(after))
