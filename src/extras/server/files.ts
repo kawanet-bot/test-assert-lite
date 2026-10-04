@@ -44,6 +44,17 @@ const realOf = (file: string): string => {
 // Nine hex digits of the directory's digest: the width of a run's id.
 const nameOf = (dir: string): string => createHash("sha256").update(dir).digest("hex").slice(0, 9)
 
+// The directory a file is served from: its own, or under node_modules the
+// package's, so a module of the package reaches the rest of it by a
+// relative import. A scoped package's name is two segments.
+const rootOf = (file: string): string => {
+    const parts = dirname(file).split(sep)
+    const at = parts.lastIndexOf("node_modules")
+    if (at < 0 || at + 1 >= parts.length) return dirname(file)
+    const depth = parts[at + 1]!.startsWith("@") ? 2 : 1
+    return parts.slice(0, Math.min(at + 1 + depth, parts.length)).join(sep)
+}
+
 // The minified build stands in for the entry it is built from, so a page
 // gets the one that ships for it.
 const own = fileURLToPath(libraryRoot())
@@ -51,14 +62,14 @@ const STAND_IN = new Map([[realOf(resolve(own, "dist", "test-assert-lite.js")), 
 
 /**
  * Lays out the directories the files are served from: every file's own,
- * except one inside another's, which is served through that one, unless
- * node_modules lies between. The order the files come in makes no
- * difference to the layout.
+ * or its package's under node_modules, except one inside another's, which
+ * is served through that one unless node_modules lies between. The order
+ * the files come in makes no difference to the layout.
  */
 export const createFiles = (files: string[]): Files => {
     const reals = new Map(files.map(file => [file, realOf(file)]))
     // Sorted, a directory comes before the ones under it, as a prefix does.
-    const names = [...new Set([...reals.values()].map(real => dirname(real)))].sort()
+    const names = [...new Set([...reals.values()].map(real => rootOf(real)))].sort()
     const dirs: Dir[] = []
     const inside = (root: string, dir: string): boolean =>
         dir === root || (dir.startsWith(root + sep) && !relative(root, dir).split(sep).includes("node_modules"))

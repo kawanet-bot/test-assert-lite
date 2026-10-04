@@ -27,6 +27,8 @@ describe(TITLE, () => {
         await writeFile(join(dir, "src", "node_modules", "pkg", "bar.js"), "")
         await writeFile(join(dir, "src", "node_modules", "pkg", "sub", "baz.js"), "")
         await writeFile(join(dir, "src", "node_modules", "pkg", "node_modules", "dep", "d.js"), "")
+        await mkdir(join(dir, "src", "node_modules", "@s", "n", "lib"), {recursive: true})
+        await writeFile(join(dir, "src", "node_modules", "@s", "n", "lib", "x.js"), "")
     })
 
     after(async () => {
@@ -56,14 +58,19 @@ describe(TITLE, () => {
         assert.deepEqual(apart.dirs.map(({root}) => under(root)), ["lib", "src/sub"])
     })
 
-    it("serves a directory under node_modules on its own, and one under that under it", () => {
+    it("serves a package under node_modules from its own directory, and one under that from its own", () => {
         const pkg = join(dir, "src", "node_modules", "pkg")
         const laid = createFiles([join(dir, "src", "a.mjs"), join(pkg, "bar.js"), join(pkg, "sub", "baz.js"), join(pkg, "node_modules", "dep", "d.js")])
         assert.deepEqual(laid.dirs.map(({root}) => under(root)), ["src", "src/node_modules/pkg", "src/node_modules/pkg/node_modules/dep"])
-        assert.equal(laid.urlOf(join(pkg, "bar.js")), `${laid.dirOf(join(pkg, "bar.js")).path}bar.js`)
         assert.notEqual(laid.dirOf(join(pkg, "bar.js")).path, laid.dirOf(join(dir, "src", "a.mjs")).path)
         assert.equal(laid.urlOf(join(pkg, "sub", "baz.js")), `${laid.dirOf(join(pkg, "bar.js")).path}sub/baz.js`)
         assert.notEqual(laid.dirOf(join(pkg, "node_modules", "dep", "d.js")).path, laid.dirOf(join(pkg, "bar.js")).path)
+        const deep = createFiles([join(pkg, "sub", "baz.js")])
+        assert.deepEqual(deep.dirs.map(({root}) => under(root)), ["src/node_modules/pkg"])
+        assert.equal(deep.urlOf(join(pkg, "sub", "baz.js")), `${deep.dirs[0]?.path}sub/baz.js`)
+        const scoped = createFiles([join(dir, "src", "node_modules", "@s", "n", "lib", "x.js")])
+        assert.deepEqual(scoped.dirs.map(({root}) => under(root)), ["src/node_modules/@s/n"])
+        assert.equal(scoped.urlOf(join(dir, "src", "node_modules", "@s", "n", "lib", "x.js")), `${scoped.dirs[0]?.path}lib/x.js`)
     })
 
     it("serves the library's dist/ and exports/ as any directory, the minified build in place of the entry", () => {
