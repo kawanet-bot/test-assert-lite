@@ -31,6 +31,9 @@ const post = async (url: string, body: string): Promise<number> => (await fetch(
 
 const send = async (url: string, message: TAL.SessionEvent): Promise<number> => post(url, JSON.stringify(message))
 
+// A served address with its digest blanked out, to compare.
+const unhash = (address: string | undefined): string => address?.replace(/\/[0-9a-f]{9}\//, "/xxxxxxxxx/") || ""
+
 const nullWriter: TAL.Writer = {write: (() => undefined)}
 
 describe(TITLE, () => {
@@ -102,7 +105,7 @@ describe(TITLE, () => {
         }
         const map = at('<script type="importmap">')
         const config = at('<script type="application/vnd.test-session+json">')
-        assert.match(tests, /^\/@tacli\/files\/[0-9a-f]{9}\/$/)
+        assert.equal(unhash(tests), "/@tacli/files/xxxxxxxxx/")
         const script = at(`<script src="${tests}setup.js"></script>`)
         const second = at(`<script src="${tests}set%2Bup%232.js"></script>`)
         assert.ok(map < config && config < script && script < second)
@@ -111,9 +114,9 @@ describe(TITLE, () => {
         assert.deepEqual(session, {files: [`${tests}my%20suite.mjs`, `${tests}second.mjs`]})
         assert.deepEqual(process, {argv: ["tacli", "tests/my suite.mjs", "tests/second.mjs", "--two"]})
         const {imports} = JSON.parse(head.slice(head.indexOf("{", map), head.indexOf("</script>", map)))
-        assert.match(imports["node:test"], /^\/@tacli\/files\/[0-9a-f]{9}\/test\.js$/)
-        assert.match(imports["test-assert-lite"], /^\/@tacli\/files\/[0-9a-f]{9}\/test-assert-lite\.min\.js$/)
-        assert.match(imports["pkg"], /^\/@tacli\/files\/[0-9a-f]{9}\/bar\.js$/)
+        assert.equal(unhash(imports["node:test"]), "/@tacli/files/xxxxxxxxx/test.js")
+        assert.equal(unhash(imports["test-assert-lite"]), "/@tacli/files/xxxxxxxxx/test-assert-lite.min.js")
+        assert.equal(unhash(imports["pkg"]), "/@tacli/files/xxxxxxxxx/bar.js")
         assert.equal(imports["pkg"].startsWith(tests), false)
         assert.equal(imports["mod"], `${lib}mod.mjs`)
         assert.equal(imports["dep"], `${tests}nested/dep.mjs`)
