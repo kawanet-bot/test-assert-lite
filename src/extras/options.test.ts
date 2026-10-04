@@ -202,7 +202,7 @@ describe(TITLE, () => {
         })
 
         it("reads --playwright with its browser and config file", () => {
-            const options = readOptions(["--playwright", "webkit", "--playwright-config", "browser/playwright/iphone15pro.json", "suite.mjs"])
+            const options = readOptions(["--playwright", "webkit", "--playwright-config", "packages/test-assert-cli/browser/playwright/iphone15pro.json", "suite.mjs"])
             assert.equal(options.mode, "playwright")
             if (options.mode !== "playwright") return
             assert.equal(options.engine, "webkit")
@@ -217,7 +217,7 @@ describe(TITLE, () => {
             if (options.mode !== "webdriver") return
             assert.equal(options.custom, undefined)
             assert.equal(options.endpoint, undefined)
-            const given = readOptions(["--webdriver", "--webdriver-config", "browser/webdriver/chrome-attach.json", "--endpoint", "http://127.0.0.1:9515", "suite.mjs"])
+            const given = readOptions(["--webdriver", "--webdriver-config", "packages/test-assert-cli/browser/webdriver/chrome-attach.json", "--endpoint", "http://127.0.0.1:9515", "suite.mjs"])
             assert.equal(given.mode, "webdriver")
             if (given.mode !== "webdriver") return
             assert.equal(typeof given.custom?.capabilities, "object")

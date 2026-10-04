@@ -9,7 +9,7 @@ const rollupConfig: RollupOptions = {
     input: "../src/index.ts",
 
     output: {
-        file: "../dist/test-assert-lite.min.js",
+        file: "../packages/test-assert-lite/dist/test-assert-lite.min.js",
         format: "es",
     },
 
@@ -27,7 +27,7 @@ const rollupConfig: RollupOptions = {
             transforms: ["typescript"],
         }),
 
-        showFiles({deny: /\W(extras|test)\W/}),
+        showFiles({deny: /\W(extras|test)(?!-assert)\W/}),
 
         terser({
             compress: true,

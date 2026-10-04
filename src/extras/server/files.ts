@@ -1,26 +1,23 @@
-// The files the browser test application serves, by directory. This
-// package's own, dist/ and exports/, go out as the package lays them out;
-// every other directory is named by a digest of it, so that the same one
-// gets the same URL in every run and the path itself stays off the page. A
-// directory under another one served is not mounted on its own: its files
-// are reached through the ancestor, so a module two files share is one
-// URL, hence one instance, as it is one file under Node.
+// The files the browser test application serves, by directory. The
+// library's dist/ and exports/ keep their layout. Every other directory is
+// named by a digest, so its URL is the same in every run with the path off
+// the page, and one under a served one is reached through it, as one file.
 
 import {createHash} from "node:crypto"
 import {realpathSync} from "node:fs"
 import {dirname, relative, resolve, sep} from "node:path"
 import {fileURLToPath} from "node:url"
-import {packageRoot} from "../package-root.ts"
+import {libraryRoot} from "../package-root.ts"
 
 export interface Dir {
-    /** The URL path, `/@tal/<dir>/` for this package's own, `/@tal/files/<name>/` otherwise. */
+    /** The URL path, `/@tal/<dir>/` for the library's own, `/@tal/files/<name>/` otherwise. */
     path: string
     /** The directory, absolute and real. */
     root: string
 }
 
 export interface Files {
-    /** This package's own directories, dist/ and exports/, at the paths of their names. */
+    /** The library's own directories, dist/ and exports/, at the paths of their names. */
     own: Dir[]
 
     /** The directories the files are served from, in path order, so one before those under it. */
@@ -47,10 +44,10 @@ const realOf = (file: string): string => {
 // Nine hex digits of the directory's digest: the width of a run's id.
 const nameOf = (dir: string): string => createHash("sha256").update(dir).digest("hex").slice(0, 9)
 
-// This package's own directories, at the paths of their names. The
+// The library's own directories, at the paths of their names. The
 // minified build stands in for the entry it is built from, so a page
 // gets the one that ships for it.
-const own = fileURLToPath(packageRoot())
+const own = fileURLToPath(libraryRoot())
 const OWN: Dir[] = [
     {path: "/@tal/dist/", root: realOf(resolve(own, "dist"))},
     {path: "/@tal/exports/", root: realOf(resolve(own, "exports"))},

@@ -51,14 +51,14 @@ describe(TITLE, () => {
         assert.deepEqual(apart.dirs.map(({root}) => under(root)), ["lib", "src/sub"])
     })
 
-    it("serves this package's own dist/ and exports/ at the paths of their names, the minified build in place of the entry", () => {
+    it("serves the library's own dist/ and exports/ at the paths of their names, the minified build in place of the entry", () => {
         const files = createFiles([join(dir, "src", "a.mjs")])
         assert.deepEqual(files.own.map(({path}) => path), ["/@tal/dist/", "/@tal/exports/"])
         assert.equal(files.dirs.length, 1)
-        assert.equal(files.urlOf(resolve("exports", "test.js")), "/@tal/exports/test.js")
-        assert.equal(files.urlOf(resolve("exports", "assert", "strict.js")), "/@tal/exports/assert/strict.js")
-        assert.equal(files.urlOf(resolve("dist", "test-assert-lite.min.js")), "/@tal/dist/test-assert-lite.min.js")
-        assert.equal(files.urlOf(resolve("dist", "test-assert-lite.js")), "/@tal/dist/test-assert-lite.min.js")
+        assert.equal(files.urlOf(resolve("packages/test-assert-lite", "exports", "test.js")), "/@tal/exports/test.js")
+        assert.equal(files.urlOf(resolve("packages/test-assert-lite", "exports", "assert", "strict.js")), "/@tal/exports/assert/strict.js")
+        assert.equal(files.urlOf(resolve("packages/test-assert-lite", "dist", "test-assert-lite.min.js")), "/@tal/dist/test-assert-lite.min.js")
+        assert.equal(files.urlOf(resolve("packages/test-assert-lite", "dist", "test-assert-lite.js")), "/@tal/dist/test-assert-lite.min.js")
     })
 
     it("takes a symlink for its target, and a file that is not there as given", () => {

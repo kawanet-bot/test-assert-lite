@@ -8,7 +8,7 @@ const rollupConfig: RollupOptions = {
     input: "../src/index.ts",
 
     output: {
-        file: "../dist/test-assert-lite.js",
+        file: "../packages/test-assert-lite/dist/test-assert-lite.js",
         format: "esm",
     },
 
@@ -29,7 +29,7 @@ const rollupConfig: RollupOptions = {
             transforms: ["typescript"],
         }),
 
-        showFiles({deny: /\W(extras|test)\W/}),
+        showFiles({deny: /\W(extras|test)(?!-assert)\W/}),
     ],
 }
 

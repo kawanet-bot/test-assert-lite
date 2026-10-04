@@ -1,0 +1,61 @@
+{
+  "name": "test-assert-cli",
+  "description": "tacli: runs node:test and node:assert test files in Node.js or in browsers, through test-assert-lite",
+  "version": "0.0.1",
+  "author": "Kawanet",
+  "bugs": {
+    "url": "https://github.com/kawanet/test-assert-lite/issues"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "homepage": "https://github.com/kawanet/test-assert-lite#readme",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "tacli": "./bin/tacli.js"
+  },
+  "dependencies": {
+    "test-assert-lite": "^0.0.1"
+  },
+  "exports": {
+    ".": {
+      "types": "./types/test-assert-cli.d.ts",
+      "module-sync": "./dist/test-assert-cli.js",
+      "import": "./dist/test-assert-cli.js"
+    }
+  },
+  "files": [
+    "bin/tacli.js",
+    "browser/run.html",
+    "browser/webdriver/",
+    "dist/test-assert-cli.js",
+    "htdocs/",
+    "LICENSE",
+    "README.md",
+    "types/*.d.ts"
+  ],
+  "keywords": [
+    "assert",
+    "browser",
+    "chai",
+    "jest",
+    "mocha",
+    "node:assert",
+    "node:test",
+    "test",
+    "vitest",
+    "cli",
+    "playwright",
+    "webdriver"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kawanet/test-assert-lite.git",
+    "directory": "packages/test-assert-cli"
+  },
+  "scripts": {
+    "prepack": "make -C ../../builder is-buildable"
+  },
+  "types": "./types/test-assert-cli.d.ts"
+}

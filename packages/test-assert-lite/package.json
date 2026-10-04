@@ -1,0 +1,92 @@
+{
+  "name": "test-assert-lite",
+  "description": "Run your node:test and node:assert test files in browsers, as they are",
+  "version": "0.0.1",
+  "author": "Kawanet",
+  "bugs": {
+    "url": "https://github.com/kawanet/test-assert-lite/issues"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./types/test-assert-lite.d.ts",
+      "module-sync": "./dist/test-assert-lite.js",
+      "import": "./dist/test-assert-lite.js"
+    },
+    "./session": {
+      "types": "./exports/session.d.ts",
+      "module-sync": "./exports/session.js",
+      "import": "./exports/session.js"
+    },
+    "./test": {
+      "types": "./exports/test.d.ts",
+      "module-sync": "./exports/test.js",
+      "import": "./exports/test.js"
+    },
+    "./process": {
+      "types": "./exports/process.d.ts",
+      "module-sync": "./exports/process.js",
+      "import": "./exports/process.js"
+    },
+    "./assert": {
+      "types": "./exports/assert.d.ts",
+      "module-sync": "./exports/assert.js",
+      "import": "./exports/assert.js"
+    },
+    "./assert/strict": {
+      "types": "./exports/assert/strict.d.ts",
+      "module-sync": "./exports/assert/strict.js",
+      "import": "./exports/assert/strict.js"
+    },
+    "./reporter/html": {
+      "types": "./exports/reporter/html.d.ts",
+      "module-sync": "./exports/reporter/html.js",
+      "import": "./exports/reporter/html.js"
+    },
+    "./reporter/spec": {
+      "types": "./exports/reporter/spec.d.ts",
+      "module-sync": "./exports/reporter/spec.js",
+      "import": "./exports/reporter/spec.js"
+    },
+    "./reporter/tap": {
+      "types": "./exports/reporter/tap.d.ts",
+      "module-sync": "./exports/reporter/tap.js",
+      "import": "./exports/reporter/tap.js"
+    }
+  },
+  "files": [
+    "dist/test-assert-lite.js",
+    "dist/test-assert-lite.min.js",
+    "exports/",
+    "LICENSE",
+    "README.md",
+    "types/*.d.ts"
+  ],
+  "homepage": "https://github.com/kawanet/test-assert-lite#readme",
+  "keywords": [
+    "assert",
+    "browser",
+    "chai",
+    "jest",
+    "mocha",
+    "node:assert",
+    "node:test",
+    "test",
+    "vitest"
+  ],
+  "license": "MIT",
+  "main": "./dist/test-assert-lite.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kawanet/test-assert-lite.git",
+    "directory": "packages/test-assert-lite"
+  },
+  "scripts": {
+    "prepack": "make -C ../../builder is-buildable"
+  },
+  "sideEffects": false,
+  "type": "module",
+  "types": "./types/test-assert-lite.d.ts"
+}

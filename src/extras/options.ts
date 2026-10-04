@@ -12,11 +12,11 @@ import {isEngineName} from "./mode-options.ts"
 import {createFiles} from "./server/files.ts"
 import {UsageError} from "./usage-error.ts"
 
-export const USAGE = `Usage: test-assert [options] [file [arg...]]
+export const USAGE = `Usage: tacli [options] [file [arg...]]
   -v, --version               print this package's version
   -e, --eval <script>         run the script in place of test files
   --test                      every argument is a test file (default: the first alone, the rest the script's argv)
-  --alias <specifier>=<file>  what a specifier resolves to: a file, a URL for the page, or this package's own name (repeatable)
+  --alias <specifier>=<file>  what a specifier resolves to: a file, a URL for the page, or a test-assert-lite name (repeatable)
   --import-map <file>         JSON import map: a relative address is a file beside it, / and http(s):// go to the page as they are
   --reporter <name>           how the run is reported: spec, tap or html (default: spec)
   -q, --quiet                 show less output while keeping failures

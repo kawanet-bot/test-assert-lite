@@ -14,12 +14,12 @@ SHELL := bash
 SRC := $(shell find ../src -name '*.ts' -not -name '*.test.ts' -not -path '*/test-utils/*' -not -path '*/extras/*')
 TEST_SRC := $(shell find ../src -name '*.test.ts') $(wildcard ../src/test-utils/*.ts)
 EXTRAS_SRC := $(shell find ../src/extras -name '*.ts' -or -name '*.mjs' -or -name '*.js')
-TYPES := $(wildcard ../types/*.d.ts)
+TYPES := $(wildcard ../packages/*/types/*.d.ts)
 BUILDER_SRC := $(wildcard ./*.ts)
 
-MJS_DST := ../dist/test-assert-lite.js
-MINJS_DST := ../dist/test-assert-lite.min.js
-EXTRAS_DST := ../dist/test-assert-lite.extras.js
+MJS_DST := ../packages/test-assert-lite/dist/test-assert-lite.js
+MINJS_DST := ../packages/test-assert-lite/dist/test-assert-lite.min.js
+EXTRAS_DST := ../packages/test-assert-cli/dist/test-assert-cli.js
 BROWSER_TEST_DST := ../browser/tests/bundled.mjs
 BUILDER_TEST_DST := ./tests/bundled.mjs
 
@@ -78,9 +78,9 @@ $(MJS_DST): $(MJS_CONFIG) $(SRC) $(BUILDER_SRC)
 	@test "$$(wc -c < $@)" -le $(MJS_MAX_BYTES) || { echo "ERROR: $@ exceeds $(MJS_MAX_BYTES) byte cap" >&2; exit 1; }
 	@echo ""
 
-# The extras (the CLI as a function) import the library by the package's
-# own name, which resolves from dist/. The executable bin/cli.js is
-# hand-written and reaches this by subpath.
+# The CLI as a function imports the library by its package name, which
+# resolves to the workspace sibling. The executable bin/tacli.js is
+# hand-written and reaches this by the CLI package's name.
 $(EXTRAS_DST): $(EXTRAS_CONFIG) $(EXTRAS_SRC) $(BUILDER_SRC) $(MJS_DST)
 	@mkdir -p $(dir $@)
 	../node_modules/.bin/rollup -c $<
@@ -138,7 +138,7 @@ test:
 # a side effect and never calls run() itself.
 test-full: test-quick
 	cd .. && node --test 'src/**/*.test.ts'
-	cd .. && ./bin/cli.js $(BUILDER_TEST_DST:./%=builder/%)
+	cd .. && ./packages/test-assert-cli/bin/tacli.js $(BUILDER_TEST_DST:./%=builder/%)
 
 test-quick: all
 	cd .. && node_modules/.bin/tsc --noEmit

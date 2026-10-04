@@ -1,9 +1,9 @@
 {
   "include": [
-    "exports/",
+    "packages/*/exports/",
+    "packages/*/types/",
     "sample/typescript",
-    "src/",
-    "types/"
+    "src/"
   ],
   "exclude": [
     "node_modules/"

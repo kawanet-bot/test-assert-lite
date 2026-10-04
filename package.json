@@ -1,14 +1,7 @@
 {
-  "name": "test-assert-lite",
+  "name": "test-assert-lite-workspace",
   "description": "Run your node:test and node:assert test files in browsers, as they are",
-  "version": "0.0.1",
   "author": "Kawanet",
-  "bin": {
-    "test-assert": "./bin/cli.js"
-  },
-  "bugs": {
-    "url": "https://github.com/kawanet/test-assert-lite/issues"
-  },
   "devDependencies": {
     "@rollup/plugin-alias": "^6.0.0",
     "@rollup/plugin-commonjs": "^29.0.3",
@@ -31,108 +24,29 @@
       "onFail": "warn"
     }
   },
-  "engines": {
-    "node": ">=20.19.0"
-  },
-  "exports": {
-    ".": {
-      "types": "./types/test-assert-lite.d.ts",
-      "module-sync": "./dist/test-assert-lite.js",
-      "import": "./dist/test-assert-lite.js"
-    },
-    "./extras": {
-      "types": "./types/extras.d.ts",
-      "module-sync": "./dist/test-assert-lite.extras.js",
-      "import": "./dist/test-assert-lite.extras.js"
-    },
-    "./session": {
-      "types": "./exports/session.d.ts",
-      "module-sync": "./exports/session.js",
-      "import": "./exports/session.js"
-    },
-    "./test": {
-      "types": "./exports/test.d.ts",
-      "module-sync": "./exports/test.js",
-      "import": "./exports/test.js"
-    },
-    "./process": {
-      "types": "./exports/process.d.ts",
-      "module-sync": "./exports/process.js",
-      "import": "./exports/process.js"
-    },
-    "./assert": {
-      "types": "./exports/assert.d.ts",
-      "module-sync": "./exports/assert.js",
-      "import": "./exports/assert.js"
-    },
-    "./assert/strict": {
-      "types": "./exports/assert/strict.d.ts",
-      "module-sync": "./exports/assert/strict.js",
-      "import": "./exports/assert/strict.js"
-    },
-    "./reporter/html": {
-      "types": "./exports/reporter/html.d.ts",
-      "module-sync": "./exports/reporter/html.js",
-      "import": "./exports/reporter/html.js"
-    },
-    "./reporter/spec": {
-      "types": "./exports/reporter/spec.d.ts",
-      "module-sync": "./exports/reporter/spec.js",
-      "import": "./exports/reporter/spec.js"
-    },
-    "./reporter/tap": {
-      "types": "./exports/reporter/tap.d.ts",
-      "module-sync": "./exports/reporter/tap.js",
-      "import": "./exports/reporter/tap.js"
-    }
-  },
-  "files": [
-    "bin/cli.js",
-    "browser/run.html",
-    "browser/webdriver/",
-    "dist/test-assert-lite.extras.js",
-    "dist/test-assert-lite.js",
-    "dist/test-assert-lite.min.js",
-    "exports/",
-    "htdocs/",
-    "LICENSE",
-    "README.md",
-    "types/*.d.ts"
-  ],
-  "homepage": "https://github.com/kawanet/test-assert-lite#readme",
-  "keywords": [
-    "assert",
-    "browser",
-    "chai",
-    "jest",
-    "mocha",
-    "node:assert",
-    "node:test",
-    "test",
-    "vitest"
-  ],
   "license": "MIT",
-  "main": "./dist/test-assert-lite.js",
+  "private": true,
   "repository": {
     "type": "git",
     "url": "git+https://github.com/kawanet/test-assert-lite.git"
   },
   "scripts": {
     "build": "make -C builder",
-    "fixpack": "fixpack",
+    "fixpack": "fixpack && fixpack packages/test-assert-lite/package.json && fixpack packages/test-assert-cli/package.json",
     "git:pre-push": "make -C builder test-quick",
     "git:prepare-hooks": "[ -e .git ] && ./node_modules/.bin/simple-git-hooks",
-    "prepack": "make -C builder is-buildable",
     "prepare": "make -C builder is-not-buildable 2> /dev/null || make -C builder clean all test",
     "test": "make -C builder test",
     "test-max": "make -C builder clean all test && make -C builder/pack pack test-dist && make -C browser test-playwright",
     "ts-refine": "./node_modules/.bin/ts-refine format && ./node_modules/.bin/ts-refine imports",
     "update-test-title": "find src sample/typescript -type f -name '*.test.ts' -exec perl -i -pe 's#(?<=^const TITLE = \").*?(?=\")#($ARGV =~ s:^src/::r)#em' {} +"
   },
-  "sideEffects": false,
   "simple-git-hooks": {
     "pre-push": "npm run git:pre-push"
   },
   "type": "module",
-  "types": "./types/test-assert-lite.d.ts"
+  "workspaces": [
+    "packages/test-assert-lite",
+    "packages/test-assert-cli"
+  ]
 }

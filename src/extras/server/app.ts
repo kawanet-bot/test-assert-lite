@@ -112,7 +112,7 @@ export const createApp = (options: AppOptions): App => {
     const evalPath = script == null ? null : `${prefix}[eval].js`
     // The page is the runner the arguments name, as node is under Node.
     const configObj: TestSessionJSON = {
-        process: {argv: ["test-assert", ...argv]},
+        process: {argv: ["tacli", ...argv]},
         session: {...session, files: evalPath == null ? files.map(file => served.urlOf(file)) : [evalPath]},
     }
     const configTag = `<script type="${TestSessionType}">\n${safeJSON(configObj)}\n</script>\n`

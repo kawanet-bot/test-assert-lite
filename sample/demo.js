@@ -1,7 +1,7 @@
 // A small suite for a look at what the spec reporter prints: two suites
 // under one, a few passing tests and one that fails on purpose, so the
 // failure list at the end has an entry. Written against node:test, it
-// runs under `node --test` as it is, and under `test-assert` in Node or
+// runs under `node --test` as it is, and under `tacli` in Node or
 // in a browser.
 import {describe, it} from "node:test"
 import {strict as assert} from "node:assert"

@@ -43,7 +43,7 @@ const BROWSER_IMPORTS: [specifier: string, target: string][] = [
     // ["node:process", "test-assert-lite/process"],
 ]
 
-// The bundled names, this package's own, are what the defaults point at:
+// The bundled names, the library's own, are what the defaults point at:
 // a target naming one is resolved from this copy of the package in both
 // modes, and no name is one without a row above that maps it.
 const BUNDLED = new Set([...COMMON_IMPORTS, ...BROWSER_IMPORTS].map(([, target]) => target))
@@ -67,7 +67,7 @@ export abstract class ImportBase {
         return /:\/\//.test(this.target) || /^data:/i.test(this.target)
     }
 
-    /** One of this package's own names. */
+    /** One of the library's own names. */
     isBundled(): boolean {
         return BUNDLED.has(this.target)
     }
@@ -100,7 +100,7 @@ export abstract class ImportBase {
 
 /**
  * An `--alias <specifier>=<target>`: a path, relative to the working
- * directory or absolute; a URL, for a page; or this package's own name.
+ * directory or absolute; a URL, for a page; or the library's own name.
  * A bare path is a path, as it is for every other file the CLI takes.
  */
 export class ImportAliasItem extends ImportBase {
@@ -180,7 +180,7 @@ export const readImportMap = (file: string): ImportMapItem[] => {
 }
 
 /**
- * One of this package's own names as a target, from no command line: what
+ * One of the library's own names as a target, from no command line: what
  * the CLI maps before anything is given. Never a path, refused nowhere.
  */
 export class ImportBundledItem extends ImportBase {
