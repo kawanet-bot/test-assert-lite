@@ -1,0 +1,46 @@
+{
+  "name": "webdriver-js-cli",
+  "description": "webdriver-js: runs node:test and node:assert test files in the browser a WebDriver server drives, through test-assert-cli",
+  "version": "0.1.0",
+  "author": "Kawanet",
+  "bin": {
+    "webdriver-js": "./bin/webdriver.js"
+  },
+  "bugs": {
+    "url": "https://github.com/kawanet/test-assert-lite/issues"
+  },
+  "dependencies": {
+    "test-assert-cli": "^0.1.0"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "files": [
+    "bin/",
+    "LICENSE",
+    "README.md"
+  ],
+  "homepage": "https://github.com/kawanet/test-assert-lite#readme",
+  "keywords": [
+    "assert",
+    "browser",
+    "chai",
+    "chromedriver",
+    "cli",
+    "jest",
+    "mocha",
+    "node:assert",
+    "node:test",
+    "safaridriver",
+    "test",
+    "vitest",
+    "webdriver"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kawanet/test-assert-lite.git",
+    "directory": "packages/webdriver-js-cli"
+  },
+  "type": "module"
+}

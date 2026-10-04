@@ -1,7 +1,7 @@
 {
   "name": "test-assert-lite",
   "description": "Run your node:test and node:assert test files in browsers, as they are",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "author": "Kawanet",
   "bugs": {
     "url": "https://github.com/kawanet/test-assert-lite/issues"
