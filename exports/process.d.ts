@@ -5,3 +5,5 @@ export declare const argv: TAL.ProcessAPI["argv"]
 export declare const stdout: TAL.ProcessAPI["stdout"]
 export declare const stderr: TAL.ProcessAPI["stderr"]
 export declare const connect: TAL.ProcessAPI["connect"]
+declare const proc: TAL.ProcessAPI
+export default proc
