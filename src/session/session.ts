@@ -44,6 +44,7 @@ interface Cycle {
 export interface Sessions {
     session: TAL.SessionAPI["session"]
     run: TAL.SessionAPI["run"]
+    load: TAL.SessionAPI["load"]
     // Called on a declaration at the root. It starts the walk once run() has
     // let it, unless one is under way.
     schedule: () => void
@@ -175,7 +176,20 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
         return await services.finished
     }
 
-    return {session, run, schedule}
+    // A suite that does not load is one failed test named after the file,
+    // as node --test files it. The run goes on to the next.
+    const load: TAL.SessionAPI["load"] = async file => {
+        try {
+            await import(file)
+        } catch (error) {
+            harness.root.declareTest(file.replace(/^[^?]*\//, ""), {}, () => {
+                throw error
+            })
+            schedule()
+        }
+    }
+
+    return {session, run, load, schedule}
 }
 
 // What the run came to: the counts, the time and the verdict.
