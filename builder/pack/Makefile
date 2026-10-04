@@ -82,6 +82,8 @@ test-cli:
 test-shortcuts:
 	cd ../.. && ./node_modules/.bin/webdriver-js -v | grep "^webdriver-js-cli " > /dev/null
 	cd ../.. && ./node_modules/.bin/chromium-js -v | grep "^playwright-js-cli " > /dev/null
+	cd ../.. && ./node_modules/.bin/firefox-js -v | grep "^playwright-js-cli " > /dev/null
+	cd ../.. && ./node_modules/.bin/webkit-js -v | grep "^playwright-js-cli " > /dev/null
 	cd ../.. && ! ./node_modules/.bin/webdriver-js --serve sample/pass.js > /dev/null 2>&1
 	cd ../.. && ! ./node_modules/.bin/chromium-js --webdriver sample/pass.js > /dev/null 2>&1
 

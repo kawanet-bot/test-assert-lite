@@ -178,7 +178,7 @@ export const readOptions = (args: string[], fixed: FixedMode = {}): ModeOptions 
     const playwrightConfig = values["playwright-config"]
     const {eval: script} = values
 
-    if ((engine ? 1 : 0) + (webdriver ? 1 : 0) + (serve ? 1 : 0) > 1) {
+    if ((launching ? 1 : 0) + (webdriver ? 1 : 0) + (serve ? 1 : 0) > 1) {
         throw new UsageError("--playwright, --webdriver and --serve are exclusive")
     }
     if (!browsing && (values.script.length || values.mount != null || values.port != null || values.origin != null)) {

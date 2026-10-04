@@ -298,6 +298,7 @@ describe(TITLE, () => {
             assert.throws(() => readOptions(["--playwright-config", "x.json", "suite.mjs"], {webdriver: true}), /--playwright-config/)
             assert.throws(() => readOptions(["--webdriver", "suite.mjs"], {playwright: engine}), /--webdriver/)
             assert.throws(() => readOptions(["--endpoint", "http://127.0.0.1:4444", "suite.mjs"], {playwright: engine}), /--endpoint/)
+            assert.throws(() => readOptions(["suite.mjs"], {webdriver: true, playwright: engine}), /exclusive/)
         })
 
         it("shows the usage for the command, with the fixed mode's flags alone", () => {
