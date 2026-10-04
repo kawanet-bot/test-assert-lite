@@ -13,8 +13,8 @@ const TITLE = "extras/server/channel.test.ts"
 
 const nullWriter: TAL.Writer = {write: (() => undefined)}
 
-const prefix = "/@tal/run/000000000/"
-const otherPrefix = "/@tal/run/000000001/"
+const prefix = "/@tacli/run/000000000/"
+const otherPrefix = "/@tacli/run/000000001/"
 
 const BEGIN: TAL.SessionEvent = {type: "session:begin", session: "sessionAAA"}
 const SUCCESS: TAL.SessionEvent = {type: "session:end", session: "sessionAAA", data: {success: true}}

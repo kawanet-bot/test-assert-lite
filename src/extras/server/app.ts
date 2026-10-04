@@ -78,7 +78,7 @@ const random9 = (): string => randomInt(0, 36 ** 9).toString(36).padStart(9, "0"
 export const createApp = (options: AppOptions): App => {
     const {scripts = [], imports = new Imports([]), mount: mounted, session, eval: script, services, singleRun, argv = []} = options
     const {files = []} = session
-    const prefix = `/@tal/run/${random9()}/`
+    const prefix = `/@tacli/run/${random9()}/`
     const runPath = `${prefix}run.html`
     const channel = createChannel({prefix, services, singleRun})
 
@@ -94,7 +94,7 @@ export const createApp = (options: AppOptions): App => {
         }
     }
 
-    // Every file given is served from its directory under /@tal/files/, so
+    // Every file given is served from its directory under /@tacli/files/, so
     // a sibling or a nested import resolves beside it while nothing above
     // stays reachable; the suites' directory is the same for all of them.
     const served = createFiles([...files, ...scripts, ...imports.paths()])
@@ -153,9 +153,9 @@ export const createApp = (options: AppOptions): App => {
         // A .ts among the files given goes out as JavaScript; the root
         // mount is served as it is.
         scoped(compose([withStrippedTypes(), ...served.dirs.map(dir => serveStatic(dir))])),
-        // /@tal/ is the CLI's: what none of the mounts above answered ends
+        // /@tacli/ is the CLI's: what none of the mounts above answered ends
         // here, whatever a mount or an upstream at the root would say to it.
-        async (c, next) => (c.req.path.startsWith("/@tal/") ? c.notFound() : next()),
+        async (c, next) => (c.req.path.startsWith("/@tacli/") ? c.notFound() : next()),
         scoped(compose([...M(watcher?.inject), head, ...M(!mounted && title), atRoot])),
     ])
 

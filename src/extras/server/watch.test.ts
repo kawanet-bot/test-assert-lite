@@ -12,9 +12,9 @@ const TITLE = "extras/server/watch.test.ts"
 
 const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms))
 
-// The page's ask, without a network: GET /@tal/watch?after=<version>.
+// The page's ask, without a network: GET /@tacli/watch?after=<version>.
 const ask = async (watcher: Watcher, after: number, method = "GET"): Promise<{status: number, body: string}> => {
-    const c = createContext(new Request(`http://127.0.0.1/@tal/watch?after=${after}`, {method}))
+    const c = createContext(new Request(`http://127.0.0.1/@tacli/watch?after=${after}`, {method}))
     const res = await watcher.handler(c, async () => undefined)
     return {status: res?.status ?? 0, body: res == null ? "" : await res.text()}
 }
@@ -92,7 +92,7 @@ describe(TITLE, () => {
     })
 
     it("leaves another path to the next middleware, and refuses another method", async () => {
-        const c = createContext(new Request("http://127.0.0.1/@tal/watching"))
+        const c = createContext(new Request("http://127.0.0.1/@tacli/watching"))
         assert.equal(await watcher.handler(c, async () => undefined), undefined)
         assert.equal((await ask(watcher, watcher.version, "POST")).status, 405)
     })

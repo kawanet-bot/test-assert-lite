@@ -115,7 +115,7 @@ describe(TITLE, () => {
         server = await serve({
             handler: [logger({stderr}), compose([
                 async (c, next) => {
-                    if (c.req.method !== "POST" || c.req.path !== "/@tal/run/1/stdout") return next()
+                    if (c.req.method !== "POST" || c.req.path !== "/@tacli/run/1/stdout") return next()
                     posted.push(await c.req.text())
                     return c.body(null, 204)
                 },
@@ -125,7 +125,7 @@ describe(TITLE, () => {
                     ? c.body(new ReadableStream({start: controller => controller.error(new Error("broken body"))}))
                     : next()),
                 serveStatic({path: "/dist/", root: join(dir, "dist")}),
-                serveStatic({path: "/@tal/tests/0/my suite.mjs", root: join(dir, "elsewhere", "suite.mjs")}),
+                serveStatic({path: "/@tacli/tests/0/my suite.mjs", root: join(dir, "elsewhere", "suite.mjs")}),
                 serveStatic({path: "/", root: join(dir, "htdocs")}),
             ])],
             services: sharedServices,
@@ -193,8 +193,8 @@ describe(TITLE, () => {
     })
 
     it("serves a mounted file by its decoded path, and nothing beside it", async () => {
-        assert.equal((await get(server.origin, "/@tal/tests/0/my%20suite.mjs")).status, 200)
-        assert.equal((await get(server.origin, "/@tal/tests/0/suite.mjs")).status, 404)
+        assert.equal((await get(server.origin, "/@tacli/tests/0/my%20suite.mjs")).status, 200)
+        assert.equal((await get(server.origin, "/@tacli/tests/0/suite.mjs")).status, 404)
     })
 
     it("answers a directory, named with a slash, with its index.html", async () => {
@@ -270,10 +270,10 @@ describe(TITLE, () => {
     })
 
     it("hands a POST's body to its middleware, and answers 404 elsewhere", async () => {
-        assert.equal((await call(server.origin, "/@tal/run/1/stdout", "POST", "hello from the page\n")).status, 204)
+        assert.equal((await call(server.origin, "/@tacli/run/1/stdout", "POST", "hello from the page\n")).status, 204)
         assert.deepEqual(posted, ["hello from the page\n"])
-        assert.equal((await call(server.origin, "/@tal/run/1/nothing", "POST", "x")).status, 404)
-        assert.equal((await get(server.origin, "/@tal/run/1/stdout")).status, 404)
+        assert.equal((await call(server.origin, "/@tacli/run/1/nothing", "POST", "x")).status, 404)
+        assert.equal((await get(server.origin, "/@tacli/run/1/stdout")).status, 404)
     })
 
     it("answers 500 when the chain throws, and logs the error", async () => {

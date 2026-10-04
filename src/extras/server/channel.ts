@@ -11,7 +11,7 @@ import type {ContextLike, Next} from "./middleware.ts"
 export interface ChannelOptions {
     /** The run's streams, outcome and cleanup, shared by every part. */
     services: RunServices
-    /** Prefix for channel path: `/@tal/run/xxxxxxxxx/` */
+    /** Prefix for channel path: `/@tacli/run/xxxxxxxxx/` */
     prefix: string
     /** Allowed silence in milliseconds; 30 seconds for a single run, unlimited otherwise. */
     timeout?: number

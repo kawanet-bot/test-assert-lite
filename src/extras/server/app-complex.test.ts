@@ -99,7 +99,7 @@ describe(TITLE, () => {
         }
         const map = at('<script type="importmap">')
         const config = at('<script type="application/vnd.test-session+json">')
-        assert.match(tests, /^\/@tal\/files\/[0-9a-f]{9}\/$/)
+        assert.match(tests, /^\/@tacli\/files\/[0-9a-f]{9}\/$/)
         const script = at(`<script src="${tests}setup.js"></script>`)
         const second = at(`<script src="${tests}set%2Bup%232.js"></script>`)
         assert.ok(map < config && config < script && script < second)
@@ -108,8 +108,8 @@ describe(TITLE, () => {
         assert.deepEqual(session, {files: [`${tests}my%20suite.mjs`, `${tests}second.mjs`]})
         assert.deepEqual(process, {argv: ["tacli", "tests/my suite.mjs", "tests/second.mjs", "--two"]})
         const {imports} = JSON.parse(head.slice(head.indexOf("{", map), head.indexOf("</script>", map)))
-        assert.equal(imports["node:test"], "/@tal/exports/test.js")
-        assert.equal(imports["test-assert-lite"], "/@tal/dist/test-assert-lite.min.js")
+        assert.equal(imports["node:test"], "/@tacli/exports/test.js")
+        assert.equal(imports["test-assert-lite"], "/@tacli/dist/test-assert-lite.min.js")
         assert.equal(imports["mod"], `${lib}mod.mjs`)
         assert.equal(imports["dep"], `${tests}nested/dep.mjs`)
         assert.equal(imports["cdn"], "https://cdn.example/lib.js")
@@ -118,7 +118,7 @@ describe(TITLE, () => {
     })
 
     it("serves the run page under the run's path alone", async () => {
-        assert.match(app.page, /^\/@tal\/run\/[0-9a-z]{9}\/run\.html$/)
+        assert.match(app.page, /^\/@tacli\/run\/[0-9a-z]{9}\/run\.html$/)
         const res = await get(url(app.page))
         assert.equal(res.status, 200)
         assert.match(res.body, /\bsession\(\{/)
@@ -126,7 +126,7 @@ describe(TITLE, () => {
         assert.ok(res.body.includes("<title>fixture-pkg</title>"))
         assert.ok(res.body.includes(`"files": [\n            "${tests}my%20suite.mjs",\n            "${tests}second.mjs"\n        ]`))
         assert.equal((await get(url("/run.html"))).status, 404)
-        assert.equal((await get(url("/@tal/run/000000000/run.html"))).status, 404)
+        assert.equal((await get(url("/@tacli/run/000000000/run.html"))).status, 404)
     })
 
     it("serves the suites, the scripts and an alias from their directories, one under another through it", async () => {
@@ -138,7 +138,7 @@ describe(TITLE, () => {
         assert.equal((await get(url(`${lib}mod.mjs`))).status, 200)
         assert.equal((await get(url(`${lib}my%20suite.mjs`))).status, 404)
         assert.equal((await get(url(`${lib}secret.json`))).status, 404)
-        assert.equal((await get(url("/@tal/files/000000000/mod.mjs"))).status, 404)
+        assert.equal((await get(url("/@tacli/files/000000000/mod.mjs"))).status, 404)
     })
 
     it("serves a .ts from a directory as JavaScript, the types stripped by this Node", async t => {
@@ -156,18 +156,18 @@ describe(TITLE, () => {
     })
 
     it("serves the package's minified build, the bridges and the document root", async () => {
-        assert.match((await get(url("/@tal/dist/test-assert-lite.min.js"))).body, /export\{/)
-        assert.equal((await get(url("/@tal/exports/test.js"))).status, 200)
-        assert.equal((await get(url("/@tal/exports/assert/strict.js"))).status, 200)
+        assert.match((await get(url("/@tacli/dist/test-assert-lite.min.js"))).body, /export\{/)
+        assert.equal((await get(url("/@tacli/exports/test.js"))).status, 200)
+        assert.equal((await get(url("/@tacli/exports/assert/strict.js"))).status, 200)
         assert.equal((await get(url("/styles/test-assert-lite.css"))).type, "text/css; charset=utf-8")
         assert.equal((await get(url("/favicon.svg"))).status, 200)
         assert.equal((await get(url("/package.json"))).status, 404)
-        assert.equal((await get(url("/@tal/"))).status, 404)
+        assert.equal((await get(url("/@tacli/"))).status, 404)
     })
 
     it("serves the default page without reload, named after the suite package", async () => {
-        assert.equal((await get(url("/"))).body.includes("/@tal/watch?after="), false)
-        assert.equal((await get(url("/@tal/watch?after=0"))).status, 404)
+        assert.equal((await get(url("/"))).body.includes("/@tacli/watch?after="), false)
+        assert.equal((await get(url("/@tacli/watch?after=0"))).status, 404)
         assert.ok((await get(url("/"))).body.includes("<title>fixture-pkg</title>\n"))
         assert.ok((await get(url("/"))).body.includes("<h1>fixture-pkg</h1>"))
     })

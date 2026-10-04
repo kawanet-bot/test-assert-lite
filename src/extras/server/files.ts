@@ -10,7 +10,7 @@ import {fileURLToPath} from "node:url"
 import {libraryRoot} from "../package-root.ts"
 
 export interface Dir {
-    /** The URL path, `/@tal/<dir>/` for the library's own, `/@tal/files/<name>/` otherwise. */
+    /** The URL path, `/@tacli/<dir>/` for the library's own, `/@tacli/files/<name>/` otherwise. */
     path: string
     /** The directory, absolute and real. */
     root: string
@@ -49,8 +49,8 @@ const nameOf = (dir: string): string => createHash("sha256").update(dir).digest(
 // gets the one that ships for it.
 const own = fileURLToPath(libraryRoot())
 const OWN: Dir[] = [
-    {path: "/@tal/dist/", root: realOf(resolve(own, "dist"))},
-    {path: "/@tal/exports/", root: realOf(resolve(own, "exports"))},
+    {path: "/@tacli/dist/", root: realOf(resolve(own, "dist"))},
+    {path: "/@tacli/exports/", root: realOf(resolve(own, "exports"))},
 ]
 const STAND_IN = new Map([[realOf(resolve(own, "dist", "test-assert-lite.js")), realOf(resolve(own, "dist", "test-assert-lite.min.js"))]])
 
@@ -66,7 +66,7 @@ export const createFiles = (files: string[]): Files => {
     const dirs: Dir[] = []
     const within = (dir: string): Dir | undefined => [...OWN, ...dirs].find(({root}) => dir === root || dir.startsWith(root + sep))
     for (const dir of names) {
-        if (within(dir) == null) dirs.push({path: `/@tal/files/${nameOf(dir)}/`, root: dir})
+        if (within(dir) == null) dirs.push({path: `/@tacli/files/${nameOf(dir)}/`, root: dir})
     }
     const servedAs = (file: string): string => {
         const real = reals.get(file) ?? realOf(file)
