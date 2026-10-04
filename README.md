@@ -318,6 +318,7 @@ The minified build is an ES module: an import map leads the package's name to it
         "test-assert-lite": "https://cdn.jsdelivr.net/npm/test-assert-lite/dist/test-assert-lite.min.js",
         "test-assert-lite/test": "https://cdn.jsdelivr.net/npm/test-assert-lite/exports/test.js",
         "test-assert-lite/assert": "https://cdn.jsdelivr.net/npm/test-assert-lite/exports/assert.js",
+        "test-assert-lite/process": "https://cdn.jsdelivr.net/npm/test-assert-lite/exports/process.js",
         "test-assert-lite/session": "https://cdn.jsdelivr.net/npm/test-assert-lite/exports/session.js"
     }
 }
@@ -374,6 +375,7 @@ export default {
         "node:test": "https://cdn.jsdelivr.net/npm/test-assert-lite/exports/test.js",
         "node:assert": "https://cdn.jsdelivr.net/npm/test-assert-lite/exports/assert.js",
         "node:assert/strict": "https://cdn.jsdelivr.net/npm/test-assert-lite/exports/assert/strict.js",
+        "test-assert-lite/process": "https://cdn.jsdelivr.net/npm/test-assert-lite/exports/process.js",
         "test-assert-lite/session": "https://cdn.jsdelivr.net/npm/test-assert-lite/exports/session.js"
     }
 }
