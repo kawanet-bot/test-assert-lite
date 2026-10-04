@@ -1,0 +1,18 @@
+name: Publish test-assert-lite
+
+# Releases are cut by pushing a version tag, so ordinary pushes never reach
+# npm. The tag names the package, since each of the four has its own version.
+on:
+  push:
+    tags: [ "test-assert-lite@0.*.*" ]
+
+permissions: { }
+
+jobs:
+  publish:
+    uses: ./.github/workflows/publish.yml
+    with:
+      package: test-assert-lite
+    permissions:
+      contents: read
+      id-token: write

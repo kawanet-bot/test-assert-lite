@@ -83,9 +83,6 @@
     "url": "git+https://github.com/kawanet/test-assert-lite.git",
     "directory": "packages/test-assert-lite"
   },
-  "scripts": {
-    "prepack": "make -C ../../builder is-buildable"
-  },
   "sideEffects": false,
   "type": "module",
   "types": "./types/test-assert-lite.d.ts"

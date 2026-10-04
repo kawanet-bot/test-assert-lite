@@ -1,50 +1,50 @@
 {
   "name": "playwright-js-cli",
   "description": "chromium-js, firefox-js and webkit-js: run node:test and node:assert test files in a headless browser through Playwright and test-assert-cli",
+  "version": "0.1.0",
   "author": "Kawanet",
+  "bin": {
+    "chromium-js": "bin/chromium.js",
+    "firefox-js": "bin/firefox.js",
+    "webkit-js": "bin/webkit.js"
+  },
   "bugs": {
     "url": "https://github.com/kawanet/test-assert-lite/issues"
-  },
-  "engines": {
-    "node": ">=20.19.0"
-  },
-  "homepage": "https://github.com/kawanet/test-assert-lite#readme",
-  "license": "MIT",
-  "type": "module",
-  "version": "0.1.0",
-  "bin": {
-    "chromium-js": "./bin/chromium.js",
-    "firefox-js": "./bin/firefox.js",
-    "webkit-js": "./bin/webkit.js"
   },
   "dependencies": {
     "playwright": "^1.60.0",
     "test-assert-cli": "^0.1.0"
+  },
+  "engines": {
+    "node": ">=20.19.0"
   },
   "files": [
     "bin/*.js",
     "LICENSE",
     "README.md"
   ],
+  "homepage": "https://github.com/kawanet/test-assert-lite#readme",
   "keywords": [
     "assert",
     "browser",
     "chai",
+    "chromium",
+    "cli",
+    "firefox",
     "jest",
     "mocha",
     "node:assert",
     "node:test",
+    "playwright",
     "test",
     "vitest",
-    "cli",
-    "playwright",
-    "chromium",
-    "firefox",
     "webkit"
   ],
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/kawanet/test-assert-lite.git",
     "directory": "packages/playwright-js-cli"
-  }
+  },
+  "type": "module"
 }
