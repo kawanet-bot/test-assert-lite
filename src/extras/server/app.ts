@@ -58,7 +58,7 @@ interface TestSessionJSON {
 
 export const TestSessionType = "application/vnd.test-session+json"
 
-// The package root holds the pages, htdocs/ and browser/run.html; they
+// The package root holds the pages, htdocs/ and assets/; they
 // are served from there whatever the suite's location.
 const root = fileURLToPath(packageRoot())
 
@@ -133,7 +133,7 @@ export const createApp = (options: AppOptions): App => {
             ? proxy({path: "/", upstream: mounted})
             : serveStatic({path: "/", root: mounted})
 
-    const atRun = serveStatic({path: runPath, root: resolve(root, "browser", "run.html")})
+    const atRun = serveStatic({path: runPath, root: resolve(root, "assets", "run.html")})
     const atEval: MiddlewareHandler = async (c, next) => {
         if (c.finalized || c.req.path !== evalPath) return next()
         if (c.req.method !== "GET" && c.req.method !== "HEAD") return c.body(null, 405, {allow: "GET, HEAD"})

@@ -23,8 +23,8 @@
     }
   },
   "files": [
+    "assets/run.html",
     "bin/tacli.js",
-    "browser/run.html",
     "dist/test-assert-cli.js",
     "htdocs/",
     "LICENSE",
