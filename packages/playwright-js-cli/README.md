@@ -6,9 +6,18 @@
 
 ```sh
 npm install -D playwright-js-cli
-npx playwright install chromium
+npx playwright install chromium firefox webkit
 
-chromium-js test/query.test.mjs
+chromium-js -e 'console.log("#", navigator.userAgent)'
+# Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.12 Safari/537.36
+
+firefox-js -e 'console.log("#", navigator.userAgent)'
+# Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:155.0) Gecko/20100101 Firefox/155.0
+
+webkit-js -e 'console.log("#", navigator.userAgent)'
+# Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6 Safari/605.1.15
+
+chromium-js --test test/query.test.mjs
 ```
 
 - `playwright` comes with this package. The browsers do not: `npx playwright install chromium`, `firefox` or `webkit` downloads the one a command needs.
@@ -17,8 +26,9 @@ chromium-js test/query.test.mjs
 
 ## SEE ALSO
 
-- https://www.npmjs.com/package/playwright-js-cli
-- https://www.npmjs.com/package/test-assert-cli
 - https://www.npmjs.com/package/test-assert-lite
+- https://www.npmjs.com/package/test-assert-cli
+- https://www.npmjs.com/package/webdriver-js-cli
+- https://www.npmjs.com/package/playwright-js-cli
 - https://github.com/kawanet/test-assert-lite
 - https://playwright.dev/

@@ -8,7 +8,11 @@ import {firefox} from "playwright"
 import {CLI} from "test-assert-cli"
 import pkg from "../package.json" with {type: "json"}
 
-CLI({args: process.argv.slice(2), program: {command: "firefox-js", name: pkg.name, version: pkg.version}, playwright: firefox})
+CLI({
+    args: process.argv.slice(2),
+    program: {command: "firefox-js", name: pkg.name, version: pkg.version},
+    playwright: firefox,
+})
     .catch(error => {
         console.error(error)
         return 1

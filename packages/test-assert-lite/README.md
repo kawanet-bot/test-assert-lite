@@ -152,6 +152,8 @@ export default {
 
 - https://www.npmjs.com/package/test-assert-lite
 - https://www.npmjs.com/package/test-assert-cli
+- https://www.npmjs.com/package/webdriver-js-cli
+- https://www.npmjs.com/package/playwright-js-cli
 - https://github.com/kawanet/test-assert-lite
 - https://nodejs.org/api/test.html
 - https://nodejs.org/api/assert.html

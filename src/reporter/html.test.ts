@@ -23,9 +23,9 @@ describe(TITLE, () => {
             await emit("test:pass", pass("later", {skip: "not now"}))
         })
 
-        assert.match(out, /<div class="tal-r "><span class="tal-suite">▶ suite/)
-        assert.match(out, /<div class="tal-r tal-i1"><span class="tal-pass">✔ ok/)
-        assert.match(out, /<div class="tal-r "><span class="tal-skip">﹣ later</)
+        assert.match(out, /<div class="tal-row "><span class="tal-suite">▶ suite/)
+        assert.match(out, /<div class="tal-row tal-i1"><span class="tal-pass">✔ ok/)
+        assert.match(out, /<div class="tal-row "><span class="tal-skip">﹣ later</)
     })
 
     it("marks a todo test, and a failed todo as a warning", async () => {
@@ -64,8 +64,8 @@ describe(TITLE, () => {
             await emit("test:pass", pass("one"))
         })
 
-        assert.ok(out.includes('<div class="tal-r tal-stdout"><pre>&lt;out&gt;\n</pre></div>'))
-        assert.ok(out.includes('<div class="tal-r tal-stderr"><pre>Error: cause\n</pre></div>'))
+        assert.ok(out.includes('<div class="tal-row tal-stdout"><pre>&lt;out&gt;\n</pre></div>'))
+        assert.ok(out.includes('<div class="tal-row tal-stderr"><pre>Error: cause\n</pre></div>'))
         assert.match(out, /✔ one/)
     })
 

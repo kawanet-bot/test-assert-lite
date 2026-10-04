@@ -8,7 +8,11 @@ import {chromium} from "playwright"
 import {CLI} from "test-assert-cli"
 import pkg from "../package.json" with {type: "json"}
 
-CLI({args: process.argv.slice(2), program: {command: "chromium-js", name: pkg.name, version: pkg.version}, playwright: chromium})
+CLI({
+    args: process.argv.slice(2),
+    program: {command: "chromium-js", name: pkg.name, version: pkg.version},
+    playwright: chromium,
+})
     .catch(error => {
         console.error(error)
         return 1
