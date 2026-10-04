@@ -162,12 +162,12 @@ describe(TITLE, () => {
         assert.match(out.join(""), /^ok 1 - imported$/m)
     })
 
-    it("an uncaught error is one failed test, named after the script by its served path", async () => {
+    it("an uncaught error is one failed test, named after the script by its file name", async () => {
         const local = createTAL()
         const on = target()
         const events = capture(local, {uncaught: on})
         const thrown = new Error("at the top level")
-        fire(on, "error", {error: thrown, filename: "http://127.0.0.1:1/@tacli/files/012345678/suite.mjs"})
+        fire(on, "error", {error: thrown, filename: "http://127.0.0.1:1/@tacli/files/012345678/nested/suite.mjs"})
         fire(on, "error", {target: {src: "http://127.0.0.1:1/@tacli/files/012345678/missing.mjs"}})
         fire(on, "unhandledrejection", {reason: new Error("leaked")})
         local.test.it("declared", () => undefined)
