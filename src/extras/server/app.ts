@@ -32,9 +32,9 @@ export interface AppOptions {
     imports?: Imports
     /** What the root serves in place of htdocs: an absolute directory, or an http(s) URL ending in "/" to proxy. */
     mount?: string
-    /** What the command line hands the page, as JSON in its head; empty options unless given. Its files become the suites' served URLs. */
+    /** Option parameters for session() method. */
     session?: SessionConfig
-
+    /** Option parameters for connect() method. */
     connect?: ConnectConfig
     /** The test files to import, in order: paths under Node, served URLs in a page. */
     files: string[]

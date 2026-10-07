@@ -20,7 +20,9 @@ interface HookData {
 
 interface RunInNodeOptions {
     imports: NodeImports
+    /** Option parameters for connect() method. */
     connect?: ConnectConfig
+    /** Option parameters for session() method. */
     session?: SessionConfig
     /** The test files to import, in order: paths under Node, served URLs in a page. */
     files: string[]
