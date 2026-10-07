@@ -21,7 +21,7 @@ chromium-js --test test/query.test.mjs
 ```
 
 - `playwright` comes with this package. The browsers do not: `npx playwright install chromium`, `firefox` or `webkit` downloads the one a command needs.
-- `--playwright-config <file>`: JSON options passed to Playwright's [launch](https://playwright.dev/docs/api/class-browsertype#browser-type-launch), [newPage](https://playwright.dev/docs/api/class-browser#browser-new-page) and [goto](https://playwright.dev/docs/api/class-page#page-goto) methods.
+- `--playwright-config <file>`: JSON options passed to Playwright's [launch](https://playwright.dev/docs/api/class-browsertype#browser-type-launch), [newPage](https://playwright.dev/docs/api/class-browser#browser-new-page) and [goto](https://playwright.dev/docs/api/class-page#page-goto) methods. A `connectOverCDP` entry, the endpoint URL of a Chromium running with remote debugging, attaches to that browser in place of launching one, as [connectOverCDP](https://playwright.dev/docs/api/class-browsertype#browser-type-connect-over-cdp) does.
 - Every other option of `tacli` applies as it is: `--alias`, `--import-map`, `--reporter`, `--port`, `--origin`, `--script`, `--mount` and the rest. See [test-assert-cli](https://www.npmjs.com/package/test-assert-cli).
 
 ## SEE ALSO
