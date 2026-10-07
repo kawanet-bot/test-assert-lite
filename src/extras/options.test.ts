@@ -1,13 +1,15 @@
 import {strict as assert} from "node:assert"
 import {resolve} from "node:path"
 import {describe, it} from "node:test"
+import type {BrowserType} from "playwright-core"
 import type {TestSession} from "./mode-options.ts"
 import {mountOf, originOf, portOf, readOptions, usageOf} from "./options.ts"
 
 const TITLE = "extras/options.test.ts"
 
-// What an executable fixed on Playwright hands over: launch() is all the options read of it.
-const engine = {launch: async () => ({})}
+// What an executable fixed on Playwright hands over. The options pass it on
+// without a call, so a stub stands in for the engine.
+const engine = {launch: async () => ({})} as unknown as BrowserType
 
 describe(TITLE, () => {
     describe("portOf", () => {
