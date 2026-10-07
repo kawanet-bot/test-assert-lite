@@ -1,3 +1,4 @@
+import type {Browser, BrowserType, Page} from "playwright-core"
 import type {Imports, NodeImports} from "./imports.ts"
 
 /** The request body of POST /session for WebDriver. */
@@ -6,19 +7,13 @@ export interface WebDriverCustom {
     capabilities?: object
 }
 
-export interface BrowserCustom {
+export interface PlaywrightCustom {
     /** @see https://playwright.dev/docs/api/class-browsertype#browser-type-launch */
-    launch?: object
+    launch?: Parameters<BrowserType["launch"]>[0]
     /** @see https://playwright.dev/docs/api/class-browser#browser-new-page */
-    newPage?: object
+    newPage?: Parameters<Browser["newPage"]>[0]
     /** @see https://playwright.dev/docs/api/class-page#page-goto */
-    goto?: object
-}
-
-/** What launches one of Playwright's browsers: chromium, firefox or webkit as the playwright module exports them. */
-export interface BrowserTypeLike {
-    /** @see https://playwright.dev/docs/api/class-browsertype#browser-type-launch */
-    launch(options?: object): Promise<unknown>
+    goto?: Parameters<Page["goto"]>[1]
 }
 
 /** A mode the executable fixes ahead of the arguments. --serve is refused then, and the mode's own flags apply. */
@@ -26,7 +21,7 @@ export interface FixedMode {
     /** The run goes through a WebDriver server. */
     webdriver?: boolean
     /** The run goes through this Playwright engine, imported by the caller. */
-    playwright?: BrowserTypeLike
+    playwright?: BrowserType
 }
 
 export interface TestSession {
@@ -68,5 +63,5 @@ export type ModeOptions =
     | {mode: "version"}
     | NodeModeOptions & {mode: "node"}
     | WebModeOptions & {mode: "serve"}
-    | WebModeOptions & {mode: "playwright", browserType: BrowserTypeLike, custom?: BrowserCustom}
+    | WebModeOptions & {mode: "playwright", browserType: BrowserType, custom?: PlaywrightCustom}
     | WebModeOptions & {mode: "webdriver", endpoint?: string, custom?: WebDriverCustom}

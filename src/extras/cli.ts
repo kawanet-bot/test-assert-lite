@@ -3,10 +3,11 @@
 // for a person's browser. An executable built on this fixes one browser
 // mode. Only explicit file names are accepted, no globs.
 
+import type {BrowserType} from "playwright-core"
 import {stringify} from "../utils/stringify.ts"
 import {runInNode} from "./drivers/node.ts"
 import {runWebMode} from "./drivers/web-mode.ts"
-import type {BrowserTypeLike, FixedMode, ModeOptions} from "./mode-options.ts"
+import type {FixedMode, ModeOptions} from "./mode-options.ts"
 import {readOptions, usageOf} from "./options.ts"
 import {UsageError} from "./usage-error.ts"
 import {VERSION} from "./version.ts"
@@ -19,7 +20,7 @@ export interface CLIOptions {
     /** Fixes the run on a WebDriver server. --serve is refused then. */
     webdriver?: boolean
     /** Fixes the run on this Playwright engine, imported by the caller. --serve is refused then. */
-    playwright?: BrowserTypeLike
+    playwright?: BrowserType
 }
 
 export interface Program {
