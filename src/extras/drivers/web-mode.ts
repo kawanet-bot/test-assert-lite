@@ -7,7 +7,7 @@ import {runInPlaywright} from "./playwright.ts"
 import {runInWebDriver} from "./webdriver.ts"
 
 export const runWebMode = async (options: ModeOptions & WebModeOptions) => {
-    const {mode, session, files, imports} = options
+    const {connect, mode, session, files, imports} = options
     const singleRun = (mode !== "serve")
     const services = createRunServices({
         stdout: process.stdout,
@@ -24,7 +24,7 @@ export const runWebMode = async (options: ModeOptions & WebModeOptions) => {
             session,
             files,
             eval: options.eval,
-            argv: options.argv,
+            connect,
             watch: (mode === "serve"),
             services,
             singleRun,

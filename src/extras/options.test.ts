@@ -83,7 +83,7 @@ describe(TITLE, () => {
             assert.equal(options.mode, "node")
             if (options.mode !== "node") return
             assert.deepEqual(options.files, [resolve("a.test.ts"), resolve("b.test.ts")])
-            assert.deepEqual(options.argv, ["a.test.ts", "b.test.ts"])
+            assert.deepEqual(options.connect?.argv, ["a.test.ts", "b.test.ts"])
             assert.deepEqual(options.imports.paths(), [])
         })
 
@@ -92,25 +92,25 @@ describe(TITLE, () => {
             assert.equal(options.mode, "node")
             if (options.mode !== "node") return
             assert.deepEqual(options.files, [resolve("a.test.ts")])
-            assert.deepEqual(options.argv, ["a.test.ts", "b.test.ts", "x"])
+            assert.deepEqual(options.connect?.argv, ["a.test.ts", "b.test.ts", "x"])
             assert.equal(options.session?.quiet, 10)
         })
 
         it("leaves what follows -- to the script, and gives a script its arguments, a page too", () => {
             const dashed = readOptions(["a.test.ts", "--", "--quiet"])
             if (dashed.mode !== "node") return assert.fail(dashed.mode)
-            assert.deepEqual(dashed.argv, ["a.test.ts", "--quiet"])
+            assert.deepEqual(dashed.connect?.argv, ["a.test.ts", "--quiet"])
             assert.equal(dashed.session?.quiet, 0)
             const script = readOptions(["-e", "console.log(1)", "x", "y"])
             if (script.mode !== "node") return assert.fail(script.mode)
-            assert.deepEqual(script.argv, ["x", "y"])
+            assert.deepEqual(script.connect?.argv, ["x", "y"])
             assert.deepEqual(script.files, [])
             const served = readOptions(["--serve", "a.test.ts", "x"])
             if (served.mode !== "serve") return assert.fail(served.mode)
-            assert.deepEqual(served.argv, ["a.test.ts", "x"])
+            assert.deepEqual(served.connect?.argv, ["a.test.ts", "x"])
             const empty = readOptions(["--serve"])
             if (empty.mode !== "serve") return assert.fail(empty.mode)
-            assert.deepEqual(empty.argv, [])
+            assert.deepEqual(empty.connect?.argv, [])
         })
 
         it("refuses Node mode without a file, and a CommonJS suite in every mode", () => {

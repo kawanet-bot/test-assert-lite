@@ -32,11 +32,15 @@ export interface SessionConfig {
 }
 
 interface TestModeOptions {
+    connect?: ConnectConfig
     session?: SessionConfig
     /** The test files to import, in order: paths under Node, served URLs in a page. */
     files: string[]
     /** A script given on the command line, run in place of test files. */
     eval?: string
+}
+
+export interface ConnectConfig {
     /** The arguments as given, test files included, for a script to read past argv[0]. */
     argv: string[]
 }

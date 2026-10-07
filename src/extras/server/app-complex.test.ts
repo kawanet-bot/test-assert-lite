@@ -11,7 +11,7 @@ import type {TAL} from "test-assert-lite"
 import {createBufWriter} from "../../utils/buf-writer.ts"
 import {createRunServices} from "../../utils/run-services.ts"
 import {ImportAliasItem, ImportMapItem, Imports} from "../imports.ts"
-import type {App} from "./app.ts"
+import type {App, TacliConfig} from "./app.ts"
 import {createApp} from "./app.ts"
 import {createFiles} from "./files.ts"
 import type {Server} from "./serve.ts"
@@ -72,7 +72,7 @@ describe(TITLE, () => {
         app = createApp({
             session: {},
             files,
-            argv: ["tests/my suite.mjs", "tests/second.mjs", "--two"],
+            connect: {argv: ["tests/my suite.mjs", "tests/second.mjs", "--two"]},
             scripts: [join(dir, "tests", "setup.js"), join(dir, "tests", "set+up#2.js")],
             imports: new Imports([
                 new ImportAliasItem(`mod=${join(dir, "lib", "mod.mjs")}`, cwd),
@@ -112,9 +112,9 @@ describe(TITLE, () => {
         const second = at(`<script src="${tests}set%2Bup%232.js"></script>`)
         assert.ok(map < config && config < script && script < second)
         assert.equal(head.includes('<script type="module" src='), false)
-        const {process, files} = JSON.parse(head.slice(head.indexOf("{", config), head.indexOf("</script>", config)))
+        const {connect, files} = JSON.parse(head.slice(head.indexOf("{", config), head.indexOf("</script>", config))) as TacliConfig
         assert.deepEqual(files, [`${tests}my%20suite.mjs`, `${tests}second.mjs`])
-        assert.deepEqual(process, {argv: ["tacli", "tests/my suite.mjs", "tests/second.mjs", "--two"]})
+        assert.deepEqual(connect, {argv: ["tacli", "tests/my suite.mjs", "tests/second.mjs", "--two"]})
         const {imports} = JSON.parse(head.slice(head.indexOf("{", map), head.indexOf("</script>", map)))
         assert.equal(unhash(imports["node:test"]), "/@tacli/files/xxxxxxxxx/test.js")
         assert.equal(unhash(imports["test-assert-lite"]), "/@tacli/files/xxxxxxxxx/test-assert-lite.min.js")

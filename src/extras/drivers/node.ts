@@ -8,7 +8,7 @@ import {pathToFileURL} from "node:url"
 import type {TAL} from "test-assert-lite"
 import {load, run, session} from "test-assert-lite/session"
 import type {NodeImports} from "../imports.ts"
-import type {SessionConfig} from "../mode-options.ts"
+import type {ConnectConfig, SessionConfig} from "../mode-options.ts"
 
 /** What the hook is handed at registration, and the only place its source and this file meet. */
 interface HookData {
@@ -20,13 +20,12 @@ interface HookData {
 
 interface RunInNodeOptions {
     imports: NodeImports
+    connect?: ConnectConfig
     session?: SessionConfig
     /** The test files to import, in order: paths under Node, served URLs in a page. */
     files: string[]
     /** A script to run in place of the files, as a virtual module at cwd/[eval1], the number counting up. */
     eval?: string
-    /** What process.argv holds past the executable while the suites run. */
-    argv: string[]
 }
 
 // Written as source because a hook reaches the loader as a module of its
@@ -69,7 +68,7 @@ export const runInNode = async (options: RunInNodeOptions): Promise<TAL.SessionR
 
     // The suites see the arguments as node would give a script: the file,
     // then what followed it, with this CLI's own options gone.
-    process.argv.splice(1, process.argv.length - 1, ...options.argv)
+    process.argv.splice(1, process.argv.length - 1, ...(options.connect?.argv ?? []))
 
     session({reporter, quiet, uncaught: process})
 

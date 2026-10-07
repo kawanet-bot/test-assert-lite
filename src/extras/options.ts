@@ -210,7 +210,7 @@ export const readOptions = (args: string[], fixed: FixedMode = {}): ModeOptions 
             session,
             files,
             eval: script,
-            argv,
+            connect: {argv},
         }
     }
 
@@ -231,7 +231,7 @@ export const readOptions = (args: string[], fixed: FixedMode = {}): ModeOptions 
         session,
         files,
         eval: script,
-        argv,
+        connect: {argv},
         scripts,
         imports,
         mount: values.mount == null ? undefined : mountOf(values.mount),

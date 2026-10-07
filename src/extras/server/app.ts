@@ -9,7 +9,7 @@ import {basename, resolve} from "node:path"
 import {fileURLToPath} from "node:url"
 import type {RunServices} from "../../utils/run-services.ts"
 import {Imports} from "../imports.ts"
-import type {SessionConfig} from "../mode-options.ts"
+import type {ConnectConfig, SessionConfig} from "../mode-options.ts"
 import {packageNameOf, packageRoot} from "../package-root.ts"
 import {createChannel} from "./channel.ts"
 import {FILES_PATH, createFiles} from "./files.ts"
@@ -34,8 +34,8 @@ export interface AppOptions {
     mount?: string
     /** What the command line hands the page, as JSON in its head; empty options unless given. Its files become the suites' served URLs. */
     session?: SessionConfig
-    /** The arguments the page's scripts read, as given. */
-    argv?: string[]
+
+    connect?: ConnectConfig
     /** The test files to import, in order: paths under Node, served URLs in a page. */
     files: string[]
     /** A script to run in place of the files, served under the run's own path as [eval].js. */
@@ -53,11 +53,7 @@ export interface App {
     page: string
 }
 
-interface ConnectConfig {
-    argv: string[]
-}
-
-interface TacliConfig {
+export interface TacliConfig {
     connect: ConnectConfig
     session: SessionConfig
     files: string[]
@@ -85,7 +81,7 @@ const random9 = (): string => randomInt(0, 36 ** 9).toString(36).padStart(9, "0"
  * Builds the browser application: its middleware and run page path.
  */
 export const createApp = (options: AppOptions): App => {
-    const {scripts = [], imports = new Imports([]), mount: mounted, session = {}, eval: script, services, singleRun, argv = []} = options
+    const {scripts = [], imports = new Imports([]), mount: mounted, session = {}, eval: script, services, singleRun, connect} = options
     const {files = []} = options
     const prefix = `/@tacli/run/${random9()}/`
     const runPath = `${prefix}run.html`
@@ -121,7 +117,7 @@ export const createApp = (options: AppOptions): App => {
     const evalPath = script == null ? null : `${prefix}[eval].js`
     // The page is the runner the arguments name, as node is under Node.
     const configObj: TacliConfig = {
-        connect: {argv: ["tacli", ...argv]},
+        connect: {argv: ["tacli", ...(connect?.argv ?? [])]},
         session,
         files: evalPath == null ? files.map(file => served.urlOf(file)) : [evalPath],
     }

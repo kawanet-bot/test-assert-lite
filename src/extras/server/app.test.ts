@@ -7,7 +7,7 @@ import {after, before, describe, it} from "node:test"
 import type {TAL} from "test-assert-lite"
 import {createBufWriter} from "../../utils/buf-writer.ts"
 import {createRunServices} from "../../utils/run-services.ts"
-import {createApp} from "./app.ts"
+import {createApp, type TacliConfig} from "./app.ts"
 import {serve} from "./serve.ts"
 
 const TITLE = "extras/server/app.test.ts"
@@ -45,7 +45,7 @@ describe(TITLE, () => {
             const config = head.indexOf('<script type="application/vnd.tacli-config+json">')
             const json = head.slice(head.indexOf("{", config), head.indexOf("</script>", config))
             assert.equal(json.includes("</script>"), false)
-            assert.deepEqual(JSON.parse(json), {process: {argv: ["tacli"]}, session: {reporter: "</script><b>"}, files: []})
+            assert.deepEqual(JSON.parse(json), {connect: {argv: ["tacli"]}, session: {reporter: "</script><b>"}, files: []} as TacliConfig)
         } finally {
             await services.cleanup()
         }
@@ -168,7 +168,7 @@ describe(TITLE, () => {
             const head = (await get(server.origin + inline.page)).body.split("</head>")[0] as string
             const config = head.indexOf('<script type="application/vnd.tacli-config+json">')
             const json = head.slice(head.indexOf("{", config), head.indexOf("</script>", config))
-            assert.deepEqual(JSON.parse(json), {process: {argv: ["tacli"]}, session: {}, files: [path]})
+            assert.deepEqual(JSON.parse(json), {connect: {argv: ["tacli"]}, session: {}, files: [path]} as TacliConfig)
         } finally {
             await services.cleanup()
         }
