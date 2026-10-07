@@ -46,9 +46,10 @@ const runCLI = async (options: ModeOptions, program: Program, fixed: FixedMode):
     if (mode === "node") {
         const result = await runInNode({
             imports: options.imports,
+            connect: options.connect,
             session: options.session,
+            files: options.files,
             eval: options.eval,
-            argv: options.argv,
         })
         return result?.success ? 0 : 1
     } else {

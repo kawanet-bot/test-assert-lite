@@ -9,7 +9,7 @@ import {basename, resolve} from "node:path"
 import {fileURLToPath} from "node:url"
 import type {RunServices} from "../../utils/run-services.ts"
 import {Imports} from "../imports.ts"
-import type {TestSession} from "../mode-options.ts"
+import type {ConnectConfig, SessionConfig} from "../mode-options.ts"
 import {packageNameOf, packageRoot} from "../package-root.ts"
 import {createChannel} from "./channel.ts"
 import {FILES_PATH, createFiles} from "./files.ts"
@@ -32,10 +32,12 @@ export interface AppOptions {
     imports?: Imports
     /** What the root serves in place of htdocs: an absolute directory, or an http(s) URL ending in "/" to proxy. */
     mount?: string
-    /** What the command line hands the page, as JSON in its head; empty options unless given. Its files become the suites' served URLs. */
-    session: TestSession
-    /** The arguments the page's scripts read, as given. */
-    argv?: string[]
+    /** Option parameters for session() method. */
+    session?: SessionConfig
+    /** Option parameters for connect() method. */
+    connect?: ConnectConfig
+    /** The test files to import, in order: paths under Node, served URLs in a page. */
+    files: string[]
     /** A script to run in place of the files, served under the run's own path as [eval].js. */
     eval?: string
     /** Reloads the page people open when a suite, a script or an imported file changes; off where it cannot watch. */
@@ -51,12 +53,13 @@ export interface App {
     page: string
 }
 
-interface TestSessionJSON {
-    process: {argv: string[]}
-    session: TestSession
+export interface TacliConfig {
+    connect: ConnectConfig
+    session: SessionConfig
+    files: string[]
 }
 
-export const TestSessionType = "application/vnd.test-session+json"
+export const TacliConfigType = "application/vnd.tacli-config+json"
 
 const NODE_MODULES = /\/node_modules\//
 
@@ -78,8 +81,8 @@ const random9 = (): string => randomInt(0, 36 ** 9).toString(36).padStart(9, "0"
  * Builds the browser application: its middleware and run page path.
  */
 export const createApp = (options: AppOptions): App => {
-    const {scripts = [], imports = new Imports([]), mount: mounted, session, eval: script, services, singleRun, argv = []} = options
-    const {files = []} = session
+    const {scripts = [], imports = new Imports([]), mount: mounted, session = {}, eval: script, services, singleRun, connect} = options
+    const {files = []} = options
     const prefix = `/@tacli/run/${random9()}/`
     const runPath = `${prefix}run.html`
     const channel = createChannel({prefix, services, singleRun})
@@ -113,11 +116,12 @@ export const createApp = (options: AppOptions): App => {
     // The script goes in as the one file, at its URL under the run's path.
     const evalPath = script == null ? null : `${prefix}[eval].js`
     // The page is the runner the arguments name, as node is under Node.
-    const configObj: TestSessionJSON = {
-        process: {argv: ["tacli", ...argv]},
-        session: {...session, files: evalPath == null ? files.map(file => served.urlOf(file)) : [evalPath]},
+    const configObj: TacliConfig = {
+        connect: {argv: ["tacli", ...(connect?.argv ?? [])]},
+        session,
+        files: evalPath == null ? files.map(file => served.urlOf(file)) : [evalPath],
     }
-    const configTag = `<script type="${TestSessionType}">\n${safeJSON(configObj)}\n</script>\n`
+    const configTag = `<script type="${TacliConfigType}">\n${safeJSON(configObj)}\n</script>\n`
     const tags = scriptUrls.map(url => `<script src="${url}"></script>\n`).join("")
     // A page with an import map of its own goes out as it is: a second map
     // is not for a browser, and without this one the suites cannot load,

@@ -7,7 +7,7 @@ import {after, before, describe, it} from "node:test"
 import type {TAL} from "test-assert-lite"
 import {createBufWriter} from "../../utils/buf-writer.ts"
 import {createRunServices} from "../../utils/run-services.ts"
-import {createApp} from "./app.ts"
+import {createApp, type TacliConfig} from "./app.ts"
 import {serve} from "./serve.ts"
 
 const TITLE = "extras/server/app.test.ts"
@@ -38,14 +38,14 @@ describe(TITLE, () => {
 
     it("escapes a < in the config, so a name cannot close the tag, and reads it back", async () => {
         const services = createRunServices({stdout, stderr})
-        const odd = createApp({session: {files: [], reporter: "</script><b>"}, services})
+        const odd = createApp({session: {reporter: "</script><b>"}, files: [], services})
         const server = await serve({handler: odd.handler, services})
         try {
             const head = (await get(server.origin + "/")).body.split("</head>")[0] as string
-            const config = head.indexOf('<script type="application/vnd.test-session+json">')
+            const config = head.indexOf('<script type="application/vnd.tacli-config+json">')
             const json = head.slice(head.indexOf("{", config), head.indexOf("</script>", config))
             assert.equal(json.includes("</script>"), false)
-            assert.deepEqual(JSON.parse(json), {process: {argv: ["tacli"]}, session: {reporter: "</script><b>", files: []}})
+            assert.deepEqual(JSON.parse(json), {connect: {argv: ["tacli"]}, session: {reporter: "</script><b>"}, files: []} as TacliConfig)
         } finally {
             await services.cleanup()
         }
@@ -55,7 +55,7 @@ describe(TITLE, () => {
         const bufStderr = createBufWriter()
         const files = [join(dir, "missing", "suite.mjs")]
         const services = createRunServices({stdout, stderr: bufStderr})
-        const blind = createApp({session: {files}, watch: true, services})
+        const blind = createApp({files, watch: true, services})
         const running = await serve({handler: blind.handler, services})
         try {
             assert.match(bufStderr.read(), /^watch is off: ENOENT/)
@@ -73,7 +73,7 @@ describe(TITLE, () => {
         await writeFile(join(dir, "site", "index.html"), "<html><head></head><body>mine</body></html>")
         const services = createRunServices({stdout, stderr})
         const files = [join(dir, "tests", "my suite.mjs")]
-        const mounted = createApp({session: {files}, mount: join(dir, "site"), services})
+        const mounted = createApp({files, mount: join(dir, "site"), services})
         const running = await serve({handler: mounted.handler, services})
         try {
             const index = await get(running.origin + "/")
@@ -91,7 +91,7 @@ describe(TITLE, () => {
         await mkdir(join(dir, "plain"))
         await writeFile(join(dir, "plain", "index.html"), "<html><head></head><body>plain</body></html>")
         const services = createRunServices({stdout, stderr})
-        const bare = createApp({session: {files: []}, mount: join(dir, "plain"), watch: true, services})
+        const bare = createApp({files: [], mount: join(dir, "plain"), watch: true, services})
         const running = await serve({handler: bare.handler, services})
         try {
             const index = (await get(running.origin + "/")).body
@@ -109,7 +109,7 @@ describe(TITLE, () => {
         const bufStderr = createBufWriter()
         const services = createRunServices({stdout, stderr: bufStderr})
         const files = [join(dir, "tests", "my suite.mjs")]
-        const mapped = createApp({session: {files}, mount: join(dir, "mapped"), services})
+        const mapped = createApp({files, mount: join(dir, "mapped"), services})
         const running = await serve({handler: mapped.handler, services})
         try {
             const index = (await get(running.origin + "/")).body
@@ -137,7 +137,7 @@ describe(TITLE, () => {
         const address = upstream.address()
         const port = typeof address === "object" && address != null ? address.port : 0
         const files = [join(dir, "tests", "my suite.mjs")]
-        const mounted = createApp({session: {files}, mount: `http://127.0.0.1:${port}/app/`, services})
+        const mounted = createApp({files, mount: `http://127.0.0.1:${port}/app/`, services})
         const running = await serve({handler: mounted.handler, services})
         try {
             const index = await get(running.origin + "/")
@@ -157,7 +157,7 @@ describe(TITLE, () => {
 
     it("serves a script given as [eval].js under the run's path, and names it as the one file", async () => {
         const services = createRunServices({stdout, stderr})
-        const inline = createApp({session: {files: []}, eval: "console.log('<hi>')\n", services})
+        const inline = createApp({files: [], eval: "console.log('<hi>')\n", services})
         const server = await serve({handler: inline.handler, services})
         try {
             const path = inline.page.replace(/run\.html$/, "[eval].js")
@@ -166,9 +166,9 @@ describe(TITLE, () => {
             assert.equal(res.type, "text/javascript; charset=utf-8")
             assert.equal(res.body, "console.log('<hi>')\n")
             const head = (await get(server.origin + inline.page)).body.split("</head>")[0] as string
-            const config = head.indexOf('<script type="application/vnd.test-session+json">')
+            const config = head.indexOf('<script type="application/vnd.tacli-config+json">')
             const json = head.slice(head.indexOf("{", config), head.indexOf("</script>", config))
-            assert.deepEqual(JSON.parse(json), {process: {argv: ["tacli"]}, session: {files: [path]}})
+            assert.deepEqual(JSON.parse(json), {connect: {argv: ["tacli"]}, session: {}, files: [path]} as TacliConfig)
         } finally {
             await services.cleanup()
         }
@@ -177,7 +177,7 @@ describe(TITLE, () => {
     it("fails the verdict on anything but true", async () => {
         const services = createRunServices({stdout, stderr})
         const files = [join(dir, "tests", "my suite.mjs")]
-        const other = createApp({session: {files}, services})
+        const other = createApp({files, services})
         const running = await serve({handler: other.handler, services})
         const endpoint = running.origin + other.page.replace(/run\.html$/, "send")
         try {
@@ -195,7 +195,7 @@ describe(TITLE, () => {
         await writeFile(file, "export const watching = 1")
         const files = [file]
         const services = createRunServices({stdout, stderr})
-        const watching = createApp({session: {files}, watch: true, singleRun: false, services})
+        const watching = createApp({files, watch: true, singleRun: false, services})
         const running = await serve({handler: watching.handler, services})
         try {
             const index = (await get(running.origin + "/")).body
@@ -232,10 +232,10 @@ describe(TITLE, () => {
         const servicesM = createRunServices({stdout, stderr})
         const servicesB = createRunServices({stdout, stderr})
         const namedFiles = [join(plain, "a.mjs"), join(plain, "b <c>.mjs"), join(plain, "a.mjs")]
-        const named = createApp({session: {files: namedFiles}, services: servicesN})
+        const named = createApp({files: namedFiles, services: servicesN})
         const mountedFiles = [join(plain, "a.mjs")]
-        const mounted = createApp({session: {files: mountedFiles}, mount: join(plain, "site"), services: servicesM})
-        const bare = createApp({session: {files: []}, mount: join(plain, "site"), services: servicesB})
+        const mounted = createApp({files: mountedFiles, mount: join(plain, "site"), services: servicesM})
+        const bare = createApp({files: [], mount: join(plain, "site"), services: servicesB})
         const serverN = await serve({handler: named.handler, services: servicesN})
         const serverM = await serve({handler: mounted.handler, services: servicesM})
         const serverB = await serve({handler: bare.handler, services: servicesB})

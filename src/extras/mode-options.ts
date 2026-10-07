@@ -2,12 +2,12 @@ import type {Browser, BrowserType, Page} from "playwright-core"
 import type {Imports, NodeImports} from "./imports.ts"
 
 /** The request body of POST /session for WebDriver. */
-export interface WebDriverCustom {
+export interface WebDriverConfig {
     /** @see https://w3c.github.io/webdriver/#new-session */
     capabilities?: object
 }
 
-export interface PlaywrightCustom {
+export interface PlaywrightConfig {
     /** @see https://playwright.dev/docs/api/class-browsertype#browser-type-launch */
     launch?: Parameters<BrowserType["launch"]>[0]
     /** @see https://playwright.dev/docs/api/class-browser#browser-new-page */
@@ -24,19 +24,25 @@ export interface FixedMode {
     playwright?: BrowserType
 }
 
-export interface TestSession {
+export interface SessionConfig {
     /** The reporter named on the command line; spec unless given. */
     reporter?: string
-    /** The test files to import, in order: paths under Node, served URLs in a page. */
-    files: string[]
     /** How much less to say, as the session takes it. */
     quiet?: number
 }
 
 interface TestModeOptions {
-    session: TestSession
+    /** Option parameters for connect() method. */
+    connect?: ConnectConfig
+    /** Option parameters for session() method. */
+    session?: SessionConfig
+    /** The test files to import, in order: paths under Node, served URLs in a page. */
+    files: string[]
     /** A script given on the command line, run in place of test files. */
     eval?: string
+}
+
+export interface ConnectConfig {
     /** The arguments as given, test files included, for a script to read past argv[0]. */
     argv: string[]
 }
@@ -63,5 +69,5 @@ export type ModeOptions =
     | {mode: "version"}
     | NodeModeOptions & {mode: "node"}
     | WebModeOptions & {mode: "serve"}
-    | WebModeOptions & {mode: "playwright", browserType: BrowserType, custom?: PlaywrightCustom}
-    | WebModeOptions & {mode: "webdriver", endpoint?: string, custom?: WebDriverCustom}
+    | WebModeOptions & {mode: "playwright", browserType: BrowserType, custom?: PlaywrightConfig}
+    | WebModeOptions & {mode: "webdriver", endpoint?: string, custom?: WebDriverConfig}
