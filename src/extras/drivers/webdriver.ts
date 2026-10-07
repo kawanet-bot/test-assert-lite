@@ -5,7 +5,7 @@
 // kept out of tsc here.
 
 import type {RunServices} from "../../utils/run-services.ts"
-import type {WebDriverCustom} from "../mode-options.ts"
+import type {WebDriverConfig} from "../mode-options.ts"
 
 export interface RunInWebDriverOptions {
     /** The run's streams, outcome and cleanup, shared by every part. */
@@ -15,7 +15,7 @@ export interface RunInWebDriverOptions {
     /** The WebDriver server, such as http://127.0.0.1:4444 */
     endpoint?: string
     /** Extended configuration via --webdriver-config */
-    custom?: WebDriverCustom
+    custom?: WebDriverConfig
 }
 
 // A WebDriver response carries its payload, or its error, under `value`.

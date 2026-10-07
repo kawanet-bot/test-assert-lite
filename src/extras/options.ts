@@ -7,7 +7,7 @@ import {resolve} from "node:path"
 import {parseArgs} from "node:util"
 import {readJsonFile} from "../utils/read-json.ts"
 import {ImportAliasItem, type ImportBase, Imports, NodeImports, cwdURL, readImportMap} from "./imports.ts"
-import type {FixedMode, ModeOptions, PlaywrightCustom, TestSession, WebDriverCustom, WebModeOptions} from "./mode-options.ts"
+import type {FixedMode, ModeOptions, PlaywrightConfig, TestSession, WebDriverConfig, WebModeOptions} from "./mode-options.ts"
 import {createFiles} from "./server/files.ts"
 import {UsageError} from "./usage-error.ts"
 
@@ -229,12 +229,12 @@ export const readOptions = (args: string[], fixed: FixedMode = {}): ModeOptions 
         origin: values.origin == null ? undefined : originOf(values.origin),
     }
     if (browserType != null) {
-        const custom = !playwrightConfig ? undefined : readJsonFile<PlaywrightCustom>(playwrightConfig, msg => new UsageError(`--playwright-config: ${msg}`))
+        const custom = !playwrightConfig ? undefined : readJsonFile<PlaywrightConfig>(playwrightConfig, msg => new UsageError(`--playwright-config: ${msg}`))
         return {...shared, mode: "playwright", browserType, custom}
     }
 
     if (webdriver) {
-        const sessionReq = !webdriverConfig ? undefined : readJsonFile<WebDriverCustom>(webdriverConfig, msg => new UsageError(`--webdriver-config: ${msg}`))
+        const sessionReq = !webdriverConfig ? undefined : readJsonFile<WebDriverConfig>(webdriverConfig, msg => new UsageError(`--webdriver-config: ${msg}`))
         return {...shared, mode: "webdriver", custom: sessionReq, endpoint: values.endpoint}
     }
 
