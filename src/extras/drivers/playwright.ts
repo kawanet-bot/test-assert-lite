@@ -20,8 +20,14 @@ export interface RunInPlaywrightOptions {
  * Launches the engine headless, opens the page in it and registers the
  * browser's cleanup. An unexpected browser disconnect fails the host run.
  */
-export const runInPlaywright = async ({url, services, browserType, custom}: RunInPlaywrightOptions): Promise<void> => {
-    const browser = await browserType.launch(custom?.launch)
+export const runInPlaywright = async ({url, services, browserType, custom = {}}: RunInPlaywrightOptions): Promise<void> => {
+    const {connectOverCDP} = custom
+    const browser = !connectOverCDP
+        ? await browserType.launch(custom.launch)
+        : Array.isArray(connectOverCDP)
+            ? await browserType.connectOverCDP(...connectOverCDP)
+            : await browserType.connectOverCDP(connectOverCDP)
+
     const onDisconnected = () => {
         services.reject(new Error("The browser closed before the page reported its end"))
     }
@@ -32,6 +38,6 @@ export const runInPlaywright = async ({url, services, browserType, custom}: RunI
     })
 
     browser.on("disconnected", onDisconnected)
-    const page = await browser.newPage(custom?.newPage)
-    await page.goto(url, custom?.goto)
+    const page = await browser.newPage(custom.newPage)
+    await page.goto(url, custom.goto)
 }
