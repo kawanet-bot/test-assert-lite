@@ -32,7 +32,7 @@
         },
     })
 
-    const files = (options?.files ?? [])
+    const files = (config?.files ?? [])
 
     for (const file of files) {
         await load(file)

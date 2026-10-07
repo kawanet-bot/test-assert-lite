@@ -176,7 +176,7 @@ export const readOptions = (args: string[], fixed: FixedMode = {}): ModeOptions 
     // The arguments past the script are the script's, as node has it. With
     // --test every one is a test file, as node --test reads them.
     const test = values.test
-    const files = test ? positionals : (script == null ? positionals.slice(0, 1) : [])
+    let files = test ? positionals : (script == null ? positionals.slice(0, 1) : [])
     const argv = positionals
     if (script != null && files.length) {
         throw new UsageError("-e takes the place of the test files")
@@ -195,14 +195,24 @@ export const readOptions = (args: string[], fixed: FixedMode = {}): ModeOptions 
 
     const items = importItemsOf(values["import-map"], values.alias)
 
+    files = files.map(file => resolve(file))
+
     const session: TestSession = {
-        files: files.map(file => resolve(file)),
         reporter: values.reporter,
         // Ten for -q, so it stands over the rest. A test runner's run says one more than a script's.
         quiet: (values.quiet ? 10 : 0) + (values.test ? -1 : 0),
     }
 
-    if (!browsing) return {mode: "node", imports: refused(new NodeImports(items)), session, eval: script, argv}
+    if (!browsing) {
+        return {
+            mode: "node",
+            imports: refused(new NodeImports(items)),
+            session,
+            files,
+            eval: script,
+            argv,
+        }
+    }
 
     const imports = refused(new Imports(items))
 
@@ -211,14 +221,15 @@ export const readOptions = (args: string[], fixed: FixedMode = {}): ModeOptions 
     // The test files are served from one directory, so a module they share is
     // one URL and loads once, as under Node; from two, it would load once
     // per directory. One under another counts as served from the latter.
-    const served = createFiles([...(session.files), ...scripts, ...imports.files()])
-    if (new Set(session.files.map(file => served.dirOf(file))).size > 1) {
+    const served = createFiles([...(files), ...scripts, ...imports.files()])
+    if (new Set(files.map(file => served.dirOf(file))).size > 1) {
         throw new UsageError("a browser run takes the test files from one directory")
     }
 
     const listen = values.port == null ? undefined : portOf(values.port)
     const shared: WebModeOptions = {
         session,
+        files,
         eval: script,
         argv,
         scripts,

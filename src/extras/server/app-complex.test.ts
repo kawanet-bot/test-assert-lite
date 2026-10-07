@@ -70,7 +70,8 @@ describe(TITLE, () => {
         lib = laid.dirOf(join(dir, "lib", "mod.mjs")).path
         const files = [join(dir, "tests", "my suite.mjs"), join(dir, "tests", "second.mjs")]
         app = createApp({
-            session: {files},
+            session: {},
+            files,
             argv: ["tests/my suite.mjs", "tests/second.mjs", "--two"],
             scripts: [join(dir, "tests", "setup.js"), join(dir, "tests", "set+up#2.js")],
             imports: new Imports([
@@ -111,8 +112,8 @@ describe(TITLE, () => {
         const second = at(`<script src="${tests}set%2Bup%232.js"></script>`)
         assert.ok(map < config && config < script && script < second)
         assert.equal(head.includes('<script type="module" src='), false)
-        const {process, session} = JSON.parse(head.slice(head.indexOf("{", config), head.indexOf("</script>", config)))
-        assert.deepEqual(session, {files: [`${tests}my%20suite.mjs`, `${tests}second.mjs`]})
+        const {process, files} = JSON.parse(head.slice(head.indexOf("{", config), head.indexOf("</script>", config)))
+        assert.deepEqual(files, [`${tests}my%20suite.mjs`, `${tests}second.mjs`])
         assert.deepEqual(process, {argv: ["tacli", "tests/my suite.mjs", "tests/second.mjs", "--two"]})
         const {imports} = JSON.parse(head.slice(head.indexOf("{", map), head.indexOf("</script>", map)))
         assert.equal(unhash(imports["node:test"]), "/@tacli/files/xxxxxxxxx/test.js")
@@ -132,8 +133,10 @@ describe(TITLE, () => {
         assert.equal(res.status, 200)
         assert.match(res.body, /\bsession\(\{/)
         assert.ok(res.body.indexOf('<script type="importmap">') < res.body.indexOf('<script type="module">'))
-        assert.ok(res.body.includes("<title>fixture-pkg</title>"))
-        assert.ok(res.body.includes(`"files": [\n            "${tests}my%20suite.mjs",\n            "${tests}second.mjs"\n        ]`))
+        assert.match(res.body, /<title>fixture-pkg<\/title>/)
+        assert.match(res.body, /"files": \[$/m)
+        assert.match(res.body, /\/my%20suite.mjs",$/m)
+        assert.match(res.body, /\/second.mjs"$/m)
         assert.equal((await get(url("/run.html"))).status, 404)
         assert.equal((await get(url("/@tacli/run/000000000/run.html"))).status, 404)
     })

@@ -27,14 +27,14 @@ export interface FixedMode {
 export interface TestSession {
     /** The reporter named on the command line; spec unless given. */
     reporter?: string
-    /** The test files to import, in order: paths under Node, served URLs in a page. */
-    files: string[]
     /** How much less to say, as the session takes it. */
     quiet?: number
 }
 
 interface TestModeOptions {
     session: TestSession
+    /** The test files to import, in order: paths under Node, served URLs in a page. */
+    files: string[]
     /** A script given on the command line, run in place of test files. */
     eval?: string
     /** The arguments as given, test files included, for a script to read past argv[0]. */

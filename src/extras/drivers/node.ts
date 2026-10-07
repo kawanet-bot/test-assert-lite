@@ -21,6 +21,8 @@ interface HookData {
 interface RunInNodeOptions {
     imports: NodeImports
     session: TestSession
+    /** The test files to import, in order: paths under Node, served URLs in a page. */
+    files: string[]
     /** A script to run in place of the files, as a virtual module at cwd/[eval1], the number counting up. */
     eval?: string
     /** What process.argv holds past the executable while the suites run. */
@@ -50,7 +52,8 @@ export const load = (url, context, next) => {
 let evals = 0
 
 export const runInNode = async (options: RunInNodeOptions): Promise<TAL.SessionResult> => {
-    const {reporter, quiet, files} = options.session
+    const {files} = options
+    const {reporter, quiet} = options.session
 
     // A Map, so a specifier named like an Object property finds no alias.
     // Every item left for Node is a file: the reading of the options saw to it.

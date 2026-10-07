@@ -36,6 +36,8 @@ export interface AppOptions {
     session: TestSession
     /** The arguments the page's scripts read, as given. */
     argv?: string[]
+    /** The test files to import, in order: paths under Node, served URLs in a page. */
+    files: string[]
     /** A script to run in place of the files, served under the run's own path as [eval].js. */
     eval?: string
     /** Reloads the page people open when a suite, a script or an imported file changes; off where it cannot watch. */
@@ -51,9 +53,10 @@ export interface App {
     page: string
 }
 
-interface TestSessionJSON {
+interface TacliConfig {
     process: {argv: string[]}
     session: TestSession
+    files: string[]
 }
 
 export const TacliConfigType = "application/vnd.tacli-config+json"
@@ -79,7 +82,7 @@ const random9 = (): string => randomInt(0, 36 ** 9).toString(36).padStart(9, "0"
  */
 export const createApp = (options: AppOptions): App => {
     const {scripts = [], imports = new Imports([]), mount: mounted, session, eval: script, services, singleRun, argv = []} = options
-    const {files = []} = session
+    const {files = []} = options
     const prefix = `/@tacli/run/${random9()}/`
     const runPath = `${prefix}run.html`
     const channel = createChannel({prefix, services, singleRun})
@@ -113,9 +116,10 @@ export const createApp = (options: AppOptions): App => {
     // The script goes in as the one file, at its URL under the run's path.
     const evalPath = script == null ? null : `${prefix}[eval].js`
     // The page is the runner the arguments name, as node is under Node.
-    const configObj: TestSessionJSON = {
+    const configObj: TacliConfig = {
         process: {argv: ["tacli", ...argv]},
-        session: {...session, files: evalPath == null ? files.map(file => served.urlOf(file)) : [evalPath]},
+        session,
+        files: evalPath == null ? files.map(file => served.urlOf(file)) : [evalPath],
     }
     const configTag = `<script type="${TacliConfigType}">\n${safeJSON(configObj)}\n</script>\n`
     const tags = scriptUrls.map(url => `<script src="${url}"></script>\n`).join("")

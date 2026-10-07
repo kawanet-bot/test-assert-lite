@@ -7,7 +7,7 @@ import {runInPlaywright} from "./playwright.ts"
 import {runInWebDriver} from "./webdriver.ts"
 
 export const runWebMode = async (options: ModeOptions & WebModeOptions) => {
-    const {mode, session, imports} = options
+    const {mode, session, files, imports} = options
     const singleRun = (mode !== "serve")
     const services = createRunServices({
         stdout: process.stdout,
@@ -22,6 +22,7 @@ export const runWebMode = async (options: ModeOptions & WebModeOptions) => {
             imports,
             mount: options.mount,
             session,
+            files,
             eval: options.eval,
             argv: options.argv,
             watch: (mode === "serve"),
@@ -47,7 +48,7 @@ export const runWebMode = async (options: ModeOptions & WebModeOptions) => {
         if (mode === "serve") {
             // Only the URL goes to stdout, so it can be piped. The server keeps
             // the process alive until an interrupt, which resolves this.
-            const entryURL = options.session.files?.length || options.eval != null ? url : `${server.origin}/`
+            const entryURL = files?.length || options.eval != null ? url : `${server.origin}/`
             process.stdout.write(`${entryURL}\n`)
             process.stderr.write("Serving; press Ctrl-C to stop.\n")
             process.once("SIGINT", () => services.resolve({success: true}))
