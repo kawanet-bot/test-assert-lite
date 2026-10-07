@@ -1,7 +1,7 @@
 // Playwright adapter for the browser test CLI. The engine comes from the
 // executable, which imports playwright. This package does not depend on it.
 
-import type {Browser, BrowserType, Page} from "playwright-core"
+import type {BrowserType, Page} from "playwright-core"
 import type {RunServices} from "../../utils/run-services.ts"
 import type {PlaywrightConfig} from "../mode-options.ts"
 
@@ -27,11 +27,14 @@ export const runInPlaywright = async (options: RunInPlaywrightOptions): Promise<
 // The browser is this run's, so closing it on cleanup ends its pages too.
 const launchBrowser = async ({url, services, browserType, custom = {}}: RunInPlaywrightOptions): Promise<void> => {
     const browser = await browserType.launch(custom.launch)
-    const unwatch = watch(browser, services)
+    const onDisconnected = () => {
+        services.reject(new Error("The browser closed before the page reported its end"))
+    }
     services.onCleanup(async () => {
-        unwatch()
+        browser.off("disconnected", onDisconnected)
         await browser.close()
     })
+    browser.on("disconnected", onDisconnected)
     const page = await browser.newPage(custom.newPage)
     await page.goto(url, custom.goto)
 }
@@ -43,23 +46,18 @@ const attachToBrowser = async (endpoint: Endpoint, {url, services, browserType, 
     const browser = Array.isArray(endpoint)
         ? await browserType.connectOverCDP(...endpoint)
         : await browserType.connectOverCDP(endpoint)
-    const unwatch = watch(browser, services)
+    const onDisconnected = () => {
+        services.reject(new Error("The browser closed before the page reported its end"))
+    }
     const shared = custom.newPage == null ? browser.contexts()[0] : undefined
     let page: Page | undefined
     services.onCleanup(async () => {
-        unwatch()
+        browser.off("disconnected", onDisconnected)
         if (shared != null) await page?.close()
         await browser.close()
     })
+    browser.on("disconnected", onDisconnected)
     page = shared != null ? await shared.newPage() : await browser.newPage(custom.newPage)
     await page.goto(url, custom.goto)
 }
 
-// An unexpected browser disconnect fails the host run.
-const watch = (browser: Browser, services: RunServices): (() => void) => {
-    const onDisconnected = () => {
-        services.reject(new Error("The browser closed before the page reported its end"))
-    }
-    browser.on("disconnected", onDisconnected)
-    return () => browser.off("disconnected", onDisconnected)
-}
