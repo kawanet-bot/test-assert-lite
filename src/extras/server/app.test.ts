@@ -42,7 +42,7 @@ describe(TITLE, () => {
         const server = await serve({handler: odd.handler, services})
         try {
             const head = (await get(server.origin + "/")).body.split("</head>")[0] as string
-            const config = head.indexOf('<script type="application/vnd.test-session+json">')
+            const config = head.indexOf('<script type="application/vnd.tacli-config+json">')
             const json = head.slice(head.indexOf("{", config), head.indexOf("</script>", config))
             assert.equal(json.includes("</script>"), false)
             assert.deepEqual(JSON.parse(json), {process: {argv: ["tacli"]}, session: {reporter: "</script><b>", files: []}})
@@ -166,7 +166,7 @@ describe(TITLE, () => {
             assert.equal(res.type, "text/javascript; charset=utf-8")
             assert.equal(res.body, "console.log('<hi>')\n")
             const head = (await get(server.origin + inline.page)).body.split("</head>")[0] as string
-            const config = head.indexOf('<script type="application/vnd.test-session+json">')
+            const config = head.indexOf('<script type="application/vnd.tacli-config+json">')
             const json = head.slice(head.indexOf("{", config), head.indexOf("</script>", config))
             assert.deepEqual(JSON.parse(json), {process: {argv: ["tacli"]}, session: {files: [path]}})
         } finally {

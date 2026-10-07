@@ -105,7 +105,7 @@ describe(TITLE, () => {
             return i
         }
         const map = at('<script type="importmap">')
-        const config = at('<script type="application/vnd.test-session+json">')
+        const config = at('<script type="application/vnd.tacli-config+json">')
         assert.equal(unhash(tests), "/@tacli/files/xxxxxxxxx/")
         const script = at(`<script src="${tests}setup.js"></script>`)
         const second = at(`<script src="${tests}set%2Bup%232.js"></script>`)

@@ -56,7 +56,7 @@ interface TestSessionJSON {
     session: TestSession
 }
 
-export const TestSessionType = "application/vnd.test-session+json"
+export const TacliConfigType = "application/vnd.tacli-config+json"
 
 const NODE_MODULES = /\/node_modules\//
 
@@ -117,7 +117,7 @@ export const createApp = (options: AppOptions): App => {
         process: {argv: ["tacli", ...argv]},
         session: {...session, files: evalPath == null ? files.map(file => served.urlOf(file)) : [evalPath]},
     }
-    const configTag = `<script type="${TestSessionType}">\n${safeJSON(configObj)}\n</script>\n`
+    const configTag = `<script type="${TacliConfigType}">\n${safeJSON(configObj)}\n</script>\n`
     const tags = scriptUrls.map(url => `<script src="${url}"></script>\n`).join("")
     // A page with an import map of its own goes out as it is: a second map
     // is not for a browser, and without this one the suites cannot load,
