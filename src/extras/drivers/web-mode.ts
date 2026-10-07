@@ -35,7 +35,7 @@ export const runWebMode = async (options: ModeOptions & WebModeOptions) => {
         const server = await serve({
             handler: [logger({
                 stderr: services.stderr,
-                quiet: singleRun || (session.quiet ?? 0) > 0,
+                quiet: singleRun || (session?.quiet ?? 0) > 0,
             }), app.handler],
             host: options.host,
             port: options.port,

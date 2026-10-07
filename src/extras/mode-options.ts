@@ -32,7 +32,7 @@ export interface SessionConfig {
 }
 
 interface TestModeOptions {
-    session: SessionConfig
+    session?: SessionConfig
     /** The test files to import, in order: paths under Node, served URLs in a page. */
     files: string[]
     /** A script given on the command line, run in place of test files. */

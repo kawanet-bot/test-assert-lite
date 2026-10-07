@@ -33,7 +33,7 @@ export interface AppOptions {
     /** What the root serves in place of htdocs: an absolute directory, or an http(s) URL ending in "/" to proxy. */
     mount?: string
     /** What the command line hands the page, as JSON in its head; empty options unless given. Its files become the suites' served URLs. */
-    session: SessionConfig
+    session?: SessionConfig
     /** The arguments the page's scripts read, as given. */
     argv?: string[]
     /** The test files to import, in order: paths under Node, served URLs in a page. */
@@ -81,7 +81,7 @@ const random9 = (): string => randomInt(0, 36 ** 9).toString(36).padStart(9, "0"
  * Builds the browser application: its middleware and run page path.
  */
 export const createApp = (options: AppOptions): App => {
-    const {scripts = [], imports = new Imports([]), mount: mounted, session, eval: script, services, singleRun, argv = []} = options
+    const {scripts = [], imports = new Imports([]), mount: mounted, session = {}, eval: script, services, singleRun, argv = []} = options
     const {files = []} = options
     const prefix = `/@tacli/run/${random9()}/`
     const runPath = `${prefix}run.html`
