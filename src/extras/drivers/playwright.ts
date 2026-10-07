@@ -3,7 +3,7 @@
 
 import type {BrowserType} from "playwright-core"
 import type {RunServices} from "../../utils/run-services.ts"
-import type {BrowserCustom} from "../mode-options.ts"
+import type {PlaywrightCustom} from "../mode-options.ts"
 
 export interface RunInPlaywrightOptions {
     /** The run's streams, outcome and cleanup, shared by every part. */
@@ -13,7 +13,7 @@ export interface RunInPlaywrightOptions {
     /** The engine as the executable imported it, launched as it is. */
     browserType: BrowserType
     /** Extended configuration via --playwright-config */
-    custom?: BrowserCustom
+    custom?: PlaywrightCustom
 }
 
 /**

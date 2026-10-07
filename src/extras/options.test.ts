@@ -202,7 +202,7 @@ describe(TITLE, () => {
             assert.equal(options.mode, "playwright")
             if (options.mode !== "playwright") return
             assert.equal(options.browserType, engine)
-            assert.equal((options.custom?.newPage as {isMobile: boolean})?.isMobile, true)
+            assert.equal(options.custom?.newPage?.isMobile, true)
             assert.deepEqual(options.session.files, [resolve("suite.mjs")])
         })
 
@@ -281,7 +281,7 @@ describe(TITLE, () => {
             assert.equal(launching.mode, "playwright")
             if (launching.mode !== "playwright") return
             assert.equal(launching.browserType, engine)
-            assert.equal((launching.custom?.newPage as {isMobile: boolean})?.isMobile, true)
+            assert.equal(launching.custom?.newPage?.isMobile, true)
             const driven = readOptions(["--endpoint", "http://127.0.0.1:9515", "suite.mjs"], {webdriver: true})
             assert.equal(driven.mode, "webdriver")
             if (driven.mode !== "webdriver") return

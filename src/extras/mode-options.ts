@@ -7,7 +7,7 @@ export interface WebDriverCustom {
     capabilities?: object
 }
 
-export interface BrowserCustom {
+export interface PlaywrightCustom {
     /** @see https://playwright.dev/docs/api/class-browsertype#browser-type-launch */
     launch?: Parameters<BrowserType["launch"]>[0]
     /** @see https://playwright.dev/docs/api/class-browser#browser-new-page */
@@ -63,5 +63,5 @@ export type ModeOptions =
     | {mode: "version"}
     | NodeModeOptions & {mode: "node"}
     | WebModeOptions & {mode: "serve"}
-    | WebModeOptions & {mode: "playwright", browserType: BrowserType, custom?: BrowserCustom}
+    | WebModeOptions & {mode: "playwright", browserType: BrowserType, custom?: PlaywrightCustom}
     | WebModeOptions & {mode: "webdriver", endpoint?: string, custom?: WebDriverCustom}
