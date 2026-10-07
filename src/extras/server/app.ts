@@ -9,7 +9,7 @@ import {basename, resolve} from "node:path"
 import {fileURLToPath} from "node:url"
 import type {RunServices} from "../../utils/run-services.ts"
 import {Imports} from "../imports.ts"
-import type {TestSession} from "../mode-options.ts"
+import type {SessionConfig} from "../mode-options.ts"
 import {packageNameOf, packageRoot} from "../package-root.ts"
 import {createChannel} from "./channel.ts"
 import {FILES_PATH, createFiles} from "./files.ts"
@@ -33,7 +33,7 @@ export interface AppOptions {
     /** What the root serves in place of htdocs: an absolute directory, or an http(s) URL ending in "/" to proxy. */
     mount?: string
     /** What the command line hands the page, as JSON in its head; empty options unless given. Its files become the suites' served URLs. */
-    session: TestSession
+    session: SessionConfig
     /** The arguments the page's scripts read, as given. */
     argv?: string[]
     /** The test files to import, in order: paths under Node, served URLs in a page. */
@@ -55,7 +55,7 @@ export interface App {
 
 interface TacliConfig {
     process: {argv: string[]}
-    session: TestSession
+    session: SessionConfig
     files: string[]
 }
 

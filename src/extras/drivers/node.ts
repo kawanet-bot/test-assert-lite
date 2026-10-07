@@ -8,7 +8,7 @@ import {pathToFileURL} from "node:url"
 import type {TAL} from "test-assert-lite"
 import {load, run, session} from "test-assert-lite/session"
 import type {NodeImports} from "../imports.ts"
-import type {TestSession} from "../mode-options.ts"
+import type {SessionConfig} from "../mode-options.ts"
 
 /** What the hook is handed at registration, and the only place its source and this file meet. */
 interface HookData {
@@ -20,7 +20,7 @@ interface HookData {
 
 interface RunInNodeOptions {
     imports: NodeImports
-    session: TestSession
+    session: SessionConfig
     /** The test files to import, in order: paths under Node, served URLs in a page. */
     files: string[]
     /** A script to run in place of the files, as a virtual module at cwd/[eval1], the number counting up. */

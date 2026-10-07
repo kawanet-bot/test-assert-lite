@@ -7,7 +7,7 @@ import {resolve} from "node:path"
 import {parseArgs} from "node:util"
 import {readJsonFile} from "../utils/read-json.ts"
 import {ImportAliasItem, type ImportBase, Imports, NodeImports, cwdURL, readImportMap} from "./imports.ts"
-import type {FixedMode, ModeOptions, PlaywrightConfig, TestSession, WebDriverConfig, WebModeOptions} from "./mode-options.ts"
+import type {FixedMode, ModeOptions, PlaywrightConfig, SessionConfig, WebDriverConfig, WebModeOptions} from "./mode-options.ts"
 import {createFiles} from "./server/files.ts"
 import {UsageError} from "./usage-error.ts"
 
@@ -197,7 +197,7 @@ export const readOptions = (args: string[], fixed: FixedMode = {}): ModeOptions 
 
     files = files.map(file => resolve(file))
 
-    const session: TestSession = {
+    const session: SessionConfig = {
         reporter: values.reporter,
         // Ten for -q, so it stands over the rest. A test runner's run says one more than a script's.
         quiet: (values.quiet ? 10 : 0) + (values.test ? -1 : 0),

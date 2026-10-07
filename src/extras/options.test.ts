@@ -2,7 +2,7 @@ import {strict as assert} from "node:assert"
 import {resolve} from "node:path"
 import {describe, it} from "node:test"
 import type {BrowserType} from "playwright-core"
-import type {TestSession} from "./mode-options.ts"
+import type {SessionConfig} from "./mode-options.ts"
 import {mountOf, originOf, portOf, readOptions, usageOf} from "./options.ts"
 
 const TITLE = "extras/options.test.ts"
@@ -174,14 +174,14 @@ describe(TITLE, () => {
         })
 
         it("reads --reporter as given, in every mode", () => {
-            const named = (args: string[]): string | undefined => (readOptions(args) as {session: TestSession}).session.reporter
+            const named = (args: string[]): string | undefined => (readOptions(args) as {session: SessionConfig}).session.reporter
             assert.equal(named(["--reporter", "tap", "a.test.ts"]), "tap")
             assert.equal(named(["--reporter", "html", "--serve"]), "html")
             assert.equal(named(["a.test.ts"]), undefined)
         })
 
         it("reads -q and --quiet as ten, --test as one less, and nothing as zero", () => {
-            const quiet = (args: string[]): number | undefined => (readOptions(args) as {session: TestSession}).session.quiet
+            const quiet = (args: string[]): number | undefined => (readOptions(args) as {session: SessionConfig}).session.quiet
             assert.equal(quiet(["-q", "a.test.ts"]), 10)
             assert.equal(quiet(["--quiet", "--serve"]), 10)
             assert.equal(quiet(["a.test.ts"]), 0)
