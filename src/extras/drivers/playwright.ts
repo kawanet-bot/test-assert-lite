@@ -16,22 +16,33 @@ export interface RunInPlaywrightOptions {
     custom?: PlaywrightConfig
 }
 
-/**
- * Launches the engine headless, opens the page in it and registers the
- * browser's cleanup. An unexpected browser disconnect fails the host run.
- */
-export const runInPlaywright = async ({url, services, browserType, custom}: RunInPlaywrightOptions): Promise<void> => {
-    const browser = await browserType.launch(custom?.launch)
+/** Launches the engine headless, or attaches to a browser running already, and opens the page in it. */
+export const runInPlaywright = async (options: RunInPlaywrightOptions): Promise<void> => {
+    const {browserType, custom = {}, services, url} = options ?? {}
+    const {connectOverCDP} = custom
+
+    const browser = !connectOverCDP
+        ? await browserType.launch(custom.launch)
+        : Array.isArray(connectOverCDP)
+            ? await browserType.connectOverCDP(...connectOverCDP)
+            : await browserType.connectOverCDP(connectOverCDP)
+
     const onDisconnected = () => {
         services.reject(new Error("The browser closed before the page reported its end"))
     }
 
     services.onCleanup(async () => {
         browser.off("disconnected", onDisconnected)
-        await browser.close()
+        await page?.close()
+        if (context && !defaultContext) await context?.close()
+        await browser?.close()
     })
 
     browser.on("disconnected", onDisconnected)
-    const page = await browser.newPage(custom?.newPage)
-    await page.goto(url, custom?.goto)
+
+    const defaultContext = (custom.newContext == null && custom.newPage == null) && browser.contexts()[0]
+    const context = defaultContext || (custom.newContext != null && await browser.newContext(custom.newContext))
+    const page = context ? await context.newPage() : await browser.newPage(custom.newPage)
+
+    await page.goto(url, custom.goto)
 }

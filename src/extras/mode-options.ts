@@ -1,4 +1,4 @@
-import type {Browser, BrowserType, Page} from "playwright-core"
+import type {Browser, BrowserType, ConnectOverCDPOptions, Page} from "playwright-core"
 import type {Imports, NodeImports} from "./imports.ts"
 
 /** The request body of POST /session for WebDriver. */
@@ -10,6 +10,10 @@ export interface WebDriverConfig {
 export interface PlaywrightConfig {
     /** @see https://playwright.dev/docs/api/class-browsertype#browser-type-launch */
     launch?: Parameters<BrowserType["launch"]>[0]
+    /** @see https://playwright.dev/docs/api/class-browsertype#browser-type-connect-over-cdp */
+    connectOverCDP?: string | [string, ConnectOverCDPOptions]
+    /** @see https://playwright.dev/docs/api/class-browser#browser-new-context */
+    newContext?: Parameters<Browser["newContext"]>[0]
     /** @see https://playwright.dev/docs/api/class-browser#browser-new-page */
     newPage?: Parameters<Browser["newPage"]>[0]
     /** @see https://playwright.dev/docs/api/class-page#page-goto */
