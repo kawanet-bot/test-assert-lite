@@ -53,8 +53,12 @@ export interface App {
     page: string
 }
 
+interface ConnectConfig {
+    argv: string[]
+}
+
 interface TacliConfig {
-    process: {argv: string[]}
+    connect: ConnectConfig
     session: SessionConfig
     files: string[]
 }
@@ -117,7 +121,7 @@ export const createApp = (options: AppOptions): App => {
     const evalPath = script == null ? null : `${prefix}[eval].js`
     // The page is the runner the arguments name, as node is under Node.
     const configObj: TacliConfig = {
-        process: {argv: ["tacli", ...argv]},
+        connect: {argv: ["tacli", ...argv]},
         session,
         files: evalPath == null ? files.map(file => served.urlOf(file)) : [evalPath],
     }

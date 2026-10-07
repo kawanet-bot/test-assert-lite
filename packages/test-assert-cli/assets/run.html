@@ -14,25 +14,23 @@
     // The CLI puts its config into the head as JSON, ahead of this script.
     const json = document.querySelector(`script[type="application/vnd.tacli-config+json"]`)?.textContent
     const config = json ? JSON.parse(json) : {}
-    const options = config.session ?? {}
-    const channel = connect({argv: config.process?.argv})
+    const channel = connect(config.connect ?? {})
 
     // The page reports with its own fetch, to the run's URL it sits under:
     // it takes the window's errors outside the tests, and the console goes
     // the same way.
     session({
+        ...(config.session ?? {}),
         channel,
         uncaught: window,
         console: console,
-        reporter: options.reporter,
-        quiet: options.quiet,
         output: text => {
             document.querySelector("#output")?.append(text)
             channel.stdout.write(text)
         },
     })
 
-    const files = (config?.files ?? [])
+    const files = (config.files ?? [])
 
     for (const file of files) {
         await load(file)
