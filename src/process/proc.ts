@@ -10,16 +10,29 @@ import {withExitCode} from "./exit-code.ts"
 import {channelOverFetch, consoleChannel} from "./fetch-channel.ts"
 import {nodeChannel} from "./node-channel.ts"
 
-let channel: TAL.Channel = hasProcess() ? nodeChannel(process) : consoleChannel(consoleWriters(globalThis.console, saveConsole(globalThis.console)))
+const globalConsole = globalThis.console
+
+let channel: TAL.Channel
 
 // One array for the realm's life, filled in place, so an import of it
 // made before the host spoke reads the same.
 const argv: string[] = []
 
-const connect: TAL.ProcessAPI["connect"] = (options) => {
-    if (options?.argv != null) argv.splice(0, argv.length, ...options.argv)
-    return (channel = channelOverFetch(options?.fetch ?? fetch))
+const connect: TAL.ProcessAPI["connect"] = (options = {}) => {
+    if (options.argv) {
+        argv.splice(0, argv.length, ...options.argv)
+    }
+    if (options.fetch) {
+        channel = channelOverFetch(options.fetch)
+    } else if (hasProcess()) {
+        channel = nodeChannel(process)
+    } else {
+        channel = consoleChannel(consoleWriters(globalConsole, saveConsole(globalConsole)))
+    }
+    return channel
 }
+
+connect()
 
 /** The realm's channel for one session. The verdict leaves the exit code when nobody opened the session to read it. */
 export const sessionChannel = (implicitSession: boolean): TAL.Channel => withExitCode(channel, hasProcess() && implicitSession ? process : null)
