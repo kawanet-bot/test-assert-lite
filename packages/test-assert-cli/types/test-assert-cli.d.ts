@@ -6,9 +6,9 @@ export interface CLIOptions {
     args: string[]
     /** The executable's own names: the command for the usage, the package and its version for -v. Default: this package's. */
     program?: Program
-    /** Fixes the run on a WebDriver server. --serve is refused then. */
+    /** Locks the run to a WebDriver server. --serve is refused then. */
     webdriver?: boolean
-    /** Fixes the run on this Playwright engine, imported by the caller. --serve is refused then. */
+    /** Locks the run to this Playwright browser type, which the caller imports. --serve is refused then. */
     playwright?: BrowserType
 }
 
@@ -18,15 +18,16 @@ export interface Program {
     version: string
 }
 
-/** A launcher of one of Playwright's browsers: chromium, firefox or webkit as the playwright module exports them. */
+/** A Playwright browser type, such as chromium from the playwright module. */
 export interface BrowserType {
     /** @see https://playwright.dev/docs/api/class-browsertype#browser-type-launch */
     launch(options?: object): Promise<unknown>
+    /** @see https://playwright.dev/docs/api/class-browsertype#browser-type-connect-over-cdp */
+    connectOverCDP(endpointURL: string, options?: object): Promise<unknown>
 }
 
 /**
- * Runs the command line and resolves to its exit code, or rejects with
- * what it could not handle. The process is the executable's to end. One
- * call per process, as the command line is.
+ * Runs the command line and resolves to its exit code. It rejects with
+ * an error it cannot handle. The caller ends the process. Call it once per process.
  */
 export declare function CLI(options: CLIOptions): Promise<number>

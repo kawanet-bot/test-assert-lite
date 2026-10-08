@@ -1,4 +1,5 @@
-// Declarations for session.js, each typed off the harness so it cannot drift.
+// Types for test-assert-lite/session. Each export takes its type from
+// TAL.SessionAPI, so the two cannot drift apart.
 import type {TAL} from "test-assert-lite"
 
 type SessionAPI = TAL.SessionAPI
