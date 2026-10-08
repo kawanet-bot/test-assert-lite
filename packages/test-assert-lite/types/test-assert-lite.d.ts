@@ -279,7 +279,7 @@ export declare namespace TAL {
         reporter?: ReporterFn | string
         /** The destination of the formatted text, the run's stdout unless given. */
         output?: OutputFn
-        /** The channel to the host. By default, the realm's channel that connect() made. */
+        /** The channel to the host. Defaults to the realm's own. */
         channel?: Channel
         /** A window or a process to watch until run() ends. Each uncaught error on it counts as one failed test. */
         uncaught?: EventTargetLike | EventEmitterLike
@@ -291,7 +291,7 @@ export declare namespace TAL {
         heartbeat?: number
     }
 
-    /** The result run() resolves with. It says whether every test passed. */
+    /** The result of `run()`, including whether every test passed. */
     interface SessionResult {
         success: boolean
     }
@@ -315,7 +315,7 @@ export declare namespace TAL {
 
     // --- process ---
 
-    /** The host as a script sees it, through `test-assert-lite/process`. One per realm, shared by every harness. */
+    /** The host visible through `test-assert-lite/process`, shared by every harness in the realm. */
     interface ProcessAPI {
         /** The arguments the host gave, as node's process.argv has them. Empty until the host fills it. */
         argv: string[]
