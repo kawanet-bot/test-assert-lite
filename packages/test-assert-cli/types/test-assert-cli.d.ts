@@ -26,8 +26,5 @@ export interface BrowserType {
     connectOverCDP(endpointURL: string, options?: object): Promise<unknown>
 }
 
-/**
- * Runs the command line and resolves to its exit code. It rejects with
- * an error it cannot handle. The caller ends the process. Call it once per process.
- */
+/** Runs the command line once per process and resolves to its exit code. The caller ends the process. */
 export declare function CLI(options: CLIOptions): Promise<number>

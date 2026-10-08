@@ -49,11 +49,7 @@ export declare namespace TAL {
         todo(message?: string): void
         diagnostic(message: string): void
 
-        /**
-         * Subtests run one at a time, in the order declared. Unlike the top-level
-         * `test`, this returns a promise to await. A subtest declared after its parent
-         * was reported, such as after a timeout, runs at the top level and fails as parentAlreadyFinished.
-         */
+        /** Declares a subtest, which runs after the ones declared before it. The promise resolves once it has finished. */
         test(name?: string, options?: TestOptions, fn?: TestFn): Promise<void>
         test(name?: string, fn?: TestFn): Promise<void>
         test(options?: TestOptions, fn?: TestFn): Promise<void>
@@ -285,15 +281,9 @@ export declare namespace TAL {
         output?: OutputFn
         /** The channel to the host. By default, the realm's channel that connect() made. */
         channel?: Channel
-        /**
-         * A window or a process to watch until run() ends. Each uncaught exception
-         * or unhandled rejection on it counts as one failed test.
-         */
+        /** A window or a process to watch until run() ends. Each uncaught error on it counts as one failed test. */
         uncaught?: EventTargetLike | EventEmitterLike
-        /**
-         * A console the session takes over until run(). debug, log and info
-         * go to `stdout`, warn and error to `stderr`, each call one line.
-         */
+        /** A console the session takes over until run() ends. Each call becomes one line on `stdout` or `stderr`. */
         console?: ConsoleLike
         /** A quiet level, 0 by default. 1 or more leaves out the summary lines, and -1 reports a run with no tests, as node --test does. */
         quiet?: number
@@ -316,10 +306,7 @@ export declare namespace TAL {
         /** Opens a session for the tests declared after it. It must come before the first declaration. */
         session(options?: SessionOptions): void
 
-        /**
-         * Imports a test file by URL or absolute path, so its tests are declared.
-         * A file that fails to import counts as one failed test. Call it before run().
-         */
+        /** Imports a test file by URL or absolute path, before run(). A file that fails to import counts as one failed test. */
         load(file: string): Promise<void>
 
         /** Runs every declared test, reports the result, and closes the session. */
@@ -328,11 +315,7 @@ export declare namespace TAL {
 
     // --- process ---
 
-    /**
-     * The host as a script sees it, through `test-assert-lite/process`.
-     * It offers a few members of node:process. There is one per realm,
-     * shared by every harness.
-     */
+    /** The host as a script sees it, through `test-assert-lite/process`. One per realm, shared by every harness. */
     interface ProcessAPI {
         /** The arguments the host gave, as node's process.argv has them. Empty until the host fills it. */
         argv: string[]
@@ -348,10 +331,7 @@ export declare namespace TAL {
 
     // --- session channel ---
 
-    /**
-     * The session's link to its host, shaped like a child process.
-     * It has the host's streams and a way to send messages.
-     */
+    /** The session's link to its host, shaped like a child process. */
     interface Channel {
         /** The host's stdout, as the session writes it. */
         stdout: Writer
@@ -365,20 +345,14 @@ export declare namespace TAL {
         disconnect(): void
     }
 
-    /**
-     * A message that send() carries. Each one names its session, so a host
-     * with several sessions on one channel can tell them apart.
-     */
+    /** A message that send() carries. Each one names its session, so a host can tell several apart. */
     type SessionEvent =
         | {type: "session:begin", session: string}
         | {type: "session:end", session: string, data: SessionResult}
 
     // --- harness ---
 
-    /**
-     * One harness, with its own tests and session apart from any other.
-     * `proc` is the exception. There is one per realm.
-     */
+    /** One harness, with its own tests and session apart from any other. */
     interface TestHarness {
         assert: Assert
         /** The realm's process, the same in every harness. */
