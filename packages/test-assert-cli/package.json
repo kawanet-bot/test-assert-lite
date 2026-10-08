@@ -1,6 +1,6 @@
 {
   "name": "test-assert-cli",
-  "description": "tacli: runs node:test and node:assert test files in Node.js or in browsers, through test-assert-lite",
+  "description": "Serve your node:test files to the browser, or run them in Node.js, on test-assert-lite.",
   "version": "0.1.0",
   "author": "Kawanet",
   "bin": {

@@ -1,6 +1,6 @@
 {
   "name": "test-assert-lite",
-  "description": "Run your node:test and node:assert test files in browsers, as they are",
+  "description": "node:test and node:assert, compatible and browser-ready. Just 32KB, no dependencies.",
   "version": "0.1.0",
   "author": "Kawanet",
   "bugs": {

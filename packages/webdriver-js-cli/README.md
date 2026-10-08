@@ -2,7 +2,7 @@
 
 [![npm version](https://img.shields.io/npm/v/webdriver-js-cli)](https://www.npmjs.com/package/webdriver-js-cli)
 
-`webdriver-js` runs your `node:test` and `node:assert` test files in the browser a [WebDriver](https://w3c.github.io/webdriver/) server drives: `safaridriver`, `chromedriver` and others. It is [tacli](https://www.npmjs.com/package/test-assert-cli) fixed on WebDriver, with the flags that choose another mode left out.
+Run Node.js ES modules in Safari, Chrome and Firefox, over [WebDriver](https://w3c.github.io/webdriver/).
 
 ```sh
 npm install -D webdriver-js-cli

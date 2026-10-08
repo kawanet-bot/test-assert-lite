@@ -1,6 +1,6 @@
 {
   "name": "webdriver-js-cli",
-  "description": "webdriver-js: runs node:test and node:assert test files in the browser a WebDriver server drives, through test-assert-cli",
+  "description": "Run Node.js ES modules in Safari, Chrome and Firefox, over WebDriver.",
   "version": "0.1.0",
   "author": "Kawanet",
   "bin": {

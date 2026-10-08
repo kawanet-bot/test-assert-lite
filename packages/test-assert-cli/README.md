@@ -2,7 +2,7 @@
 
 [![npm version](https://img.shields.io/npm/v/test-assert-cli)](https://www.npmjs.com/package/test-assert-cli)
 
-`tacli` runs your `node:test` and `node:assert` test files in browsers, as they are.
+Serve your `node:test` files to the browser, or run them in Node.js, on test-assert-lite.
 
 - The test file stays as written, imports included: `tacli` maps `node:test` and `node:assert` to [test-assert-lite](https://www.npmjs.com/package/test-assert-lite)
 - One command per target, built on it: `tacli` for this Node.js process, [chromium-js, firefox-js and webkit-js](https://www.npmjs.com/package/playwright-js-cli) for the headless browsers, [webdriver-js](https://www.npmjs.com/package/webdriver-js-cli) for Safari and others over WebDriver

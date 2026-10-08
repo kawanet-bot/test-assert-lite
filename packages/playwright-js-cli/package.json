@@ -1,6 +1,6 @@
 {
   "name": "playwright-js-cli",
-  "description": "chromium-js, firefox-js and webkit-js: run node:test and node:assert test files in a headless browser through Playwright and test-assert-cli",
+  "description": "Run Node.js ES modules in Chromium, Firefox and WebKit, through Playwright or CDP.",
   "version": "0.1.0",
   "author": "Kawanet",
   "bin": {

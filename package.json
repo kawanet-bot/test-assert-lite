@@ -1,6 +1,6 @@
 {
   "name": "test-assert-lite-workspace",
-  "description": "Run your node:test and node:assert test files in browsers, as they are",
+  "description": "node:test and node:assert, compatible and browser-ready. Just 32KB, no dependencies.",
   "author": "Kawanet",
   "devDependencies": {
     "@rollup/plugin-alias": "^6.0.0",

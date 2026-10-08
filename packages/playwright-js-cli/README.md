@@ -2,7 +2,7 @@
 
 [![npm version](https://img.shields.io/npm/v/playwright-js-cli)](https://www.npmjs.com/package/playwright-js-cli)
 
-`chromium-js`, `firefox-js` and `webkit-js` run your `node:test` and `node:assert` test files in a headless browser through [Playwright](https://playwright.dev/). Each is [tacli](https://www.npmjs.com/package/test-assert-cli) fixed on that engine, with the flags that choose another mode left out.
+Run Node.js ES modules in Chromium, Firefox and WebKit, through [Playwright](https://playwright.dev/) or CDP.
 
 ```sh
 npm install -D playwright-js-cli

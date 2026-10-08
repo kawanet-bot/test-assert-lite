@@ -3,7 +3,7 @@
 [![npm version](https://img.shields.io/npm/v/test-assert-lite)](https://www.npmjs.com/package/test-assert-lite)
 [![gzip size](https://img.badgesize.io/https://cdn.jsdelivr.net/npm/test-assert-lite/dist/test-assert-lite.min.js?compression=gzip)](https://cdn.jsdelivr.net/npm/test-assert-lite/dist/test-assert-lite.min.js)
 
-Run your `node:test` and `node:assert` test files in browsers, as they are.
+`node:test` and `node:assert`, compatible and browser-ready. Just 32KB, no dependencies.
 
 - The test file stays as written, imports included: [tacli](https://www.npmjs.com/package/test-assert-cli) maps `node:test` and `node:assert` to this library
 - From `node:test`: `describe` / `it`, `test` with `t.test()` subtests, `before` / `after`, `skip` and `todo`
