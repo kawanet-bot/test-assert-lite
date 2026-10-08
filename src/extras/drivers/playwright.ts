@@ -2,6 +2,7 @@
 // executable, which imports playwright. This package does not depend on it.
 
 import type {BrowserType} from "playwright-core"
+import type {tacli} from "test-assert-cli"
 import type {RunServices} from "../../utils/run-services.ts"
 import type {PlaywrightConfig} from "../mode-options.ts"
 
@@ -11,14 +12,15 @@ export interface RunInPlaywrightOptions {
     /** URL of the page to open, under the run's own path on the CLI's server. */
     url: string
     /** The engine as the executable imported it, launched as it is. */
-    browserType: BrowserType
+    browserType: tacli.BrowserTypeLike
     /** Extended configuration via --playwright-config */
     custom?: PlaywrightConfig
 }
 
 /** Launches the engine headless, or attaches to a browser running already, and opens the page in it. */
 export const runInPlaywright = async (options: RunInPlaywrightOptions): Promise<void> => {
-    const {browserType, custom = {}, services, url} = options ?? {}
+    const {custom = {}, services, url} = options ?? {}
+    const browserType = options?.browserType as BrowserType
     const {connectOverCDP} = custom
 
     const browser = !connectOverCDP

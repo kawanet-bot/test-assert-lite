@@ -3,7 +3,7 @@
 // for a person's browser. An executable built on this fixes one browser
 // mode. Only explicit file names are accepted, no globs.
 
-import type {BrowserType} from "playwright-core"
+import type * as declared from "test-assert-cli"
 import {stringify} from "../utils/stringify.ts"
 import {runInNode} from "./drivers/node.ts"
 import {runWebMode} from "./drivers/web-mode.ts"
@@ -12,22 +12,7 @@ import {readOptions, usageOf} from "./options.ts"
 import {UsageError} from "./usage-error.ts"
 import {VERSION} from "./version.ts"
 
-export interface CLIOptions {
-    /** The arguments as the executable gets them: process.argv.slice(2). */
-    args: string[]
-    /** The executable's own names: the command for the usage, the package and its version for -v. Default: this package's. */
-    program?: Program
-    /** Fixes the run on a WebDriver server. --serve is refused then. */
-    webdriver?: boolean
-    /** Fixes the run on this Playwright engine, imported by the caller. --serve is refused then. */
-    playwright?: BrowserType
-}
-
-export interface Program {
-    command: string
-    name: string
-    version: string
-}
+type Program = declared.tacli.Program
 
 const OWN: Program = {command: "tacli", name: "test-assert-cli", version: VERSION}
 
@@ -63,7 +48,7 @@ const runCLI = async (options: ModeOptions, program: Program, fixed: FixedMode):
  * what it could not handle. The process is the executable's to end. One
  * call per process, as the command line is.
  */
-export const CLI = async ({args, program = OWN, webdriver, playwright}: CLIOptions): Promise<number> => {
+export const CLI: typeof declared.CLI = async ({args, program = OWN, webdriver, playwright}): Promise<number> => {
     const fixed: FixedMode = {webdriver, playwright}
     let options: ReturnType<typeof readOptions>
 

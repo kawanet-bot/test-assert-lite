@@ -2,4 +2,3 @@
 // function, over the test-assert-lite library. Built to dist/test-assert-cli.js.
 
 export {CLI} from "./cli.ts"
-export type {CLIOptions} from "./cli.ts"

@@ -21,7 +21,7 @@ test("require entry", () => {
     assert.equal(typeof m.sharedTAL, "object")
     assert.equal(typeof m.sharedTAL.assert, "function")
     assert.equal(typeof m.sharedTAL.reporter, "object")
-    assert.equal(typeof m.sharedTAL.session, "object")
+    assert.equal(typeof m.sharedTAL.sess, "object")
     assert.equal(typeof m.sharedTAL.test, "object")
 })
 
@@ -34,7 +34,7 @@ test("minified entry (.min.js)", () => {
     assert.equal(typeof m.sharedTAL, "object")
     assert.equal(typeof m.sharedTAL.assert, "function")
     assert.equal(typeof m.sharedTAL.reporter, "object")
-    assert.equal(typeof m.sharedTAL.session, "object")
+    assert.equal(typeof m.sharedTAL.sess, "object")
     assert.equal(typeof m.sharedTAL.test, "object")
 })
 
@@ -43,7 +43,7 @@ test("import entry (.js)", () => {
     assert.equal(typeof m.sharedTAL, "object")
     assert.equal(typeof m.sharedTAL.assert, "function")
     assert.equal(typeof m.sharedTAL.reporter, "object")
-    assert.equal(typeof m.sharedTAL.session, "object")
+    assert.equal(typeof m.sharedTAL.sess, "object")
     assert.equal(typeof m.sharedTAL.test, "object")
 })
 
@@ -98,7 +98,7 @@ test("createTAL returns the same shape", () => {
     const local = m.createTAL()
     assert.equal(typeof local.assert, "function")
     assert.equal(typeof local.reporter, "object")
-    assert.equal(typeof local.session, "object")
+    assert.equal(typeof local.sess, "object")
     assert.equal(typeof local.test, "object")
 })
 

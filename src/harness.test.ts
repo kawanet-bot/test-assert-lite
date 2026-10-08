@@ -39,8 +39,8 @@ describe(TITLE, () => {
         b.test.it("only on b", () => undefined)
         b.test.it("also on b", () => undefined)
 
-        await b.session.run()
-        await a.session.run()
+        await b.sess.run()
+        await a.sess.run()
         assert.equal(summaryOf(seenB).counts.tests, 2)
         assert.equal(summaryOf(seenA).counts.tests, 1)
     })
@@ -48,8 +48,8 @@ describe(TITLE, () => {
     it("two harnesses do not share hooks", async () => {
         const a = createTAL()
         const b = createTAL()
-        a.session.session({output: () => undefined})
-        b.session.session({output: () => undefined})
+        a.sess.session({output: () => undefined})
+        b.sess.session({output: () => undefined})
         const order: string[] = []
 
         a.test.before(() => {
@@ -62,8 +62,8 @@ describe(TITLE, () => {
             order.push("b-test")
         })
 
-        await b.session.run()
-        await a.session.run()
+        await b.sess.run()
+        await a.sess.run()
 
         assert.deepEqual(order, ["b-test", "a:before", "a-test"])
     })
@@ -72,11 +72,11 @@ describe(TITLE, () => {
         const local = createTAL()
         const first = capture(local)
         local.test.it("once", () => undefined)
-        await local.session.run()
+        await local.sess.run()
         assert.equal(summaryOf(first).counts.tests, 1)
 
         const second = capture(local)
-        await local.session.run()
+        await local.sess.run()
         assert.equal(summaryOf(second).counts.tests, 0)
     })
 
@@ -87,10 +87,10 @@ describe(TITLE, () => {
         const seenByA = capture(a)
         const seenByB = capture(b)
 
-        assert.notEqual(a.session, b.session)
+        assert.notEqual(a.sess, b.sess)
 
         b.test.it("only on b", () => undefined)
-        await b.session.run()
+        await b.sess.run()
 
         assert.ok(names(seenByB, "test:pass").includes("only on b"))
         assert.equal(seenByA.length, 0)
@@ -99,7 +99,7 @@ describe(TITLE, () => {
     it("output set on one harness does not reach the other", async () => {
         const local = createTAL()
         const lines: string[] = []
-        local.session.session({
+        local.sess.session({
             reporter: local.reporter.spec({colors: false}),
             output: text => {
                 lines.push(text)
@@ -107,7 +107,7 @@ describe(TITLE, () => {
         })
 
         local.test.it("visible", () => undefined)
-        await local.session.run()
+        await local.sess.run()
 
         assert.ok(lines.join("").includes("visible"))
     })
@@ -133,7 +133,7 @@ describe(TITLE, () => {
             // assert.equal, and its strictEqual the strict one.
             same = t.assert.equal === local.assert.equal && t.assert.strictEqual === local.assert.strict.equal
         })
-        await local.session.run()
+        await local.sess.run()
 
         assert.equal(same, true)
         assert.equal(names(seen, "test:pass").join(""), "check")

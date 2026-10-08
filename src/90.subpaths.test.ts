@@ -49,11 +49,11 @@ test("test-assert-lite/assert/strict", () => {
 })
 
 test("test-assert-lite/session", () => {
-    const typed: typeof sharedTAL.session.session = sessionEntry.session
+    const typed: typeof sharedTAL.sess.session = sessionEntry.session
     void typed
-    assert.equal(sessionEntry.session, sharedTAL.session.session)
-    assert.equal(sessionEntry.load, sharedTAL.session.load)
-    assert.equal(sessionEntry.run, sharedTAL.session.run)
+    assert.equal(sessionEntry.session, sharedTAL.sess.session)
+    assert.equal(sessionEntry.load, sharedTAL.sess.load)
+    assert.equal(sessionEntry.run, sharedTAL.sess.run)
     assert.deepEqual(named(sessionEntry), ["load", "run", "session"])
 })
 

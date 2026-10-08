@@ -21,7 +21,7 @@ export const createTAL: typeof declared.createTAL = () => {
         assert,
         proc,
         reporter,
-        session: {load, run, session},
+        sess: {load, run, session},
         test: registrar,
     }
 }

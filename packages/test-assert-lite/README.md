@@ -9,7 +9,7 @@ A lightweight `node:test` and `node:assert` compatible library for browsers.
 - From `node:assert`: `assert` and `strict`, with `ok`, `equal`, `deepStrictEqual`, `throws`, `rejects`, `match` and more
 - The same test file runs in both Node.js and the browser
 - Under 32KB minified, under 11KB gzipped, no dependencies
-- [tacli](https://www.npmjs.com/package/test-assert-cli) and its browser runners run `node:test` files unchanged. They map `node:test` to this library
+- [tacli](https://www.npmjs.com/package/test-assert-cli) and its browser runners run `node:test` test suites unchanged. They map `node:test` to this library
 
 ## SYNOPSIS
 
@@ -32,21 +32,25 @@ describe("buildQuery() from an object", () => {
         url.search = buildQuery({q: "cat"})
         assert.equal(url.href, "https://example.com/search?q=cat")
     })
-    it("encodes a space as %20", () => {
-        assert.equal(buildQuery({q: "black cat"}), "q=black%20cat")
-    })
 })
 ```
 
-The same file runs under `node`, and in a browser with [chromium-js](https://www.npmjs.com/package/playwright-js-cli):
+See [test-assert-lite.d.ts](https://github.com/kawanet/test-assert-lite/blob/main/packages/test-assert-lite/types/test-assert-lite.d.ts) for the supported API.
+
+The same test suite runs under `node`, and in a browser:
 
 ```sh
-node test/query.test.mjs
+node --test test/query.test.mjs
 
-chromium-js test/query.test.mjs
+# https://www.npmjs.com/package/test-assert-cli
+tacli --serve test/query.test.mjs
+
+# https://www.npmjs.com/package/webdriver-js-cli
+webdriver-js --test test/query.test.mjs
+
+# https://www.npmjs.com/package/playwright-js-cli
+chromium-js --test test/query.test.mjs
 ```
-
-The last test fails on purpose. `URLSearchParams` encodes a space as `+`.
 
 `test` with subtests:
 
@@ -64,8 +68,6 @@ test("URLSearchParams", async (t) => {
     })
 })
 ```
-
-See [test-assert-lite.d.ts](https://github.com/kawanet/test-assert-lite/blob/main/packages/test-assert-lite/types/test-assert-lite.d.ts) for the supported API.
 
 ## BROWSER MODULE
 

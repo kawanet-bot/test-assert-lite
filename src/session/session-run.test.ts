@@ -16,7 +16,7 @@ describe(TITLE, () => {
         const events = capture(local)
         local.test.it("a", () => undefined)
         local.test.it("b", () => undefined)
-        await local.session.run()
+        await local.sess.run()
         const summary = summaryOf(events)
 
         assert.deepEqual(summary.counts, {tests: 2, suites: 0, passed: 2, failed: 0, cancelled: 0, skipped: 0, todo: 0})
@@ -33,7 +33,7 @@ describe(TITLE, () => {
 
         assert.equal(ran, false)
         assert.equal(events.length, 0)
-        await local.session.run()
+        await local.sess.run()
         assert.equal(ran, true)
     })
 
@@ -51,7 +51,7 @@ describe(TITLE, () => {
         local.test.it("second", () => {
             order.push("second")
         })
-        await local.session.run()
+        await local.sess.run()
         const summary = summaryOf(events)
 
         assert.deepEqual(order, ["first", "second"])
@@ -65,7 +65,7 @@ describe(TITLE, () => {
         local.test.it("bad", () => {
             throw new Error("boom")
         })
-        await local.session.run()
+        await local.sess.run()
         const summary = summaryOf(events)
 
         assert.equal(summary.counts.failed, 1)
@@ -75,7 +75,7 @@ describe(TITLE, () => {
 
     it("tests run in registration order", async () => {
         const local = createTAL()
-        local.session.session({output: () => undefined})
+        local.sess.session({output: () => undefined})
         const order: string[] = []
         local.test.it("1", async () => {
             await new Promise(r => setTimeout(r, 20))
@@ -84,7 +84,7 @@ describe(TITLE, () => {
         local.test.it("2", () => {
             order.push("2")
         })
-        await local.session.run()
+        await local.sess.run()
 
         assert.deepEqual(order, ["1", "2"])
     })
@@ -93,7 +93,7 @@ describe(TITLE, () => {
         const local = createTAL()
         const events = capture(local)
         local.test.it("only", () => undefined)
-        const result = await local.session.run()
+        const result = await local.sess.run()
 
         const last = events.at(-1)
         assert.equal(last?.type, "test:summary")
@@ -104,7 +104,7 @@ describe(TITLE, () => {
         const local = createTAL()
         const events = capture(local)
         local.test.it("one", () => undefined)
-        await local.session.run()
+        await local.sess.run()
 
         const messages = events
             .filter(e => e.type === "test:diagnostic")
@@ -118,7 +118,7 @@ describe(TITLE, () => {
         const local = createTAL()
         const events = capture(local)
         local.test.it("one", () => undefined)
-        await local.session.run()
+        await local.sess.run()
 
         const messages = events.filter(e => e.type === "test:diagnostic").map(e => String(e.data.message))
         assert.ok(messages.some(message => /^test-assert-lite \d+\.\d+\.\d+/.test(message)), messages.join(", "))
@@ -131,11 +131,11 @@ describe(TITLE, () => {
         const local = createTAL()
         const first = capture(local)
         local.test.it("first", () => undefined)
-        await local.session.run()
+        await local.sess.run()
         assert.equal(summaryOf(first).counts.tests, 1)
 
         const second = capture(local)
-        await local.session.run()
+        await local.sess.run()
         assert.equal(summaryOf(second).counts.tests, 0)
     })
 
@@ -152,10 +152,10 @@ describe(TITLE, () => {
             await waiting
         })
 
-        const first = local.session.run()
+        const first = local.sess.run()
         const secondError = await (async () => {
             try {
-                await local.session.run()
+                await local.sess.run()
                 return undefined
             } catch (error) {
                 return error
@@ -176,7 +176,7 @@ describe(TITLE, () => {
             // With no name the function name is used, as in node:test.
         })
         local.test.it(() => undefined)
-        await local.session.run()
+        await local.sess.run()
 
         assert.deepEqual(names(events, "test:pass"), ["namedFn", "<anonymous>"])
     })
@@ -193,7 +193,7 @@ describe(TITLE, () => {
         local.test.it("string", () => {
             throw "just text"
         })
-        await local.session.run()
+        await local.sess.run()
 
         const [first, second] = ofType(events, "test:fail").map(e => e.data.details.error as Error & {cause?: unknown, failureType?: string})
         assert.equal(first, thrown)

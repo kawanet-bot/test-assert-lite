@@ -1,4 +1,5 @@
 import type {Browser, BrowserType, ConnectOverCDPOptions, Page} from "playwright-core"
+import type {tacli} from "test-assert-cli"
 import type {Imports, NodeImports} from "./imports.ts"
 
 /** The request body of POST /session for WebDriver. */
@@ -25,7 +26,7 @@ export interface FixedMode {
     /** The run goes through a WebDriver server. */
     webdriver?: boolean
     /** The run goes through this Playwright engine, imported by the caller. */
-    playwright?: BrowserType
+    playwright?: tacli.BrowserTypeLike
 }
 
 export interface SessionConfig {
@@ -73,5 +74,5 @@ export type ModeOptions =
     | {mode: "version"}
     | NodeModeOptions & {mode: "node"}
     | WebModeOptions & {mode: "serve"}
-    | WebModeOptions & {mode: "playwright", browserType: BrowserType, custom?: PlaywrightConfig}
+    | WebModeOptions & {mode: "playwright", browserType: tacli.BrowserTypeLike, custom?: PlaywrightConfig}
     | WebModeOptions & {mode: "webdriver", endpoint?: string, custom?: WebDriverConfig}
