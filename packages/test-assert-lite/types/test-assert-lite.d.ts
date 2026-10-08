@@ -90,16 +90,16 @@ export declare namespace TAL {
     // --- assert ---
 
     /**
-     * What `doesNotThrow` and `doesNotReject` filter by. A RegExp is tested against
-     * String(error). A class, Error or not, matches its instances, as in node:assert.
-     * A validation function returns true on a match.
+     * A filter that `doesNotThrow` and `doesNotReject` take. A RegExp is tested
+     * against String(error). A class, Error or not, matches its instances, as in
+     * node:assert. A validation function returns true on a match.
      */
     type ErrorFilter = RegExp | (new (...args: never[]) => object) | ((thrown: unknown) => boolean)
 
     /**
-     * What `throws` and `rejects` expect. An ErrorFilter, or an object whose properties
-     * the error must have, where a RegExp value is tested against the property's
-     * string form. An Error instance works as such an object. node:assert takes the same.
+     * An expectation that `throws` and `rejects` take. An ErrorFilter, or an object
+     * whose properties the error must have, where a RegExp value is tested against
+     * the property's string form. An Error instance works as such an object. node:assert takes the same.
      */
     type AssertPredicate = ErrorFilter | object
 
