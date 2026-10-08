@@ -262,9 +262,9 @@ export declare namespace TAL {
     type OutputFn = (text: string) => void | Promise<void>
 
     interface SpecOptions {
-        /** Whether to color the output. By default, only a Node TTY gets color, as in node. */
+        /** Color in the output. A Node TTY gets it by default, as in node. */
         colors?: boolean
-        /** How quiet the output is. 0 by default. 1 or more leaves out the result lines and keeps the list of failures. */
+        /** A quiet level, 0 by default. 1 or more leaves out the result lines and keeps the list of failures. */
         quiet?: number
     }
 
@@ -301,7 +301,7 @@ export declare namespace TAL {
     interface SessionOptions {
         /** Formats the run's events. A string names a built-in reporter, such as `"tap"`, or a module to import. `spec` by default. */
         reporter?: ReporterFn | string
-        /** Where the formatted text goes, the run's stdout unless given. */
+        /** The destination of the formatted text, the run's stdout unless given. */
         output?: OutputFn
         /** The channel to the host. By default, the realm's channel that connect() made. */
         channel?: Channel
@@ -316,12 +316,12 @@ export declare namespace TAL {
          */
         console?: ConsoleLike
         /**
-         * How quiet the output is. 0 by default. 1 or more leaves out the summary
+         * A quiet level, 0 by default. 1 or more leaves out the summary
          * lines, and with the default reporter, the result lines too. -1 reports
          * a run with no tests, as node --test does. The summary event is always sent.
          */
         quiet?: number
-        /** How long, in milliseconds, a silent run waits before it writes an alive line to `stderr`. 10 seconds by default. 0 turns it off. */
+        /** Milliseconds of silence before the run writes an alive line to `stderr`. 10 seconds by default. 0 turns it off. */
         heartbeat?: number
     }
 

@@ -23,7 +23,7 @@ export interface ServeOptions {
 }
 
 export interface Server {
-    /** Where a browser reaches the server: the origin given, or else the address listened on. */
+    /** The origin a browser reaches the server at: the one given, or else the address listened on. */
     origin: string
 }
 

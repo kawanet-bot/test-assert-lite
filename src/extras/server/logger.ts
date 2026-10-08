@@ -7,7 +7,7 @@ import type {TAL} from "test-assert-lite"
 import type {MiddlewareHandler} from "./middleware.ts"
 
 export interface LoggerOptions {
-    /** Where the lines go. */
+    /** The destination of the lines. */
     stderr: TAL.Writer
     /** Limits the lines to unsuccessful responses. */
     quiet?: boolean

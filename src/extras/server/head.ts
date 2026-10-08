@@ -15,7 +15,7 @@ const IMPORT_MAP = /<script\b[^>]*\stype\s*=\s*(?:['"]\s*importmap\s*['"]|import
 // page is parsed, and a classic script may import() as well.
 const FIRST_SCRIPT = /<script\b/i
 
-/** Whether the HTML has an import map of its own. */
+/** True when the HTML has an import map of its own. */
 export const hasImportMap = (html: string): boolean => IMPORT_MAP.test(html)
 
 /**

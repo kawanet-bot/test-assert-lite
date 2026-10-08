@@ -38,7 +38,7 @@ const nullWriter: TAL.Writer = {write: (() => undefined)}
 
 describe(TITLE, () => {
     let dir: string
-    // Where the suites and the scripts are served from, and the alias.
+    // The directory the suites and the scripts are served from, and the alias.
     let tests: string
     let lib: string
     let app: App

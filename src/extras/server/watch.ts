@@ -14,7 +14,7 @@ export interface Watcher {
     handler: MiddlewareHandler
     /** Puts the ask into the head of the pages the chain after it serves. */
     inject: MiddlewareHandler
-    /** How many changes so far; a page is built with this and asks after it. */
+    /** The count of changes so far. A page is built with this and asks after it. */
     readonly version: number
 
     close(): void

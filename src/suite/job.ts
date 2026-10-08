@@ -8,7 +8,7 @@ type TestEventType = TAL.TestEvent["type"]
 
 type TestEventData<T extends TestEventType> = Extract<TAL.TestEvent, {type: T}>["data"]
 
-// How a test or suite ended, as its parent sees it. A parent whose child
+// The end of a test or suite, as its parent sees it. A parent whose child
 // failed or was cancelled fails in turn, as it does in node:test.
 export type Outcome = "passed" | "failed" | "cancelled" | "skipped"
 
