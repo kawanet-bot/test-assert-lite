@@ -4,6 +4,11 @@
 
 Run Node.js ES modules in Chromium, Firefox and WebKit, through [Playwright](https://playwright.dev/) or CDP.
 
+- `node:test` suites first of all, as they are
+- `playwright` comes with the package. One `npx playwright install` for the browser
+- `--playwright-config` for the launch, the context and the page, or `connectOverCDP` to attach to a Chromium already running
+- Every option of [tacli](https://www.npmjs.com/package/test-assert-cli)
+
 ```sh
 npm install -D playwright-js-cli
 npx playwright install chromium firefox webkit
@@ -23,8 +28,6 @@ chromium-js --test test/query.test.mjs
 ## CLI
 
 `chromium-js`, `firefox-js` and `webkit-js` take the options of `tacli`, `--alias`, `--import-map`, `--reporter`, `--port`, `--origin`, `--script`, `--mount` and the rest, as [test-assert-cli](https://www.npmjs.com/package/test-assert-cli) describes them, and one of their own.
-
-- `playwright` comes with this package. The browsers do not: `npx playwright install chromium`, `firefox` or `webkit` downloads the one a command needs.
 
 ### `--playwright-config <file>`
 

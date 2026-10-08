@@ -6,10 +6,10 @@ Run your `node:test` and `node:assert` test files in browsers, as they are.
 
 Four packages, one repository:
 
-- [test-assert-lite](packages/test-assert-lite/README.md): the library. `node:test` and `node:assert` for a browser, under 32KB, no dependencies.
-- [test-assert-cli](packages/test-assert-cli/README.md): the command line `tacli`. Runs a test file in Node.js, in headless Chromium, Firefox and WebKit, or in Safari and others over WebDriver.
-- [webdriver-js-cli](packages/webdriver-js-cli/README.md): `webdriver-js`, the command line fixed on the browser a WebDriver server drives.
-- [playwright-js-cli](packages/playwright-js-cli/README.md): `chromium-js`, `firefox-js` and `webkit-js`, the command line fixed on one of Playwright's headless browsers.
+- [test-assert-lite](packages/test-assert-lite/README.md): `node:test` and `node:assert`, compatible and browser-ready. Just 32KB, no dependencies.
+- [test-assert-cli](packages/test-assert-cli/README.md), `tacli`: Serve your `node:test` files to the browser, or run them in Node.js, on test-assert-lite.
+- [webdriver-js-cli](packages/webdriver-js-cli/README.md), `webdriver-js`: Run Node.js ES modules in Safari, Chrome and Firefox, over WebDriver.
+- [playwright-js-cli](packages/playwright-js-cli/README.md), `chromium-js` `firefox-js` `webkit-js`: Run Node.js ES modules in Chromium, Firefox and WebKit, through Playwright or CDP.
 
 ```sh
 npm install -D playwright-js-cli

@@ -4,10 +4,11 @@
 
 Serve your `node:test` files to the browser, or run them in Node.js, on test-assert-lite.
 
-- The test file stays as written, imports included: `tacli` maps `node:test` and `node:assert` to [test-assert-lite](https://www.npmjs.com/package/test-assert-lite)
-- One command per target, built on it: `tacli` for this Node.js process, [chromium-js, firefox-js and webkit-js](https://www.npmjs.com/package/playwright-js-cli) for the headless browsers, [webdriver-js](https://www.npmjs.com/package/webdriver-js-cli) for Safari and others over WebDriver
-- `--import-map` works in Node too, which has no import maps of its own: one map file for Node and browsers
-- `--alias node:crypto=sha256-uint8array` puts your own implementation under a builtin's name, so one suite tests both
+- A test file keeps its imports. `tacli` leads `node:test` and `node:assert` to [test-assert-lite](https://www.npmjs.com/package/test-assert-lite)
+- `--serve` serves the suites as a page for your browser, with auto reload
+- `--alias` and `--import-map` put any module under any name, a builtin's too, so one suite tests an implementation in Node.js and in a browser
+- TypeScript test files run as they are
+- The browser runs are [webdriver-js](https://www.npmjs.com/package/webdriver-js-cli) and [chromium-js, firefox-js and webkit-js](https://www.npmjs.com/package/playwright-js-cli), built on `tacli`
 
 ```sh
 npm install -D test-assert-cli

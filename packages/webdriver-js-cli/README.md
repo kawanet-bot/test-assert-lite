@@ -4,6 +4,12 @@
 
 Run Node.js ES modules in Safari, Chrome and Firefox, over [WebDriver](https://w3c.github.io/webdriver/).
 
+- `node:test` suites first of all, as they are
+- No dependency beyond the driver. `safaridriver`, `chromedriver`, `geckodriver`
+- A browser on another machine too, over an SSH tunnel
+- `--webdriver-config` for the capabilities, presets included
+- Every option of [tacli](https://www.npmjs.com/package/test-assert-cli)
+
 ```sh
 npm install -D webdriver-js-cli
 
@@ -20,8 +26,6 @@ webdriver-js --test test/query.test.mjs
 ## CLI
 
 `webdriver-js` takes the options of `tacli`, `--alias`, `--import-map`, `--reporter`, `--port`, `--origin`, `--script`, `--mount` and the rest, as [test-assert-cli](https://www.npmjs.com/package/test-assert-cli) describes them, and two of its own.
-
-- No extra dependency: the WebDriver server launches the browser, so Safari on a Mac runs the suite too, over an SSH tunnel if need be.
 
 ### `--webdriver-config <file>`
 

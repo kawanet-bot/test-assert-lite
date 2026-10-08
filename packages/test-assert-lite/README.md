@@ -5,11 +5,11 @@
 
 `node:test` and `node:assert`, compatible and browser-ready. Just 32KB, no dependencies.
 
-- The test file stays as written, imports included: [tacli](https://www.npmjs.com/package/test-assert-cli) maps `node:test` and `node:assert` to this library
 - From `node:test`: `describe` / `it`, `test` with `t.test()` subtests, `before` / `after`, `skip` and `todo`
 - From `node:assert`: `assert` and `strict`, with `ok`, `equal`, `deepStrictEqual`, `throws`, `rejects`, `match` and the rest
-- One command per target: [tacli](https://www.npmjs.com/package/test-assert-cli) for this Node.js process, [chromium-js, firefox-js and webkit-js](https://www.npmjs.com/package/playwright-js-cli) for the headless browsers, [webdriver-js](https://www.npmjs.com/package/webdriver-js-cli) for Safari and others over WebDriver
-- Under 32KB script, under 11KB gzipped, no dependencies
+- One test file runs in Node.js and in a browser alike
+- Under 32KB script, under 11KB gzipped
+- [tacli](https://www.npmjs.com/package/test-assert-cli) and the browser commands run such files as they are, by leading `node:test` to this library
 
 ## SYNOPSIS
 
