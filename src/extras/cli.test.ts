@@ -18,9 +18,9 @@ const connectStdout = (): string[] => {
     return chunks
 }
 
-// What the CLI itself does between reading the arguments and running
-// them: options.test.ts covers the reading. A watch still open would keep
-// the process up; a closed one leaves the count a beat later.
+// The CLI's own part, between reading the arguments and running them.
+// options.test.ts covers the reading. A watch still open would keep the
+// process up, and a closed one leaves the count a beat later.
 const watching = async (): Promise<number> => {
     await new Promise(next => setTimeout(next, 50))
     return process.getActiveResourcesInfo().filter(name => name === "FSEventWrap").length

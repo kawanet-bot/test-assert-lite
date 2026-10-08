@@ -36,7 +36,7 @@ export const usageOf = (command: string, fixed: FixedMode = {}): string => {
     return lines.filter(line => line).map(line => `${line}\n`).join("")
 }
 
-/** What --port names: the port, and the address to listen on when one is given ahead of it. */
+/** The port --port names, and the address to listen on when one is given ahead of it. */
 export interface Listen {
     host?: string
     port: number
@@ -94,7 +94,7 @@ export const mountOf = (value: string): string => {
 const importItemsOf = (mapFile: string | undefined, aliases: string[]): ImportBase[] =>
     [...(mapFile == null ? [] : readImportMap(resolve(mapFile))), ...aliases.map(entry => new ImportAliasItem(entry, cwdURL()))]
 
-// What the mode cannot take of the list is refused here, one reason per
+// The items the mode cannot take are refused here, one reason per
 // specifier, before anything is served or hooked.
 const refused = <T extends Imports | NodeImports>(imports: T): T => {
     const refusals = imports.refusals()

@@ -144,7 +144,7 @@ describe(TITLE, () => {
         assert.throws(() => TAL_strict.doesNotThrow(boom, "note"), /note/)
     })
 
-    // What the filter does not match is passed through, not swallowed.
+    // An error the filter does not match is passed through, not swallowed.
     it("doesNotThrow only reports what its filter matches", () => {
         assert.throws(() => TAL_strict.doesNotThrow(boom, /boom/), /expected not to throw/)
         assert.throws(() => TAL_strict.doesNotThrow(boom, RangeError), /expected not to throw/)

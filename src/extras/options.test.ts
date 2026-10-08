@@ -7,8 +7,8 @@ import {mountOf, originOf, portOf, readOptions, usageOf} from "./options.ts"
 
 const TITLE = "extras/options.test.ts"
 
-// What an executable fixed on Playwright hands over. The options pass it on
-// without a call, so a stub stands in for the engine.
+// The engine an executable fixed on Playwright hands over. The options pass
+// it on without a call, so a stub stands in.
 const engine = {launch: async () => ({})} as unknown as BrowserType
 
 describe(TITLE, () => {

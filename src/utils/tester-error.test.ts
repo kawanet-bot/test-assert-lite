@@ -5,8 +5,8 @@ import {formatEvents} from "../test-utils/format.ts"
 
 const TITLE = "utils/tester-error.test.ts"
 
-// What the spec reporter prints for a test that failed with `error`.
-// Typed as an Error, though a runner may hand over any thrown value.
+// The spec reporter's output for a test that failed with `error`. Typed
+// as an Error, though a runner may hand over any thrown value.
 const output = (error: unknown): Promise<string> => formatEvents(sharedTAL.reporter.spec({colors: false}), emit =>
     emit("test:fail", {name: "bad", nesting: 0, testNumber: 1, details: {duration_ms: 1, type: "test", error: error as Error}}))
 

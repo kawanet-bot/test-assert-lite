@@ -12,14 +12,14 @@ type TestEventData<T extends TestEventType> = Extract<TAL.TestEvent, {type: T}>[
 // failed or was cancelled fails in turn, as it does in node:test.
 export type Outcome = "passed" | "failed" | "cancelled" | "skipped"
 
-// What a parent that gave up hands to a child: the error to report and
-// how to count it.
+// A verdict a parent that gave up hands to a child. The error to report
+// and how to count it.
 export interface Verdict {
     error: Error
     outcome: Outcome
 }
 
-// What one run shares with every test in it.
+// The state one run shares with every test in it.
 export interface Run {
     counters: Counters
     success: boolean
@@ -86,7 +86,7 @@ export class Job {
         return child
     }
 
-    // What this job hands to a child it gives up on: the child is
+    // The verdict this job hands to a child it gives up on. The child is
     // cancelled. The root, with no result of its own, decides otherwise.
     protected get verdictForChildren(): Verdict | undefined {
         if (!this.settled) return undefined
@@ -127,7 +127,7 @@ export class Job {
         return this.outcome
     }
 
-    // What this job does in its turn, and the descendants it gave up on
+    // This job's own work in its turn, and the descendants it gave up on
     // for the caller to report. A bare job has nothing of its own to run.
     protected async runBody(): Promise<Job[]> {
         return []

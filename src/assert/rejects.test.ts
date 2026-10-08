@@ -148,7 +148,7 @@ describe(TITLE, () => {
         await assert.rejects(() => TAL_strict.doesNotReject(boom, "note"), /note/)
     })
 
-    // What the filter does not match is passed through, not swallowed.
+    // An error the filter does not match is passed through, not swallowed.
     it("doesNotReject only reports what its filter matches", async () => {
         await assert.rejects(() => TAL_strict.doesNotReject(boom, /boom/), /expected not to reject/)
         await assert.rejects(() => TAL_strict.doesNotReject(boom, RangeError), /expected not to reject/)

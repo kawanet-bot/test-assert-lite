@@ -1,6 +1,5 @@
-// What a session reports with: the reporter named or given, spec unless
-// one is, the footer on top, and a module name imported when
-// the run starts reporting.
+// A session's reporter. The one named or given, spec unless one is, the
+// footer on top, and a module name imported when the run starts reporting.
 
 import type {TAL} from "test-assert-lite"
 import {html} from "../reporter/html.ts"

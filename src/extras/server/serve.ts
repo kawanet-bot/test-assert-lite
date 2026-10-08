@@ -20,7 +20,7 @@ export interface ServeOptions {
     host?: string
     /** Port to listen on; a free one by default. */
     port?: number
-    /** What a browser reaches the server as, scheme://host[:port], when not the address listened on. */
+    /** The server's origin as a browser reaches it, scheme://host[:port], when not the address listened on. */
     origin?: string
 }
 
@@ -52,7 +52,7 @@ const toRequest = async (req: IncomingMessage, bound: string): Promise<Request> 
     return new Request(`http://${host}${url}`, {method: req.method, headers, body})
 }
 
-// What goes back out, once nothing can fail any more.
+// The response on its way out, once nothing can fail any more.
 interface Answer {
     status: number
     headers: Record<string, string | string[]>

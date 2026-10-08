@@ -130,7 +130,7 @@ describeSlow(TITLE, () => {
         assert.deepEqual(summary.counts, {tests: 1, suites: 0, passed: 0, failed: 0, cancelled: 1, skipped: 0, todo: 0})
     })
 
-    // What a body does after the run has ended is dropped.
+    // Anything a body does after the run has ended is dropped.
     it("what a timed out body does after the run has ended is dropped", async () => {
         const local = createTAL()
         const events = capture(local)

@@ -1,8 +1,7 @@
-// What --watch adds to --serve: the files the page is made of are
-// watched, and a page asks at /@tacli/watch whether they changed since it
-// was built, the answer held back until they do. One version number
-// counts the changes, so a change between the page's build and its first
-// ask is not lost, and a wait that runs out is a 204 to ask again on.
+// The reload behind --serve. The files the page is made of are watched,
+// and a page asks at /@tacli/watch whether they changed since it was
+// built, the answer held back until they do. One version number counts the
+// changes, so none is lost between the page's build and its first ask.
 
 import type {FSWatcher} from "node:fs"
 import {watch} from "node:fs"
@@ -30,11 +29,10 @@ const QUIET_MS = 100
 // browser does not give up on the request first.
 const WAIT_MS = 30_000
 
-// What goes into the page people open: it asks after the version it was
+// The script in the page people open. It asks after the version it was
 // built with and reloads on an answer. A 204, the wait run out, means ask
 // again at once. After anything else, such as when the server is gone, the
-// next ask waits a second, then two, then three, so a page left behind does
-// not hammer.
+// next ask waits a second, then two, then three, so the page does not hammer.
 const asks = (after: number): string => `<script>
 (async (after) => {
     for (let wait = 1; ; wait++) {

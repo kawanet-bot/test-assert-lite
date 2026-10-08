@@ -49,8 +49,8 @@ describe(TITLE, () => {
         }
     })
 
-    // What has to precede every script, the import map, goes ahead of the
-    // head's first one, whatever kind it is; a script in the body is no bar.
+    // The import map, which has to precede every script, goes ahead of the
+    // head's first one, whatever kind it is. A script in the body is no bar.
     it("puts what goes ahead before the first script of the head, and before </head> where there is none", async () => {
         const markup: HeadMarkup = {ahead: "<map>", end: "<end>"}
         assert.equal((await through(markup, '<head><meta><script type="module">1</script><script>2</script></head><body></body>', "text/html")).body, '<head><meta><map><script type="module">1</script><script>2</script><end></head><body></body>')

@@ -1,6 +1,6 @@
-// Puts markup into the head of the HTML a page is served as: what the
-// pages need, the import map and the script tags, without naming a page.
-// Whatever the rest of the chain answers, this looks at once it has.
+// Puts markup into the head of the HTML a page is served as. The import
+// map and the script tags the pages need, without naming a page. The rest
+// of the chain answers first, and this looks at the answer.
 
 import type {MiddlewareHandler} from "./middleware.ts"
 

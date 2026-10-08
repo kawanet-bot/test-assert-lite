@@ -15,8 +15,8 @@ interface QueueItem {
     reject: (error: unknown) => void
 }
 
-// What the reporter's loop came to. Its failure is the run's once an
-// emit() has delivered it, and close()'s to throw until then.
+// The reporter loop's end. Its failure is the run's once an emit() has
+// delivered it, and close()'s to throw until then.
 interface Failed {
     failure: unknown
     delivered: boolean
@@ -29,7 +29,7 @@ export interface ReportStream {
 export interface ReportStreamOptions {
     /** The run's streams, outcome and cleanup, shared by every part. */
     services: RunServices
-    /** What the events are formatted with. */
+    /** The formatter of the events. */
     reporter: ReporterFn
     /** Where the formatted text goes. */
     output: OutputFn
@@ -44,7 +44,7 @@ export const createReportStream = ({reporter, output, services}: ReportStreamOpt
     let wake: (() => void) | null = null
     // Set by close(). The input ends once the queue is empty.
     let closed = false
-    // What the reporter's loop failed with, if it did.
+    // The reporter loop's failure, if it failed.
     let failed: Failed | null = null
 
     const wakeUp = (): void => {

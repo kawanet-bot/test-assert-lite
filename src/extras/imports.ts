@@ -1,7 +1,7 @@
-// What the suites' specifiers resolve to, as the command line names it: an
-// --alias, or an entry of an import map file. Each item knows what kind
+// The targets of the suites' specifiers, as the command line names them,
+// an --alias or an entry of an import map file. Each item knows what kind
 // of target it holds, what a mode cannot take of it, the local file it is,
-// and the address a page gets; the list keeps them in order, last wins.
+// and the address a page gets. The list keeps them in order, last wins.
 
 import {resolve} from "node:path"
 import {fileURLToPath, pathToFileURL} from "node:url"
@@ -17,7 +17,7 @@ export type Mode = "node" | "browser"
 /** The working directory as a URL, what an --alias resolves a relative target against. */
 export const cwdURL = (): URL => pathToFileURL(`${process.cwd()}/`)
 
-// What the CLI maps before anything is given, in both modes. The library's
+// The CLI's own map, ahead of anything given, in both modes. The library's
 // subpaths go to themselves, so a page's map has them. node:test and
 // node:assert go to the subpaths that stand in for them. A later item
 // takes any of these over.
@@ -36,7 +36,7 @@ const COMMON_IMPORTS: [specifier: string, target: string][] = [
     ["node:assert/strict", "test-assert-lite/assert/strict"],
 ]
 
-// What a page is mapped as well, where Node has its own.
+// Additions to a page's map, for names Node has of its own.
 const BROWSER_IMPORTS: [specifier: string, target: string][] = [
     // A script for a page imports the process by the subpath's name, and
     // names this alias itself when it reads node:process.
@@ -104,7 +104,7 @@ export abstract class ImportBase {
  * A bare path is a path, as it is for every other file the CLI takes.
  */
 export class ImportAliasItem extends ImportBase {
-    /** What a relative target resolves against: the working directory. */
+    /** The working directory, which a relative target resolves against. */
     private readonly cwd: URL
 
     constructor(entry: string, cwd: URL) {
@@ -137,7 +137,7 @@ export class ImportAliasItem extends ImportBase {
  * page's, a bare name is not an address at all.
  */
 export class ImportMapItem extends ImportBase {
-    /** What a relative address resolves against: the map file. */
+    /** The map file, which a relative address resolves against. */
     private readonly mapFile: URL
 
     constructor(specifier: string, address: unknown, mapFile: URL) {
@@ -163,7 +163,7 @@ export class ImportMapItem extends ImportBase {
     }
 }
 
-// What an import map file holds, as items: "imports" alone, in its order.
+// The items of an import map file, from "imports" alone, in its order.
 export const importMapItems = (map: unknown, mapFile: URL): ImportMapItem[] => {
     if (typeof map !== "object" || map == null || Array.isArray(map)) throw new UsageError("--import-map: not an object")
     for (const key of Object.keys(map)) if (key !== "imports") throw new UsageError(`--import-map: only "imports" is supported: "${key}"`)
@@ -231,7 +231,7 @@ abstract class ImportsBase {
         return new Map(this.items.map(item => [item.specifier, item]))
     }
 
-    /** What a page's import map gets: each specifier's address. */
+    /** Each specifier's address, for a page's import map. */
     addresses(serve: (file: string) => string): Record<string, string> {
         return Object.fromEntries([...this.entries()].map(([specifier, item]) => [specifier, item.getAddress(serve)]))
     }

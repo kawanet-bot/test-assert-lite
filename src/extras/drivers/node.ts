@@ -10,7 +10,7 @@ import {load, run, session} from "test-assert-lite/session"
 import type {NodeImports} from "../imports.ts"
 import type {ConnectConfig, SessionConfig} from "../mode-options.ts"
 
-/** What the hook is handed at registration, and the only place its source and this file meet. */
+/** The data handed to the hook at registration, the only place its source and this file meet. */
 interface HookData {
     /** Each specifier to the file URL it resolves to: the library's subpaths for node:test and node:assert, and what --import-map and --alias add. */
     aliases: Map<string, string>

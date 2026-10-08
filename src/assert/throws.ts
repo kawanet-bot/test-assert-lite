@@ -10,7 +10,7 @@ type ErrorFilter = TAL.ErrorFilter
 // wrong with the arguments. What matters is that it is not an AssertionError.
 export const invalid = (): TypeError => new TypeError("invalid arguments")
 
-// What a block produced, wrapped so that a thrown undefined is still told
+// A block's outcome, wrapped so that a thrown undefined is still told
 // apart from nothing thrown, as node:assert tells them apart. rejects.ts
 // builds the same shape from how a promise settled.
 export type Outcome = {thrown: unknown} | null

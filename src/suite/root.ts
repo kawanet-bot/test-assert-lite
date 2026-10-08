@@ -4,10 +4,10 @@ import {Suite} from "./suite.ts"
 
 const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms))
 
-// What the top level declares into. The root has no body and no result of
-// its own, and runs on the scheduler's clock rather than in a parent's
-// turn: each walk takes the hooks and the children declared since the
-// last one, and run() asks for the teardown once nothing is left.
+// The suite the top level declares into. The root has no body and no
+// result of its own, and runs on the scheduler's clock rather than in a
+// parent's turn. Each walk takes the hooks and the children declared since
+// the last one, and run() asks for the teardown once nothing is left.
 export class Root extends Suite {
     private beforeNext = 0
     private afterNext = 0
