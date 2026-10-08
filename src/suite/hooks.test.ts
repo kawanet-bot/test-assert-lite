@@ -13,7 +13,7 @@ const TITLE = "suite/hooks.test.ts"
 describe(TITLE, () => {
     it("before and after wrap the run", async () => {
         const local = createTAL()
-        local.session.session({output: () => undefined})
+        local.sess.session({output: () => undefined})
         const order: string[] = []
         local.test.before(() => {
             order.push("before")
@@ -24,7 +24,7 @@ describe(TITLE, () => {
         local.test.it("middle", () => {
             order.push("test")
         })
-        await local.session.run()
+        await local.sess.run()
 
         assert.deepEqual(order, ["before", "test", "after"])
     })
@@ -32,7 +32,7 @@ describe(TITLE, () => {
     // A hook belongs to the suite that declares it, scoped as in node:test.
     it("hooks are scoped to the suite that declares them", async () => {
         const local = createTAL()
-        local.session.session({output: () => undefined})
+        local.sess.session({output: () => undefined})
         const order: string[] = []
         local.test.describe("S", () => {
             local.test.before(() => {
@@ -48,7 +48,7 @@ describe(TITLE, () => {
         local.test.it("outside", () => {
             order.push("outside")
         })
-        await local.session.run()
+        await local.sess.run()
 
         assert.deepEqual(order, ["S:before", "inside", "S:after", "outside"])
     })
@@ -74,7 +74,7 @@ describe(TITLE, () => {
                 order.push("b")
             })
         })
-        await local.session.run()
+        await local.sess.run()
         const summary = summaryOf(events)
 
         assert.deepEqual(order, ["after"])
@@ -105,7 +105,7 @@ describe(TITLE, () => {
             })
             throw broken
         })
-        const summary = await local.session.run()
+        const summary = await local.sess.run()
 
         assert.deepEqual(order, ["before", "after"])
         const fails = ofType(events, "test:fail")
@@ -119,7 +119,7 @@ describe(TITLE, () => {
     // the before hooks ahead of the first test, the after hooks once.
     it("root hooks declared around a top-level await wrap the whole run", async () => {
         const local = createTAL()
-        local.session.session({output: () => undefined})
+        local.sess.session({output: () => undefined})
         const order: string[] = []
         local.test.before(() => {
             order.push("before1")
@@ -150,7 +150,7 @@ describe(TITLE, () => {
         local.test.it("c", () => {
             order.push("c")
         })
-        await local.session.run()
+        await local.sess.run()
 
         assert.deepEqual(order, ["before1", "before2", "a", "after(A)", "b", "c", "after1", "after2"])
     })
@@ -165,7 +165,7 @@ describe(TITLE, () => {
             })
             local.test.it("a", () => undefined)
         })
-        await local.session.run()
+        await local.sess.run()
         const summary = summaryOf(events)
 
         assert.deepEqual(names(events, "test:pass"), ["a"])
@@ -198,7 +198,7 @@ describe(TITLE, () => {
                 ran++
             })
         })
-        await local.session.run()
+        await local.sess.run()
         const summary = summaryOf(events)
 
         assert.equal(ran, 0)
@@ -218,7 +218,7 @@ describe(TITLE, () => {
         local.test.before(() => {
             throw new Error("root setup")
         })
-        await local.session.run()
+        await local.sess.run()
         const summary = summaryOf(events)
 
         assert.deepEqual(names(events, "test:fail"), ["root before hook"])
@@ -234,7 +234,7 @@ describe(TITLE, () => {
         local.test.after(() => {
             throw new Error("root teardown")
         })
-        const summary = await local.session.run()
+        const summary = await local.sess.run()
 
         assert.deepEqual(names(events, "test:fail"), ["root after hook"])
         assert.equal(summary.success, false)
@@ -247,7 +247,7 @@ describe(TITLE, () => {
             throw new Error("root teardown")
         })
         local.test.it("a", () => undefined)
-        await local.session.run()
+        await local.sess.run()
         const summary = summaryOf(events)
 
         assert.equal(names(events, "test:fail").length, 1)
@@ -267,7 +267,7 @@ describe(TITLE, () => {
             local.test.it("skipped", {skip: true}, () => undefined)
             local.test.it("plain", () => undefined)
         })
-        await local.session.run()
+        await local.sess.run()
         const summary = summaryOf(events)
 
         const skipped = ofType(events, "test:fail").find(e => e.data.name === "skipped")?.data
@@ -290,7 +290,7 @@ describe(TITLE, () => {
         local.test.describe.skip("SK", () => {
             local.test.it("x", () => undefined)
         })
-        await local.session.run()
+        await local.sess.run()
         const summary = summaryOf(events)
 
         const fails = ofType(events, "test:fail")
@@ -312,7 +312,7 @@ describe(TITLE, () => {
             await new Promise(r => setTimeout(r, 20))
             local.test.it("x", () => undefined)
         })
-        await local.session.run()
+        await local.sess.run()
 
         const suite = ofType(events, "test:fail").find(e => e.data.name === "S")?.data
         assert.ok((suite?.details.duration_ms ?? -1) >= 10)
@@ -330,7 +330,7 @@ describe(TITLE, () => {
             })
             local.test.it("p1", () => undefined)
         })
-        await local.session.run()
+        await local.sess.run()
         const summary = summaryOf(events)
 
         assert.deepEqual(names(events, "test:start"), ["P", "C", "g", "p1"])

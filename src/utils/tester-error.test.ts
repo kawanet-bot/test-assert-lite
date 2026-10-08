@@ -20,7 +20,7 @@ const count = (text: string, line: string): number => text.split(line).length - 
 const thrown = async (value: unknown): Promise<string> => {
     const local = createTAL()
     const lines: string[] = []
-    local.session.session({
+    local.sess.session({
         reporter: local.reporter.spec({colors: false}),
         output: text => {
             lines.push(text)
@@ -29,7 +29,7 @@ const thrown = async (value: unknown): Promise<string> => {
     local.test.it("bad", () => {
         throw value
     })
-    await local.session.run()
+    await local.sess.run()
     return lines.join("")
 }
 

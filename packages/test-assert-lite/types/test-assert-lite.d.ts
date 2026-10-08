@@ -358,7 +358,7 @@ export declare namespace TAL {
         /** The realm's process, the same in every harness. */
         proc: ProcessAPI
         reporter: Reporter
-        session: SessionAPI
+        sess: SessionAPI
         test: RegistrarAPI
     }
 }
