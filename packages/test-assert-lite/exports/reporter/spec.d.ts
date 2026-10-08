@@ -1,3 +1,5 @@
+// Types for test-assert-lite/reporter/spec. The default export is
+// a reporter that node --test-reporter also takes.
 import type {TAL} from "test-assert-lite"
 
 declare const reporterFn: TAL.ReporterFn

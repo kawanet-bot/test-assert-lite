@@ -2,7 +2,7 @@ import type {TAL} from "test-assert-lite"
 
 // Collects the events that reached the reporter, through a session whose
 // reporter yields nothing, so the output falls silent as a side effect.
-// Where silence is all that is wanted, open the session with an output.
+// A caller that wants silence alone opens the session with an output.
 export const capture = (harness: TAL.TestHarness, options: Omit<TAL.SessionOptions, "reporter"> = {}): TAL.TestEvent[] => {
     const events: TAL.TestEvent[] = []
     harness.session.session({

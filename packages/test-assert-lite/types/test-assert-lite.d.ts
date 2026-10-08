@@ -4,8 +4,6 @@
  * A subset of `node:test` and `node:assert` that runs in browsers.
  */
 
-export {} // external module indicator
-
 export declare namespace TAL {
     // --- test ---
 
@@ -15,10 +13,12 @@ export declare namespace TAL {
 
     type HookFn = () => void | Promise<void>
 
-    // The test entry, `test-assert-lite/test`: what declares suites, tests and hooks.
+    /** The functions of `test-assert-lite/test`, which declare suites, tests and hooks. */
     interface RegistrarAPI {
+        /** Runs once after everything in the suite that declares it has finished. */
         after(fn: HookFn): void
 
+        /** Runs once when the suite that declares it starts. */
         before(fn: HookFn): void
 
         describe: SuiteAPI
@@ -28,10 +28,14 @@ export declare namespace TAL {
     }
 
     interface TestOptions {
+        /** Skips the test, and a string says why. */
         skip?: boolean | string
-        // A todo runs and is reported, but is counted as todo whatever the
-        // verdict, and its failure does not fail the run. A skip outranks it.
+        /**
+         * A todo test runs and is reported. It counts as todo whether it passes
+         * or fails, so it never fails the run. A skip outranks it.
+         */
         todo?: boolean | string
+        /** Milliseconds before the test fails as timed out. */
         timeout?: number
     }
 
@@ -46,17 +50,18 @@ export declare namespace TAL {
         todo(message?: string): void
         diagnostic(message: string): void
 
-        // Subtests run immediately, ahead of the parent's remaining body.
-        // Unlike the top-level `it`, the returned promise is meaningful.
-        // One declared after the parent was reported (after its timeout,
-        // say) runs at the top level and fails as parentAlreadyFinished.
+        /**
+         * Subtests run one at a time, in the order declared. Unlike the top-level
+         * `test`, this returns a promise to await. A subtest declared after its parent
+         * was reported, such as after a timeout, runs at the top level and fails as parentAlreadyFinished.
+         */
         test(name?: string, options?: TestOptions, fn?: TestFn): Promise<void>
         test(name?: string, fn?: TestFn): Promise<void>
         test(options?: TestOptions, fn?: TestFn): Promise<void>
         test(fn?: TestFn): Promise<void>
     }
 
-    // `describe` / `suite`. The static variants take the same arguments.
+    /** `describe` and `suite`. Their `skip` and `todo` take the same arguments. */
     interface SuiteBase {
         (name?: string, options?: TestOptions, fn?: SuiteFn): void
         (name?: string, fn?: SuiteFn): void
@@ -69,7 +74,7 @@ export declare namespace TAL {
         todo: SuiteBase
     }
 
-    // `it` / `test`. The static variants take the same arguments.
+    /** `it` and `test`. Their `skip` and `todo` take the same arguments. */
     interface TestBase {
         (name?: string, options?: TestOptions, fn?: TestFn): void
         (name?: string, fn?: TestFn): void
@@ -84,15 +89,18 @@ export declare namespace TAL {
 
     // --- assert ---
 
-    // A filter for `doesNotThrow`. A RegExp is tested against String(error).
-    // A class is what the error must be an instance of, Error or not, as
-    // node:assert takes any. A validation function returns true on a match.
+    /**
+     * A filter that `doesNotThrow` and `doesNotReject` take. A RegExp is tested
+     * against String(error). A class, Error or not, matches its instances, as in
+     * node:assert. A validation function returns true on a match.
+     */
     type ErrorFilter = RegExp | (new (...args: never[]) => object) | ((thrown: unknown) => boolean)
 
-    // An expectation for `throws`: any filter above, or an object whose
-    // properties the error must carry, a RegExp value being tested against
-    // the property's string form. An Error instance counts as such an
-    // object, name and message included. The same shapes node:assert takes.
+    /**
+     * An expectation that `throws` and `rejects` take. An ErrorFilter, or an object
+     * whose properties the error must have, where a RegExp value is tested against
+     * the property's string form. An Error instance works as such an object. node:assert takes the same.
+     */
     type AssertPredicate = ErrorFilter | object
 
     interface AssertBase {
@@ -110,9 +118,8 @@ export declare namespace TAL {
         throws(block: () => unknown, expected: AssertPredicate | undefined, message?: string | Error): void
         doesNotThrow(block: () => unknown, message?: string): void
         doesNotThrow(block: () => unknown, expected: ErrorFilter | undefined, message?: string | Error): void
-        // The same pair for a promise, or an async function returning one:
-        // judged once it settles, and a misuse rejects rather than throws.
-        // Declared as node:assert declares them.
+        // The same pair for a promise, or for a function that returns one.
+        // The check runs once the promise settles. A misuse rejects rather than throws.
         rejects(block: Promise<unknown> | (() => Promise<unknown>), message?: string): Promise<void>
         rejects(block: Promise<unknown> | (() => Promise<unknown>), expected: AssertPredicate | undefined, message?: string | Error): Promise<void>
         doesNotReject(block: Promise<unknown> | (() => Promise<unknown>), message?: string): Promise<void>
@@ -121,17 +128,21 @@ export declare namespace TAL {
         doesNotMatch(value: string, regExp: RegExp, message?: string | Error): void
     }
 
-    // Reachable as `t.assert`. `ok` and `ifError` are plain checks here rather
-    // than assertion signatures: narrowing through a callback parameter trips
-    // TS2775, which `node:test` itself hits on `t.assert.ok()`.
+    /**
+     * The assertions on `t.assert`. Here `ok` and `ifError` do not narrow types.
+     * An assertion signature on a callback parameter trips TS2775, as `node:test`
+     * does on `t.assert.ok()`.
+     */
     interface TestContextAssert extends AssertBase {
         ok(value: unknown, message?: string | Error): void
         ifError(value: unknown): void
     }
 
-    // `assert` compares loosely in equal / notEqual / deepEqual /
-    // notDeepEqual, `strict` (reachable as `assert.strict` too) strictly;
-    // the *StrictEqual names are strict on both, as in node:assert.
+    /**
+     * In `assert` the names such as `equal` and `deepEqual` compare loosely.
+     * In `strict`, also reachable as `assert.strict`, they compare strictly.
+     * The *StrictEqual names are strict in both, as in node:assert.
+     */
     interface Assert extends AssertBase {
         (value: unknown, message?: string | Error): asserts value
         ok(value: unknown, message?: string | Error): asserts value
@@ -149,9 +160,11 @@ export declare namespace TAL {
         | "subtestsFailed"
         | "parentAlreadyFinished"
 
-    // A failure the runner produced itself, or a thrown value that was not
-    // an Error. An Error thrown by test code is reported as is. `code`
-    // matches node:test's wrapper so a check written for it holds here.
+    /**
+     * A failure the runner produced itself, or a thrown value that was not
+     * an Error. An Error thrown by test code is reported as is. `code`
+     * matches node:test's wrapper so a check written for it holds here.
+     */
     interface TesterError extends Error {
         readonly name: "TesterError"
         readonly code: "ERR_TEST_FAILURE"
@@ -166,9 +179,11 @@ export declare namespace TAL {
         nesting: number
     }
 
-    // A suite is reported after its children, with `type: "suite"`.
-    // `testNumber` counts within the parent, suites and tests together.
-    // A result carries `skip` or `todo`, never both: a skip outranks a todo.
+    /**
+     * A suite is reported after its children, with `type: "suite"`.
+     * `testNumber` counts within the parent, suites and tests together.
+     * A result carries `skip` or `todo`, never both. A skip outranks a todo.
+     */
     interface TestPass {
         name: string
         nesting: number
@@ -181,10 +196,12 @@ export declare namespace TAL {
         }
     }
 
-    // `error` is what the test threw, or a TesterError. A suite fails
-    // with its hook's or body's error, or with `subtestsFailed` when only
-    // a child did. A test never run because its parent failed is reported
-    // as `cancelledByParent` and counted under `cancelled`.
+    /**
+     * `error` is what the test threw, or a TesterError. A suite fails
+     * with its hook's or body's error, or with `subtestsFailed` when only
+     * a child did. A test never run because its parent failed is reported
+     * as `cancelledByParent` and counted under `cancelled`.
+     */
     interface TestFail {
         name: string
         nesting: number
@@ -204,8 +221,7 @@ export declare namespace TAL {
         level: "info" | "warn" | "error"
     }
 
-    // A test file's own output, as node --test relays it. This package's
-    // runner emits neither.
+    /** A test file's own output, as node --test relays it. This package's runner emits neither. */
     interface TestStdout {
         file: string
         message: string
@@ -231,13 +247,13 @@ export declare namespace TAL {
     }
 
     type TestEvent =
-        | {type: "test:start"; data: TestStart}
-        | {type: "test:pass"; data: TestPass}
-        | {type: "test:fail"; data: TestFail}
-        | {type: "test:diagnostic"; data: TestDiagnostic}
-        | {type: "test:stdout"; data: TestStdout}
-        | {type: "test:stderr"; data: TestStderr}
-        | {type: "test:summary"; data: TestSummary}
+        | {type: "test:start", data: TestStart}
+        | {type: "test:pass", data: TestPass}
+        | {type: "test:fail", data: TestFail}
+        | {type: "test:diagnostic", data: TestDiagnostic}
+        | {type: "test:stdout", data: TestStdout}
+        | {type: "test:stderr", data: TestStderr}
+        | {type: "test:summary", data: TestSummary}
 
     // --- reporter ---
 
@@ -246,13 +262,13 @@ export declare namespace TAL {
     type OutputFn = (text: string) => void | Promise<void>
 
     interface SpecOptions {
-        // Defaults on for a Node TTY unless NO_COLOR or NODE_DISABLE_COLORS is set; off otherwise.
+        /** Color in the output. A Node TTY gets it by default, as in node. */
         colors?: boolean
-        /** How much less to say. 0 by default. 1 or more keeps failures alone. */
+        /** A quiet level, 0 by default. 1 or more leaves out the result lines and keeps the list of failures. */
         quiet?: number
     }
 
-    // The reporters the package ships
+    /** The reporters the package ships. */
     interface Reporter {
         spec(options?: SpecOptions): ReporterFn
         tap(): ReporterFn
@@ -261,19 +277,19 @@ export declare namespace TAL {
 
     // --- session ---
 
-    // A window, or what stands in for one: its `error` and `unhandledrejection` events.
+    /** A window, or a stand-in for one. The session listens to its `error` and `unhandledrejection` events. */
     interface EventTargetLike {
         addEventListener(type: string, listener: (event: unknown) => void, capture?: boolean): void
         removeEventListener(type: string, listener: (event: unknown) => void, capture?: boolean): void
     }
 
-    // Node's process, or what stands in for it: its `uncaughtException` and `unhandledRejection` events.
+    /** Node's process, or a stand-in for it. The session listens to its `uncaughtException` and `unhandledRejection` events. */
     interface EventEmitterLike {
         on(event: string, listener: (...args: unknown[]) => void): unknown
         off(event: string, listener: (...args: unknown[]) => void): unknown
     }
 
-    // The five methods of a page's console, which a session takes over.
+    /** The console methods that a session takes over. */
     interface ConsoleLike {
         debug(...args: unknown[]): void
         log(...args: unknown[]): void
@@ -283,15 +299,15 @@ export declare namespace TAL {
     }
 
     interface SessionOptions {
-        /** The formatter of the run's events. `reporter.spec()` unless given. */
+        /** Formats the run's events. A string names a built-in reporter, such as `"tap"`, or a module to import. `spec` by default. */
         reporter?: ReporterFn | string
-        /** Where the formatted text goes, the run's stdout unless given. */
+        /** The destination of the formatted text, the run's stdout unless given. */
         output?: OutputFn
-        /** Reports the run to its host over this channel. Nothing is sent without one. */
+        /** The channel to the host. By default, the realm's channel that connect() made. */
         channel?: Channel
         /**
-         * Takes the errors outside the tests until run(). An uncaught exception
-         * or an unhandled rejection of the window or process given is one failed test.
+         * A window or a process to watch until run() ends. Each uncaught exception
+         * or unhandled rejection on it counts as one failed test.
          */
         uncaught?: EventTargetLike | EventEmitterLike
         /**
@@ -299,81 +315,97 @@ export declare namespace TAL {
          * go to `stdout`, warn and error to `stderr`, each call one line.
          */
         console?: ConsoleLike
-        /** How much less to say. 0 by default. 1 or more keeps failures alone. -1 reports a run with no tests too, as node --test does. The summary event is unchanged. */
+        /**
+         * A quiet level, 0 by default. 1 or more leaves out the summary
+         * lines, and with the default reporter, the result lines too. -1 reports
+         * a run with no tests, as node --test does. The summary event is always sent.
+         */
         quiet?: number
-        /** Interval in milliseconds to write a heartbeat to `stderr`. Default: 10 seconds. */
+        /** Milliseconds of silence before the run writes an alive line to `stderr`. 10 seconds by default. 0 turns it off. */
         heartbeat?: number
     }
 
-    // The result run() resolves with. It says whether every test passed.
+    /** The result run() resolves with. It says whether every test passed. */
     interface SessionResult {
         success: boolean
     }
 
-    // One of the run's streams.
+    /** One of the run's streams. */
     interface Writer {
         write(chunk: string): void
     }
 
-    // The session's own entry, `test-assert-lite/session`: opening it,
-    // loading the suites into it, and running it.
+    /** The functions of `test-assert-lite/session`, which drive a session. */
     interface SessionAPI {
-        /** Opens a new session for the following tests. */
+        /** Opens a session for the tests declared after it. It must come before the first declaration. */
         session(options?: SessionOptions): void
 
-        /** Imports a suite, by URL or absolute path, so its tests are declared. All loading comes before run(). */
+        /**
+         * Imports a test file by URL or absolute path, so its tests are declared.
+         * A file that fails to import counts as one failed test. Call it before run().
+         */
         load(file: string): Promise<void>
 
-        /** Runs every registered test, and closes the session. */
+        /** Runs every declared test, reports the result, and closes the session. */
         run(): Promise<SessionResult>
     }
 
     // --- process ---
 
-    // The host as a script sees it, `test-assert-lite/process`: what
-    // node:process offers of it, written to as a script would. One for the
-    // realm, the same from every harness.
+    /**
+     * The host as a script sees it, through `test-assert-lite/process`.
+     * It offers a few members of node:process. There is one per realm,
+     * shared by every harness.
+     */
     interface ProcessAPI {
         /** The arguments the host gave, as node's process.argv has them. Empty until the host fills it. */
         argv: string[]
 
-        /** The host's stdout and stderr, down the realm's channel. */
+        /** The host's stdout, through the realm's channel. */
         stdout: Writer
+        /** The host's stderr, through the realm's channel. */
         stderr: Writer
 
-        /** Makes the realm's channel to the host over the fetch given, for the sessions to come, and takes the arguments. */
-        connect: (options?: {fetch?: typeof fetch, argv?: string[]}) => Channel
+        /** Connects the realm to its host for the sessions to come, over the fetch given if any. It also sets `argv`. */
+        connect(options?: {fetch?: typeof fetch, argv?: string[]}): Channel
     }
 
     // --- session channel ---
 
-    // The session's end of the line to its host, shaped after a child
-    // process: its streams, and a way to send messages.
+    /**
+     * The session's link to its host, shaped like a child process.
+     * It has the host's streams and a way to send messages.
+     */
     interface Channel {
-        /** The host's stdout and stderr, as the session writes them. */
+        /** The host's stdout, as the session writes it. */
         stdout: Writer
+        /** The host's stderr, as the session writes it. */
         stderr: Writer
 
         /** Sends a message to the host. */
-        send: (message: SessionEvent, callback?: (error: Error | null) => void) => void
+        send(message: SessionEvent, callback?: (error: Error | null) => void): void
 
-        /** Called once the session has sent its result. A channel over fetch has nothing to close. */
+        /** Called once the session has sent its result. */
         disconnect(): void
     }
 
-    // A message send() carries. The session names the sender, so a host with
-    // several on one channel knows whose word it is.
+    /**
+     * A message that send() carries. Each one names its session, so a host
+     * with several sessions on one channel can tell them apart.
+     */
     type SessionEvent =
         | {type: "session:begin", session: string}
         | {type: "session:end", session: string, data: SessionResult}
 
-
     // --- harness ---
 
-    // One isolated set of everything the package offers: the tests, the
-    // assertions, the reporters and the session that reports them.
+    /**
+     * One harness, with its own tests and session apart from any other.
+     * `proc` is the exception. There is one per realm.
+     */
     interface TestHarness {
         assert: Assert
+        /** The realm's process, the same in every harness. */
         proc: ProcessAPI
         reporter: Reporter
         session: SessionAPI
@@ -381,7 +413,7 @@ export declare namespace TAL {
     }
 }
 
-/** The shared harness behind the subpaths: `test-assert-lite/test`, `/assert`, `/session` and the reporters. */
+/** The harness that the subpaths share, such as `test-assert-lite/test` and `test-assert-lite/assert`. */
 export declare const sharedTAL: TAL.TestHarness
 
 /** Creates a local harness apart from `sharedTAL`. */

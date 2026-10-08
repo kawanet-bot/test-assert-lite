@@ -120,7 +120,7 @@ tacli --serve --port 3000 test/browser.test.mjs
 
 ### `--reporter <name>`
 
-- How the run is reported: `spec` (default), `tap` or `html`.
+- The format of the report: `spec` (default), `tap` or `html`.
 - Or a module to import, for example `--reporter test-assert-lite/reporter/tap`. Its default export is the reporter, in the shape `node --test-reporter` takes. When the module fails to import, the run reports with `spec` and counts one failed test.
 
 ### `-q`, `--quiet`
@@ -154,7 +154,7 @@ tacli --serve --port 3000 test/browser.test.mjs
 
 ### `--mount <dir|url>`
 
-- What the root serves in place of `htdocs/`. A directory, or an origin to proxy, for example `http://127.0.0.1:8080`, so the suite runs in a page of the app under test.
+- A directory, or an origin to proxy, that the root serves in place of `htdocs/`. For example `http://127.0.0.1:8080`, so the suite runs in a page of the app under test.
 - Its HTML pages get the import map and the scripts in their head, so a page served by the app can import the library and the suite by name.
 - A page with its own `<script type="importmap">` is served unchanged, with no import map and no script or suite tags added. stderr says so.
 

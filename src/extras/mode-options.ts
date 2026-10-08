@@ -31,7 +31,7 @@ export interface FixedMode {
 export interface SessionConfig {
     /** The reporter named on the command line; spec unless given. */
     reporter?: string
-    /** How much less to say, as the session takes it. */
+    /** The quiet level, as the session takes it. */
     quiet?: number
 }
 

@@ -9,7 +9,7 @@ import {dirname, relative, resolve, sep} from "node:path"
 import {fileURLToPath} from "node:url"
 import {libraryRoot} from "../package-root.ts"
 
-/** Where every directory is served under, each by its digest. */
+/** The path every directory is served under, each by its digest. */
 export const FILES_PATH = "/@tacli/files/"
 
 export interface Dir {

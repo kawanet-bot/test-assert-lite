@@ -31,7 +31,7 @@ export interface ReportStreamOptions {
     services: RunServices
     /** The formatter of the events. */
     reporter: ReporterFn
-    /** Where the formatted text goes. */
+    /** The destination of the formatted text. */
     output: OutputFn
 }
 

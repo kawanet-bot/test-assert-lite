@@ -26,7 +26,7 @@ interface Cycle {
     services: RunServices
     // The stream the run's events go through, on the way to the reporter.
     report: ReportStream
-    // Where the run's text and verdict go, let go of once the verdict is out.
+    // The destination of the run's text and verdict, let go of once the verdict is out.
     channel: TAL.Channel
     // Names the session to the host, among others on the same channel.
     id: string

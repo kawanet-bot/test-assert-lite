@@ -1,5 +1,5 @@
-// Declarations for assert.js: the shared harness's `assert` and `assert.strict`,
-// and each method typed off the Assert interface so it cannot drift from it.
+// Types for test-assert-lite/assert. Each export takes its type from
+// TAL.Assert, so the two cannot drift apart.
 import type {TAL} from "test-assert-lite"
 
 type Assert = TAL.Assert

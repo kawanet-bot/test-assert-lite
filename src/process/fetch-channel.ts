@@ -12,7 +12,7 @@ interface ChannelIPC {
     send: (message: TAL.SessionEvent) => Promise<unknown>
 }
 
-// How long lines gather before a flush: a test's burst of output becomes
+// The time lines gather before a flush. A test's burst of output becomes
 // one request, while a person watching still sees it as it comes.
 const FLUSH_MS = 50
 

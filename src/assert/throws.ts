@@ -35,9 +35,8 @@ const keysOf = (expected: object): string[] => isError(expected) ? [...Object.ke
 const isPredicate = (value: unknown): value is AssertPredicate =>
     value instanceof RegExp || "function" === typeof value || ("object" === typeof value && value != null && keysOf(value).length > 0)
 
-// Whether `thrown` satisfies `expected`, for every matcher node:assert takes:
-// a RegExp against String(thrown), a class, a validation function, or an
-// object whose properties thrown must carry.
+// The match of `thrown` against `expected`, for each matcher node:assert
+// takes, such as a RegExp against String(thrown) or a class.
 const matches = (thrown: unknown, expected: AssertPredicate): boolean => {
     if (expected instanceof RegExp) return expected.test(String(thrown))
     if ("function" === typeof expected) {
@@ -59,7 +58,7 @@ const matches = (thrown: unknown, expected: AssertPredicate): boolean => {
     })
 }
 
-// How the failure names what the block was expected to do.
+// The verb a failure message gives the block's expected behavior.
 const VERB = {throws: "throw", rejects: "reject", doesNotThrow: "throw", doesNotReject: "reject"} as const
 
 // --- shared with rejects.ts ----------------------------------------------

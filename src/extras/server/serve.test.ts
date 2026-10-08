@@ -71,7 +71,7 @@ const freePort = (): Promise<number> => new Promise(resolve => {
     })
 })
 
-// Whether this host has the IPv6 family at all. A container often does not.
+// True when this host has the IPv6 family at all. A container often does not.
 const hasIPv6 = (): Promise<boolean> => new Promise(resolve => {
     const probe = listen()
     probe.once("error", () => resolve(false))

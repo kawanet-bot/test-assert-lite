@@ -72,7 +72,7 @@ export abstract class ImportBase {
         return BUNDLED.has(this.target)
     }
 
-    /** Why `mode` cannot take this item, or nothing. */
+    /** The reason `mode` cannot take this item, or nothing. */
     abstract refusal(mode: Mode): string | undefined
 
     /** The local file, absolute: a path as the subclass resolves it, or a bundled name from this package. Nothing for a URL. */
@@ -235,7 +235,7 @@ abstract class ImportsBase {
         return Object.fromEntries([...this.entries()].map(([specifier, item]) => [specifier, item.getAddress(serve)]))
     }
 
-    /** Why the mode cannot take the list: one reason per item that resolves and is refused. */
+    /** The reasons the mode cannot take the list, one per item that resolves and is refused. */
     refusals(): string[] {
         return [...this.entries().values()].map(item => item.refusal(this.mode)).filter((reason): reason is string => reason != null)
     }
