@@ -12,7 +12,7 @@
     "url": "https://github.com/kawanet/test-assert-lite/issues"
   },
   "dependencies": {
-    "playwright": "^1.60.0",
+    "playwright": "^1.64.0",
     "test-assert-cli": "^0.1.0"
   },
   "engines": {
