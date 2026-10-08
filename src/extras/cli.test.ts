@@ -5,7 +5,7 @@ import {tmpdir} from "node:os"
 import {join} from "node:path"
 import {after, before, describe, it} from "node:test"
 import type {BrowserType} from "playwright-core"
-import {connect} from "test-assert-lite/process"
+import {connect, argv as libraryArgv} from "test-assert-lite/process"
 import {CLI} from "./cli.ts"
 
 const TITLE = "extras/cli.test.ts"
@@ -88,6 +88,20 @@ describe(TITLE, () => {
             process.argv.splice(0, process.argv.length, ...argv)
         }
         assert.ok(chunks.join("").includes("ok 1 - one --two"))
+    })
+
+    it("gives test-assert-lite/process the same argv as node:process", async () => {
+        const chunks = connectStdout()
+        const argv = [...process.argv]
+        const saved = [...libraryArgv]
+        try {
+            const script = `import {it} from "node:test"\nimport {argv} from "test-assert-lite/process"\nimport process from "node:process"\nit(argv.slice(1).join(" ") + (argv[0] === process.argv[0] ? " same argv[0]" : " other argv[0]"), () => undefined)\n`
+            assert.equal(await CLI({args: ["--reporter", "tap", "-e", script, "--", "one", "--two"]}), 0)
+        } finally {
+            process.argv.splice(0, process.argv.length, ...argv)
+            connect({argv: saved})
+        }
+        assert.ok(chunks.join("").includes("ok 1 - one --two same argv[0]"))
     })
 
     it("says nothing of a script with no tests, and counts to zero for a test runner's", async () => {

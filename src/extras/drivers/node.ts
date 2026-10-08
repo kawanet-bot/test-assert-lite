@@ -6,6 +6,7 @@ import {register} from "node:module"
 import {resolve} from "node:path"
 import {pathToFileURL} from "node:url"
 import type {TAL} from "test-assert-lite"
+import {connect} from "test-assert-lite/process"
 import {load, run, session} from "test-assert-lite/session"
 import type {NodeImports} from "../imports.ts"
 import type {ConnectConfig, SessionConfig} from "../mode-options.ts"
@@ -68,8 +69,10 @@ export const runInNode = async (options: RunInNodeOptions): Promise<TAL.SessionR
     register(`data:text/javascript,${encodeURIComponent(HOOK)}`, {data})
 
     // The suites see the arguments as node would give a script: the file,
-    // then what followed it, with this CLI's own options gone.
+    // then what followed it, with this CLI's own options gone. The library's
+    // own argv reads the same, so a suite finds them under either name.
     process.argv.splice(1, process.argv.length - 1, ...(options.connect?.argv ?? []))
+    connect({argv: process.argv})
 
     session({reporter, quiet, uncaught: process})
 
