@@ -81,11 +81,9 @@ const isPrimitive = (v: unknown): boolean => v == null || "object" !== typeof v
 // itself, the way node's deepEqual (and its equal) treats it.
 export const looseSame = (a: unknown, b: unknown): boolean => a == b || (Number.isNaN(a) && Number.isNaN(b))
 
-// Strict is node's deepStrictEqual: Object.is for primitives, a shared
-// prototype, own enumerable string and symbol keys. Loose is its deepEqual:
-// == for primitives, the prototype ignored, symbol keys not walked. The
-// kinds, what each kind compares of its own, and the key walk itself are
-// shared by both.
+// Strict is node's deepStrictEqual, Object.is for primitives, a shared
+// prototype, own enumerable string and symbol keys. Loose is its deepEqual,
+// == for primitives, the prototype ignored, symbol keys not walked.
 const isDeepEqual = (a: unknown, b: unknown, memo: Memo): boolean => {
     if (Object.is(a, b)) return true
     if (a == null || b == null || "object" !== typeof a || "object" !== typeof b) {

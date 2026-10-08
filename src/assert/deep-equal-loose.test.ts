@@ -138,12 +138,9 @@ describe(TITLE, () => {
         assert.equal(failed(() => strict.deepEqual(1, 2)).operator, "deepStrictEqual")
     })
 
-    // With the prototype out of the picture, a builtin from another realm
-    // (an iframe, a vm context) must still be recognised as its kind on
-    // either side, or the result would depend on the argument order.
-    // Simulated by giving the instance a copy of its prototype that sits
-    // outside the local chain - which is what a foreign realm's instance
-    // looks like from here: `instanceof` says no, the slot is real.
+    // A builtin from another realm must be recognised as its kind on either
+    // side, or the result would depend on the argument order. A copy of the
+    // prototype outside the local chain stands in for a foreign instance.
     it("recognises builtins from another realm on either side", () => {
         const foreignProto = new Map<object, object>()
         const foreign = <T extends object>(value: T): T => {

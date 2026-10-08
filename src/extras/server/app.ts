@@ -1,8 +1,6 @@
-// The browser test application: what to serve and where, for the suites, as
-// one middleware in the shape of a Hono handler. It lays out the mounts,
-// builds the import map, puts it into the pages and chains them with the
-// channel to the page; the server that runs it is another's, serve.ts today.
-// The CLI turns arguments into AppOptions; anything else could do the same.
+// The browser test application as one middleware in the shape of a Hono
+// handler. It lays out the mounts, builds the import map, puts it into the
+// pages and chains them with the channel to the page. serve.ts runs it.
 
 import {randomInt} from "node:crypto"
 import {basename, resolve} from "node:path"

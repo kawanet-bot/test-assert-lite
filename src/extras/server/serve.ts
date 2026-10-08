@@ -1,8 +1,6 @@
-// Loopback server behind the browser test CLI: runs a middleware chain
-// over node:http, as @hono/node-server runs a Hono app. It knows nothing
-// about Playwright, the suites or the files: a Node request becomes a
-// web-standard Request and the chain's Response goes back out. What the
-// chain throws is a 500 with the error on stderr, what it leaves is a 404.
+// Loopback server behind the browser test CLI. It runs a middleware chain
+// over node:http, as @hono/node-server runs a Hono app, and knows nothing
+// of Playwright, the suites or the files.
 
 import type {IncomingMessage} from "node:http"
 import {createServer} from "node:http"
@@ -34,11 +32,9 @@ export interface Server {
 // target elsewhere rather than draw the 400 a Host that is no host does.
 const AUTHORITY = /^(?:\[[0-9a-f:.]+\]|[^\[\]:/?#@\s]+)(?::\d+)?$/i
 
-// The Request a Node request stands for, its URL from the Host header as
-// the client sent it, the address listened on where there is none; the
-// body read in first, as what comes in is the page's few lines of text.
-// A target that is not a path, such as "*", or an invalid Host makes no URL.
-// A doubled slash or a bad escape goes on as it came, for the chain.
+// The Request a Node request stands for. Its URL comes from the Host header
+// as the client sent it, or the address listened on. The body is read in
+// first, as what comes in is the page's few lines of text.
 const toRequest = async (req: IncomingMessage, bound: string): Promise<Request> => {
     const url = req.url ?? ""
     if (!url.startsWith("/")) throw new Error(`Not a path: ${url}`)

@@ -96,11 +96,9 @@ describe(TITLE, () => {
         await assert.doesNotReject(() => TAL_strict.doesNotReject(thenable(ok => ok())))
     })
 
-    // Only the shape is asked, never a brand: a native Promise with catch
-    // overwritten is a misuse here, a difference from node accepted
-    // knowingly, since the block is the test's own promise and node's own
-    // suite pins the shape rule alone. (Fulfilled, so nothing is left
-    // rejected and unhandled by the refusal.)
+    // The shape alone is asked, never a brand, so a native Promise with catch
+    // overwritten is refused. node takes it, a difference accepted knowingly.
+    // The fixture is fulfilled, so the refusal leaves no rejection unhandled.
     it("refuses a Promise whose catch was overwritten, on its shape alone", async () => {
         const without = Object.defineProperty(Promise.resolve(1), "catch", {value: undefined})
         await assert.rejects(TAL_strict.rejects(without, /x/), /invalid arguments/)

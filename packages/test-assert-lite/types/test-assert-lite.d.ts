@@ -1,8 +1,4 @@
-/**
- * https://github.com/kawanet/test-assert-lite
- *
- * A subset of `node:test` and `node:assert` that runs in browsers.
- */
+/** A subset of `node:test` and `node:assert` that runs in browsers. https://github.com/kawanet/test-assert-lite */
 
 export {} // external module indicator
 
@@ -290,9 +286,8 @@ export declare namespace TAL {
         /** Reports the run to its host over this channel. Nothing is sent without one. */
         channel?: Channel
         /**
-         * Takes the errors outside the tests until run(). The uncaught
-         * exceptions and unhandled rejections of the window or the process
-         * given each become one failed test at the top level.
+         * Takes the errors outside the tests until run(). An uncaught exception
+         * or an unhandled rejection of the window or process given is one failed test.
          */
         uncaught?: EventTargetLike | EventEmitterLike
         /**

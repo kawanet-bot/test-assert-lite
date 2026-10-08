@@ -149,10 +149,9 @@ const parseFlags = (args: string[]) => {
 }
 
 /**
- * Reads the arguments as the executable gets them and returns what the
- * mode they name needs, every value checked and every path absolute, or
- * throws UsageError with the reason. A mode the executable fixed is the
- * mode, whatever the arguments say.
+ * Reads the arguments as the executable gets them into what the mode
+ * needs, every value checked and every path absolute, or throws
+ * UsageError with the reason. A mode the executable fixed is the mode.
  */
 export const readOptions = (args: string[], fixed: FixedMode = {}): ModeOptions => {
     const {values, positionals} = parse(args, fixed)

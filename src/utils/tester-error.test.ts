@@ -14,11 +14,9 @@ const withStack = (error: Error, stack: string | undefined): Error => Object.ass
 
 const count = (text: string, line: string): number => text.split(line).length - 1
 
-// Runs a real test that throws `value`, and returns what the spec
-// reporter prints. The one path a thrown non-Error value actually
-// reaches: details.error is typed as Error, so testRunnerError() always
-// wraps it before any reporter sees it - errorText() is never handed a
-// raw 42 directly, only through this route.
+// Runs a real test that throws `value` and returns what the spec reporter
+// prints. details.error is typed as Error, so a thrown non-Error reaches
+// a reporter through testRunnerError() alone, and this is that route.
 const thrown = async (value: unknown): Promise<string> => {
     const local = createTAL()
     const lines: string[] = []

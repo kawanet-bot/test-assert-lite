@@ -99,9 +99,8 @@ export abstract class ImportBase {
 }
 
 /**
- * An `--alias <specifier>=<target>`: a path, relative to the working
- * directory or absolute; a URL, for a page; or a subpath of the library.
- * A bare path is a path, as it is for every other file the CLI takes.
+ * An `--alias <specifier>=<target>`. The target is a path, a URL for a
+ * page, or a subpath of the library. A bare path is a path, as everywhere.
  */
 export class ImportAliasItem extends ImportBase {
     /** The working directory, which a relative target resolves against. */
@@ -132,9 +131,9 @@ export class ImportAliasItem extends ImportBase {
 }
 
 /**
- * One entry of an import map, read as a page would up to what the CLI can
- * do: a relative address is a file beside the map, "/" and a URL are the
- * page's, a bare name is not an address at all.
+ * One entry of an import map, read as a page would, up to what the CLI
+ * can do. A relative address is a file beside the map, "/" and a URL are
+ * the page's, and a bare name is no address at all.
  */
 export class ImportMapItem extends ImportBase {
     /** The map file, which a relative address resolves against. */
@@ -204,9 +203,9 @@ export class ImportBundledItem extends ImportBase {
 const bundled = (rows: [specifier: string, target: string][]): ImportBundledItem[] => rows.map(([specifier, target]) => new ImportBundledItem(specifier, target))
 
 /**
- * The items in the order given, this package's defaults for the mode first,
- * so the last for a specifier wins. Files are every item's, losers included:
- * a file named is watched and served whether or not it is what resolves.
+ * The items in the order given, the defaults for the mode first, so the
+ * last for a specifier wins. Every item's file is watched and served,
+ * losers included.
  */
 abstract class ImportsBase {
     readonly items: ImportBase[]

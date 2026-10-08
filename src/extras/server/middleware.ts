@@ -1,8 +1,6 @@
-// The shape of a Hono middleware, in the parts the browser test CLI uses:
-// a Context around a web-standard Request, a handler that answers with a
-// Response or hands on to the next, and compose() to chain handlers into
-// one. Under Hono's names and types, so the application could one day
-// mount into Hono itself; nothing here knows about Node or files.
+// The shape of a Hono middleware, in the parts the browser test CLI uses.
+// Under Hono's names and types, so the application could one day mount
+// into Hono itself. Nothing here knows about Node or files.
 
 /** Hands the request on to the middleware after this one. */
 export type Next = () => Promise<void>
@@ -33,9 +31,8 @@ export interface HonyRequest {
 }
 
 /**
- * What one request carries through the chain: the request, and the
- * Response once some middleware has answered. An interface, not a class,
- * so that a Hono Context, which has all of this, fits it as it is.
+ * One request on its way through the chain, with the Response once some
+ * middleware answered. An interface, so that a Hono Context fits it as it is.
  */
 export interface Context extends ContextLike {
     req: HonyRequest
@@ -108,10 +105,9 @@ export const createContext = (request: Request): Context => {
 }
 
 /**
- * Chains middleware into one: each runs in turn until one answers, and the
- * chain's own next() follows the last. Calling next() twice is an error.
- * With onError and onNotFound, an Error thrown and a request left unanswered
- * become Responses inside the chain, where a middleware outside sees them.
+ * Chains middleware into one. Each runs in turn until one answers, and
+ * the chain's own next() follows the last. With onError and onNotFound, an
+ * Error thrown and a request left unanswered become Responses in the chain.
  */
 export const compose = (handlers: MiddlewareHandler[], onError?: ErrorHandler, onNotFound?: NotFoundHandler): MiddlewareHandler => (c, next) => {
     let index = -1
@@ -140,10 +136,9 @@ export const compose = (handlers: MiddlewareHandler[], onError?: ErrorHandler, o
 }
 
 /**
- * Runs `handler` as a chain of its own: its next() ends there, so what
- * wraps inside it, a middleware that looks at the Response after next(),
- * sees only what the chain itself answered. What it leaves unanswered
- * goes on to the next middleware outside, past those wrappers.
+ * Runs `handler` as a chain of its own. A wrapper inside it that looks at
+ * the Response after next() sees only what the chain itself answered. What
+ * it leaves unanswered goes on to the next middleware outside.
  */
 export const scoped = (handler: MiddlewareHandler): MiddlewareHandler => async (c, next) => {
     const res = await handler(c, async () => undefined)

@@ -61,10 +61,9 @@ const own = fileURLToPath(libraryRoot())
 const STAND_IN = new Map([[realOf(resolve(own, "dist", "test-assert-lite.js")), realOf(resolve(own, "dist", "test-assert-lite.min.js"))]])
 
 /**
- * Lays out the directories the files are served from: every file's own,
- * or its package's under node_modules, except one inside another's, which
- * is served through that one unless node_modules lies between. The order
- * the files come in makes no difference to the layout.
+ * Lays out the directories the files are served from. A file inside a
+ * served directory is served through it, unless node_modules lies
+ * between. The order the files come in makes no difference.
  */
 export const createFiles = (files: string[]): Files => {
     const reals = new Map(files.map(file => [file, realOf(file)]))

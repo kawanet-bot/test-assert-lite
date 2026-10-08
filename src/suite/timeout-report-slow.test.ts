@@ -129,10 +129,8 @@ describeSlow(TITLE, () => {
     })
 
     // A queued sibling keeps its skip when the parent gives up, and every
-    // sibling is cancelled even while the reporter's output is slow.
-    // With an in-flight child, cancelling it takes several slow reporter
-    // calls. A t.test() the body calls while that is still going on must be
-    // treated as late, not as an ordinary nested subtest.
+    // sibling is cancelled even while the reporter is slow. A t.test() the body
+    // calls during that cancellation is late, not an ordinary nested subtest.
     it("a t.test() during a slow cancellation report is treated as late", async () => {
         const local = createTAL()
         const events = captureSlowly(local)
