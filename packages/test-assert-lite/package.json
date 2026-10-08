@@ -1,6 +1,6 @@
 {
   "name": "test-assert-lite",
-  "description": "node:test and node:assert, compatible and browser-ready. Just 32KB, no dependencies.",
+  "description": "A lightweight node:test and node:assert compatible library for browsers.",
   "version": "0.1.0",
   "author": "Kawanet",
   "bugs": {
@@ -64,17 +64,13 @@
     "README.md",
     "types/*.d.ts"
   ],
-  "homepage": "https://github.com/kawanet/test-assert-lite#readme",
+  "homepage": "https://github.com/kawanet/test-assert-lite/tree/main/packages/test-assert-lite#readme",
   "keywords": [
     "assert",
     "browser",
-    "chai",
-    "jest",
-    "mocha",
     "node:assert",
     "node:test",
-    "test",
-    "vitest"
+    "test"
   ],
   "license": "MIT",
   "main": "./dist/test-assert-lite.js",

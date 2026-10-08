@@ -15,7 +15,7 @@ import {VERSION} from "./version.ts"
 export interface CLIOptions {
     /** The arguments as the executable gets them: process.argv.slice(2). */
     args: string[]
-    /** The executable's own names. The command for the usage, the package and its version for -v. Default is this package's. */
+    /** The executable's own names: the command for the usage, the package and its version for -v. Default: this package's. */
     program?: Program
     /** Fixes the run on a WebDriver server. --serve is refused then. */
     webdriver?: boolean

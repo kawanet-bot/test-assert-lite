@@ -12,7 +12,7 @@ type TestEventData<T extends TestEventType> = Extract<TAL.TestEvent, {type: T}>[
 // failed or was cancelled fails in turn, as it does in node:test.
 export type Outcome = "passed" | "failed" | "cancelled" | "skipped"
 
-// A verdict a parent that gave up hands to a child. The error to report
+// A verdict a parent that gave up hands to a child: the error to report
 // and how to count it.
 export interface Verdict {
     error: Error

@@ -61,7 +61,7 @@ export interface WebModeOptions extends TestModeOptions {
     imports: Imports
     /** Classic scripts to run first, absolute, in order. */
     scripts: string[]
-    /** A stand-in for htdocs at the root. An absolute directory, or an http(s) URL ending in "/". */
+    /** A stand-in for htdocs at the root: an absolute directory, or an http(s) URL ending in "/". */
     mount?: string
     host?: string
     port?: number

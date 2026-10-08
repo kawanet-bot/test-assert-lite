@@ -1,6 +1,6 @@
 {
   "name": "webdriver-js-cli",
-  "description": "Run Node.js ES modules in Safari, Chrome and Firefox, over WebDriver.",
+  "description": "Run ES modules written for Node.js in Safari, Chrome and Firefox over WebDriver.",
   "version": "0.1.0",
   "author": "Kawanet",
   "bin": {
@@ -21,20 +21,20 @@
     "README.md",
     "webdriver-config/*.json"
   ],
-  "homepage": "https://github.com/kawanet/test-assert-lite#readme",
+  "homepage": "https://github.com/kawanet/test-assert-lite/tree/main/packages/webdriver-js-cli#readme",
   "keywords": [
     "assert",
     "browser",
-    "chai",
+    "chrome",
     "chromedriver",
     "cli",
-    "jest",
-    "mocha",
+    "firefox",
+    "geckodriver",
     "node:assert",
     "node:test",
+    "safari",
     "safaridriver",
     "test",
-    "vitest",
     "webdriver"
   ],
   "license": "MIT",

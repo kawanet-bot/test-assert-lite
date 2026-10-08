@@ -89,7 +89,7 @@ export declare namespace TAL {
     // node:assert takes any. A validation function returns true on a match.
     type ErrorFilter = RegExp | (new (...args: never[]) => object) | ((thrown: unknown) => boolean)
 
-    // An expectation for `throws`. Any filter above, or an object whose
+    // An expectation for `throws`: any filter above, or an object whose
     // properties the error must carry, a RegExp value being tested against
     // the property's string form. An Error instance counts as such an
     // object, name and message included. The same shapes node:assert takes.

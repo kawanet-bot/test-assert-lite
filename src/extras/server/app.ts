@@ -28,7 +28,7 @@ export interface AppOptions {
     scripts?: string[]
     /** Specifiers and what they resolve to: a file, served from its directory, or a URL put into the map as it is. */
     imports?: Imports
-    /** A stand-in for htdocs at the root. An absolute directory, or an http(s) URL ending in "/" to proxy. */
+    /** A stand-in for htdocs at the root: an absolute directory, or an http(s) URL ending in "/" to proxy. */
     mount?: string
     /** Option parameters for session() method. */
     session?: SessionConfig

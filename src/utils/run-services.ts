@@ -1,7 +1,7 @@
 import type {TAL} from "test-assert-lite"
 import {stringify} from "./stringify.ts"
 
-/** The services one run offers its parts. Where output goes, how it ends, and the cleanup. */
+/** The services one run offers its parts: where output goes, how it ends, and the cleanup. */
 export interface RunServices {
     /** Receives the page's standard output. */
     stdout: TAL.Writer

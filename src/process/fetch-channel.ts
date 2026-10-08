@@ -104,7 +104,7 @@ const buffered = (channel: TAL.Channel): TAL.Channel => {
     }
 }
 
-// The channel connect() gives. The fetch, kept in order, then buffered.
+// The channel connect() gives: the fetch, kept in order, then buffered.
 export const channelOverFetch = (f: typeof fetch): TAL.Channel => {
     return buffered(inOrder(ipcFromFetch(f)))
 }

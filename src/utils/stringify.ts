@@ -21,7 +21,7 @@ export const stringify = (value: unknown, nest: number = 0): string => {
 /** An Error's message, or its constructor's name when the message is empty, as node:assert names one. */
 export const errorMessage = (error: Error): string => error.message || error.constructor?.name || ""
 
-// A value as an assertion names it, in one line. An Error by its message,
+// A value as an assertion names it, in one line: an Error by its message,
 // anything else as inspected. Whether a value is an Error is isError()'s
 // alone to say. errorText() is the reporter's rendering, stack and all.
 export const messageOf = (value: unknown): string => (isError(value) && errorMessage(value)) || stringify(value)

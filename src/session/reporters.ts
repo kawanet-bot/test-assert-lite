@@ -1,4 +1,4 @@
-// A session's reporter. The one named or given, spec unless one is, the
+// A session's reporter: the one named or given, spec unless one is, the
 // footer on top, and a module name imported when the run starts reporting.
 
 import type {TAL} from "test-assert-lite"

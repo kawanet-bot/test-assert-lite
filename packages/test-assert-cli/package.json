@@ -1,6 +1,6 @@
 {
   "name": "test-assert-cli",
-  "description": "Serve your node:test files to the browser, or run them in Node.js, on test-assert-lite.",
+  "description": "Serve your node:test files to the browser, or run them in Node.js. test-assert-lite stands in for node:test.",
   "version": "0.1.0",
   "author": "Kawanet",
   "bin": {
@@ -31,20 +31,17 @@
     "README.md",
     "types/*.d.ts"
   ],
-  "homepage": "https://github.com/kawanet/test-assert-lite#readme",
+  "homepage": "https://github.com/kawanet/test-assert-lite/tree/main/packages/test-assert-cli#readme",
   "keywords": [
     "assert",
     "browser",
-    "chai",
     "cli",
-    "jest",
-    "mocha",
+    "esm",
+    "import-map",
     "node:assert",
     "node:test",
-    "playwright",
     "test",
-    "vitest",
-    "webdriver"
+    "typescript"
   ],
   "license": "MIT",
   "repository": {

@@ -31,7 +31,7 @@ export const usageOf = (command: string, fixed: FixedMode = {}): string => {
         "  --mount <dir|url>           what the root serves instead of htdocs: a directory, or an origin to proxy (browser modes)",
         fixed.webdriver && "  --webdriver-config <file>   JSON sent as the body of POST /session (default: no capabilities)",
         fixed.webdriver && "  --endpoint <url>            the WebDriver server (default: http://127.0.0.1:4444)",
-        fixed.playwright != null && "  --playwright-config <file>  JSON options for Playwright's launch, newPage and goto",
+        fixed.playwright != null && "  --playwright-config <file>  JSON options for Playwright, such as newPage and connectOverCDP",
     ]
     return lines.filter(line => line).map(line => `${line}\n`).join("")
 }

@@ -5,7 +5,7 @@ import {expectError, expectNoError, invalid, type Outcome, readExpectation, read
 // node:assert takes as one, checked below.
 type Block = Promise<unknown> | (() => Promise<unknown>)
 
-// A promise as node:assert takes it here. An object carrying both then
+// A promise as node:assert takes it here: an object carrying both then
 // and catch, so a native Promise from any realm or a thenable library's,
 // but not a function that happens to carry them. The block is the test's
 // own, so one with those methods overwritten is a misuse, not data to take.

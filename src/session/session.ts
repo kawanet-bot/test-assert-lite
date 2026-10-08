@@ -194,7 +194,7 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
     return {session, run, load, schedule}
 }
 
-// The run's summary. The counts, the time and the verdict.
+// The run's summary: the counts, the time and the verdict.
 const summaryOf = ({run, startedAt}: Cycle): TAL.TestSummary => ({
     counts: {...run.counters},
     duration_ms: performance.now() - startedAt,

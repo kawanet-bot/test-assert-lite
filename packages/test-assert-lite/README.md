@@ -3,13 +3,13 @@
 [![npm version](https://img.shields.io/npm/v/test-assert-lite)](https://www.npmjs.com/package/test-assert-lite)
 [![gzip size](https://img.badgesize.io/https://cdn.jsdelivr.net/npm/test-assert-lite/dist/test-assert-lite.min.js?compression=gzip)](https://cdn.jsdelivr.net/npm/test-assert-lite/dist/test-assert-lite.min.js)
 
-`node:test` and `node:assert`, compatible and browser-ready. Just 32KB, no dependencies.
+A lightweight `node:test` and `node:assert` compatible library for browsers.
 
 - From `node:test`: `describe` / `it`, `test` with `t.test()` subtests, `before` / `after`, `skip` and `todo`
-- From `node:assert`: `assert` and `strict`, with `ok`, `equal`, `deepStrictEqual`, `throws`, `rejects`, `match` and the rest
-- One test file runs in Node.js and in a browser alike
-- Under 32KB script, under 11KB gzipped
-- [tacli](https://www.npmjs.com/package/test-assert-cli) and the browser commands run such files as they are, by leading `node:test` to this library
+- From `node:assert`: `assert` and `strict`, with `ok`, `equal`, `deepStrictEqual`, `throws`, `rejects`, `match` and more
+- The same test file runs in both Node.js and the browser
+- Under 32KB minified, under 11KB gzipped, no dependencies
+- [tacli](https://www.npmjs.com/package/test-assert-cli) and its browser runners run `node:test` files unchanged. They map `node:test` to this library
 
 ## SYNOPSIS
 
@@ -46,6 +46,8 @@ node test/query.test.mjs
 chromium-js test/query.test.mjs
 ```
 
+The last test fails on purpose. `URLSearchParams` encodes a space as `+`.
+
 `test` with subtests:
 
 ```js
@@ -67,9 +69,9 @@ See [test-assert-lite.d.ts](https://github.com/kawanet/test-assert-lite/blob/mai
 
 ## BROWSER MODULE
 
-Or skip the build: tests can go straight into a page.
+Tests can also go straight into a page, with no build step.
 
-The minified build is an ES module: an import map leads the package's name to it on a CDN.
+The minified build is an ES module. An import map maps the package's name to it on a CDN.
 
 ```html
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/test-assert-cli/htdocs/styles/test-assert-lite.css">
@@ -90,7 +92,7 @@ The minified build is an ES module: an import map leads the package's name to it
     import {strict as assert} from "test-assert-lite/assert"
     import {run, session} from "test-assert-lite/session"
 
-    // The report goes to console.log by default; render it as HTML in the page instead.
+    // The report goes to console.log by default. Here it is rendered as HTML in the page.
     // session() comes before the first test is declared, and run() closes it.
     session({
         reporter: "html",
@@ -128,7 +130,7 @@ import {nodeResolve} from "@rollup/plugin-node-resolve"
 export default {
     input: "test/browser.mjs",
     output: {
-        file: "htdocs/scripts/bundled-tests.js",
+        file: "htdocs/scripts/tests.js",
         format: "es",
     },
     plugins: [nodeResolve()],
@@ -137,10 +139,10 @@ export default {
 ```
 
 ```html
-<script type="module" src="./scripts/bundled-tests.js"></script>
+<script type="module" src="./scripts/tests.js"></script>
 ```
 
-The report goes to the console. The same bundle runs under `node` as it is.
+The report goes to the console. The same bundle runs under `node` unchanged.
 
 ## SEE ALSO
 
