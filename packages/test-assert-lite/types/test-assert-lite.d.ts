@@ -4,6 +4,8 @@
  * A subset of `node:test` and `node:assert` that runs in browsers.
  */
 
+export {} // external module indicator
+
 export declare namespace TAL {
     // --- test ---
 
@@ -30,10 +32,7 @@ export declare namespace TAL {
     interface TestOptions {
         /** Skips the test, and a string says why. */
         skip?: boolean | string
-        /**
-         * A todo test runs and is reported. It counts as todo whether it passes
-         * or fails, so it never fails the run. A skip outranks it.
-         */
+        /** Runs the test as a todo, and a string says why. Its failure does not fail the run. */
         todo?: boolean | string
         /** Milliseconds before the test fails as timed out. */
         timeout?: number
@@ -118,8 +117,6 @@ export declare namespace TAL {
         throws(block: () => unknown, expected: AssertPredicate | undefined, message?: string | Error): void
         doesNotThrow(block: () => unknown, message?: string): void
         doesNotThrow(block: () => unknown, expected: ErrorFilter | undefined, message?: string | Error): void
-        // The same pair for a promise, or for a function that returns one.
-        // The check runs once the promise settles. A misuse rejects rather than throws.
         rejects(block: Promise<unknown> | (() => Promise<unknown>), message?: string): Promise<void>
         rejects(block: Promise<unknown> | (() => Promise<unknown>), expected: AssertPredicate | undefined, message?: string | Error): Promise<void>
         doesNotReject(block: Promise<unknown> | (() => Promise<unknown>), message?: string): Promise<void>
@@ -128,11 +125,7 @@ export declare namespace TAL {
         doesNotMatch(value: string, regExp: RegExp, message?: string | Error): void
     }
 
-    /**
-     * The assertions on `t.assert`. Here `ok` and `ifError` do not narrow types.
-     * An assertion signature on a callback parameter trips TS2775, as `node:test`
-     * does on `t.assert.ok()`.
-     */
+    /** The assertions on `t.assert`. Here `ok` and `ifError` do not narrow types. */
     interface TestContextAssert extends AssertBase {
         ok(value: unknown, message?: string | Error): void
         ifError(value: unknown): void
@@ -160,11 +153,7 @@ export declare namespace TAL {
         | "subtestsFailed"
         | "parentAlreadyFinished"
 
-    /**
-     * A failure the runner produced itself, or a thrown value that was not
-     * an Error. An Error thrown by test code is reported as is. `code`
-     * matches node:test's wrapper so a check written for it holds here.
-     */
+    /** A failure the runner produced itself, or a thrown value that was not an Error. */
     interface TesterError extends Error {
         readonly name: "TesterError"
         readonly code: "ERR_TEST_FAILURE"
@@ -179,11 +168,7 @@ export declare namespace TAL {
         nesting: number
     }
 
-    /**
-     * A suite is reported after its children, with `type: "suite"`.
-     * `testNumber` counts within the parent, suites and tests together.
-     * A result carries `skip` or `todo`, never both. A skip outranks a todo.
-     */
+    /** A test or suite reported as passed. A skipped or todo one is reported here too. */
     interface TestPass {
         name: string
         nesting: number
@@ -196,12 +181,7 @@ export declare namespace TAL {
         }
     }
 
-    /**
-     * `error` is what the test threw, or a TesterError. A suite fails
-     * with its hook's or body's error, or with `subtestsFailed` when only
-     * a child did. A test never run because its parent failed is reported
-     * as `cancelledByParent` and counted under `cancelled`.
-     */
+    /** A test or suite reported as failed. `error` is what it threw, or a TesterError. */
     interface TestFail {
         name: string
         nesting: number
@@ -315,11 +295,7 @@ export declare namespace TAL {
          * go to `stdout`, warn and error to `stderr`, each call one line.
          */
         console?: ConsoleLike
-        /**
-         * A quiet level, 0 by default. 1 or more leaves out the summary
-         * lines, and with the default reporter, the result lines too. -1 reports
-         * a run with no tests, as node --test does. The summary event is always sent.
-         */
+        /** A quiet level, 0 by default. 1 or more leaves out the summary lines, and -1 reports a run with no tests, as node --test does. */
         quiet?: number
         /** Milliseconds of silence before the run writes an alive line to `stderr`. 10 seconds by default. 0 turns it off. */
         heartbeat?: number
