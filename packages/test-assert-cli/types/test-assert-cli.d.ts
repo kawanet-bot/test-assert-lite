@@ -4,7 +4,7 @@
 export interface CLIOptions {
     /** The arguments as the executable gets them: process.argv.slice(2). */
     args: string[]
-    /** What the executable calls itself: the command for the usage, the package and its version for -v. Default: this package's. */
+    /** The executable's own names: the command for the usage, the package and its version for -v. Default: this package's. */
     program?: Program
     /** Fixes the run on a WebDriver server. --serve is refused then. */
     webdriver?: boolean
@@ -18,17 +18,15 @@ export interface Program {
     version: string
 }
 
-/** What launches one of Playwright's browsers: chromium, firefox or webkit as the playwright module exports them. */
+/** A launcher of one of Playwright's browsers: chromium, firefox or webkit as the playwright module exports them. */
 export interface BrowserType {
     /** @see https://playwright.dev/docs/api/class-browsertype#browser-type-launch */
     launch(options?: object): Promise<unknown>
 }
 
 /**
- * Runs the command line with the arguments given and resolves to its exit
- * code. Writes what the command line writes and never exits the process.
- * Meant for one call per process, as the command line is: Node mode
- * installs a resolve hook that stays, and a suite once loaded is not
- * loaded again.
+ * Runs the command line and resolves to its exit code, or rejects with
+ * what it could not handle. The process is the executable's to end. One
+ * call per process, as the command line is.
  */
 export declare function CLI(options: CLIOptions): Promise<number>

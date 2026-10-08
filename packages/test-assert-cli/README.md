@@ -2,12 +2,13 @@
 
 [![npm version](https://img.shields.io/npm/v/test-assert-cli)](https://www.npmjs.com/package/test-assert-cli)
 
-`tacli` runs your `node:test` and `node:assert` test files in browsers, as they are.
+Serve your `node:test` files to the browser, or run them in Node.js. test-assert-lite stands in for `node:test`.
 
-- The test file stays as written, imports included: `tacli` maps `node:test` and `node:assert` to [test-assert-lite](https://www.npmjs.com/package/test-assert-lite)
-- One command per target, built on it: `tacli` for this Node.js process, [chromium-js, firefox-js and webkit-js](https://www.npmjs.com/package/playwright-js-cli) for the headless browsers, [webdriver-js](https://www.npmjs.com/package/webdriver-js-cli) for Safari and others over WebDriver
-- `--import-map` works in Node too, which has no import maps of its own: one map file for Node and browsers
-- `--alias node:crypto=sha256-uint8array` puts your own implementation under a builtin's name, so one suite tests both
+- Test files keep their `node:test` and `node:assert` imports. `tacli` maps them to [test-assert-lite](https://www.npmjs.com/package/test-assert-lite)
+- `--serve` hosts your tests as a web page, with live reload
+- `--alias` and `--import-map` map any module name to any module, even a Node.js built-in. One suite can then test an implementation in both Node.js and the browser
+- TypeScript test files run without a build step
+- For automated browser runs, use [webdriver-js](https://www.npmjs.com/package/webdriver-js-cli) or [chromium-js, firefox-js and webkit-js](https://www.npmjs.com/package/playwright-js-cli). Both are built on `tacli`
 
 ```sh
 npm install -D test-assert-cli
@@ -73,7 +74,7 @@ The `spec` result from `tacli`, version and user-agent lines omitted:
 
 ## CLI
 
-`tacli` runs suites that use the supported `node:test` and `node:assert` APIs. The test files and their import lines stay unchanged.
+`tacli` runs suites that use the supported `node:test` and `node:assert` APIs. The test files and their import lines stay unchanged. The browser runners, [webdriver-js](https://www.npmjs.com/package/webdriver-js-cli) and [chromium-js, firefox-js and webkit-js](https://www.npmjs.com/package/playwright-js-cli), accept the same options.
 
 ```sh
 # Run suites in the local Node.js with the library instead of node:test
@@ -83,11 +84,9 @@ tacli --test test/*.test.mjs
 tacli --serve --port 3000 test/browser.test.mjs
 ```
 
-- The first file is the test file, and what follows it is the script's argv, as `node file args` has it. `--test` takes every argument as a test file. Name files directly; the shell expands globs. CommonJS test files are not supported. `-e <script>` runs a script in their place.
-- A script may `import {argv, stdout, stderr} from "test-assert-lite/process"`, in a browser as under Node. The streams reach the CLI's own, and `argv` holds the arguments as given. A file that imports them from `node:process` runs in a browser with `--alias node:process=test-assert-lite/process`.
-- TypeScript test files run as they are, in a browser too, through `stripTypeScriptTypes` of Node.js 22.18 or later.
-- `--serve` serves the page for a browser, with auto reload. The browser runs are commands of their own, built on `tacli` and taking its options: [webdriver-js](https://www.npmjs.com/package/webdriver-js-cli), and [chromium-js, firefox-js and webkit-js](https://www.npmjs.com/package/playwright-js-cli).
-- A run exits 0 when all tests pass and 1 otherwise. Reports go to stdout; server messages and access logs go to stderr.
+- The first file is the test file. The rest is the script's argv, the same as `node file args`. `--test` takes every argument as a test file. Name files directly, as the shell expands globs. CommonJS test files are not supported. `-e <script>` runs a script in their place.
+- A script may `import {argv, stdout, stderr} from "test-assert-lite/process"`, in a browser as well as in Node.js. The streams write to the CLI's own stdout and stderr, and `argv` holds the arguments as given. A file that imports them from `node:process` runs in a browser with `--alias node:process=test-assert-lite/process`.
+- A run exits 0 when all tests pass and 1 otherwise. Reports go to stdout. Server messages and access logs go to stderr.
 - Reports include a summary unless `-q`.
 
 ### `-v`, `--version`
@@ -97,8 +96,8 @@ tacli --serve --port 3000 test/browser.test.mjs
 ### `-e`, `--eval <script>`
 
 - Runs the script in place of test files: `tacli -e "console.log(process.version)"`.
-- The script is a module: it imports `node:test` as a test file does, and a script that throws is one failed test.
-- The arguments after it are the script's, from `argv[1]`, as `node -e` gives them.
+- The script is a module. It imports `node:test` as a test file does. A script that throws counts as one failed test.
+- Arguments after the script go to its `argv`, from `argv[1]`, the same as `node -e`.
 
 ### `--test`
 
@@ -108,21 +107,21 @@ tacli --serve --port 3000 test/browser.test.mjs
 
 ### `--alias <specifier>=<file>`
 
-- `node:test` and `node:assert` are aliased to test-assert-lite already: a test file written for Node needs no entry, and no change.
-- ES module a specifier resolves to, `--alias lodash=node_modules/lodash-es/lodash.js` say. Repeatable, in every mode.
-- A `node:` builtin can be named, `--alias node:crypto=sha256.mjs` say, so the same suite runs on the same module in Node and in a browser.
+- `node:test` and `node:assert` are aliased to test-assert-lite already. A test file written for Node.js needs no entry and no change.
+- Maps a specifier to an ES module, for example `--alias lodash=node_modules/lodash-es/lodash.js`. Repeatable, in every mode.
+- A `node:` builtin can be the specifier, for example `--alias node:crypto=sha256.mjs`. The same suite then runs on the same module in Node.js and in a browser.
 - The alias reaches every import of that name, a dependency's too, as an import map does.
-- The target may also be a URL for the page, `--alias cdn=https://cdn.example/x.js` say, in the browser modes; or a test-assert-lite subpath, `--alias my-test=test-assert-lite/test` say, in every mode.
+- In the browser modes, the target may also be a URL, for example `--alias cdn=https://cdn.example/x.js`. In every mode, it may be a test-assert-lite subpath, for example `--alias my-test=test-assert-lite/test`.
 
 ### `--import-map <file>`
 
-- A JSON import map, for the specifiers too many to give as `--alias`. Its `imports` come first, each `--alias` after, so the command line has the last word.
+- A JSON import map, for when there are too many specifiers for `--alias`. Its `imports` come first, each `--alias` after, so the command line has the last word.
 - Relative paths start from the map file. See Import Maps below for an example.
 
 ### `--reporter <name>`
 
 - How the run is reported: `spec` (default), `tap` or `html`.
-- Or a module to import, `--reporter test-assert-lite/reporter/tap` say: its default export is the reporter, as `node --test-reporter` takes one. A name that does not import is one failed test, and the run reports with `spec`.
+- Or a module to import, for example `--reporter test-assert-lite/reporter/tap`. Its default export is the reporter, in the shape `node --test-reporter` takes. When the module fails to import, the run reports with `spec` and counts one failed test.
 
 ### `-q`, `--quiet`
 
@@ -131,33 +130,33 @@ tacli --serve --port 3000 test/browser.test.mjs
 
 ### `--serve`
 
-- With test files, serves the run page; without them, serves `htdocs/`, or what `--mount` names. Prints the URL to open and keeps serving until Ctrl-C.
+- With test files, serves the run page. Without them, serves `htdocs/`, or what `--mount` names. Prints the URL to open and keeps serving until Ctrl-C.
 - Without test files, `htdocs/index.html` imports `index.js`, so `--alias index.js=test/browser.test.mjs` runs that suite in it.
 - Auto reloads when a test file, a `--script` file or a locally mapped file changes.
 
 ### `--port <[host:]port>`
 
-- Port the server listens on, and the address ahead of it. Default: `127.0.0.1:0`, a free port.
+- Port the server listens on, with an optional address before it. Default: `127.0.0.1:0`, a free port.
 - `--port 3000` fixes the port, for an SSH tunnel or a firewall rule that has to name it.
 - For a browser on another machine, listen on an address that machine can reach: `--port 192.168.0.2:3000`.
-- `--port 0.0.0.0:3000` listens on every address. Add `--origin` then, so the printed URL and the runners use one the browser can reach. An IPv6 literal goes in brackets: `--port [::]:3000`.
+- `--port 0.0.0.0:3000` listens on every address. Add `--origin` then, so the printed URL and the browser runners use an address the browser can reach. An IPv6 literal goes in brackets: `--port [::]:3000`.
 
 ### `--origin <url>`
 
 - The URL the browser opens, `http(s)://host[:port]`. Default: the address the server listens on.
 - With `--port 0.0.0.0:3000` the default is `http://127.0.0.1:3000`, which only this machine can open. Give the reachable one: `--origin http://192.168.0.2:3000`.
-- Through an SSH tunnel or a proxy, the browser opens a different URL than this server listens on. Pass that URL as `--origin`: the runners open it, and `--serve` prints it.
+- Through an SSH tunnel or a proxy, the browser opens a different URL than this server listens on. Pass that URL as `--origin`. The browser runners open it, and `--serve` prints it.
 
 ### `--script <file>`
 
-- Classic script to run before the suite, an IIFE build for a global it sets up, say. Repeatable, in order.
+- A classic script to run before the suite, for example an IIFE build that sets up a global. Repeatable, in order.
 - A mistyped file shows up as a 404 in the access log on stderr.
 
 ### `--mount <dir|url>`
 
-- What the root serves in place of `htdocs/`: a directory, or an origin to proxy, `http://127.0.0.1:8080` say, so the suite runs in a page of the app under test.
-- Its HTML pages get the import map and the scripts in their head, so a page the app makes imports the library, and a suite, by name.
-- A page with its own `<script type="importmap">` is served as it is: no import map, no script or suite tags. stderr says so.
+- What the root serves in place of `htdocs/`. A directory, or an origin to proxy, for example `http://127.0.0.1:8080`, so the suite runs in a page of the app under test.
+- Its HTML pages get the import map and the scripts in their head, so a page served by the app can import the library and the suite by name.
+- A page with its own `<script type="importmap">` is served unchanged, with no import map and no script or suite tags added. stderr says so.
 
 ### Import Maps
 
@@ -203,7 +202,7 @@ tacli --alias node:crypto=dist/sha256-uint8array.mjs test/sha256.test.mjs
 
 ### Bundling with Rollup
 
-The two builtins stay in the bundle as written. The CLI maps them, in Node and in a browser. Good for CI.
+The library stays out of the bundle. `node:test` and `node:assert` are left external, and `tacli` maps them to the library when the bundle runs, in Node.js and in a browser alike. Good for CI.
 
 ```js
 // rollup.config.mjs
@@ -217,7 +216,7 @@ export default {
     ],
     output: {
         file: "htdocs/scripts/bundled-tests.mjs",
-        format: "esm",
+        format: "es",
     },
     plugins: [multiEntry()],
     treeshake: false,

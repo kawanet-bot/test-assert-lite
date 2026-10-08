@@ -1,6 +1,6 @@
-// Puts markup into the head of the HTML a page is served as: what the
-// pages need, the import map and the script tags, without naming a page.
-// Whatever the rest of the chain answers, this looks at once it has.
+// Puts markup into the head of the HTML a page is served as. The import
+// map and the script tags the pages need, without naming a page. The rest
+// of the chain answers first, and this looks at the answer.
 
 import type {MiddlewareHandler} from "./middleware.ts"
 
@@ -19,8 +19,8 @@ const FIRST_SCRIPT = /<script\b/i
 export const hasImportMap = (html: string): boolean => IMPORT_MAP.test(html)
 
 /**
- * What goes into the head: `ahead` before the first script of the head,
- * or before `</head>` where the head has none; `end` before `</head>`.
+ * Markup for the head. `ahead` goes before the head's first script, or
+ * before `</head>` where the head has none. `end` goes before `</head>`.
  * A string alone is `end`.
  */
 export interface HeadMarkup {
@@ -32,9 +32,8 @@ type Markup = string | HeadMarkup
 
 /**
  * After the rest of the chain, adds `markup`, or what it returns for the
- * page's HTML and path when it is a function, to the head of a 200
- * text/html Response, at the first `</head>`. A page without a `</head>`,
- * and any other Response, goes out as it came.
+ * page's HTML and path, to the head of a 200 text/html Response, at the
+ * first `</head>`. A page without one, and any other Response, goes out as it came.
  */
 export const withHead = (markup: Markup | ((html: string, path: string) => Markup)): MiddlewareHandler => async (c, next) => {
     await next()

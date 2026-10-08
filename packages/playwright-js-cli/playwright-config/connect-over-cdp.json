@@ -1,1 +1,3 @@
-{"connectOverCDP": "http://127.0.0.1:9222"}
+{
+  "connectOverCDP": "http://127.0.0.1:9222"
+}

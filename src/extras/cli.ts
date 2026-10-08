@@ -15,7 +15,7 @@ import {VERSION} from "./version.ts"
 export interface CLIOptions {
     /** The arguments as the executable gets them: process.argv.slice(2). */
     args: string[]
-    /** What the executable calls itself: the command for the usage, the package and its version for -v. Default: this package's. */
+    /** The executable's own names: the command for the usage, the package and its version for -v. Default: this package's. */
     program?: Program
     /** Fixes the run on a WebDriver server. --serve is refused then. */
     webdriver?: boolean
@@ -59,11 +59,9 @@ const runCLI = async (options: ModeOptions, program: Program, fixed: FixedMode):
 }
 
 /**
- * Runs the command line with `args` and resolves to its exit code. Writes
- * what the command line writes, and rejects with what it could not handle,
- * but never exits the process: that is the executable's part. Meant for
- * one call per process, as the command line is: Node mode installs a
- * resolve hook that stays, and a suite once loaded is not loaded again.
+ * Runs the command line and resolves to its exit code, or rejects with
+ * what it could not handle. The process is the executable's to end. One
+ * call per process, as the command line is.
  */
 export const CLI = async ({args, program = OWN, webdriver, playwright}: CLIOptions): Promise<number> => {
     const fixed: FixedMode = {webdriver, playwright}

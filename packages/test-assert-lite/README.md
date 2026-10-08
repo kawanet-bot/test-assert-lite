@@ -3,21 +3,21 @@
 [![npm version](https://img.shields.io/npm/v/test-assert-lite)](https://www.npmjs.com/package/test-assert-lite)
 [![gzip size](https://img.badgesize.io/https://cdn.jsdelivr.net/npm/test-assert-lite/dist/test-assert-lite.min.js?compression=gzip)](https://cdn.jsdelivr.net/npm/test-assert-lite/dist/test-assert-lite.min.js)
 
-Run your `node:test` and `node:assert` test files in browsers, as they are.
+A lightweight `node:test` and `node:assert` compatible library for browsers.
 
-- The test file stays as written, imports included: [tacli](https://www.npmjs.com/package/test-assert-cli) maps `node:test` and `node:assert` to this library
 - From `node:test`: `describe` / `it`, `test` with `t.test()` subtests, `before` / `after`, `skip` and `todo`
-- From `node:assert`: `assert` and `strict`, with `ok`, `equal`, `deepStrictEqual`, `throws`, `rejects`, `match` and the rest
-- One command per target: [tacli](https://www.npmjs.com/package/test-assert-cli) for this Node.js process, [chromium-js, firefox-js and webkit-js](https://www.npmjs.com/package/playwright-js-cli) for the headless browsers, [webdriver-js](https://www.npmjs.com/package/webdriver-js-cli) for Safari and others over WebDriver
-- Under 32KB script, under 11KB gzipped, no dependencies
+- From `node:assert`: `assert` and `strict`, with `ok`, `equal`, `deepStrictEqual`, `throws`, `rejects`, `match` and more
+- The same test file runs in both Node.js and the browser
+- Under 32KB minified, under 11KB gzipped, no dependencies
+- [tacli](https://www.npmjs.com/package/test-assert-cli) and its browser runners run `node:test` files unchanged. They map `node:test` to this library
 
 ## SYNOPSIS
 
 BDD style with `describe` and `it`:
 
 ```js
-import {strict as assert} from "node:assert"
-import {describe, it} from "node:test"
+import {strict as assert} from "test-assert-lite/assert"
+import {describe, it} from "test-assert-lite/test"
 
 const parseQuery = (search) => Object.fromEntries(new URLSearchParams(search))
 const buildQuery = (params) => new URLSearchParams(params).toString()
@@ -38,19 +38,21 @@ describe("buildQuery() from an object", () => {
 })
 ```
 
-The same file runs with `node --test`, and in a browser with [chromium-js](https://www.npmjs.com/package/playwright-js-cli):
+The same file runs under `node`, and in a browser with [chromium-js](https://www.npmjs.com/package/playwright-js-cli):
 
 ```sh
-node --test test/query.test.mjs
+node test/query.test.mjs
 
 chromium-js test/query.test.mjs
 ```
 
+The last test fails on purpose. `URLSearchParams` encodes a space as `+`.
+
 `test` with subtests:
 
 ```js
-import {strict as assert} from "node:assert"
-import {test} from "node:test"
+import {strict as assert} from "test-assert-lite/assert"
+import {test} from "test-assert-lite/test"
 
 test("URLSearchParams", async (t) => {
     const params = new URLSearchParams("a=1&b=2")
@@ -67,9 +69,9 @@ See [test-assert-lite.d.ts](https://github.com/kawanet/test-assert-lite/blob/mai
 
 ## BROWSER MODULE
 
-Or skip the build: tests can go straight into a page.
+Tests can also go straight into a page, with no build step.
 
-The minified build is an ES module: an import map leads the package's name to it on a CDN.
+The minified build is an ES module. An import map maps the package's name to it on a CDN.
 
 ```html
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/test-assert-cli/htdocs/styles/test-assert-lite.css">
@@ -90,7 +92,7 @@ The minified build is an ES module: an import map leads the package's name to it
     import {strict as assert} from "test-assert-lite/assert"
     import {run, session} from "test-assert-lite/session"
 
-    // The report goes to console.log by default; render it as HTML in the page instead.
+    // The report goes to console.log by default. Here it is rendered as HTML in the page.
     // session() comes before the first test is declared, and run() closes it.
     session({
         reporter: "html",
@@ -110,43 +112,37 @@ The minified build is an ES module: an import map leads the package's name to it
 
 ### Bundled tests in a page
 
-Bundle the suites as one ES module with `node:test` and `node:assert` left external, and let an import map lead them, and the package's name the bridges import, to the CDN.
+Or bundle the suites with the library into one ES module, so the page needs no import map. An entry imports the suites and calls `run()`.
+
+```js
+// test/browser.mjs
+import "./query.test.mjs"
+import "./params.test.mjs"
+import {run} from "test-assert-lite/session"
+
+run().then(result => console.log(result.success ? "PASS" : "FAIL"))
+```
 
 ```js
 // rollup.config.mjs
+import {nodeResolve} from "@rollup/plugin-node-resolve"
+
 export default {
-    input: "test/*.test.mjs",
-    external: [
-        "node:assert",
-        "node:test",
-    ],
+    input: "test/browser.mjs",
     output: {
-        file: "htdocs/scripts/bundled-tests.js",
+        file: "htdocs/scripts/tests.js",
         format: "es",
     },
+    plugins: [nodeResolve()],
     treeshake: false,
 }
 ```
 
 ```html
-<script type="importmap">
-{
-    "imports": {
-        "test-assert-lite": "https://cdn.jsdelivr.net/npm/test-assert-lite/dist/test-assert-lite.min.js",
-        "node:test": "https://cdn.jsdelivr.net/npm/test-assert-lite/exports/test.js",
-        "node:assert": "https://cdn.jsdelivr.net/npm/test-assert-lite/exports/assert.js",
-        "node:assert/strict": "https://cdn.jsdelivr.net/npm/test-assert-lite/exports/assert/strict.js",
-        "test-assert-lite/process": "https://cdn.jsdelivr.net/npm/test-assert-lite/exports/process.js",
-        "test-assert-lite/session": "https://cdn.jsdelivr.net/npm/test-assert-lite/exports/session.js"
-    }
-}
-</script>
-<script type="module" src="./scripts/bundled-tests.js"></script>
-<script type="module">
-    import {run} from "test-assert-lite/session"
-    run()
-</script>
+<script type="module" src="./scripts/tests.js"></script>
 ```
+
+The report goes to the console. The same bundle runs under `node` unchanged.
 
 ## SEE ALSO
 

@@ -27,11 +27,9 @@ describe(TITLE, () => {
         assert.throws(() => TAL_strict.deepEqual(withExtra, new Map()), /deep-equal/)
     })
 
-    // Set/Map first clear out primitives and same-reference elements via
-    // has()/get() (SameValueZero) before falling back to a deep-equality
-    // match for the rest; this pins down that fast path's own edge cases,
-    // which differ from the deep-equality path's (Object.is-based) semantics
-    // since a Set/Map cannot hold both -0 and +0 as distinct keys/elements.
+    // Set and Map try has() and get() first, which compare by SameValueZero,
+    // before the deep match by Object.is. The fast path has edge cases of its
+    // own, as a Set cannot hold -0 and +0 apart while Object.is tells them apart.
     it("keeps -0/+0 and NaN semantics correct through the Set/Map fast path", () => {
         // Real node agrees: Set elements are deduplicated by SameValueZero at
         // construction, so -0 and +0 were never distinguishable as elements.

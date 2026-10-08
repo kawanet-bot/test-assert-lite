@@ -69,7 +69,7 @@ describeSlow(TITLE, () => {
         assert.deepEqual(summary.counts, {tests: 3, suites: 0, passed: 1, failed: 0, cancelled: 1, skipped: 1, todo: 0})
     })
 
-    // What a late subtest starts and does not await settles before the summary too.
+    // An unawaited subtest of a late subtest settles before the summary too.
     it("a late subtest's unawaited subtest settles before the summary", async () => {
         const local = createTAL()
         const events = capture(local)

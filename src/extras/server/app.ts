@@ -1,8 +1,6 @@
-// The browser test application: what to serve and where, for the suites, as
-// one middleware in the shape of a Hono handler. It lays out the mounts,
-// builds the import map, puts it into the pages and chains them with the
-// channel to the page; the server that runs it is another's, serve.ts today.
-// The CLI turns arguments into AppOptions; anything else could do the same.
+// The browser test application as one middleware in the shape of a Hono
+// handler. It lays out the mounts, builds the import map, puts it into the
+// pages and chains them with the channel to the page. serve.ts runs it.
 
 import {randomInt} from "node:crypto"
 import {basename, resolve} from "node:path"
@@ -30,7 +28,7 @@ export interface AppOptions {
     scripts?: string[]
     /** Specifiers and what they resolve to: a file, served from its directory, or a URL put into the map as it is. */
     imports?: Imports
-    /** What the root serves in place of htdocs: an absolute directory, or an http(s) URL ending in "/" to proxy. */
+    /** A stand-in for htdocs at the root: an absolute directory, or an http(s) URL ending in "/" to proxy. */
     mount?: string
     /** Option parameters for session() method. */
     session?: SessionConfig

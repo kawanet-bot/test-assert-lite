@@ -33,8 +33,8 @@ const onWrite = (writer: TAL.Writer, fn: () => void): TAL.Writer => {
     }
 }
 
-// What stands in for a channel when the run has no host. It writes to the
-// streams given and sends the verdict to nobody.
+// A channel for a run with no host. It writes to the streams given and
+// sends the verdict to nobody.
 export const consoleChannel = ({stdout, stderr}: Pick<TAL.Channel, "stdout" | "stderr">): TAL.Channel => ({
     stdout,
     stderr,
@@ -104,7 +104,7 @@ const buffered = (channel: TAL.Channel): TAL.Channel => {
     }
 }
 
-// What connect() gives: the fetch, kept in order, then buffered.
+// The channel connect() gives: the fetch, kept in order, then buffered.
 export const channelOverFetch = (f: typeof fetch): TAL.Channel => {
     return buffered(inOrder(ipcFromFetch(f)))
 }

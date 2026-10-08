@@ -10,7 +10,7 @@ import {load, run, session} from "test-assert-lite/session"
 import type {NodeImports} from "../imports.ts"
 import type {ConnectConfig, SessionConfig} from "../mode-options.ts"
 
-/** What the hook is handed at registration, and the only place its source and this file meet. */
+/** The data handed to the hook at registration, the only place its source and this file meet. */
 interface HookData {
     /** Each specifier to the file URL it resolves to: the library's subpaths for node:test and node:assert, and what --import-map and --alias add. */
     aliases: Map<string, string>
@@ -44,14 +44,13 @@ export const load = (url, context, next) => {
 }
 `
 
-/**
- * Loads the suites into this process, in the order given, and runs them.
- * The files the hook resolves to are decided here, the library's subpaths
- * from this copy of it, so a suite outside any project, or beside another
- * copy, still lands on the instance run() reads.
- */
 let evals = 0
 
+/**
+ * Loads the suites into this process, in the order given, and runs them.
+ * The hook resolves the library's subpaths to this copy, so a suite outside
+ * any project, or beside another copy, lands on the instance run() reads.
+ */
 export const runInNode = async (options: RunInNodeOptions): Promise<TAL.SessionResult> => {
     const {files} = options
     const {reporter, quiet} = options.session || {}

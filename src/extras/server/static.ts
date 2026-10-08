@@ -60,10 +60,8 @@ const realWithin = async ({base, path}: Located): Promise<string> => {
 
 /**
  * Serves the files under a directory, or the one file, at `path`, to GET
- * and HEAD; a directory's index.html answers for the directory. A path that
- * is not a file there goes on to the next middleware;
- * any other method on one is a 405, and a file of a kind a test page is not
- * made of, a .txt say, is a 403 rather than handed out as bytes.
+ * and HEAD. A directory's index.html answers for it. A file of a kind a
+ * test page is not made of, a .txt for example, is a 403.
  */
 export const serveStatic = ({path: at, root}: ServeStaticOptions): MiddlewareHandler => async (c, next) => {
     if (c.finalized) return next()

@@ -5,12 +5,10 @@ import {expectError, expectNoError, invalid, type Outcome, readExpectation, read
 // node:assert takes as one, checked below.
 type Block = Promise<unknown> | (() => Promise<unknown>)
 
-// What node:assert takes as a promise here: an object carrying both then
+// A promise as node:assert takes it here: an object carrying both then
 // and catch, so a native Promise from any realm or a thenable library's,
-// but not a function that happens to carry them. Only the shape is asked.
-// The block is the test's own function or promise, not data under test,
-// so a Promise with those methods overwritten is a misuse here, where
-// node's internal brand check would still take it.
+// but not a function that happens to carry them. The block is the test's
+// own, so one with those methods overwritten is a misuse, not data to take.
 const isThenable = (value: unknown): value is PromiseLike<unknown> =>
     value != null && "object" === typeof value &&
     "function" === typeof (value as {then?: unknown}).then && "function" === typeof (value as {catch?: unknown}).catch

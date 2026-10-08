@@ -1,6 +1,6 @@
 {
   "name": "playwright-js-cli",
-  "description": "chromium-js, firefox-js and webkit-js: run node:test and node:assert test files in a headless browser through Playwright and test-assert-cli",
+  "description": "Run ES modules written for Node.js in Chromium, Firefox and WebKit through Playwright, or in a running Chromium over CDP.",
   "version": "0.1.0",
   "author": "Kawanet",
   "bin": {
@@ -12,7 +12,7 @@
     "url": "https://github.com/kawanet/test-assert-lite/issues"
   },
   "dependencies": {
-    "playwright": "^1.60.0",
+    "playwright": "^1.64.0",
     "test-assert-cli": "^0.1.0"
   },
   "engines": {
@@ -21,23 +21,21 @@
   "files": [
     "bin/*.js",
     "LICENSE",
-    "README.md"
+    "README.md",
+    "playwright-config/*.json"
   ],
-  "homepage": "https://github.com/kawanet/test-assert-lite#readme",
+  "homepage": "https://github.com/kawanet/test-assert-lite/tree/main/packages/playwright-js-cli#readme",
   "keywords": [
     "assert",
     "browser",
-    "chai",
+    "cdp",
     "chromium",
     "cli",
     "firefox",
-    "jest",
-    "mocha",
     "node:assert",
     "node:test",
     "playwright",
     "test",
-    "vitest",
     "webkit"
   ],
   "license": "MIT",

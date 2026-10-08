@@ -26,9 +26,9 @@ const strip = (headers: Headers): Headers => {
 }
 
 /**
- * Fetches what a request under `path` asks for from `upstream` and answers
- * with what came back, status, headers and body as they are. An upstream
- * that cannot be reached is a 502; a redirect is passed on, not followed.
+ * Answers a request under `path` with what `upstream` returns, status,
+ * headers and body as they are. An upstream out of reach is a 502. A
+ * redirect is passed on, not followed.
  */
 export const proxy = ({path: at, upstream}: ProxyOptions): MiddlewareHandler => async (c, next) => {
     if (c.finalized || !c.req.path.startsWith(at)) return next()

@@ -84,12 +84,12 @@ export declare namespace TAL {
 
     // --- assert ---
 
-    // What `doesNotThrow` filters by: a RegExp tested against String(error),
-    // a class the error must be an instance of (Error or not, as node:assert
-    // takes any), or a validation function that returns true on a match.
+    // A filter for `doesNotThrow`. A RegExp is tested against String(error).
+    // A class is what the error must be an instance of, Error or not, as
+    // node:assert takes any. A validation function returns true on a match.
     type ErrorFilter = RegExp | (new (...args: never[]) => object) | ((thrown: unknown) => boolean)
 
-    // What `throws` matches against: any filter above, or an object whose
+    // An expectation for `throws`: any filter above, or an object whose
     // properties the error must carry, a RegExp value being tested against
     // the property's string form. An Error instance counts as such an
     // object, name and message included. The same shapes node:assert takes.
@@ -204,8 +204,8 @@ export declare namespace TAL {
         level: "info" | "warn" | "error"
     }
 
-    // What node --test relays from a test file's own streams. This
-    // package's runner emits neither.
+    // A test file's own output, as node --test relays it. This package's
+    // runner emits neither.
     interface TestStdout {
         file: string
         message: string
@@ -273,7 +273,7 @@ export declare namespace TAL {
         off(event: string, listener: (...args: unknown[]) => void): unknown
     }
 
-    // What a session takes over: the five methods a page's console has.
+    // The five methods of a page's console, which a session takes over.
     interface ConsoleLike {
         debug(...args: unknown[]): void
         log(...args: unknown[]): void
@@ -283,16 +283,15 @@ export declare namespace TAL {
     }
 
     interface SessionOptions {
-        /** What the run's events are formatted with; `reporter.spec()` unless given. */
+        /** The formatter of the run's events. `reporter.spec()` unless given. */
         reporter?: ReporterFn | string
         /** Where the formatted text goes, the run's stdout unless given. */
         output?: OutputFn
         /** Reports the run to its host over this channel. Nothing is sent without one. */
         channel?: Channel
         /**
-         * Takes the errors outside the tests until run(). The uncaught
-         * exceptions and unhandled rejections of the window or the process
-         * given each become one failed test at the top level.
+         * Takes the errors outside the tests until run(). An uncaught exception
+         * or an unhandled rejection of the window or process given is one failed test.
          */
         uncaught?: EventTargetLike | EventEmitterLike
         /**
@@ -306,7 +305,7 @@ export declare namespace TAL {
         heartbeat?: number
     }
 
-    // What run() resolves with. It says whether every test passed.
+    // The result run() resolves with. It says whether every test passed.
     interface SessionResult {
         success: boolean
     }
@@ -362,7 +361,7 @@ export declare namespace TAL {
         disconnect(): void
     }
 
-    // What send() carries. The session names the sender, so a host with
+    // A message send() carries. The session names the sender, so a host with
     // several on one channel knows whose word it is.
     type SessionEvent =
         | {type: "session:begin", session: string}

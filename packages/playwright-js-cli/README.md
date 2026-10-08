@@ -2,7 +2,12 @@
 
 [![npm version](https://img.shields.io/npm/v/playwright-js-cli)](https://www.npmjs.com/package/playwright-js-cli)
 
-`chromium-js`, `firefox-js` and `webkit-js` run your `node:test` and `node:assert` test files in a headless browser through [Playwright](https://playwright.dev/). Each is [tacli](https://www.npmjs.com/package/test-assert-cli) fixed on that engine, with the flags that choose another mode left out.
+Run ES modules written for Node.js in Chromium, Firefox and WebKit through [Playwright](https://playwright.dev/), or in a running Chromium over CDP.
+
+- Test files written for `node:test` run unchanged, imports and all. Other ES modules run too
+- `playwright` is installed as a dependency. Run `npx playwright install` once to get the browsers
+- `--playwright-config` configures the browser launch, context and page. It can also attach to a running Chromium with `connectOverCDP`
+- Accepts every [tacli](https://www.npmjs.com/package/test-assert-cli) option
 
 ```sh
 npm install -D playwright-js-cli
@@ -20,9 +25,25 @@ webkit-js -e 'console.log("#", navigator.userAgent)'
 chromium-js --test test/query.test.mjs
 ```
 
-- `playwright` comes with this package. The browsers do not: `npx playwright install chromium`, `firefox` or `webkit` downloads the one a command needs.
-- `--playwright-config <file>`: JSON options passed to Playwright's [launch](https://playwright.dev/docs/api/class-browsertype#browser-type-launch), [newPage](https://playwright.dev/docs/api/class-browser#browser-new-page) and [goto](https://playwright.dev/docs/api/class-page#page-goto) methods. A `connectOverCDP` entry, the endpoint URL of a Chromium running with remote debugging, attaches to that browser in place of launching one, as [connectOverCDP](https://playwright.dev/docs/api/class-browsertype#browser-type-connect-over-cdp) does.
-- Every other option of `tacli` applies as it is: `--alias`, `--import-map`, `--reporter`, `--port`, `--origin`, `--script`, `--mount` and the rest. See [test-assert-cli](https://www.npmjs.com/package/test-assert-cli).
+## CDP - Chrome DevTools Protocol
+
+```sh
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --remote-debugging-port=9222 --user-data-dir=/tmp/chrome-profile-stable --no-first-run &
+
+chromium-js -e 'console.log("#", navigator.userAgent)' --playwright-config node_modules/playwright-js-cli/playwright-config/connect-over-cdp.json
+# Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36
+```
+
+## CLI
+
+`chromium-js`, `firefox-js` and `webkit-js` accept every `tacli` option, `--alias`, `--port` and the rest, as [test-assert-cli](https://www.npmjs.com/package/test-assert-cli) describes them, and add one of their own.
+
+### `--playwright-config <file>`
+
+- A JSON file. Each key names a Playwright method and holds its options, for example `newPage` for [newPage](https://playwright.dev/docs/api/class-browser#browser-new-page).
+- Presets ship in `node_modules/playwright-js-cli/playwright-config/`. `iphone15pro.json` and `pixel9a.json` give the page a phone's viewport and user agent through `newPage`.
+- A `connectOverCDP` key holds the endpoint URL of a Chromium running with remote debugging, or `[url, options]` for [connectOverCDP](https://playwright.dev/docs/api/class-browsertype#browser-type-connect-over-cdp). The runner then attaches to that browser instead of launching one. `connect-over-cdp.json` names `http://127.0.0.1:9222`.
+- An attached run opens its page in the browser's default context, unless `newContext` or `newPage` asks for a fresh one.
 
 ## SEE ALSO
 

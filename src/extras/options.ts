@@ -31,12 +31,12 @@ export const usageOf = (command: string, fixed: FixedMode = {}): string => {
         "  --mount <dir|url>           what the root serves instead of htdocs: a directory, or an origin to proxy (browser modes)",
         fixed.webdriver && "  --webdriver-config <file>   JSON sent as the body of POST /session (default: no capabilities)",
         fixed.webdriver && "  --endpoint <url>            the WebDriver server (default: http://127.0.0.1:4444)",
-        fixed.playwright != null && "  --playwright-config <file>  JSON options for Playwright's launch, newPage and goto",
+        fixed.playwright != null && "  --playwright-config <file>  JSON options for Playwright, such as newPage and connectOverCDP",
     ]
     return lines.filter(line => line).map(line => `${line}\n`).join("")
 }
 
-/** What --port names: the port, and the address to listen on when one is given ahead of it. */
+/** The port --port names, and the address to listen on when one is given ahead of it. */
 export interface Listen {
     host?: string
     port: number
@@ -94,7 +94,7 @@ export const mountOf = (value: string): string => {
 const importItemsOf = (mapFile: string | undefined, aliases: string[]): ImportBase[] =>
     [...(mapFile == null ? [] : readImportMap(resolve(mapFile))), ...aliases.map(entry => new ImportAliasItem(entry, cwdURL()))]
 
-// What the mode cannot take of the list is refused here, one reason per
+// The items the mode cannot take are refused here, one reason per
 // specifier, before anything is served or hooked.
 const refused = <T extends Imports | NodeImports>(imports: T): T => {
     const refusals = imports.refusals()
@@ -149,10 +149,9 @@ const parseFlags = (args: string[]) => {
 }
 
 /**
- * Reads the arguments as the executable gets them and returns what the
- * mode they name needs, every value checked and every path absolute, or
- * throws UsageError with the reason. A mode the executable fixed is the
- * mode, whatever the arguments say.
+ * Reads the arguments as the executable gets them into what the mode
+ * needs, every value checked and every path absolute, or throws
+ * UsageError with the reason. A mode the executable fixed is the mode.
  */
 export const readOptions = (args: string[], fixed: FixedMode = {}): ModeOptions => {
     const {values, positionals} = parse(args, fixed)

@@ -217,11 +217,9 @@ describe(TITLE, () => {
         assert.throws(() => TAL_strict.deepEqual(detached(), new DataView(new ArrayBuffer(0))), TypeError)
     })
 
-    // SharedArrayBuffer isn't an instanceof ArrayBuffer, so it needs its own
-    // tag check to reach the same byte-comparison path. The global itself
-    // does not exist in a non-cross-origin-isolated browser (this suite's
-    // own browser run included), unlike in Node, so this skips there rather
-    // than crashing on a bare reference to it.
+    // SharedArrayBuffer is no instanceof ArrayBuffer and has a tag check of
+    // its own. The global is missing in a browser that is not cross-origin
+    // isolated, this suite's own run included, so the test skips there.
     it("compares SharedArrayBuffer by byte content too", {skip: "undefined" === typeof SharedArrayBuffer}, () => {
         const bytes = (buf: SharedArrayBuffer, ...values: number[]): SharedArrayBuffer => {
             new Uint8Array(buf).set(values)

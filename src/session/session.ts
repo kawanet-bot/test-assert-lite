@@ -24,7 +24,7 @@ type SessionResult = TAL.SessionResult
 // so a suite still loading cannot declare into one already running.
 interface Cycle {
     services: RunServices
-    // What the run's events go through, on the way to the reporter.
+    // The stream the run's events go through, on the way to the reporter.
     report: ReportStream
     // Where the run's text and verdict go, let go of once the verdict is out.
     channel: TAL.Channel
@@ -37,7 +37,7 @@ interface Cycle {
     walk: Promise<void> | null
     // run() is closing the cycle and drives the rest itself.
     closing: boolean
-    // What the walk failed with, kept for run() to reject with.
+    // The walk's failure, kept for run() to reject with.
     failure: {error: unknown} | undefined
 }
 
@@ -194,7 +194,7 @@ export const createSessions = (harness: HarnessState, assert: TAL.TestContextAss
     return {session, run, load, schedule}
 }
 
-// What the run came to: the counts, the time and the verdict.
+// The run's summary: the counts, the time and the verdict.
 const summaryOf = ({run, startedAt}: Cycle): TAL.TestSummary => ({
     counts: {...run.counters},
     duration_ms: performance.now() - startedAt,

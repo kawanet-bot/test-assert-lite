@@ -23,11 +23,9 @@ describe(TITLE, () => {
     let dir: string
     let file: string
     let other: string
-    // The wait is how long an ask waits for a change before a 204, so a
-    // test that expects a change gives it plenty: on a busy runner the
-    // loop can stall past a short wait before the file's events are read,
-    // and the wait would answer first. The 204 is drawn from a second
-    // watcher with a short wait, on a directory nothing ever writes to.
+    // A test that expects a change gives the ask a long wait. On a busy runner
+    // the loop can stall before the file's events are read, and a short wait
+    // would answer 204 first. The 204 comes from a watcher on a quiet directory.
     let watcher: Watcher
     let quiet: string
     let brief: Watcher
