@@ -25,6 +25,15 @@ webkit-js -e 'console.log("#", navigator.userAgent)'
 chromium-js --test test/query.test.mjs
 ```
 
+## CDP - Chrome DevTools Protocol
+
+```sh
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --remote-debugging-port=9222 --user-data-dir=/tmp/chrome-profile-stable --no-first-run &
+
+chromium-js -e 'console.log("#", navigator.userAgent)' --playwright-config node_modules/playwright-js-cli/playwright-config/connect-over-cdp.json
+# Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36
+```
+
 ## CLI
 
 `chromium-js`, `firefox-js` and `webkit-js` take the options of `tacli`, `--alias`, `--import-map`, `--reporter`, `--port`, `--origin`, `--script`, `--mount` and the rest, as [test-assert-cli](https://www.npmjs.com/package/test-assert-cli) describes them, and one of their own.

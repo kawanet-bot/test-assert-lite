@@ -21,7 +21,8 @@
   "files": [
     "bin/*.js",
     "LICENSE",
-    "README.md"
+    "README.md",
+    "playwright-config/*.json"
   ],
   "homepage": "https://github.com/kawanet/test-assert-lite#readme",
   "keywords": [
