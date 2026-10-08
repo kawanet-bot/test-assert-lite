@@ -10,9 +10,9 @@ const refuse = (c: Context): void => {
 }
 
 /**
- * Strips the types from a 200 text/typescript Response and sends it as
- * text/javascript. A 422 where this Node strips no types, or where
- * stripping fails on the file. Any other Response goes out as it came.
+ * After the rest of the chain, strips the types from a 200 text/typescript
+ * Response and sends it as text/javascript. A 422 where this Node strips
+ * no types, or where stripping fails. Any other Response goes out as it came.
  */
 export const withStrippedTypes = (): MiddlewareHandler => async (c, next) => {
     await next()

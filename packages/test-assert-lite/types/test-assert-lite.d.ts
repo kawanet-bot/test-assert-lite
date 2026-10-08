@@ -1,4 +1,8 @@
-/** A subset of `node:test` and `node:assert` that runs in browsers. https://github.com/kawanet/test-assert-lite */
+/**
+ * https://github.com/kawanet/test-assert-lite
+ *
+ * A subset of `node:test` and `node:assert` that runs in browsers.
+ */
 
 export {} // external module indicator
 

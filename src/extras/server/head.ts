@@ -31,9 +31,9 @@ export interface HeadMarkup {
 type Markup = string | HeadMarkup
 
 /**
- * Adds `markup`, or what it returns for the page's HTML and path, to the
- * head of a 200 text/html Response, at the first `</head>`. A page without
- * one, and any other Response, goes out as it came.
+ * After the rest of the chain, adds `markup`, or what it returns for the
+ * page's HTML and path, to the head of a 200 text/html Response, at the
+ * first `</head>`. A page without one, and any other Response, goes out as it came.
  */
 export const withHead = (markup: Markup | ((html: string, path: string) => Markup)): MiddlewareHandler => async (c, next) => {
     await next()

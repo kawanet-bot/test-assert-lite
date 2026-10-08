@@ -7,8 +7,9 @@ import type {MiddlewareHandler} from "./middleware.ts"
 const escape = (text: string): string => text.replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`)
 
 /**
- * Puts `name` in place of every `>{{title}}<` in a 200 text/html Response,
- * escaped for HTML. Any other Response goes out as it came.
+ * After the rest of the chain, puts `name` in place of every `>{{title}}<`
+ * in a 200 text/html Response, escaped for HTML. Any other Response goes
+ * out as it came.
  */
 export const withTitle = (name: string): MiddlewareHandler => async (c, next) => {
     await next()
