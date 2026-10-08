@@ -16,8 +16,8 @@
 BDD style with `describe` and `it`:
 
 ```js
-import {strict as assert} from "node:assert"
-import {describe, it} from "node:test"
+import {strict as assert} from "test-assert-lite/assert"
+import {describe, it} from "test-assert-lite/test"
 
 const parseQuery = (search) => Object.fromEntries(new URLSearchParams(search))
 const buildQuery = (params) => new URLSearchParams(params).toString()
@@ -38,10 +38,10 @@ describe("buildQuery() from an object", () => {
 })
 ```
 
-The same file runs with `node --test`, and in a browser with [chromium-js](https://www.npmjs.com/package/playwright-js-cli):
+The same file runs under `node`, and in a browser with [chromium-js](https://www.npmjs.com/package/playwright-js-cli):
 
 ```sh
-node --test test/query.test.mjs
+node test/query.test.mjs
 
 chromium-js test/query.test.mjs
 ```
@@ -49,8 +49,8 @@ chromium-js test/query.test.mjs
 `test` with subtests:
 
 ```js
-import {strict as assert} from "node:assert"
-import {test} from "node:test"
+import {strict as assert} from "test-assert-lite/assert"
+import {test} from "test-assert-lite/test"
 
 test("URLSearchParams", async (t) => {
     const params = new URLSearchParams("a=1&b=2")
@@ -110,43 +110,37 @@ The minified build is an ES module: an import map leads the package's name to it
 
 ### Bundled tests in a page
 
-Bundle the suites as one ES module with `node:test` and `node:assert` left external, and let an import map lead them, and the package's name the bridges import, to the CDN.
+Or bundle the suites with the library into one ES module, so the page needs no import map. An entry imports the suites and calls `run()`.
+
+```js
+// test/browser.mjs
+import "./query.test.mjs"
+import "./params.test.mjs"
+import {run} from "test-assert-lite/session"
+
+run().then(result => console.log(result.success ? "PASS" : "FAIL"))
+```
 
 ```js
 // rollup.config.mjs
+import {nodeResolve} from "@rollup/plugin-node-resolve"
+
 export default {
-    input: "test/*.test.mjs",
-    external: [
-        "node:assert",
-        "node:test",
-    ],
+    input: "test/browser.mjs",
     output: {
         file: "htdocs/scripts/bundled-tests.js",
         format: "es",
     },
+    plugins: [nodeResolve()],
     treeshake: false,
 }
 ```
 
 ```html
-<script type="importmap">
-{
-    "imports": {
-        "test-assert-lite": "https://cdn.jsdelivr.net/npm/test-assert-lite/dist/test-assert-lite.min.js",
-        "node:test": "https://cdn.jsdelivr.net/npm/test-assert-lite/exports/test.js",
-        "node:assert": "https://cdn.jsdelivr.net/npm/test-assert-lite/exports/assert.js",
-        "node:assert/strict": "https://cdn.jsdelivr.net/npm/test-assert-lite/exports/assert/strict.js",
-        "test-assert-lite/process": "https://cdn.jsdelivr.net/npm/test-assert-lite/exports/process.js",
-        "test-assert-lite/session": "https://cdn.jsdelivr.net/npm/test-assert-lite/exports/session.js"
-    }
-}
-</script>
 <script type="module" src="./scripts/bundled-tests.js"></script>
-<script type="module">
-    import {run} from "test-assert-lite/session"
-    run()
-</script>
 ```
+
+The report goes to the console. The same bundle runs under `node` as it is.
 
 ## SEE ALSO
 
