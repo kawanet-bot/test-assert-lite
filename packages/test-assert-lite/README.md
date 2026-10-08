@@ -32,9 +32,6 @@ describe("buildQuery() from an object", () => {
         url.search = buildQuery({q: "cat"})
         assert.equal(url.href, "https://example.com/search?q=cat")
     })
-    it("encodes a space as %20", () => {
-        assert.equal(buildQuery({q: "black cat"}), "q=black%20cat")
-    })
 })
 ```
 
