@@ -88,8 +88,8 @@ $(PLAYWRIGHT_CONFIG): Makefile
 		echo '{}' > $@; \
 	fi
 
-# Browser bundle cleanup remains owned by builder/Makefile.
+# Everything under tests is generated, the bundle from builder/Makefile too.
 clean:
-	/bin/rm -fr $(ALL)
+	/bin/rm -fr tests $(ALL)
 
 .PHONY: all bundled install test test-chromium test-firefox test-webkit test-playwright no-cdp-port test-webdriver serve clean
