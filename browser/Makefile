@@ -70,7 +70,11 @@ test-webdriver: all
 test: install test-chromium
 
 # Every Playwright browser, on the same bundle. Run by `npm run test-max`.
-test-playwright: install test-chromium test-firefox test-webkit
+test-playwright: no-cdp-port install test-chromium test-firefox test-webkit
+
+# Firefox and WebKit are always launched, so a CDP run cannot cover them.
+no-cdp-port:
+	[ -z "$(CDP_PORT)" ] # CDP_PORT="$(CDP_PORT)"
 
 # The same bundle for a person: prints the URL and serves until Ctrl-C.
 serve: all
@@ -88,4 +92,4 @@ $(PLAYWRIGHT_CONFIG): Makefile
 clean:
 	/bin/rm -fr $(ALL)
 
-.PHONY: all bundled install test test-chromium test-firefox test-webkit test-playwright test-webdriver serve clean
+.PHONY: all bundled install test test-chromium test-firefox test-webkit test-playwright no-cdp-port test-webdriver serve clean
