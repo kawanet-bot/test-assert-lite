@@ -1,0 +1,33 @@
+name: Browser CI (Playwright)
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: browser-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  playwright:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      # Playwright installs each browser with its apt packages. A broken mirror fails here.
+      - run: sudo apt-get update --error-on=any
+      - run: npm install
+
+      - run: make -C browser install
+      - run: make -C browser test-playwright
